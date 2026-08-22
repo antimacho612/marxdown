@@ -1,0 +1,84 @@
+// @vitest-environment jsdom
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+
+import { paint } from './paint'
+
+function container(): HTMLElement {
+  const el = document.createElement('div')
+  document.body.append(el)
+  return el
+}
+
+beforeEach(() => {
+  document.body.replaceChildren()
+  // jsdom には requestIdleCallback が無い。paint.ts の setTimeout フォールバックが働く。
+  vi.stubGlobal('requestIdleCallback', undefined)
+})
+
+describe('段階的描画 (02.architecture.md §6.4)', () => {
+  it('最初のチャンクは同期的に入る', () => {
+    const el = container()
+    paint(el, ['<p>first</p>', '<p>second</p>'])
+    // await していない時点で first だけが入っていること。
+    // ここが非同期だと「読める最初のフレーム」が 1 フレーム遅れる。
+    expect(el.textContent).toBe('first')
+  })
+
+  it('残りのチャンクは idle で入る', async () => {
+    const el = container()
+    const result = paint(el, ['<p>a</p>', '<p>b</p>', '<p>c</p>'])
+    await result.done
+    expect(el.textContent).toBe('abc')
+  })
+
+  it('チャンクが 1 つなら done が即座に解決する', async () => {
+    const el = container()
+    const result = paint(el, ['<p>only</p>'])
+    await expect(result.done).resolves.toBeTypeOf('number')
+  })
+
+  it('描画のたびに前の内容を捨てる', async () => {
+    const el = container()
+    await paint(el, ['<p>old</p>']).done
+    await paint(el, ['<p>new</p>']).done
+    expect(el.textContent).toBe('new')
+  })
+
+  it('空のチャンク列でも落ちない', async () => {
+    const el = container()
+    await paint(el, []).done
+    expect(el.childNodes).toHaveLength(0)
+  })
+})
+
+describe('Front Matter (F-VIEW-09)', () => {
+  it('本文の前に置く', () => {
+    const el = container()
+    paint(el, ['<p>body</p>'], 'title: x')
+    expect(el.firstElementChild?.className).toBe('mx-front-matter')
+    expect(el.firstElementChild?.textContent).toBe('title: x')
+  })
+
+  it('null なら何も足さない', () => {
+    const el = container()
+    paint(el, ['<p>body</p>'], null)
+    expect(el.querySelector('.mx-front-matter')).toBeNull()
+  })
+
+  it('中身は HTML として解釈しない', () => {
+    const el = container()
+    paint(el, ['<p>body</p>'], '<script>alert(1)</script>')
+    expect(el.querySelector('script')).toBeNull()
+    expect(el.querySelector('.mx-front-matter')?.textContent).toContain('<script>')
+  })
+})
+
+describe('描画経路のサニタイズ', () => {
+  it('paint を通した時点でスクリプトが消えている', () => {
+    // sanitize を呼び忘れる事故を構造的に防ぐための回帰テスト
+    const el = container()
+    paint(el, ['<p>ok</p><script>alert(1)</script>'])
+    expect(el.querySelector('script')).toBeNull()
+    expect(el.textContent).toBe('ok')
+  })
+})

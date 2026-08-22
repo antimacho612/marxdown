@@ -1,0 +1,159 @@
+// @vitest-environment jsdom
+/**
+ * サニタイズの回帰テスト（ADR-0006 / N-SEC-01）。
+ *
+ * 中心ユースケースが「LLM が生成した、自分が書いていないファイルを開く」である以上、
+ * ここは**攻撃者が書いた Markdown**を前提に書く。
+ */
+import { describe, expect, it } from 'vitest'
+
+import { render } from './pipeline'
+import { sanitize } from './sanitize'
+
+/** 実際の経路と同じ順序で通す（markdown-it → DOMPurify）。 */
+function pipeline(markdown: string): string {
+  return sanitize(render(markdown).html)
+}
+
+describe('スクリプト実行経路を塞ぐ', () => {
+  it('script タグを落とす', () => {
+    expect(pipeline('<script>alert(1)</script>')).not.toContain('<script')
+  })
+
+  it('iframe を落とす', () => {
+    expect(pipeline('<iframe src="https://evil.example"></iframe>')).not.toContain('<iframe')
+  })
+
+  it('object / embed を落とす', () => {
+    const out = pipeline('<object data="x"></object><embed src="y">')
+    expect(out).not.toContain('<object')
+    expect(out).not.toContain('<embed')
+  })
+
+  it('form を落とす', () => {
+    expect(pipeline('<form action="https://evil.example"><input name="a"></form>')).not.toContain(
+      '<form',
+    )
+  })
+
+  it('on* 属性を落とす', () => {
+    const out = pipeline('<img src="x.png" onerror="alert(1)">')
+    expect(out).not.toContain('onerror')
+  })
+
+  it('Markdown 記法の javascript: リンクはリンクにすらならない', () => {
+    // markdown-it 自身の validateLink が先に弾く（Layer 2）。
+    // 結果はリンクではなく素のテキストになる。
+    const out = pipeline('[click](javascript:alert(1))')
+    expect(out).not.toContain('<a')
+    expect(out).not.toContain('href')
+  })
+
+  it('生 HTML の javascript: href を落とす', () => {
+    const out = pipeline('<a href="javascript:alert(1)">x</a>')
+    expect(out).not.toContain('javascript:')
+    expect(out).not.toContain('href')
+  })
+
+  it('生 HTML の vbscript: href を落とす', () => {
+    const out = pipeline('<a href="vbscript:msgbox(1)">y</a>')
+    expect(out).not.toContain('vbscript:')
+    expect(out).not.toContain('href')
+  })
+
+  it('data:text/html を落とす（data: の最大の抜け道）', () => {
+    const out = pipeline('<a href="data:text/html;base64,PHNjcmlwdD4=">x</a>')
+    expect(out).not.toContain('data:text/html')
+  })
+
+  it.each([['weird://payload'], ['ftp://example.com/a'], ['cid:x'], ['sms:+81'], ['callto:x']])(
+    '許可していないスキームを落とす: %s',
+    (href) => {
+      // ftp / cid / sms / callto は DOMPurify の既定では通る。
+      // こちらの許可リストのほうが狭いことを固定しておく。
+      const out = pipeline(`<a href="${href}">x</a>`)
+      expect(out).not.toContain(href)
+    },
+  )
+
+  it('DOMPurify が通すスキームでも、こちらの許可リスト外なら痕跡を残す', () => {
+    const out = pipeline('<a href="ftp://example.com/a">x</a>')
+    expect(out).toContain('data-mx-blocked')
+  })
+
+  it('SVG 内のスクリプトを落とす', () => {
+    const out = pipeline('<svg><script>alert(1)</script></svg>')
+    expect(out).not.toContain('alert')
+  })
+
+  it('base タグを落とす（相対 URL の乗っ取り防止）', () => {
+    expect(pipeline('<base href="https://evil.example/">')).not.toContain('<base')
+  })
+})
+
+describe('正当な内容は壊さない', () => {
+  it('見出し・段落・強調を残す', () => {
+    const out = pipeline('# 見出し\n\n**強調**と*斜体*\n')
+    expect(out).toContain('<h1')
+    expect(out).toContain('<strong>')
+    expect(out).toContain('<em>')
+  })
+
+  it('data-line を残す（スクロール同期の基盤）', () => {
+    expect(pipeline('# a\n')).toContain('data-line="0"')
+  })
+
+  it('https の画像を残す', () => {
+    expect(pipeline('![alt](https://example.com/a.png)')).toContain('https://example.com/a.png')
+  })
+
+  it.each([
+    ['./ 付き', './img/a.png'],
+    ['接頭辞なし', 'img/a.png'],
+    ['同階層', 'a.png'],
+    ['親階層', '../assets/a.png'],
+    ['エンコード済み', 'img/%E3%81%82.png'],
+  ])('相対パスの画像を残す: %s', (_name, href) => {
+    // resolve_asset が後でスコープ検証する（N-SEC-05）。
+    // ここで落とすと、最も普通の書き方の画像が全部消える。
+    const out = pipeline(`![alt](${href})`)
+    expect(out).toContain(href)
+    expect(out).not.toContain('data-mx-blocked')
+  })
+
+  it('Windows の絶対パスを残す', () => {
+    expect(pipeline('<img src="C:/work/a.png">')).not.toContain('data-mx-blocked')
+  })
+
+  it('data:image を残す', () => {
+    const uri = 'data:image/png;base64,iVBORw0KGgo='
+    expect(pipeline(`![alt](${uri})`)).toContain('data:image/png')
+  })
+
+  it('コードブロックの中身をエスケープして残す', () => {
+    const out = pipeline('```html\n<script>alert(1)</script>\n```\n')
+    expect(out).toContain('&lt;script&gt;')
+    expect(out).not.toContain('<script>')
+  })
+
+  it('アンカーリンクを残す', () => {
+    expect(pipeline('[jump](#section)')).toContain('href="#section"')
+  })
+})
+
+describe('リンクの後処理', () => {
+  it('外部リンクに rel を付ける', () => {
+    expect(pipeline('[x](https://example.com/)')).toContain('rel="noopener noreferrer"')
+  })
+
+  it('target を落とす（ナビゲーションは JS が捕捉する）', () => {
+    expect(pipeline('<a href="https://example.com/" target="_blank">x</a>')).not.toContain(
+      'target=',
+    )
+  })
+
+  it('落とした参照に痕跡を残す', () => {
+    // 黙って消すと「なぜ表示されないのか」が分からなくなる
+    expect(pipeline('<img src="ftp://example.com/a.png">')).toContain('data-mx-blocked')
+  })
+})

@@ -1,0 +1,27 @@
+# 05.performance-budget.md §5.5 の「全 PR / コミット」で回すものだけをここに置く。
+# 起動時間とメモリは環境ノイズが大きいため hook には載せない（マイルストーンごとの手動計測）。
+pre-commit:
+  parallel: true
+  jobs:
+    - name: oxfmt
+      glob: '*.{ts,tsx,js,mjs,json,jsonc}'
+      run: pnpm exec oxfmt {staged_files}
+      stage_fixed: true
+    - name: oxlint
+      glob: '*.{ts,tsx,js,mjs}'
+      run: pnpm exec oxlint {staged_files}
+    - name: rustfmt
+      glob: '*.rs'
+      root: src-tauri/
+      run: cargo fmt -- --check
+
+pre-push:
+  parallel: true
+  jobs:
+    - name: tsc
+      run: pnpm exec tsc --noEmit
+    - name: vitest
+      run: pnpm exec vitest run
+    - name: clippy
+      root: src-tauri/
+      run: cargo clippy --all-targets -- -D warnings

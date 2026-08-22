@@ -1,0 +1,107 @@
+/**
+ * デザイントークン（02.architecture.md §10.1）。
+ *
+ * すべての色・タイポグラフィをここに集約することで、以下が同じ仕組みで実現できる。
+ *
+ * - ライト / ダーク切り替え（`:root[data-theme]` で変数を差し替えるだけ）
+ * - OS 設定への追従
+ * - ユーザーのカスタムテーマ（変数を上書きする CSS を 1 枚追加する）
+ * - エディタとプレビューの見た目の一貫性
+ *
+ * JS ベースの CSS-in-JS を使わないのは、ランタイムコストと
+ * ユーザーによる上書き可能性の両方の理由（§10.1）。
+ */
+
+:root {
+  color-scheme: light dark;
+
+  /* --- タイポグラフィ -------------------------------------------------- */
+  /* 日本語と英数字の混植を前提としたスタック（§10.2）。
+     英数字を先に置き、日本語は後段のフォントに拾わせる。 */
+  --mx-font-ui:
+    'Segoe UI Variable Text', 'Segoe UI', system-ui, 'Yu Gothic UI', 'Meiryo', sans-serif;
+  --mx-font-content:
+    'Segoe UI Variable Text', 'Segoe UI', system-ui, 'Yu Gothic', 'Yu Mincho', 'Meiryo', sans-serif;
+  --mx-font-code: 'Cascadia Code', 'Consolas', 'BIZ UDGothic', 'Meiryo', monospace;
+
+  --mx-font-size-ui: 13px;
+  --mx-font-size-content: 16px;
+  --mx-font-size-code: 0.875em;
+
+  --mx-line-height: 1.75;
+  --mx-line-height-tight: 1.35;
+
+  /* 本文幅を制限する（§10.2 可読性）。74ch 程度を既定にする。 */
+  --mx-content-width: 74ch;
+
+  /* --- 余白 ------------------------------------------------------------ */
+  --mx-space-1: 4px;
+  --mx-space-2: 8px;
+  --mx-space-3: 12px;
+  --mx-space-4: 16px;
+  --mx-space-6: 24px;
+  --mx-space-8: 32px;
+
+  --mx-radius: 6px;
+  --mx-radius-sm: 4px;
+
+  /* --- 色（ライト） ---------------------------------------------------- */
+  --mx-color-bg: #ffffff;
+  --mx-color-bg-subtle: #f6f7f9;
+  --mx-color-bg-inset: #eef0f3;
+  --mx-color-fg: #1c2024;
+  --mx-color-fg-muted: #60646c;
+  --mx-color-fg-subtle: #8b8d98;
+  --mx-color-border: #d9dbe0;
+  --mx-color-border-subtle: #e8eaee;
+  --mx-color-accent: #3b5bdb;
+  --mx-color-accent-fg: #ffffff;
+  --mx-color-danger: #c92a2a;
+  --mx-color-warning: #a06a00;
+  --mx-color-selection: rgb(59 91 219 / 18%);
+
+  --mx-shadow-1: 0 1px 2px rgb(0 0 0 / 6%), 0 1px 6px rgb(0 0 0 / 4%);
+
+  /* --- レイアウト ------------------------------------------------------ */
+  --mx-titlebar-height: 34px;
+  --mx-statusbar-height: 24px;
+}
+
+:root[data-theme='dark'] {
+  --mx-color-bg: #111315;
+  --mx-color-bg-subtle: #191b1d;
+  --mx-color-bg-inset: #202325;
+  --mx-color-fg: #edeef0;
+  --mx-color-fg-muted: #b0b4ba;
+  --mx-color-fg-subtle: #7c8085;
+  --mx-color-border: #2c2f33;
+  --mx-color-border-subtle: #212426;
+  --mx-color-accent: #8da2fb;
+  --mx-color-accent-fg: #10131a;
+  --mx-color-danger: #ff8b8b;
+  --mx-color-warning: #e0b341;
+  --mx-color-selection: rgb(141 162 251 / 22%);
+
+  --mx-shadow-1: 0 1px 2px rgb(0 0 0 / 40%), 0 1px 8px rgb(0 0 0 / 30%);
+}
+
+/* OS 追従（F-CONF-01）。data-theme が明示されていないときだけ効かせる。 */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --mx-color-bg: #111315;
+    --mx-color-bg-subtle: #191b1d;
+    --mx-color-bg-inset: #202325;
+    --mx-color-fg: #edeef0;
+    --mx-color-fg-muted: #b0b4ba;
+    --mx-color-fg-subtle: #7c8085;
+    --mx-color-border: #2c2f33;
+    --mx-color-border-subtle: #212426;
+    --mx-color-accent: #8da2fb;
+    --mx-color-accent-fg: #10131a;
+    --mx-color-danger: #ff8b8b;
+    --mx-color-warning: #e0b341;
+    --mx-color-selection: rgb(141 162 251 / 22%);
+
+    --mx-shadow-1: 0 1px 2px rgb(0 0 0 / 40%), 0 1px 8px rgb(0 0 0 / 30%);
+  }
+}

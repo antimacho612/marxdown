@@ -1,0 +1,20 @@
+[
+  {
+    "name": "critical path (main + md-worker)",
+    "path": ["dist/assets/main-*.js", "dist/assets/md-worker-*.js"],
+    "limit": "150 KB",
+    "gzip": true
+  },
+  {
+    "name": "editor (M0 で 170KB から引き上げ / 05.performance-budget.md §5.1)",
+    "path": ["dist/assets/editor-*.js", "dist/assets/spike-editor-*.js"],
+    "limit": "215 KB",
+    "gzip": true
+  },
+  {
+    "name": "total (no mermaid)",
+    "path": ["dist/assets/*.js", "!dist/assets/mermaid-*.js"],
+    "limit": "400 KB",
+    "gzip": true
+  }
+]

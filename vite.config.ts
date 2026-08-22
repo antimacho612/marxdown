@@ -1,32 +1,72 @@
-import { defineConfig } from "vite";
-import react from "@vitejs/plugin-react";
+import { fileURLToPath, URL } from 'node:url'
 
-// @ts-expect-error process is a nodejs global
-const host = process.env.TAURI_DEV_HOST;
+import react from '@vitejs/plugin-react'
+import { visualizer } from 'rollup-plugin-visualizer'
+import { defineConfig } from 'vite'
 
-// https://vite.dev/config/
-export default defineConfig(async () => ({
-  plugins: [react()],
+const host = process.env.TAURI_DEV_HOST
 
-  // Vite options tailored for Tauri development and only applied in `tauri dev` or `tauri build`
-  //
-  // 1. prevent Vite from obscuring rust errors
+/**
+ * チャンク境界は 02.architecture.md §5.3 の表がそのまま仕様になっている。
+ * `main` + `md-worker` がクリティカルパスであり、size-limit の監視対象。
+ */
+export default defineConfig(({ mode }) => ({
+  plugins: [
+    react(),
+    ...(mode === 'analyze'
+      ? [visualizer({ filename: 'dist/stats.html', gzipSize: true, brotliSize: true, open: false })]
+      : []),
+  ],
+
+  resolve: {
+    alias: {
+      '@': fileURLToPath(new URL('./src', import.meta.url)),
+    },
+  },
+
+  // Worker はクリティカルパスで並行ロードされるため、名前を固定して size-limit から参照する。
+  worker: {
+    format: 'es',
+    rollupOptions: {
+      output: {
+        entryFileNames: 'assets/md-worker-[hash].js',
+        chunkFileNames: 'assets/md-worker-[name]-[hash].js',
+      },
+    },
+  },
+
+  build: {
+    target: 'esnext', // WebView2 Evergreen / WKWebView のみを対象にするため
+    sourcemap: mode !== 'production',
+    reportCompressedSize: true,
+    rollupOptions: {
+      output: {
+        entryFileNames: 'assets/main-[hash].js',
+        chunkFileNames: 'assets/[name]-[hash].js',
+        assetFileNames: 'assets/[name]-[hash][extname]',
+        manualChunks(id) {
+          if (
+            id.includes('node_modules/@codemirror') ||
+            id.includes('node_modules/@lezer') ||
+            id.includes('node_modules/@replit/codemirror-vscode-keymap') ||
+            id.includes('node_modules/crelt') ||
+            id.includes('node_modules/style-mod') ||
+            id.includes('node_modules/w3c-keyname')
+          ) {
+            return 'editor'
+          }
+          return undefined
+        },
+      },
+    },
+  },
+
   clearScreen: false,
-  // 2. tauri expects a fixed port, fail if that port is not available
   server: {
     port: 1420,
     strictPort: true,
     host: host || false,
-    hmr: host
-      ? {
-          protocol: "ws",
-          host,
-          port: 1421,
-        }
-      : undefined,
-    watch: {
-      // 3. tell Vite to ignore watching `src-tauri`
-      ignored: ["**/src-tauri/**"],
-    },
+    hmr: host ? { protocol: 'ws', host, port: 1421 } : undefined,
+    watch: { ignored: ['**/src-tauri/**', '**/bench/fixtures/**'] },
   },
-}));
+}))

@@ -1,0 +1,207 @@
+/**
+ * プレビュー本文のタイポグラフィ（02.architecture.md §10.2）。
+ *
+ * Design Brief Principle 2「Markdown Is the Product」と
+ * Principle 9「Professional, But Not Boring」を最も直接的に体現する場所。
+ * **既定値の完成度に投資する**。M1 の品質の勝負どころ（06.roadmap.md §4.1）。
+ *
+ * 方針:
+ * - 本文幅を制限する（可読性）
+ * - 見出しの階層を、サイズだけでなく**ウェイトと余白**で表現する
+ * - コードブロックは背景で面を作り、本文のリズムを乱さない
+ */
+
+.mx-preview {
+  height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: var(--mx-space-8) var(--mx-space-6) 40vh;
+
+  font-family: var(--mx-font-content);
+  font-size: var(--mx-font-size-content);
+  line-height: var(--mx-line-height);
+  color: var(--mx-color-fg);
+
+  /* 本文は選択できる */
+  user-select: text;
+
+  /* 日本語と英数字の間隔を整える */
+  text-spacing-trim: trim-start;
+  word-break: normal;
+  overflow-wrap: anywhere;
+  line-break: strict;
+}
+
+.mx-preview > * {
+  max-width: var(--mx-content-width);
+  margin-inline: auto;
+}
+
+/* --- 見出し ----------------------------------------------------------- */
+
+.mx-preview :is(h1, h2, h3, h4, h5, h6) {
+  font-weight: 650;
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+  scroll-margin-top: var(--mx-space-6);
+}
+
+/* 「余白で階層を作る」— 上の余白が下より大きいことで、
+   見出しが「次のまとまりの始まり」として読める。 */
+.mx-preview h1 {
+  font-size: 1.9em;
+  font-weight: 700;
+  margin: 0 auto var(--mx-space-6);
+  padding-bottom: var(--mx-space-3);
+  border-bottom: 1px solid var(--mx-color-border-subtle);
+}
+
+.mx-preview h2 {
+  font-size: 1.45em;
+  margin: calc(var(--mx-space-8) * 1.25) auto var(--mx-space-4);
+  padding-bottom: var(--mx-space-2);
+  border-bottom: 1px solid var(--mx-color-border-subtle);
+}
+
+.mx-preview h3 {
+  font-size: 1.2em;
+  margin: var(--mx-space-8) auto var(--mx-space-3);
+}
+
+.mx-preview h4 {
+  font-size: 1.05em;
+  margin: var(--mx-space-6) auto var(--mx-space-2);
+}
+
+.mx-preview :is(h5, h6) {
+  font-size: 1em;
+  color: var(--mx-color-fg-muted);
+  margin: var(--mx-space-6) auto var(--mx-space-2);
+}
+
+/* --- 本文 ------------------------------------------------------------- */
+
+.mx-preview p {
+  margin: 0 auto var(--mx-space-4);
+}
+
+.mx-preview :is(ul, ol) {
+  margin: 0 auto var(--mx-space-4);
+  padding-left: 1.6em;
+}
+
+.mx-preview li {
+  margin-bottom: var(--mx-space-1);
+}
+
+.mx-preview li > :is(ul, ol) {
+  margin-top: var(--mx-space-1);
+  margin-bottom: 0;
+}
+
+.mx-preview blockquote {
+  margin: 0 auto var(--mx-space-4);
+  padding: var(--mx-space-1) 0 var(--mx-space-1) var(--mx-space-4);
+  border-left: 3px solid var(--mx-color-border);
+  color: var(--mx-color-fg-muted);
+}
+
+.mx-preview blockquote > :last-child {
+  margin-bottom: 0;
+}
+
+.mx-preview hr {
+  max-width: var(--mx-content-width);
+  margin: var(--mx-space-8) auto;
+  border: 0;
+  border-top: 1px solid var(--mx-color-border-subtle);
+}
+
+/* --- コード ----------------------------------------------------------- */
+
+.mx-preview code {
+  font-family: var(--mx-font-code);
+  font-size: var(--mx-font-size-code);
+  font-variant-ligatures: none;
+}
+
+/* インラインコードは「面」ではなく「印」。本文のリズムを乱さない量にとどめる。 */
+.mx-preview :not(pre) > code {
+  padding: 0.15em 0.35em;
+  border-radius: var(--mx-radius-sm);
+  background: var(--mx-color-bg-inset);
+}
+
+/* コードブロックは背景で面を作る。本文幅より少し広げて、
+   コードが折り返される頻度を下げる。 */
+.mx-preview pre {
+  max-width: min(100%, calc(var(--mx-content-width) + 8ch));
+  margin: 0 auto var(--mx-space-4);
+  padding: var(--mx-space-4);
+  border: 1px solid var(--mx-color-border-subtle);
+  border-radius: var(--mx-radius);
+  background: var(--mx-color-bg-subtle);
+  overflow-x: auto;
+  line-height: 1.6;
+}
+
+.mx-preview pre > code {
+  padding: 0;
+  background: none;
+  white-space: pre;
+}
+
+/* --- 表 --------------------------------------------------------------- */
+
+.mx-preview table {
+  max-width: min(100%, calc(var(--mx-content-width) + 8ch));
+  margin: 0 auto var(--mx-space-4);
+  border-collapse: collapse;
+  font-size: 0.925em;
+  display: block;
+  overflow-x: auto;
+}
+
+.mx-preview :is(th, td) {
+  padding: var(--mx-space-2) var(--mx-space-3);
+  border: 1px solid var(--mx-color-border-subtle);
+  text-align: left;
+  vertical-align: top;
+}
+
+.mx-preview th {
+  background: var(--mx-color-bg-subtle);
+  font-weight: 620;
+}
+
+/* --- 画像・リンク ----------------------------------------------------- */
+
+.mx-preview img {
+  max-width: 100%;
+  height: auto;
+  border-radius: var(--mx-radius-sm);
+}
+
+/* サニタイザが落とした参照は、黙って消さずに痕跡を残す（§9.1 Layer 3） */
+.mx-preview [data-mx-blocked] {
+  color: var(--mx-color-fg-subtle);
+  text-decoration: line-through;
+  cursor: not-allowed;
+}
+
+/* --- Front Matter（F-VIEW-09） ---------------------------------------- */
+
+.mx-front-matter {
+  max-width: var(--mx-content-width);
+  margin: 0 auto var(--mx-space-6);
+  padding: var(--mx-space-3) var(--mx-space-4);
+  border: 1px dashed var(--mx-color-border);
+  border-radius: var(--mx-radius);
+  background: var(--mx-color-bg-subtle);
+  color: var(--mx-color-fg-muted);
+  font-family: var(--mx-font-code);
+  font-size: 0.8em;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  user-select: text;
+}
