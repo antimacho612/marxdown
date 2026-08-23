@@ -33,6 +33,7 @@ import {
   openViaDialog,
 } from '@/features/document/open'
 import { useDocumentStore } from '@/features/document/store'
+import { installLinkHandler } from '@/features/preview/links'
 import { applyZoom, zoomIn, zoomOut, zoomReset } from '@/features/preview/zoom'
 import { useRecentStore } from '@/features/workspace/recent'
 import { ja } from '@/i18n/ja'
@@ -82,6 +83,14 @@ export async function startup(renderShell: (spike: SpikeFlags) => void): Promise
     strategy: spike.paint,
   })
 
+  // リンクハンドラは**本文を描くより前**に登録する。
+  //
+  // 描画の後に回すと、パースが失敗した / 描画が止まった状態で本文中のリンクを
+  // 押されたときに素の遷移が起きる。WebView がページ遷移するとアプリのシェルごと
+  // 差し替わり、戻る手段が無い（N-SEC-04）。**塞ぐ側を先に置く。**
+  // 登録するのはリスナー 1 つで、クリティカルパスへの上乗せは無視できる。
+  installLinks()
+
   // シェルは、本文があってもなくても同じ場所で描く。
   // 本文がある場合は `openDocument` がパース送信の直後に呼び出す。
   let shellRendered = false
@@ -117,6 +126,18 @@ export async function startup(renderShell: (spike: SpikeFlags) => void): Promise
   installShortcuts()
   installOpenRequestHandler()
   installDragAndDrop()
+}
+
+/**
+ * 本文中のリンククリック（F-VIEW-05, 06, 07 / N-SEC-04）。
+ *
+ * **1 回だけ**登録する。`#mx-preview` は index.html に最初から在り、開き直しても
+ * 同じ要素のままで、ハンドラは現在のドキュメントをストアから読む。
+ * 開くたびに登録するとリスナーが積み上がる。
+ */
+function installLinks(): void {
+  const container = document.querySelector<HTMLElement>('#mx-preview')
+  if (container) installLinkHandler(container)
 }
 
 /**

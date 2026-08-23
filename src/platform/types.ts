@@ -153,6 +153,10 @@ export interface Platform {
   takeBootstrap(): Promise<Bootstrap | null>
   readDocument(path: string): Promise<DocumentPayload>
   writeDocument(req: WriteRequest): Promise<SaveResult>
+  /**
+   * 相対パスの画像を、許可ディレクトリ配下であることを検証したうえで
+   * **そのまま `<img src>` に入れられる URL** に変換する（F-VIEW-08 / N-SEC-05）。
+   */
   resolveAsset(href: string, baseDir: string): Promise<string>
   /** 最近開いたファイルに 1 件積む。更新後の一覧を返す（F-OPEN-09）。 */
   pushRecent(path: string): Promise<RecentEntry[]>
@@ -179,6 +183,11 @@ export interface Platform {
    */
   warmDone(requestId: number, path: string, detail: string): Promise<number | null>
   openExternal(url: string): Promise<void>
+  /**
+   * Markdown 以外のローカルファイルを OS の既定アプリで開く（F-VIEW-06）。
+   * 許可ディレクトリの外は Rust 側で拒まれる。
+   */
+  openLocalFile(path: string): Promise<void>
   revealInFileManager(path: string): Promise<void>
   onOpenRequest(handler: (req: OpenRequest) => void): () => void
 }

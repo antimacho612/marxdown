@@ -23,9 +23,11 @@
  * ストアへ渡すのはメタ情報・アウトライン・計測値といった派生値だけ。
  */
 import { mark } from '@/app/trace'
+import { enhance } from '@/features/preview/enhance'
 import { paint } from '@/features/preview/paint'
 import { forgetRecent, rememberRecent } from '@/features/workspace/recent'
 import { ja } from '@/i18n/ja'
+import { dirOf } from '@/lib/path'
 import type { MarkdownParser } from '@/markdown/worker/client'
 import { getPlatform, type DocumentPayload } from '@/platform'
 
@@ -131,13 +133,22 @@ export async function openDocument(
     }
     store.setStats({ ...outcome, site: config.site, strategy: config.strategy })
 
+    // 本文に後から手を入れる（画像 / コピーボタン / ハイライト）。
+    //
+    // T8 の**後**に置くのが要点。どれも読み始めるのに要らない仕事であり、
+    // 手前に置くと「本文が読める」までの時間がそのぶん伸びる。
+    //
+    // 段階的描画では最初のチャンクしかまだ DOM に無い。まず見えているぶんを
+    // 直し、残りが入り終わったらもう一度呼ぶ（`enhance` は処理済みを飛ばす）。
+    const enhanceOptions = { baseDir: dirOf(payload.path) }
+    enhance(container, enhanceOptions)
+
     // 残りのチャンクは idle で入る。ここでは待たない。
-    if (options.trace === true) {
-      void result.done.then((at) => {
-        mark('T8-all', `${(at - startedAt).toFixed(1)}ms`)
-        return at
-      })
-    }
+    void result.done.then((at) => {
+      enhance(container, enhanceOptions)
+      if (options.trace === true) mark('T8-all', `${(at - startedAt).toFixed(1)}ms`)
+      return at
+    })
 
     // 履歴への記録は本文が見えた**後**。IPC 1 回ぶんでも T8 の手前に置かない。
     if (options.remember !== false) void rememberRecent(payload.path)

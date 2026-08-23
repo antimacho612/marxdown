@@ -49,7 +49,29 @@ pub fn create(
         // 使う想定だったが、WebView の `DataTransfer` はファイルの**絶対パスを渡さない**。
         // パスが無いと最近開いたファイルにも積めず、相対パスの画像も解決できない
         // （F-VIEW-08 / N-SEC-05）。Tauri のドラッグ＆ドロップイベントは実パスを渡す。
-        .initialization_script(&script);
+        .initialization_script(&script)
+        // ナビゲーション禁止（N-SEC-04 / ADR-0006 の多層防御 Layer 2）。
+        //
+        // フロントはリンククリックを全部 `preventDefault()` するが、それは
+        // **JS が期待どおり動いている限り**の話。ここで塞いでおくと、
+        // ハンドラの登録前・例外で落ちた後・想定外の遷移経路のいずれでも、
+        // アプリのシェルが差し替わって戻れなくなる事故が起きない。
+        // 許可するのは**アプリ自身のページだけ**。同じオリジンでも別のパスは通さない。
+        // `./other.md` のようなリンクを踏んだときに、遷移先が 404 のシェルに
+        // なるのではなく、そもそも遷移が起きないようにする。
+        .on_navigation(|url| {
+            let own_host = matches!(
+                url.host_str(),
+                Some("tauri.localhost") | Some("localhost") | None
+            );
+            let own_page = matches!(url.path(), "" | "/" | "/index.html");
+
+            if own_host && own_page {
+                return true;
+            }
+            eprintln!("[marxdown] ナビゲーションを拒否: {url}");
+            false
+        });
 
     match restore.filter(|s| is_on_some_monitor(app, s)) {
         Some(state) => {

@@ -28,6 +28,21 @@ export const ja = {
   open: {
     droppedExtra: (n: number) => `${n} 件は開いていません（複数タブは M3 で対応）`,
   },
+  preview: {
+    copy: 'コピー',
+    copied: 'コピーしました',
+    copyFailed: 'コピーできません',
+    copyLabel: 'コードブロックをコピー',
+    imageOutOfScope: 'この画像は参照が許可されていない場所にあります',
+    imageMissing: '画像が見つかりません',
+  },
+  /** リンククリックの分岐（02.architecture.md §9.2）。 */
+  link: {
+    confirmOpen: (path: string) => `既定のアプリで開きますか: ${path}`,
+    open: '開く',
+    reveal: 'フォルダで表示',
+    outOfScope: (path: string) => `参照が許可されていない場所です: ${path}`,
+  },
   notice: {
     dismiss: '通知を閉じる',
   },

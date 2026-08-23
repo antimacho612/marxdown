@@ -283,6 +283,11 @@ export const webPlatform: Platform = {
     globalThis.open(url, '_blank', 'noopener,noreferrer')
   },
 
+  async openLocalFile(path) {
+    // ブラウザには既定アプリの概念が無い。呼ばれたことだけ分かるようにしておく
+    console.info('[marxdown] openLocalFile', path)
+  },
+
   async revealInFileManager() {
     // ブラウザでは何もできない
   },

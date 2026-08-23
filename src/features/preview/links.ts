@@ -1,0 +1,182 @@
+/**
+ * 本文中のリンククリックの分岐（F-VIEW-05, 06, 07 / N-SEC-04 / 02.architecture.md §9.2）。
+ *
+ * | href | 挙動 |
+ * | --- | --- |
+ * | `#anchor` | ページ内スクロール |
+ * | `./x.md` | Marxdown 内で開く |
+ * | `./x.png` 等の非 md | OS の既定アプリで開く（確認あり） |
+ * | `http(s)://` `mailto:` | 既定ブラウザ / メールクライアント |
+ * | `file://` | パスに直してから上の分岐へ |
+ * | その他 | **何もしない** |
+ *
+ * # 許可リスト方式である理由
+ *
+ * 中心ユースケースは「LLM が生成した、自分が書いていないファイルを開く」こと（ADR-0006）。
+ * 「危ないスキームを弾く」書き方だと、知らないスキームが増えるたびに穴が開く。
+ * **知っているものだけを通し、それ以外は黙って何もしない。**
+ *
+ * # ナビゲーションを絶対に起こさない
+ *
+ * どの分岐に落ちても `preventDefault()` する。WebView がページ遷移すると
+ * アプリのシェルごと差し替わり、復帰する手段が無い（N-SEC-04）。
+ */
+import { openPath } from '@/features/document/open'
+import { useDocumentStore } from '@/features/document/store'
+import { ja } from '@/i18n/ja'
+import { dirOf, isMarkdownPath, joinPath } from '@/lib/path'
+import { getPlatform } from '@/platform'
+
+/** 既定ブラウザ / メールクライアントに渡してよいスキーム。 */
+const EXTERNAL = /^(?:https?|mailto):/i
+
+/** 何らかのスキームが付いているか。付いていなければ相対パス。 */
+const SCHEME = /^([a-z][a-z0-9+.-]*):/i
+
+/**
+ * プレビュー内のクリックを 1 か所で受ける。
+ *
+ * 個々の `<a>` にハンドラを付けないのは、段階的描画で後から増える要素にも
+ * 効かせるため。イベント委譲なら「まだ描かれていない本文」にも最初から効く。
+ */
+export function installLinkHandler(container: HTMLElement): () => void {
+  const onClick = (event: MouseEvent) => {
+    // 修飾クリックと中クリックは「別の場所で開く」意図。M1 にタブが無いので、
+    // 何もしないほうが、既定の挙動（＝ナビゲーション）が漏れるより安全。
+    if (event.defaultPrevented) return
+
+    const anchor = (event.target as Element | null)?.closest('a')
+    if (!anchor) return
+
+    const href = anchor.getAttribute('href')
+    event.preventDefault()
+
+    // サニタイザが落とした href（未知のスキーム）はここに来ない。
+    // 二重に見るのは、DOMPurify の既定が緩んだときの影響を受けないため。
+    if (href === null || href === '') return
+
+    handle(href, container)
+  }
+
+  container.addEventListener('click', onClick)
+  return () => container.removeEventListener('click', onClick)
+}
+
+function handle(href: string, container: HTMLElement): void {
+  // --- ページ内アンカー（F-VIEW-07） ---------------------------------
+  if (href.startsWith('#')) {
+    scrollToAnchor(container, href.slice(1))
+    return
+  }
+
+  const scheme = SCHEME.exec(href)?.[1]?.toLowerCase()
+
+  // --- 外部リンク（F-VIEW-06 / N-SEC-04） ----------------------------
+  if (scheme !== undefined && EXTERNAL.test(href)) {
+    void getPlatform().openExternal(href)
+    return
+  }
+
+  // --- ローカルのパス（F-VIEW-05） -----------------------------------
+  const localPath = toLocalPath(href, scheme)
+  if (localPath === null) return // 未知のスキーム。何もしない
+
+  const baseDir = dirOf(useDocumentStore.getState().meta?.path ?? '')
+  const resolved = joinPath(baseDir, localPath)
+
+  if (isMarkdownPath(resolved)) {
+    // 相対パスの正規化は Rust 側（`read_document` の canonicalize）に任せる。
+    void openPath(resolved)
+    return
+  }
+
+  confirmOpenExternally(resolved)
+}
+
+/**
+ * Markdown 以外のローカルファイル（F-VIEW-06）。
+ *
+ * **確認してから開く。** OS の既定アプリに渡す行為は取り消せないので、
+ * 本文に書かれていただけのパスを黙って起動しない。
+ * モーダルにしないのは、データ消失の可能性が無いから（03.ux-spec.md §8.2）。
+ */
+function confirmOpenExternally(path: string): void {
+  useDocumentStore.getState().setNotice({
+    level: 'info',
+    message: ja.link.confirmOpen(path),
+    actions: [
+      {
+        label: ja.link.open,
+        run: () => {
+          void getPlatform()
+            .openLocalFile(path)
+            .catch(() => {
+              // 許可ディレクトリの外だと Rust 側が拒む。何が起きたか黙らない。
+              useDocumentStore
+                .getState()
+                .setNotice({ level: 'error', message: ja.link.outOfScope(path) })
+            })
+        },
+      },
+      {
+        label: ja.link.reveal,
+        run: () => {
+          void getPlatform().revealInFileManager(path)
+        },
+      },
+    ],
+  })
+}
+
+/**
+ * 見出しへスクロールする（F-VIEW-07）。
+ *
+ * `getElementById` ではなく container 内を探すのは、シェル側の要素に
+ * 同じ id があった場合に本文の外へ飛ばないようにするため。
+ */
+function scrollToAnchor(container: HTMLElement, rawId: string): void {
+  const id = safeDecode(rawId)
+  if (id === '') return
+
+  const target =
+    container.querySelector(`[id="${cssEscape(id)}"]`) ??
+    container.querySelector(`[name="${cssEscape(id)}"]`)
+
+  target?.scrollIntoView({ block: 'start', behavior: 'auto' })
+}
+
+/**
+ * `file://` を含めてローカルパスに直す。未知のスキームは `null`。
+ *
+ * `C:\...` `C:/...` はスキーム付きに見えるが Windows の絶対パス。
+ * `sanitize.ts` の `isAllowedUri` と同じ判定をここでも行う。
+ */
+function toLocalPath(href: string, scheme: string | undefined): string | null {
+  if (scheme === undefined) return href // 相対パス
+  if (scheme.length === 1 && /^[a-z]:[\\/]/i.test(href)) return href // ドライブレター
+
+  if (scheme === 'file') {
+    try {
+      return safeDecode(new URL(href).pathname.replace(/^\/(?=[a-z]:)/i, ''))
+    } catch {
+      return null
+    }
+  }
+
+  return null
+}
+
+function safeDecode(value: string): string {
+  try {
+    return decodeURIComponent(value)
+  } catch {
+    return value
+  }
+}
+
+/** `CSS.escape` は WebView2 にあるが、テスト環境（jsdom）に無い場合がある。 */
+function cssEscape(value: string): string {
+  return typeof CSS !== 'undefined' && typeof CSS.escape === 'function'
+    ? CSS.escape(value)
+    : value.replace(/["\\]/g, '\\$&')
+}

@@ -192,6 +192,30 @@ pub fn open_external(app: tauri::AppHandle, url: String) -> CoreResult<()> {
         .map_err(|e| CoreError::Io(e.to_string()))
 }
 
+/// 本文中のリンクから、Markdown 以外のローカルファイルを既定アプリで開く
+/// （F-VIEW-06 / 02.architecture.md §9.2）。
+///
+/// # 確認だけでは足りない
+///
+/// フロントはユーザーに確認してからここを呼ぶ。それでも**許可ディレクトリの外は開かない**。
+/// 中心ユースケースは「LLM が生成した、自分が書いていないファイルを開く」こと（ADR-0006）。
+/// `[実行](../../../Windows/System32/cmd.exe)` と書かれたリンクを、
+/// 確認ダイアログ 1 枚で既定アプリに渡してよい理由がない。
+///
+/// 許可範囲は `read_document` が積んだアセットルート（＝開いたファイルの親）と同じ。
+/// 「今読んでいる文書の周りにあるファイル」だけが対象になる。
+#[tauri::command]
+pub fn open_local_file(
+    app: tauri::AppHandle,
+    state: State<'_, AppState>,
+    path: String,
+) -> CoreResult<()> {
+    let resolved = scope::resolve_within(&state.asset_roots(), Path::new(&path))?;
+    tauri_plugin_opener::OpenerExt::opener(&app)
+        .open_path(resolved.display().to_string(), None::<&str>)
+        .map_err(|e| CoreError::Io(e.to_string()))
+}
+
 #[tauri::command]
 pub fn reveal_in_file_manager(app: tauri::AppHandle, path: String) -> CoreResult<()> {
     let resolved = document::canonicalize(Path::new(&path))?;

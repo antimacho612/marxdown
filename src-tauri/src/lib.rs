@@ -134,6 +134,7 @@ pub fn run() {
             commands::report_trace,
             commands::ready,
             commands::open_external,
+            commands::open_local_file,
             commands::reveal_in_file_manager,
             commands::startup_trace,
             commands::warm_done,

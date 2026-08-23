@@ -4,7 +4,7 @@
  * 02.architecture.md §3.1: 「どこからでも `invoke()` が呼ばれる」状態を防ぐ。
  * IPC 呼び出し回数は性能に直結する。
  */
-import { invoke } from '@tauri-apps/api/core'
+import { convertFileSrc, invoke } from '@tauri-apps/api/core'
 import { listen, type UnlistenFn } from '@tauri-apps/api/event'
 import { getCurrentWebview } from '@tauri-apps/api/webview'
 
@@ -70,8 +70,10 @@ export const tauriPlatform: Platform = {
     return invoke<SaveResult>('write_document', { req })
   },
 
-  resolveAsset(href, baseDir) {
-    return invoke<string>('resolve_asset', { href, baseDir })
+  async resolveAsset(href, baseDir) {
+    // Rust が返すのは検証済みの絶対パス。`asset:` プロトコルの URL に変換して
+    // 初めて WebView が読める（CSP の `img-src` が許可しているのはこの形）。
+    return convertFileSrc(await invoke<string>('resolve_asset', { href, baseDir }))
   },
 
   pushRecent(path) {
@@ -114,6 +116,10 @@ export const tauriPlatform: Platform = {
 
   openExternal(url) {
     return invoke<void>('open_external', { url })
+  },
+
+  openLocalFile(path) {
+    return invoke<void>('open_local_file', { path })
   },
 
   revealInFileManager(path) {

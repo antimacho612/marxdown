@@ -42,7 +42,22 @@ export default defineConfig(({ mode }) => ({
     rollupOptions: {
       output: {
         entryFileNames: 'assets/main-[hash].js',
-        chunkFileNames: 'assets/[name]-[hash].js',
+        /**
+         * highlight.js の言語定義には `hljs-` を冠する。
+         *
+         * 1 言語 1 チャンクという分割そのものは Vite の自動分割の結果であって、
+         * `manualChunks` でまとめてはいけない。まとめると TypeScript の
+         * ドキュメントを開いただけで Java や SQL の文法まで落ちてくる。
+         * ここでやっているのは**名前付けだけ**で、名前が揃っていないと
+         * size-limit からハイライト一式を 1 つの予算として指せない。
+         */
+        chunkFileNames(chunk) {
+          // Vite が解決するのは ESM ビルド（`es/`）で、CJS の `lib/` ではない。
+          const isLanguage = /highlight\.js[\\/](?:es|lib)[\\/]languages[\\/]/.test(
+            chunk.facadeModuleId ?? '',
+          )
+          return isLanguage ? 'assets/hljs-[name]-[hash].js' : 'assets/[name]-[hash].js'
+        },
         assetFileNames: 'assets/[name]-[hash][extname]',
         manualChunks(id) {
           if (

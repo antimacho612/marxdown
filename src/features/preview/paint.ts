@@ -10,6 +10,7 @@
  * 2. 残りは requestIdleCallback で順次追加
  * ```
  */
+import { requestIdle, type IdleDeadline } from '@/lib/idle'
 import { sanitize } from '@/markdown/sanitize'
 
 export interface PaintResult {
@@ -18,21 +19,6 @@ export interface PaintResult {
   /** すべてのチャンクが入ったら解決する。 */
   done: Promise<number>
 }
-
-type IdleDeadline = { timeRemaining(): number; didTimeout: boolean }
-type IdleCallback = (deadline: IdleDeadline) => void
-
-/**
- * Safari / 古い WebView には requestIdleCallback が無い。
- * setTimeout(0) はアイドル時のポーリングにはならない（1 回きり）ので、
- * 05.performance-budget.md §4.5 のタイマー禁止には抵触しない。
- */
-const requestIdle: (cb: IdleCallback) => void =
-  typeof globalThis.requestIdleCallback === 'function'
-    ? (cb) => globalThis.requestIdleCallback(cb)
-    : (cb) => {
-        setTimeout(() => cb({ timeRemaining: () => 8, didTimeout: true }), 0)
-      }
 
 /**
  * チャンク列を container に描画する。

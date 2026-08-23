@@ -69,6 +69,24 @@
   --mx-color-warning: #a06a00;
   --mx-color-selection: rgb(59 91 219 / 18%);
 
+  /*
+   * シンタックスハイライト（F-VIEW-03）。
+   *
+   * highlight.js のテーマ CSS は読み込まず、ここで塗る。
+   * 色をトークン層に集めておくことで、ライト / ダークの切り替えも
+   * ユーザーのカスタムテーマも、他の色と同じ 1 つの仕組みで効く（§10.1）。
+   *
+   * 彩度は本文より控えめにしてある。コードブロックが本文より目立つと、
+   * 読む順番が壊れる（Principle 2「Markdown Is the Product」）。
+   */
+  --mx-color-code-comment: #6b7280;
+  --mx-color-code-keyword: #7c3aed;
+  --mx-color-code-string: #0f766e;
+  --mx-color-code-number: #b45309;
+  --mx-color-code-function: #1d4ed8;
+  --mx-color-code-variable: #b91c1c;
+  --mx-color-code-builtin: #0e7490;
+
   --mx-shadow-1: 0 1px 2px rgb(0 0 0 / 6%), 0 1px 6px rgb(0 0 0 / 4%);
 
   /* --- レイアウト ------------------------------------------------------ */
@@ -92,6 +110,14 @@
   --mx-color-warning: #e0b341;
   --mx-color-selection: rgb(141 162 251 / 22%);
 
+  --mx-color-code-comment: #7f858d;
+  --mx-color-code-keyword: #c4a7fb;
+  --mx-color-code-string: #6ecfb8;
+  --mx-color-code-number: #e8b07a;
+  --mx-color-code-function: #8db4fb;
+  --mx-color-code-variable: #f5a2a2;
+  --mx-color-code-builtin: #79c7dd;
+
   --mx-shadow-1: 0 1px 2px rgb(0 0 0 / 40%), 0 1px 8px rgb(0 0 0 / 30%);
 }
 
@@ -112,6 +138,14 @@
     --mx-color-danger: #ff8b8b;
     --mx-color-warning: #e0b341;
     --mx-color-selection: rgb(141 162 251 / 22%);
+
+    --mx-color-code-comment: #7f858d;
+    --mx-color-code-keyword: #c4a7fb;
+    --mx-color-code-string: #6ecfb8;
+    --mx-color-code-number: #e8b07a;
+    --mx-color-code-function: #8db4fb;
+    --mx-color-code-variable: #f5a2a2;
+    --mx-color-code-builtin: #79c7dd;
 
     --mx-shadow-1: 0 1px 2px rgb(0 0 0 / 40%), 0 1px 8px rgb(0 0 0 / 30%);
   }

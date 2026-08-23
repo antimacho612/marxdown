@@ -38,6 +38,7 @@ describe('Platform 層', () => {
       'reportTrace',
       'warmDone',
       'openExternal',
+      'openLocalFile',
       'revealInFileManager',
       'onOpenRequest',
     ]
