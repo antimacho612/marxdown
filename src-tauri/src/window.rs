@@ -73,7 +73,14 @@ pub fn create(
             false
         });
 
-    match restore.filter(|s| is_on_some_monitor(app, s)) {
+    let restore = restore.filter(|s| is_on_some_monitor(app, s));
+    // T2c: ウィンドウ状態の復元判定が終わった時点。
+    // `available_monitors()` は OS への問い合わせで、環境によっては速くない。
+    if let Some(state) = app.try_state::<crate::state::AppState>() {
+        state.trace.mark("T2c", None);
+    }
+
+    match restore {
         Some(state) => {
             builder = builder
                 .inner_size(state.width, state.height)

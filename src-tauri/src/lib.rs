@@ -140,6 +140,11 @@ pub fn run() {
             commands::warm_done,
         ])
         .setup(move |app| {
+            // T2b: Tauri のブートとプラグイン初期化が終わった時点。
+            // T2→T3 が伸びたときに「WebView2 が重いのか、自分たちが足したものが重いのか」を
+            // 切り分けられるようにする（05.performance-budget.md §5.2）。
+            app.state::<state::AppState>().trace.mark("T2b", None);
+
             window::create(
                 app.handle(),
                 window::MAIN_LABEL,

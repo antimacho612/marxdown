@@ -87,6 +87,38 @@ marxdown --trace-startup out.json README.md    # T0〜T9 を JSON に書き出�
 marxdown --trace-startup nul README.md         # 計測はするが書き出さない
 ```
 
+### 自分で使う
+
+Marxdown の最初の目標は「作っている本人が毎日使う」こと。
+そのためには**ターミナルから `marxdown foo.md` と打てる**必要がある。
+
+```bash
+pnpm build:app
+```
+
+`src-tauri/target/release/marxdown.exe` が出来る。これを PATH に通す。
+
+```powershell
+# PowerShell（ユーザー環境変数に追記。1 回だけ）
+$exe = Resolve-Path .\src-tauri\target\release
+[Environment]::SetEnvironmentVariable(
+  'Path',
+  [Environment]::GetEnvironmentVariable('Path', 'User') + ';' + $exe,
+  'User'
+)
+```
+
+新しいターミナルを開くと `marxdown README.md` が通る。
+
+> **release ビルドのパスを直接通している**のは意図的。インストーラ
+> （`src-tauri/target/release/bundle/nsis/`）を入れると、ビルドのたびに
+> 再インストールが要る。`pnpm build:app` の出力をそのまま指しておけば、
+> ビルドし直すだけで次の起動から新しい版になる。
+
+2 回目以降の `marxdown foo.md` は新しいプロセスを立てず、常駐しているプロセスに
+パスを転送する（単一インスタンス / ADR-0004）。ここが速さの中心なので、
+**ドッグフーディングではウィンドウを閉じずに置いておく**のが本来の使い方。
+
 ---
 
 ## 構成

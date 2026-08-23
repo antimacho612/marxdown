@@ -35,6 +35,8 @@ const MARK_LABELS = {
   T0: 'プロセス起動',
   T1: 'CLI 引数解析完了',
   T2: 'ファイル読み込み完了',
+  T2b: 'Tauri ブート + プラグイン初期化完了',
+  T2c: 'ウィンドウ状態の復元判定完了',
   T3: 'WebviewWindow 生成呼び出し完了',
   T4: '初期スクリプト評価開始',
   T5: 'bootstrap 読み取り完了',
@@ -176,7 +178,9 @@ function summarize(results) {
       byMark.set(m.id, list)
     }
   }
-  const order = ['T0', 'T1', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'T8', 'T8-all', 'T9']
+  // T2b / T2c は T2→T3 の内訳（M1 で追加）。ここが伸びたときに
+  // 「WebView2 が重いのか、自分たちが足したものが重いのか」を切り分ける。
+  const order = ['T0', 'T1', 'T2', 'T2b', 'T2c', 'T3', 'T4', 'T5', 'T6', 'T7', 'T8', 'T8-all', 'T9']
   const marks = []
   for (const id of order) {
     const values = byMark.get(id)
