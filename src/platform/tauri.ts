@@ -12,6 +12,7 @@ import type {
   DocumentPayload,
   OpenRequest,
   Platform,
+  RecentEntry,
   SaveResult,
   TraceMark,
   WriteRequest,
@@ -47,6 +48,18 @@ export const tauriPlatform: Platform = {
 
   resolveAsset(href, baseDir) {
     return invoke<string>('resolve_asset', { href, baseDir })
+  },
+
+  pushRecent(path) {
+    return invoke<RecentEntry[]>('store_push_recent', { path })
+  },
+
+  removeRecent(path) {
+    return invoke<RecentEntry[]>('store_remove_recent', { path })
+  },
+
+  setZoom(zoom) {
+    return invoke<void>('store_set_zoom', { zoom })
   },
 
   ready() {

@@ -18,7 +18,7 @@
   padding: var(--mx-space-8) var(--mx-space-6) 40vh;
 
   font-family: var(--mx-font-content);
-  font-size: var(--mx-font-size-content);
+  font-size: calc(var(--mx-font-size-content) * var(--mx-zoom));
   line-height: var(--mx-line-height);
   color: var(--mx-color-fg);
 

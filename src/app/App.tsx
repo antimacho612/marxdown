@@ -9,7 +9,9 @@
  * 切り分け可能にするためでもある。React を外しても本文は同じ経路で出る
  * （`shell-dom.ts` が同じ DOM を作る）。
  */
-import { useDocumentStore } from '@/features/document/store'
+import { useCallback } from 'react'
+
+import { useDocumentStore, type Notice, type NoticeAction } from '@/features/document/store'
 import { ja } from '@/i18n/ja'
 
 export function App() {
@@ -27,11 +29,7 @@ export function App() {
         {meta ? <span className="mx-titlebar__dir">{dir}</span> : null}
       </header>
 
-      {notice ? (
-        <div className={`mx-notice mx-notice--${notice.level}`} role="status">
-          {notice.message}
-        </div>
-      ) : null}
+      {notice ? <NoticeBar notice={notice} /> : null}
 
       {meta ? null : (
         <div className="mx-welcome">
@@ -55,6 +53,62 @@ export function App() {
         {stats ? <StatusStats stats={stats} /> : null}
       </footer>
     </>
+  )
+}
+
+/**
+ * 通知バー（03.ux-spec.md §8.2）。
+ *
+ * `role` を種別で分けているのは、支援技術に割り込ませるかどうかが変わるため。
+ * 情報は `status`（穏やかに読み上げる）、警告とエラーは `alert`（割り込む）。
+ */
+function NoticeBar({ notice }: { notice: Notice }) {
+  const setNotice = useDocumentStore((s) => s.setNotice)
+  const dismiss = useCallback(() => setNotice(null), [setNotice])
+
+  return (
+    <div
+      className={`mx-notice mx-notice--${notice.level}`}
+      role={notice.level === 'info' ? 'status' : 'alert'}
+    >
+      <span className="mx-notice__message">{notice.message}</span>
+      {(notice.actions ?? []).map((action) => (
+        <NoticeActionButton key={action.label} action={action} onDismiss={dismiss} />
+      ))}
+      <button
+        type="button"
+        className="mx-notice__close"
+        aria-label={ja.notice.dismiss}
+        onClick={dismiss}
+      >
+        ✕
+      </button>
+    </div>
+  )
+}
+
+/**
+ * 選択肢を押したら、まず通知を閉じてから実行する。
+ *
+ * 実行が非同期に終わる（再読み込みなど）場合でも、押した瞬間にバーが消えるほうが
+ * 「効いた」ことが伝わる。結果は必要なら新しい通知として出せばよい。
+ */
+function NoticeActionButton({
+  action,
+  onDismiss,
+}: {
+  action: NoticeAction
+  onDismiss: () => void
+}) {
+  const onClick = useCallback(() => {
+    onDismiss()
+    action.run()
+  }, [action, onDismiss])
+
+  return (
+    <button type="button" className="mx-notice__action" onClick={onClick}>
+      {action.label}
+    </button>
   )
 }
 

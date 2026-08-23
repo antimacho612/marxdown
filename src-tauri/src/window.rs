@@ -1,13 +1,18 @@
-//! ウィンドウ生成。
+//! ウィンドウ生成と、位置・サイズの復元（F-CONF-10）。
 //!
 //! ウィンドウを `tauri.conf.json` の宣言ではなく**コードで生成する**のは、
 //! `initialization_script` に CLI 引数から作った bootstrap を載せる必要があるため
 //! （02.architecture.md §5.1）。宣言的なウィンドウでは注入するタイミングがない。
+//!
+//! この構造は復元にも効いている。位置とサイズを `WebviewWindowBuilder` に
+//! 直接渡せるので、「既定位置に出てから復元先へ動く」ちらつきが起きない。
+//! `visible: false` から本文ごと見せる設計（04.tech-stack.md §9.1）と噛み合う。
 
 use tauri::{Manager, WebviewUrl, WebviewWindow, WebviewWindowBuilder};
 
 use crate::bootstrap::Bootstrap;
 use crate::cli::BootstrapChannel;
+use crate::store::WindowState;
 
 pub const MAIN_LABEL: &str = "main";
 
@@ -15,26 +20,94 @@ pub const MAIN_LABEL: &str = "main";
 /// これを超えたら本文が未完成でも表示する。「起動失敗に見える」ほうが害が大きい。
 pub const SHOW_FALLBACK_MS: u64 = 400;
 
+pub const DEFAULT_WIDTH: f64 = 1000.0;
+pub const DEFAULT_HEIGHT: f64 = 720.0;
+
+/// 復元位置を採用するために、いずれかのモニタと重なっていてほしい最小の面積（論理 px）。
+///
+/// タイトルバーを掴めない位置に復元されると、ユーザーはウィンドウを動かせなくなる。
+/// ディスプレイ構成が変わった後の起動で最も起きやすい。
+const MIN_VISIBLE: f64 = 80.0;
+
 pub fn create(
     app: &tauri::AppHandle,
     label: &str,
     bootstrap: &Bootstrap,
     channel: BootstrapChannel,
+    restore: Option<WindowState>,
 ) -> tauri::Result<WebviewWindow> {
     let script = crate::bootstrap::to_init_script(bootstrap, channel);
 
-    let window = WebviewWindowBuilder::new(app, label, WebviewUrl::default())
+    let mut builder = WebviewWindowBuilder::new(app, label, WebviewUrl::default())
         .title("Marxdown")
-        .inner_size(1000.0, 720.0)
         .min_inner_size(480.0, 360.0)
         .visible(false) // 描画準備が整うまで見せない
         .decorations(true)
         .disable_drag_drop_handler() // ドラッグ＆ドロップは JS 側で扱う（F-OPEN-08）
-        .initialization_script(&script)
-        .build()?;
+        .initialization_script(&script);
+
+    match restore.filter(|s| is_on_some_monitor(app, s)) {
+        Some(state) => {
+            builder = builder
+                .inner_size(state.width, state.height)
+                .position(state.x, state.y)
+                .maximized(state.maximized);
+        }
+        None => {
+            builder = builder.inner_size(DEFAULT_WIDTH, DEFAULT_HEIGHT).center();
+        }
+    }
+
+    let window = builder.build()?;
 
     spawn_show_fallback(app.clone(), label.to_string());
     Ok(window)
+}
+
+/// 復元しようとしている矩形が、現在つながっているモニタのどれかと十分に重なるか。
+///
+/// モニタの座標系は物理ピクセルなので、論理ピクセルで保持している
+/// `WindowState`（`store.rs`）と比べる前に、モニタ側を論理に落として揃える。
+fn is_on_some_monitor(app: &tauri::AppHandle, state: &WindowState) -> bool {
+    let Ok(monitors) = app.available_monitors() else {
+        // モニタ情報が取れないなら復元を諦める。中央に出るほうが安全。
+        return false;
+    };
+
+    monitors.iter().any(|m| {
+        let scale = m.scale_factor();
+        let pos = m.position().to_logical::<f64>(scale);
+        let size = m.size().to_logical::<f64>(scale);
+
+        let overlap_x = (state.x + state.width).min(pos.x + size.width) - state.x.max(pos.x);
+        let overlap_y = (state.y + state.height).min(pos.y + size.height) - state.y.max(pos.y);
+
+        overlap_x >= MIN_VISIBLE && overlap_y >= MIN_VISIBLE
+    })
+}
+
+/// 現在のウィンドウ位置・サイズを、保存できる形（論理ピクセル）で取り出す。
+///
+/// 最大化中は最大化後の矩形が返る。Tauri は「最大化する前の矩形」を公開していないため、
+/// 復元時も最大化状態ごと再現する形になる。最大化を解いたときの大きさが
+/// 前回セッションと変わりうるが、位置を見失うよりは害が小さい。
+pub fn capture(window: &WebviewWindow) -> Option<WindowState> {
+    let scale = window.scale_factor().ok()?;
+    let position = window.outer_position().ok()?.to_logical::<f64>(scale);
+    let size = window.inner_size().ok()?.to_logical::<f64>(scale);
+
+    // 最小化中は位置が画面外の番兵値になる環境がある。保存すると次回復元に失敗するので捨てる。
+    if window.is_minimized().unwrap_or(false) {
+        return None;
+    }
+
+    Some(WindowState {
+        x: position.x,
+        y: position.y,
+        width: size.width,
+        height: size.height,
+        maximized: window.is_maximized().unwrap_or(false),
+    })
 }
 
 /// 一定時間経っても `ready` が来なければ、こちらから表示する。

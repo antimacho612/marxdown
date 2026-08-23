@@ -13,11 +13,13 @@ import type {
   DocumentPayload,
   OpenRequest,
   Platform,
+  RecentEntry,
   SaveResult,
   WriteRequest,
 } from './types'
 
 const STORE_KEY = 'marxdown:web-fs'
+const STATE_KEY = 'marxdown:web-state'
 
 interface VirtualFile {
   content: string
@@ -35,6 +37,29 @@ function loadFs(): Record<string, VirtualFile> {
 function saveFs(fs: Record<string, VirtualFile>): void {
   try {
     localStorage.setItem(STORE_KEY, JSON.stringify(fs))
+  } catch {
+    // 容量超過。dev 専用なので黙って諦める
+  }
+}
+
+/** `src-tauri/src/store.rs` の `StoreData` に対応するモック。 */
+interface WebState {
+  recent: RecentEntry[]
+  zoom: number
+}
+
+function loadState(): WebState {
+  try {
+    const raw = JSON.parse(localStorage.getItem(STATE_KEY) ?? '{}') as Partial<WebState>
+    return { recent: raw.recent ?? [], zoom: raw.zoom ?? 1 }
+  } catch {
+    return { recent: [], zoom: 1 }
+  }
+}
+
+function saveState(state: WebState): void {
+  try {
+    localStorage.setItem(STATE_KEY, JSON.stringify(state))
   } catch {
     // 容量超過。dev 専用なので黙って諦める
   }
@@ -71,6 +96,7 @@ function initialBootstrap(): Bootstrap {
   const fs = loadFs()
   const existing = fs[path]
   const content = existing?.content ?? SAMPLE
+  const state = loadState()
 
   return {
     version: 1,
@@ -95,6 +121,8 @@ function initialBootstrap(): Bootstrap {
     trace: { enabled: params.has('trace'), t0EpochMs: Date.now() },
     pendingPaths: [],
     unknownArgs: [],
+    recent: state.recent,
+    zoom: state.zoom,
   }
 }
 
@@ -142,6 +170,29 @@ export const webPlatform: Platform = {
 
   async resolveAsset(href) {
     return href
+  },
+
+  async pushRecent(path) {
+    const state = loadState()
+    state.recent = [
+      { path, openedAtMs: Date.now() },
+      ...state.recent.filter((e) => e.path !== path),
+    ].slice(0, 20)
+    saveState(state)
+    return state.recent
+  },
+
+  async removeRecent(path) {
+    const state = loadState()
+    state.recent = state.recent.filter((e) => e.path !== path)
+    saveState(state)
+    return state.recent
+  },
+
+  async setZoom(zoom) {
+    const state = loadState()
+    state.zoom = zoom
+    saveState(state)
   },
 
   async ready() {

@@ -12,6 +12,7 @@ use crate::document::{self, DocumentPayload, SaveResult, WriteRequest};
 use crate::error::{CoreError, CoreResult};
 use crate::scope;
 use crate::state::AppState;
+use crate::store::{self, RecentEntry};
 use crate::trace::Mark;
 
 /// 起動時ペイロードの取得（1 回のみ有効）。
@@ -67,6 +68,51 @@ pub fn resolve_asset(
 
     let resolved = scope::resolve_within(&roots, &candidate)?;
     Ok(resolved.display().to_string())
+}
+
+/* ------------------------------------------------------------------ */
+/* 永続化ストア（F-OPEN-09 / F-VIEW-11 / F-CONF-10）                     */
+/* ------------------------------------------------------------------ */
+
+/// 最近開いたファイルに 1 件積む（F-OPEN-09）。更新後の一覧を返す。
+///
+/// 一覧を返り値にしているのは、追加のたびにフロントが読み直す往復を省くため。
+/// 積むのは**正規化済みの絶対パス**に限る。相対パスのまま貯めると、
+/// cwd の違う 2 回目の起動で同じファイルが別エントリとして増える。
+#[tauri::command]
+pub fn store_push_recent(state: State<'_, AppState>, path: String) -> CoreResult<Vec<RecentEntry>> {
+    let resolved = document::canonicalize(Path::new(&path))?;
+    let now = store::now_ms();
+    Ok(state.update_store(|s| {
+        s.push_recent(resolved.display().to_string(), now);
+        s.recent.clone()
+    }))
+}
+
+/// 最近開いたファイルから 1 件外す。
+///
+/// Welcome 画面から開こうとしたファイルが消えていた場合に、UI が呼ぶ。
+/// 存在しないファイルを一覧に残し続けると、次の起動でも同じ失敗を踏む。
+#[tauri::command]
+pub fn store_remove_recent(state: State<'_, AppState>, path: String) -> Vec<RecentEntry> {
+    state.update_store(|s| {
+        s.remove_recent(&path);
+        s.recent.clone()
+    })
+}
+
+/// 表示倍率を保存する（F-VIEW-11）。
+///
+/// 反映自体はフロントが即座に行う。ここは永続化だけの担当なので、
+/// フロント側でデバウンスしてから呼ぶこと（`Ctrl+=` の連打で毎回書かない）。
+#[tauri::command]
+pub fn store_set_zoom(state: State<'_, AppState>, zoom: f64) {
+    let clamped = if zoom.is_finite() {
+        zoom.clamp(store::ZOOM_MIN, store::ZOOM_MAX)
+    } else {
+        store::ZOOM_DEFAULT
+    };
+    state.update_store(|s| s.zoom = clamped);
 }
 
 /// フロント側の performance.mark を受け取ってトレースに合流させる。

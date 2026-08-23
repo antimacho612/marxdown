@@ -17,6 +17,7 @@ use serde::Serialize;
 
 use crate::cli::{CliArgs, SpikeFlags, ViewMode};
 use crate::document::{self, DocumentMeta, INLINE_CONTENT_LIMIT};
+use crate::store::{RecentEntry, StoreData};
 
 /// フロントエンドが `window.__MARXDOWN_BOOTSTRAP__` として同期的に読む値。
 /// 対応するフロント側の型は `src/platform/types.ts` の `Bootstrap`。
@@ -34,6 +35,12 @@ pub struct Bootstrap {
     /// 引数として渡されたが 1 枚目にならなかったパス（M3 のタブで開く）。
     pub pending_paths: Vec<String>,
     pub unknown_args: Vec<String>,
+    /// 最近開いたファイル（F-OPEN-09）。Welcome 画面が起動直後に描くため、
+    /// IPC 往復ではなくここに載せる（03.ux-spec.md §9.1）。
+    pub recent: Vec<RecentEntry>,
+    /// 表示倍率（F-VIEW-11）。最初のフレームから正しい倍率で描くために必要。
+    /// 後から当てると、本文が一度既定倍率で描かれてから跳ねる。
+    pub zoom: f64,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -66,7 +73,7 @@ pub struct TraceConfig {
 ///
 /// **この関数はウィンドウ生成の前に呼ばれ、ファイル I/O を含む。**
 /// 呼び出し側は WebView の初期化と並行になるよう配置すること。
-pub fn build(args: &CliArgs, trace: &crate::trace::Trace) -> Bootstrap {
+pub fn build(args: &CliArgs, trace: &crate::trace::Trace, store: &StoreData) -> Bootstrap {
     let mut document = None;
     let mut document_error = None;
 
@@ -111,6 +118,8 @@ pub fn build(args: &CliArgs, trace: &crate::trace::Trace) -> Bootstrap {
             .map(|p| p.display().to_string())
             .collect(),
         unknown_args: args.unknown.clone(),
+        recent: store.recent.clone(),
+        zoom: store.zoom,
     }
 }
 
@@ -168,7 +177,7 @@ mod tests {
         let p = dir.join("a.md");
         std::fs::write(&p, "# hello\n").unwrap();
         let trace = crate::trace::Trace::start(Instant::now());
-        let b = build(&args_with(p), &trace);
+        let b = build(&args_with(p), &trace, &StoreData::default());
         let doc = b.document.expect("document");
         assert_eq!(doc.content.as_deref(), Some("# hello\n"));
         std::fs::remove_dir_all(&dir).ok();
@@ -180,7 +189,7 @@ mod tests {
         let p = dir.join("big.md");
         std::fs::write(&p, "x".repeat((INLINE_CONTENT_LIMIT + 1) as usize)).unwrap();
         let trace = crate::trace::Trace::start(Instant::now());
-        let b = build(&args_with(p), &trace);
+        let b = build(&args_with(p), &trace, &StoreData::default());
         let doc = b.document.expect("document");
         assert!(doc.content.is_none(), "256KB 超は埋め込まない");
         assert!(doc.meta.size > INLINE_CONTENT_LIMIT);
@@ -191,7 +200,11 @@ mod tests {
     fn a_missing_file_becomes_an_error_not_a_panic() {
         let dir = temp_dir("missing");
         let trace = crate::trace::Trace::start(Instant::now());
-        let b = build(&args_with(dir.join("nope.md")), &trace);
+        let b = build(
+            &args_with(dir.join("nope.md")),
+            &trace,
+            &StoreData::default(),
+        );
         assert!(b.document.is_none());
         assert_eq!(
             b.document_error.map(|e| e.kind),
@@ -210,7 +223,7 @@ mod tests {
             ..Default::default()
         };
         let trace = crate::trace::Trace::start(Instant::now());
-        let b = build(&args, &trace);
+        let b = build(&args, &trace, &StoreData::default());
         assert_eq!(b.pending_paths.len(), 2);
         std::fs::remove_dir_all(&dir).ok();
     }
@@ -221,7 +234,7 @@ mod tests {
         let p = dir.join("a.md");
         std::fs::write(&p, "# secret-marker\n").unwrap();
         let trace = crate::trace::Trace::start(Instant::now());
-        let b = build(&args_with(p), &trace);
+        let b = build(&args_with(p), &trace, &StoreData::default());
 
         let script = to_init_script(&b, BootstrapChannel::Script);
         assert!(script.contains("secret-marker"));
@@ -238,7 +251,7 @@ mod tests {
     #[test]
     fn the_script_is_valid_javascript_shaped_output() {
         let trace = crate::trace::Trace::start(Instant::now());
-        let b = build(&CliArgs::default(), &trace);
+        let b = build(&CliArgs::default(), &trace, &StoreData::default());
         let script = to_init_script(&b, BootstrapChannel::Script);
         assert!(script.starts_with("globalThis.__MARXDOWN_BOOTSTRAP__ = Object.freeze({"));
         assert!(script.contains("__MARXDOWN_T4__"));

@@ -34,6 +34,13 @@
   /* 本文幅を制限する（§10.2 可読性）。74ch 程度を既定にする。 */
   --mx-content-width: 74ch;
 
+  /*
+   * 表示倍率（F-VIEW-11）。本文だけに掛かり、クロームには掛からない。
+   * `.mx-preview` の font-size に乗せてあり、配下は em / ch で組んであるので、
+   * この 1 変数を動かすと本文幅・余白・コードブロックまで一緒に拡縮する。
+   */
+  --mx-zoom: 1;
+
   /* --- 余白 ------------------------------------------------------------ */
   --mx-space-1: 4px;
   --mx-space-2: 8px;
@@ -49,6 +56,8 @@
   --mx-color-bg: #ffffff;
   --mx-color-bg-subtle: #f6f7f9;
   --mx-color-bg-inset: #eef0f3;
+  /* ホバー面。UI 要素の反応にだけ使い、本文には持ち込まない */
+  --mx-color-bg-hover: #e3e6ea;
   --mx-color-fg: #1c2024;
   --mx-color-fg-muted: #60646c;
   --mx-color-fg-subtle: #8b8d98;
@@ -71,6 +80,7 @@
   --mx-color-bg: #111315;
   --mx-color-bg-subtle: #191b1d;
   --mx-color-bg-inset: #202325;
+  --mx-color-bg-hover: #292d30;
   --mx-color-fg: #edeef0;
   --mx-color-fg-muted: #b0b4ba;
   --mx-color-fg-subtle: #7c8085;
@@ -91,6 +101,7 @@
     --mx-color-bg: #111315;
     --mx-color-bg-subtle: #191b1d;
     --mx-color-bg-inset: #202325;
+    --mx-color-bg-hover: #292d30;
     --mx-color-fg: #edeef0;
     --mx-color-fg-muted: #b0b4ba;
     --mx-color-fg-subtle: #7c8085;

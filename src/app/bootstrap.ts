@@ -22,10 +22,12 @@ import { useDocumentStore } from '@/features/document/store'
  * シェルの描画時間がまるごとパース時間に重なる。
  */
 import { paint } from '@/features/preview/paint'
+import { applyZoom, zoomIn, zoomOut, zoomReset } from '@/features/preview/zoom'
 import { ja } from '@/i18n/ja'
 import { createParser, type MarkdownParser } from '@/markdown/worker/client'
 import { getPlatform, type Bootstrap, type SpikeFlags } from '@/platform'
 
+import { bindKeys } from './shortcuts'
 import { adoptT4, drain, initTrace, isTracing, mark } from './trace'
 
 export interface StartupContext {
@@ -66,6 +68,11 @@ export async function startup(renderShell: (spike: SpikeFlags) => void): Promise
 
   const spike = bootstrap?.spike ?? FALLBACK_SPIKE
   const store = useDocumentStore.getState()
+
+  // 倍率は**本文を描くより前**に当てる（F-VIEW-11）。
+  // 後から当てると、既定倍率で 1 フレーム描かれてから跳ねる。
+  // CSS 変数を 1 つ書くだけなので、クリティカルパスへの上乗せは無視できる。
+  applyZoom(bootstrap?.zoom ?? 1, false)
 
   // --- 本文の取得 -----------------------------------------------------
   // 256KB 超、または S2 の invoke 経路では bootstrap に本文が入っていない。
@@ -161,7 +168,24 @@ export async function startup(renderShell: (spike: SpikeFlags) => void): Promise
   await platform.ready()
 
   // --- 以降は非同期 -------------------------------------------------------
+  // ウィンドウが見えた後に回す。キーバインドの登録は「本文が読める」瞬間に間に合う
+  // 必要がない仕事であり、T8 より前に置く理由がない。
+  installShortcuts()
   installOpenRequestHandler(parser, spike)
+}
+
+/**
+ * M1 のグローバルキーバインド（03.ux-spec.md §5.3「表示」）。
+ *
+ * ここに並ぶのは**アプリ全体で効くもの**だけ。プレビュー内検索のように
+ * 遅延ロードされる機能は、自分のモジュールの中で `bindKeys` する。
+ */
+function installShortcuts(): void {
+  bindKeys([
+    { key: 'Ctrl+=', run: () => void zoomIn() },
+    { key: 'Ctrl+-', run: () => void zoomOut() },
+    { key: 'Ctrl+0', run: () => void zoomReset() },
+  ])
 }
 
 /**

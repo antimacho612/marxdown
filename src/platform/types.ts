@@ -86,6 +86,13 @@ export interface BootstrapError {
   message: string
 }
 
+/** 最近開いたファイル（F-OPEN-09）。`src-tauri/src/store.rs` の `RecentEntry`。 */
+export interface RecentEntry {
+  /** 正規化済み絶対パス。表示用の分割は `splitPath` で行う。 */
+  path: string
+  openedAtMs: number
+}
+
 /** `window.__MARXDOWN_BOOTSTRAP__` の中身。 */
 export interface Bootstrap {
   version: number
@@ -96,6 +103,10 @@ export interface Bootstrap {
   trace: TraceConfig | null
   pendingPaths: string[]
   unknownArgs: string[]
+  /** Welcome 画面が起動直後に描くため、IPC 往復ではなくここに載る。 */
+  recent: RecentEntry[]
+  /** 表示倍率（F-VIEW-11）。最初のフレームから正しい倍率で描くために要る。 */
+  zoom: number
 }
 
 /** 別インスタンスから転送された起動要求（ウォーム起動）。 */
@@ -129,6 +140,15 @@ export interface Platform {
   readDocument(path: string): Promise<DocumentPayload>
   writeDocument(req: WriteRequest): Promise<SaveResult>
   resolveAsset(href: string, baseDir: string): Promise<string>
+  /** 最近開いたファイルに 1 件積む。更新後の一覧を返す（F-OPEN-09）。 */
+  pushRecent(path: string): Promise<RecentEntry[]>
+  /** 開けなくなったファイルを一覧から外す。更新後の一覧を返す。 */
+  removeRecent(path: string): Promise<RecentEntry[]>
+  /**
+   * 表示倍率を永続化する（F-VIEW-11）。
+   * 反映は呼び出し側が即座に行う。ここは保存だけなので、デバウンスして呼ぶこと。
+   */
+  setZoom(zoom: number): Promise<void>
   /** 描画準備完了。ウィンドウを表示させる。 */
   ready(): Promise<void>
   reportTrace(marks: TraceMark[]): Promise<void>

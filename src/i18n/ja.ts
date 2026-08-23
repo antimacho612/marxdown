@@ -14,6 +14,9 @@ export const ja = {
     title: 'ファイルが開かれていません',
     hint: 'ターミナルから marxdown <file.md> で開くか、ここにファイルをドロップしてください',
   },
+  notice: {
+    dismiss: '通知を閉じる',
+  },
   status: {
     lines: (n: number) => `${n} 行`,
     bytes: (n: number) => `${formatBytes(n)}`,
