@@ -1,14 +1,26 @@
 <!doctype html>
-<html lang="en">
+<html lang="ja">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Tauri + React + Typescript</title>
+    <title>Marxdown</title>
   </head>
 
   <body>
+    <!--
+      本文の受け皿。**React の外**に置いてある（ADR-0005 / 02.architecture.md §8.1）。
+
+      ここが React の管理下にあると、
+      1) 本文の HTML 文字列が React を通過してしまう
+      2) 「読める最初のフレーム」が React のコミットを待つ
+      の 2 つが起きる。どちらも Cold Start の予算に直接効く。
+
+      レイアウトは body 側の grid で行い、React ルートは display: contents で
+      その grid にクロームだけを差し込む。
+    -->
+    <div id="mx-preview" class="mx-preview" role="document"></div>
     <div id="root"></div>
+
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

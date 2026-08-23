@@ -1,0 +1,77 @@
+name: CI
+
+# 05.performance-budget.md §5.5 の「全 PR / コミット」で回すものだけをここに置く。
+# 起動時間とメモリは環境ノイズが大きく CI での自動判定に向かないため、
+# マイルストーンごとの手動計測とする（同 §5.5）。
+
+on:
+  # push:
+  #   branches: [main]
+  # pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  frontend:
+    name: フロントエンド
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Lint (oxlint)
+        run: pnpm exec oxlint
+
+      - name: Format (oxfmt)
+        run: pnpm exec oxfmt --check .
+
+      - name: 型チェック
+        run: pnpm exec tsc --noEmit
+
+      - name: テスト
+        run: pnpm exec vitest run
+
+      - name: ビルド
+        run: pnpm exec vite build
+
+      # 予算超過はビルドを落とす（05.performance-budget.md §5.1）。
+      # 超えたときに上限を引き上げてはいけない。
+      # 何かを遅延チャンクに追い出すか、依存を落とすか、機能を諦める。
+      - name: バンドル予算
+        run: pnpm exec size-limit
+
+  rust:
+    name: Rust Core
+    runs-on: windows-latest # Windows 第一優先（Design Brief §12）
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - name: 整形
+        working-directory: src-tauri
+        run: cargo fmt --all -- --check
+
+      - name: Clippy
+        working-directory: src-tauri
+        run: cargo clippy --all-targets -- -D warnings
+
+      - name: テスト
+        working-directory: src-tauri
+        run: cargo test

@@ -1,0 +1,125 @@
+/**
+ * アプリシェルのレイアウト。
+ *
+ * body 自体を 3 行の grid にし、React ルートは `display: contents` で
+ * その grid にクロームだけを差し込む。本文（`.mx-preview`）は React の外にあり、
+ * 同じ grid のセル 2 を占める（index.html のコメント参照）。
+ *
+ * 行を DOM 順ではなく `grid-area` で明示しているのは、
+ * 本文が DOM 上で先に来る（= React のコミットを待たずに描ける）ため。
+ */
+
+body {
+  display: grid;
+  grid-template-rows: var(--mx-titlebar-height) 1fr var(--mx-statusbar-height);
+  grid-template-columns: 100%;
+}
+
+#root {
+  display: contents;
+}
+
+.mx-titlebar {
+  grid-area: 1 / 1;
+  display: flex;
+  align-items: center;
+  gap: var(--mx-space-2);
+  padding-inline: var(--mx-space-4);
+  border-bottom: 1px solid var(--mx-color-border-subtle);
+  background: var(--mx-color-bg-subtle);
+  font-size: var(--mx-font-size-ui);
+  min-width: 0;
+}
+
+.mx-titlebar__name {
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.mx-titlebar__dir {
+  color: var(--mx-color-fg-subtle);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.mx-preview {
+  grid-area: 2 / 1;
+  min-height: 0;
+}
+
+.mx-statusbar {
+  grid-area: 3 / 1;
+  display: flex;
+  align-items: center;
+  gap: var(--mx-space-4);
+  padding-inline: var(--mx-space-4);
+  border-top: 1px solid var(--mx-color-border-subtle);
+  background: var(--mx-color-bg-subtle);
+  color: var(--mx-color-fg-muted);
+  font-size: 11px;
+  white-space: nowrap;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.mx-statusbar__spacer {
+  flex: 1;
+}
+
+/* 通知バー（03.ux-spec.md §8.2）。モーダルにせず、本文の上に重ねる。 */
+.mx-notice {
+  grid-area: 2 / 1;
+  align-self: start;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: var(--mx-space-3);
+  padding: var(--mx-space-2) var(--mx-space-4);
+  border-bottom: 1px solid var(--mx-color-border);
+  background: var(--mx-color-bg-inset);
+  font-size: var(--mx-font-size-ui);
+  box-shadow: var(--mx-shadow-1);
+}
+
+.mx-notice--error {
+  color: var(--mx-color-danger);
+}
+
+.mx-notice--warning {
+  color: var(--mx-color-warning);
+}
+
+/* Welcome 画面（引数なし起動 / F-OPEN-09） */
+.mx-welcome {
+  grid-area: 2 / 1;
+  z-index: 5;
+  display: grid;
+  place-content: center;
+  gap: var(--mx-space-2);
+  color: var(--mx-color-fg-subtle);
+  text-align: center;
+  background: var(--mx-color-bg);
+}
+
+.mx-welcome__title {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--mx-color-fg-muted);
+  margin: 0;
+}
+
+.mx-welcome p {
+  margin: 0;
+}
+
+kbd {
+  padding: 1px 5px;
+  border: 1px solid var(--mx-color-border);
+  border-bottom-width: 2px;
+  border-radius: var(--mx-radius-sm);
+  background: var(--mx-color-bg);
+  font-family: var(--mx-font-code);
+  font-size: 0.9em;
+}

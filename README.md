@@ -1,7 +1,124 @@
-# Tauri + React + Typescript
+# Marxdown
 
-This template should help get you started developing with Tauri, React and Typescript in Vite.
+速く開く Markdown ビューア / エディタ。
 
-## Recommended IDE Setup
+`marxdown README.md` と打ってから本文が読めるまでの時間を、他の何よりも優先して設計している。
+常駐した 2 回目以降は WebView の初期化を払わずに開く。
 
-- [VS Code](https://code.visualstudio.com/) + [Tauri](https://marketplace.visualstudio.com/items?itemName=tauri-apps.tauri-vscode) + [rust-analyzer](https://marketplace.visualstudio.com/items?itemName=rust-lang.rust-analyzer)
+> **状態: M0（Spike & Foundation）**
+> 実測でアーキテクチャの前提を確かめ、開発基盤を整える段階。まだ日常利用できる状態ではない。
+> 「読む」体験が揃うのは M1。
+
+---
+
+## 何を解こうとしているか
+
+LLM が Markdown を生成し、それをすぐ確認する。この往復が 1 日に何十回も起きる。
+
+VS Code は 2〜4 秒かかる。1 ファイルを読むためだけに、ワークスペースと拡張機能が立ち上がる。
+Marxdown はこのループのためだけに作る。
+
+- **速く開く** — Cold Start ≤ 600ms、常駐中の Warm Start ≤ 120ms を目標にする
+- **Markdown が主役** — 見た目の既定値に投資する。読めることが機能である
+- **信頼できない入力を前提にする** — 自分が書いていないファイルを開くのが中心ユースケース
+
+---
+
+## 開発
+
+Node 24 / pnpm 10 / Rust stable 1.80+ が要る。パッケージマネージャは **pnpm**（npm / yarn ではない）。
+
+```bash
+pnpm install
+pnpm dev              # Tauri アプリを起動
+```
+
+### UI だけを速く回す
+
+```bash
+pnpm dev:web          # Vite のみ。Tauri を起動しない
+```
+
+Platform 層（`src/platform/`）がブラウザ用のモック実装を持っているため、
+UI の大部分は Tauri のビルドサイクルを待たずに開発できる。
+起動時間・単一インスタンス・EOL/BOM の保持はこの経路では確認できない。
+
+URL パラメータで挙動を切り替えられる。
+
+| パラメータ | 効果 |
+| --- | --- |
+| `?spike=editor` | CodeMirror のスパイク画面（S4 / S5） |
+| `?parse=main` | Worker を使わずメインスレッドでパース |
+| `?paint=bulk` | 段階的描画をやめて一括描画 |
+| `?render=dom` | React を使わずシェルを描画 |
+
+### 検査
+
+```bash
+pnpm check            # oxlint + oxfmt --check + tsc --noEmit
+pnpm fix              # oxlint --fix + oxfmt
+pnpm test             # Vitest
+pnpm size             # バンドル予算のチェック
+```
+
+Rust 側は `src-tauri/` で `cargo fmt` / `cargo clippy --all-targets -- -D warnings` / `cargo test`。
+
+### 計測
+
+性能目標は [`docs.local/05.performance-budget.md`](docs.local/05.performance-budget.md) にある（Git 管理外）。
+
+```bash
+pnpm fixtures                                  # bench/fixtures/ の基準ファイルを生成
+pnpm bench                                     # Markdown パイプライン単体
+pnpm build:app                                 # release ビルド（計測には必須）
+pnpm bench:boot                                # Cold Start（T0〜T9 の中央値）
+node scripts/bench-startup.mjs --sweep         # S2/S3/S7/S8 の A/B
+node scripts/bench-startup.mjs --warm          # Warm Start（単一インスタンス）
+pnpm analyze && node scripts/analyze-chunks.mjs  # バンドルの内訳
+```
+
+基準ファイルは Git に入れていない（`huge.md` 2MB / `extreme.md` 10MB）。
+`scripts/gen-fixtures.mjs` がシード固定で生成するので、誰の環境でも同じ内容になる。
+
+アプリ自身にも計測が仕込んである。
+
+```bash
+marxdown --trace-startup out.json README.md    # T0〜T9 を JSON に書き出す
+marxdown --trace-startup nul README.md         # 計測はするが書き出さない
+```
+
+---
+
+## 構成
+
+```text
+src/
+  app/            起動シーケンス・アプリシェル・計測
+  features/       document / preview / editor / …
+  markdown/       markdown-it パイプライン・Worker・サニタイズ
+  platform/       Tauri API の唯一の呼び出し口（テスト時は差し替え）
+  styles/         デザイントークンとプレビューのタイポグラフィ
+src-tauri/src/
+  cli.rs          CLI 引数解析
+  bootstrap.rs    起動時の先読みと初期ペイロード
+  document/       読み書き（エンコーディング / EOL / 原子的書き込み）
+  scope.rs        パスのスコープ検証
+  trace.rs        起動計測
+```
+
+守っている不変条件は 4 つ。
+
+1. **クリティカルパスを太らせない。** `main` + `md-worker` の合計を 150KB (gzip) 以内に保つ。
+   エディタ・Mermaid・KaTeX・ハイライタはすべて遅延チャンク。
+2. **Markdown テキストが唯一の真実。** AST も DOM も派生物で、テキストへ書き戻す経路を作らない。
+   編集・保存で、触っていない箇所のバイト列を変えない。
+3. **ドキュメント本体を React state に置かない。** 本文の DOM は React の管理外にある。
+4. **Rust は速いことだけを担当する。** UI ロジックと Markdown の意味解釈は TypeScript 側。
+
+設計の全体は `docs.local/` にある（`.gitignore` により Git 管理外）。
+
+---
+
+## ライセンス
+
+未定。
