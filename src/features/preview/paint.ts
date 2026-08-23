@@ -43,9 +43,17 @@ export function paint(
   }
 
   const first = chunks[0]
-  if (first !== undefined) {
-    container.append(toFragment(first))
+  if (first === undefined) {
+    const firstChunkAt = performance.now()
+    return { firstChunkAt, done: Promise.resolve(firstChunkAt) }
   }
+
+  // 本文幅の基準点（`.mx-content`）を 1 箇所に絞る。見出しごとに font-size が
+  // 違っても、`ch` はここでしか計算されないので列幅がずれない（Issue #4）。
+  const content = document.createElement('div')
+  content.className = 'mx-content'
+  container.append(content)
+  content.append(toFragment(first))
   const firstChunkAt = performance.now()
 
   const rest = chunks.slice(1)
@@ -61,7 +69,7 @@ export function paint(
       do {
         const chunk = rest[index]
         if (chunk === undefined) break
-        container.append(toFragment(chunk))
+        content.append(toFragment(chunk))
         index++
       } while (index < rest.length && (deadline.timeRemaining() > 4 || deadline.didTimeout))
 
