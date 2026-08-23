@@ -55,18 +55,19 @@ export interface CoreError {
 }
 
 /* ------------------------------------------------------------------ */
-/* M0 のスパイク切り替え                                                */
+/* スパイク切り替え                                                      */
 /* ------------------------------------------------------------------ */
 
+/**
+ * スパイク切り替え。開発ビルドでのみ意味を持つ。
+ *
+ * M0 には S2（bootstrap の経路）/ S7（描画方法）/ S8（シェルの描画）もあったが、
+ * 結論が出たので M1 の終わりに撤去した（OQ-20）。
+ * **残っているのは S3 だけ**で、これは Worker を維持するか（OQ-18）が未決だから。
+ */
 export interface SpikeFlags {
-  /** S2: 初期コンテンツの受け渡し経路 */
-  bootstrap: 'script' | 'invoke'
   /** S3: Markdown のパース場所 */
   parse: 'worker' | 'main'
-  /** S7: 本文の DOM 投入方法 */
-  paint: 'progressive' | 'bulk'
-  /** S8: シェルの描画方法 */
-  render: 'react' | 'dom'
 }
 
 export interface TraceConfig {
@@ -86,6 +87,13 @@ export interface BootstrapError {
   message: string
 }
 
+/** 最近開いたファイル（F-OPEN-09）。`src-tauri/src/store.rs` の `RecentEntry`。 */
+export interface RecentEntry {
+  /** 正規化済み絶対パス。表示用の分割は `splitPath` で行う。 */
+  path: string
+  openedAtMs: number
+}
+
 /** `window.__MARXDOWN_BOOTSTRAP__` の中身。 */
 export interface Bootstrap {
   version: number
@@ -96,6 +104,10 @@ export interface Bootstrap {
   trace: TraceConfig | null
   pendingPaths: string[]
   unknownArgs: string[]
+  /** Welcome 画面が起動直後に描くため、IPC 往復ではなくここに載る。 */
+  recent: RecentEntry[]
+  /** 表示倍率（F-VIEW-11）。最初のフレームから正しい倍率で描くために要る。 */
+  zoom: number
 }
 
 /** 別インスタンスから転送された起動要求（ウォーム起動）。 */
@@ -115,6 +127,20 @@ export interface TraceMark {
 }
 
 /**
+ * ウィンドウへのドラッグ＆ドロップ（F-OPEN-08）。
+ *
+ * ブラウザの `DataTransfer` ではなく **OS 側のイベント**を使う。WebView は
+ * ドロップされたファイルの絶対パスを JS に渡さないため、`DataTransfer` からでは
+ * 最近開いたファイルに積めず、相対パスの画像も解決できない（F-VIEW-08 / N-SEC-05）。
+ */
+export type DragDropEvent =
+  /** ウィンドウの上にファイルが来ている。ドロップ先の見た目を出す。 */
+  | { type: 'over' }
+  | { type: 'drop'; paths: string[] }
+  /** 外へ出た / 取り消された。 */
+  | { type: 'leave' }
+
+/**
  * Platform 層のインタフェース。
  *
  * Domain 層はこれだけを見る。Tauri の存在を知らないことで、
@@ -124,11 +150,29 @@ export interface Platform {
   readonly kind: 'tauri' | 'web'
   /** 同期的に読める初期ペイロード。IPC 往復を挟まないことが最重要。 */
   getBootstrap(): Bootstrap | null
-  /** bootstrap に本文が無かった場合（256KB 超 / invoke 経路）の取得経路。 */
-  takeBootstrap(): Promise<Bootstrap | null>
   readDocument(path: string): Promise<DocumentPayload>
   writeDocument(req: WriteRequest): Promise<SaveResult>
+  /**
+   * 相対パスの画像を、許可ディレクトリ配下であることを検証したうえで
+   * **そのまま `<img src>` に入れられる URL** に変換する（F-VIEW-08 / N-SEC-05）。
+   */
   resolveAsset(href: string, baseDir: string): Promise<string>
+  /** 最近開いたファイルに 1 件積む。更新後の一覧を返す（F-OPEN-09）。 */
+  pushRecent(path: string): Promise<RecentEntry[]>
+  /** 開けなくなったファイルを一覧から外す。更新後の一覧を返す。 */
+  removeRecent(path: string): Promise<RecentEntry[]>
+  /**
+   * 表示倍率を永続化する（F-VIEW-11）。
+   * 反映は呼び出し側が即座に行う。ここは保存だけなので、デバウンスして呼ぶこと。
+   */
+  setZoom(zoom: number): Promise<void>
+  /**
+   * ファイル選択ダイアログを開く（F-OPEN-07）。
+   * 選ばれなければ `null`。返るのは正規化済み絶対パス。
+   */
+  pickFile(): Promise<string | null>
+  /** ウィンドウへのドラッグ＆ドロップを購読する（F-OPEN-08）。 */
+  onDragDrop(handler: (event: DragDropEvent) => void): () => void
   /** 描画準備完了。ウィンドウを表示させる。 */
   ready(): Promise<void>
   reportTrace(marks: TraceMark[]): Promise<void>
@@ -138,6 +182,11 @@ export interface Platform {
    */
   warmDone(requestId: number, path: string, detail: string): Promise<number | null>
   openExternal(url: string): Promise<void>
+  /**
+   * Markdown 以外のローカルファイルを OS の既定アプリで開く（F-VIEW-06）。
+   * 許可ディレクトリの外は Rust 側で拒まれる。
+   */
+  openLocalFile(path: string): Promise<void>
   revealInFileManager(path: string): Promise<void>
   onOpenRequest(handler: (req: OpenRequest) => void): () => void
 }

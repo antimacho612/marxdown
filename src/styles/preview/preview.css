@@ -18,7 +18,7 @@
   padding: var(--mx-space-8) var(--mx-space-6) 40vh;
 
   font-family: var(--mx-font-content);
-  font-size: var(--mx-font-size-content);
+  font-size: calc(var(--mx-font-size-content) * var(--mx-zoom));
   line-height: var(--mx-line-height);
   color: var(--mx-color-fg);
 
@@ -149,6 +149,166 @@
   padding: 0;
   background: none;
   white-space: pre;
+}
+
+/*
+ * コピーボタン（F-VIEW-04）。
+ *
+ * ホバーとフォーカスのときだけ現れる。常に見えていると、コードブロックが
+ * 並ぶドキュメントで「操作可能な部品」が画面いっぱいに増えて、
+ * 本文の静けさ（03.ux-spec.md §2.1）が失われる。
+ */
+.mx-preview pre {
+  position: relative;
+}
+
+.mx-copy {
+  position: absolute;
+  top: var(--mx-space-2);
+  right: var(--mx-space-2);
+  padding: 2px var(--mx-space-2);
+  border: 1px solid var(--mx-color-border);
+  border-radius: var(--mx-radius-sm);
+  background: var(--mx-color-bg);
+  color: var(--mx-color-fg-muted);
+  font-family: var(--mx-font-ui);
+  font-size: 11px;
+  line-height: 1.6;
+  cursor: pointer;
+
+  opacity: 0;
+  transition: opacity 80ms ease-out;
+}
+
+.mx-preview pre:hover .mx-copy,
+.mx-copy:focus-visible {
+  opacity: 1;
+}
+
+.mx-copy[data-mx-state='ok'] {
+  opacity: 1;
+  color: var(--mx-color-accent);
+  border-color: currentColor;
+}
+
+.mx-copy[data-mx-state='error'] {
+  opacity: 1;
+  color: var(--mx-color-danger);
+  border-color: currentColor;
+}
+
+/* 動きを減らす設定を尊重する（03.ux-spec.md §10 / §11） */
+@media (prefers-reduced-motion: reduce) {
+  .mx-copy {
+    transition: none;
+  }
+}
+
+/*
+ * シンタックスハイライト（F-VIEW-03）。
+ *
+ * highlight.js のテーマ CSS は読み込まない。あちらは自前の色を持ち込むので、
+ * ライト / ダークの切り替えとカスタムテーマ（02.architecture.md §10.1）が
+ * トークン層と二重になる。**必要な 8 クラスだけをトークンで塗る。**
+ */
+.hljs-comment,
+.hljs-quote {
+  color: var(--mx-color-code-comment);
+  font-style: italic;
+}
+
+.hljs-keyword,
+.hljs-selector-tag,
+.hljs-literal,
+.hljs-section,
+.hljs-doctag,
+.hljs-type,
+.hljs-name,
+.hljs-strong {
+  color: var(--mx-color-code-keyword);
+}
+
+.hljs-string,
+.hljs-regexp,
+.hljs-addition,
+.hljs-attribute,
+.hljs-meta .hljs-string {
+  color: var(--mx-color-code-string);
+}
+
+.hljs-number,
+.hljs-symbol,
+.hljs-bullet,
+.hljs-link,
+.hljs-selector-attr,
+.hljs-selector-pseudo {
+  color: var(--mx-color-code-number);
+}
+
+.hljs-title,
+.hljs-title.function_,
+.hljs-title.class_ {
+  color: var(--mx-color-code-function);
+}
+
+.hljs-variable,
+.hljs-template-variable,
+.hljs-attr,
+.hljs-selector-class,
+.hljs-selector-id {
+  color: var(--mx-color-code-variable);
+}
+
+.hljs-built_in,
+.hljs-builtin-name,
+.hljs-meta {
+  color: var(--mx-color-code-builtin);
+}
+
+.hljs-deletion {
+  color: var(--mx-color-danger);
+}
+
+.hljs-emphasis {
+  font-style: italic;
+}
+
+/*
+ * 参照が拒まれた画像（F-VIEW-08 / N-SEC-05）。
+ *
+ * 壊れた画像アイコンを出さない。「読めなかった」ではなく
+ * 「**読ませなかった**」ことが伝わる必要がある（ADR-0006）。
+ */
+.mx-image-blocked {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--mx-space-2);
+  max-width: 100%;
+  padding: var(--mx-space-2) var(--mx-space-3);
+  border: 1px dashed var(--mx-color-border);
+  border-radius: var(--mx-radius-sm);
+  background: var(--mx-color-bg-subtle);
+  font-size: 0.875em;
+  color: var(--mx-color-fg-muted);
+}
+
+.mx-image-blocked[data-mx-reason='out-of-scope'] {
+  border-color: var(--mx-color-warning);
+  color: var(--mx-color-warning);
+}
+
+.mx-image-blocked__path {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--mx-color-fg-subtle);
+}
+
+/* 画像は本文幅を超えない。LLM が貼るスクリーンショットは大きいことが多い */
+.mx-preview img {
+  max-width: 100%;
+  height: auto;
 }
 
 /* --- 表 --------------------------------------------------------------- */

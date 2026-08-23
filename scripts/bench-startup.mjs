@@ -35,6 +35,8 @@ const MARK_LABELS = {
   T0: 'プロセス起動',
   T1: 'CLI 引数解析完了',
   T2: 'ファイル読み込み完了',
+  T2b: 'Tauri ブート + プラグイン初期化完了',
+  T2c: 'ウィンドウ状態の復元判定完了',
   T3: 'WebviewWindow 生成呼び出し完了',
   T4: '初期スクリプト評価開始',
   T5: 'bootstrap 読み取り完了',
@@ -176,7 +178,9 @@ function summarize(results) {
       byMark.set(m.id, list)
     }
   }
-  const order = ['T0', 'T1', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'T8', 'T8-all', 'T9']
+  // T2b / T2c は T2→T3 の内訳（M1 で追加）。ここが伸びたときに
+  // 「WebView2 が重いのか、自分たちが足したものが重いのか」を切り分ける。
+  const order = ['T0', 'T1', 'T2', 'T2b', 'T2c', 'T3', 'T4', 'T5', 'T6', 'T7', 'T8', 'T8-all', 'T9']
   const marks = []
   for (const id of order) {
     const values = byMark.get(id)
@@ -351,14 +355,12 @@ if (opts.warm) {
   report.results.warm = warm.summary
   report.results.warmRecords = warm.records
 } else {
-  // S2 / S3 / S7 / S8 の A/B。既定は本命経路のみ。
+  // A/B は S3（パース場所）だけが残っている。
+  // S2 / S7 / S8 は結論が出たので M1 の終わりに撤去した（OQ-20）。
   const configs = opts.sweep
     ? [
-        { name: '本命（script / worker / progressive / react）', spike: {} },
-        { name: 'S2: invoke 経路', spike: { bootstrap: 'invoke' } },
-        { name: 'S3: メインスレッドでパース', spike: { parse: 'main' } },
-        { name: 'S7: 一括描画', spike: { paint: 'bulk' } },
-        { name: 'S8: React 抜き', spike: { render: 'dom' } },
+        { name: '本命（Worker でパース）', spike: {} },
+        { name: 'S3: メインスレッドでパース（OQ-18）', spike: { parse: 'main' } },
       ]
     : [{ name: `既定（${opts.file}）`, spike: opts.spike }]
 

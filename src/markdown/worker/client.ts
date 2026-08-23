@@ -14,13 +14,12 @@ import {
 } from './protocol'
 
 export interface ParseOptions {
-  progressive: boolean
   firstChunkBlocks?: number
   chunkBlocks?: number
 }
 
 export interface MarkdownParser {
-  parse(text: string, options: ParseOptions): Promise<ParseResponse>
+  parse(text: string, options?: ParseOptions): Promise<ParseResponse>
   dispose(): void
 }
 
@@ -53,13 +52,12 @@ function createWorkerParser(): MarkdownParser {
   })
 
   return {
-    parse(text, options) {
+    parse(text, options = {}) {
       const id = nextId++
       const req: WorkerRequest = {
         type: 'parse',
         id,
         text,
-        progressive: options.progressive,
         firstChunkBlocks: options.firstChunkBlocks ?? DEFAULT_FIRST_CHUNK_BLOCKS,
         chunkBlocks: options.chunkBlocks ?? DEFAULT_CHUNK_BLOCKS,
       }
@@ -95,20 +93,16 @@ function createInlineParser(): MarkdownParser {
   const pipeline = import('../pipeline')
 
   return {
-    async parse(text, options) {
+    async parse(text, options = {}) {
       const id = nextId++
-      const { render, renderChunks } = await pipeline
+      const { renderChunks } = await pipeline
+      const { measure } = await import('../text-stats')
       const started = performance.now()
-      const result = options.progressive
-        ? renderChunks(
-            text,
-            options.firstChunkBlocks ?? DEFAULT_FIRST_CHUNK_BLOCKS,
-            options.chunkBlocks ?? DEFAULT_CHUNK_BLOCKS,
-          )
-        : (() => {
-            const r = render(text)
-            return { chunks: [r.html], outline: r.outline, frontMatter: r.frontMatter }
-          })()
+      const result = renderChunks(
+        text,
+        options.firstChunkBlocks ?? DEFAULT_FIRST_CHUNK_BLOCKS,
+        options.chunkBlocks ?? DEFAULT_CHUNK_BLOCKS,
+      )
       return {
         type: 'parsed',
         id,
@@ -116,6 +110,7 @@ function createInlineParser(): MarkdownParser {
         outline: result.outline,
         frontMatter: result.frontMatter,
         parseMs: performance.now() - started,
+        textStats: measure(text),
       }
     },
     dispose() {},

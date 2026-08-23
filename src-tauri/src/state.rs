@@ -12,13 +12,17 @@ use std::time::Instant;
 
 use crate::bootstrap::Bootstrap;
 use crate::cli::CliArgs;
+use crate::store::{RecentEntry, StoreData};
 use crate::trace::Trace;
 
 pub struct AppState {
     pub args: CliArgs,
     pub trace: Trace,
-    /// `take_bootstrap` で 1 回だけ取り出せる初期ペイロード（S2 の invoke 経路用）。
-    bootstrap: Mutex<Option<Bootstrap>>,
+    /// 永続化ストア（最近開いたファイル / 表示倍率 / ウィンドウ状態）。
+    /// 起動時に 1 回読み、変更のたびに書き戻す。
+    store: Mutex<StoreData>,
+    /// ストアの置き場所。`None` は保存先が決まらなかった場合（保存は諦める）。
+    store_path: Option<PathBuf>,
     /// アセット参照を許可するディレクトリ（N-SEC-05）。
     /// 開いたドキュメントの親ディレクトリを追加していく。
     asset_roots: Mutex<Vec<PathBuf>>,
@@ -28,7 +32,13 @@ pub struct AppState {
 }
 
 impl AppState {
-    pub fn new(args: CliArgs, trace: Trace, bootstrap: Bootstrap) -> Self {
+    pub fn new(
+        args: CliArgs,
+        trace: Trace,
+        bootstrap: &Bootstrap,
+        store: StoreData,
+        store_path: Option<PathBuf>,
+    ) -> Self {
         let mut roots = Vec::new();
         if let Some(doc) = bootstrap.document.as_ref() {
             if let Some(parent) = PathBuf::from(&doc.meta.path).parent() {
@@ -38,11 +48,37 @@ impl AppState {
         Self {
             args,
             trace,
-            bootstrap: Mutex::new(Some(bootstrap)),
+            store: Mutex::new(store),
+            store_path,
             asset_roots: Mutex::new(roots),
             warm: Mutex::new(HashMap::new()),
             warm_counter: AtomicU64::new(1),
         }
+    }
+
+    /// ストアを書き換えて永続化する。
+    ///
+    /// ロックを握ったままファイル I/O をしないよう、書き出す値を複製してから解放する。
+    /// ストアの更新は「最近開いたファイルに 1 件積む」程度の頻度なので、
+    /// 複製のコストより保持時間のほうが問題になる。
+    pub fn update_store<T>(&self, f: impl FnOnce(&mut StoreData) -> T) -> T {
+        let (result, snapshot) = {
+            let Ok(mut store) = self.store.lock() else {
+                // 毒されたロックで起動を止めない。永続化を諦めるだけにする。
+                return f(&mut StoreData::default());
+            };
+            let result = f(&mut store);
+            (result, store.clone())
+        };
+        crate::store::save(self.store_path.as_deref(), &snapshot);
+        result
+    }
+
+    pub fn recent(&self) -> Vec<RecentEntry> {
+        self.store
+            .lock()
+            .map(|s| s.recent.clone())
+            .unwrap_or_default()
     }
 
     /// argv 転送を受けた瞬間に呼ぶ。返した ID をフロントへ渡す。
@@ -60,14 +96,6 @@ impl AppState {
     pub fn end_warm(&self, id: u64) -> Option<f64> {
         let started = self.warm.lock().ok()?.remove(&id)?;
         Some(started.elapsed().as_secs_f64() * 1000.0)
-    }
-
-    /// 初期ペイロードを取り出す。2 回目以降は `None`。
-    ///
-    /// 1 回限りにしているのは、これが「起動時の一度きりの受け渡し」であることを
-    /// 型ではなく振る舞いで表現するため。誤って再取得して古い状態に戻る事故を防ぐ。
-    pub fn take_bootstrap(&self) -> Option<Bootstrap> {
-        self.bootstrap.lock().ok().and_then(|mut b| b.take())
     }
 
     pub fn allow_asset_root(&self, dir: PathBuf) {

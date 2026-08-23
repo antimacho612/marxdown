@@ -15,6 +15,7 @@ pub mod document;
 pub mod error;
 pub mod scope;
 pub mod state;
+pub mod store;
 pub mod trace;
 pub mod window;
 
@@ -60,8 +61,16 @@ pub fn run() {
     trace.configure(args.trace_startup.clone(), args.exit_after_trace);
     trace.mark("T1", Some(format!("{} path(s)", args.paths.len())));
 
+    // Context を先に作るのは、`identifier` からストアの置き場所を決めるため。
+    // `tauri::Manager::path()` は AppHandle 構築後にしか使えないが、
+    // ウィンドウ状態はウィンドウ生成の**前に**要る（window.rs）。
+    let context = tauri::generate_context!();
+    let store_path = store::store_path(&context.config().identifier);
+    let store_data = store::load(store_path.as_deref());
+    let restore_window = store_data.window;
+
     // T2: ファイル読み込み。ウィンドウ生成の前に行い、WebView 初期化と重ねる。
-    let payload = bootstrap::build(&args, &trace);
+    let payload = bootstrap::build(&args, &trace, &store_data);
     trace.mark(
         "T2",
         payload
@@ -70,8 +79,7 @@ pub fn run() {
             .map(|d| format!("{} bytes, inlined={}", d.meta.size, d.content.is_some())),
     );
 
-    let channel = args.spike.bootstrap;
-    let state = state::AppState::new(args, trace, payload.clone());
+    let state = state::AppState::new(args, trace, &payload, store_data, store_path);
 
     let mut builder = tauri::Builder::default();
 
@@ -111,25 +119,56 @@ pub fn run() {
 
     builder
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_dialog::init())
         .manage(state)
         .invoke_handler(tauri::generate_handler![
-            commands::take_bootstrap,
             commands::read_document,
             commands::write_document,
             commands::resolve_asset,
+            commands::pick_file,
+            commands::store_push_recent,
+            commands::store_remove_recent,
+            commands::store_set_zoom,
             commands::report_trace,
             commands::ready,
             commands::open_external,
+            commands::open_local_file,
             commands::reveal_in_file_manager,
             commands::startup_trace,
             commands::warm_done,
         ])
         .setup(move |app| {
-            window::create(app.handle(), window::MAIN_LABEL, &payload, channel)?;
+            // T2b: Tauri のブートとプラグイン初期化が終わった時点。
+            // T2→T3 が伸びたときに「WebView2 が重いのか、自分たちが足したものが重いのか」を
+            // 切り分けられるようにする（05.performance-budget.md §5.2）。
+            app.state::<state::AppState>().trace.mark("T2b", None);
+
+            window::create(app.handle(), window::MAIN_LABEL, &payload, restore_window)?;
             let state = app.state::<state::AppState>();
             state.trace.mark("T3", None);
             Ok(())
         })
-        .run(tauri::generate_context!())
+        // ウィンドウ位置・サイズの保存（F-CONF-10）。
+        //
+        // 閉じる瞬間にだけ書く。移動・リサイズのたびに書くと、ウィンドウを
+        // ドラッグしている間ずっとファイル I/O が走る。
+        .on_window_event(|window, event| {
+            if !matches!(event, tauri::WindowEvent::CloseRequested { .. }) {
+                return;
+            }
+            if window.label() != window::MAIN_LABEL {
+                return;
+            }
+            let Some(webview) = window.get_webview_window(window::MAIN_LABEL) else {
+                return;
+            };
+            let Some(captured) = window::capture(&webview) else {
+                return;
+            };
+            window
+                .state::<state::AppState>()
+                .update_store(|s| s.window = Some(captured));
+        })
+        .run(context)
         .expect("error while running tauri application");
 }

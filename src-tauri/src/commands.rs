@@ -7,21 +7,12 @@ use std::path::{Path, PathBuf};
 
 use tauri::{Manager, State, Window};
 
-use crate::bootstrap::Bootstrap;
 use crate::document::{self, DocumentPayload, SaveResult, WriteRequest};
 use crate::error::{CoreError, CoreResult};
 use crate::scope;
 use crate::state::AppState;
+use crate::store::{self, RecentEntry};
 use crate::trace::Mark;
-
-/// 起動時ペイロードの取得（1 回のみ有効）。
-///
-/// 本命の経路では `initialization_script` で注入済みなので、これは
-/// S2 の `--spike-bootstrap=invoke` と、256KB 超のファイルでのみ使われる。
-#[tauri::command]
-pub fn take_bootstrap(state: State<'_, AppState>) -> Option<Bootstrap> {
-    state.take_bootstrap()
-}
 
 #[tauri::command]
 pub fn read_document(state: State<'_, AppState>, path: String) -> CoreResult<DocumentPayload> {
@@ -69,6 +60,86 @@ pub fn resolve_asset(
     Ok(resolved.display().to_string())
 }
 
+/// ファイル選択ダイアログを開く（F-OPEN-07）。選ばれなければ `None`。
+///
+/// `@tauri-apps/plugin-dialog` を入れず Rust 側で包んでいるのは、`open_external` と同じ理由。
+/// フロントの依存が増えず、クリティカルパスの重さにも響かない（04.tech-stack.md §6.1）。
+///
+/// 返すのは**正規化済み絶対パス**。ここで揃えておかないと、
+/// 最近開いたファイル（F-OPEN-09）に表記の違う同じファイルが二重に積もる。
+#[tauri::command]
+pub async fn pick_file(window: Window) -> CoreResult<Option<String>> {
+    use tauri_plugin_dialog::DialogExt;
+
+    // 容量 1 の一度きりの受け口。ダイアログのコールバックは UI スレッドで走るので、
+    // ここで待つ側をブロックしない `try_send` を使う。
+    let (tx, mut rx) = tauri::async_runtime::channel(1);
+
+    window
+        .dialog()
+        .file()
+        .set_parent(&window)
+        .add_filter("Markdown", &["md", "markdown"])
+        .add_filter("すべてのファイル", &["*"])
+        .pick_file(move |picked| {
+            let _ = tx.try_send(picked);
+        });
+
+    let Some(Some(picked)) = rx.recv().await else {
+        return Ok(None);
+    };
+
+    let path = picked
+        .into_path()
+        .map_err(|e| CoreError::InvalidArgument(e.to_string()))?;
+    Ok(Some(document::canonicalize(&path)?.display().to_string()))
+}
+
+/* ------------------------------------------------------------------ */
+/* 永続化ストア（F-OPEN-09 / F-VIEW-11 / F-CONF-10）                     */
+/* ------------------------------------------------------------------ */
+
+/// 最近開いたファイルに 1 件積む（F-OPEN-09）。更新後の一覧を返す。
+///
+/// 一覧を返り値にしているのは、追加のたびにフロントが読み直す往復を省くため。
+/// 積むのは**正規化済みの絶対パス**に限る。相対パスのまま貯めると、
+/// cwd の違う 2 回目の起動で同じファイルが別エントリとして増える。
+#[tauri::command]
+pub fn store_push_recent(state: State<'_, AppState>, path: String) -> CoreResult<Vec<RecentEntry>> {
+    let resolved = document::canonicalize(Path::new(&path))?;
+    let now = store::now_ms();
+    Ok(state.update_store(|s| {
+        s.push_recent(resolved.display().to_string(), now);
+        s.recent.clone()
+    }))
+}
+
+/// 最近開いたファイルから 1 件外す。
+///
+/// Welcome 画面から開こうとしたファイルが消えていた場合に、UI が呼ぶ。
+/// 存在しないファイルを一覧に残し続けると、次の起動でも同じ失敗を踏む。
+#[tauri::command]
+pub fn store_remove_recent(state: State<'_, AppState>, path: String) -> Vec<RecentEntry> {
+    state.update_store(|s| {
+        s.remove_recent(&path);
+        s.recent.clone()
+    })
+}
+
+/// 表示倍率を保存する（F-VIEW-11）。
+///
+/// 反映自体はフロントが即座に行う。ここは永続化だけの担当なので、
+/// フロント側でデバウンスしてから呼ぶこと（`Ctrl+=` の連打で毎回書かない）。
+#[tauri::command]
+pub fn store_set_zoom(state: State<'_, AppState>, zoom: f64) {
+    let clamped = if zoom.is_finite() {
+        zoom.clamp(store::ZOOM_MIN, store::ZOOM_MAX)
+    } else {
+        store::ZOOM_DEFAULT
+    };
+    state.update_store(|s| s.zoom = clamped);
+}
+
 /// フロント側の performance.mark を受け取ってトレースに合流させる。
 #[tauri::command]
 pub fn report_trace(state: State<'_, AppState>, marks: Vec<Mark>) {
@@ -108,6 +179,30 @@ pub fn open_external(app: tauri::AppHandle, url: String) -> CoreResult<()> {
     }
     tauri_plugin_opener::OpenerExt::opener(&app)
         .open_url(url, None::<&str>)
+        .map_err(|e| CoreError::Io(e.to_string()))
+}
+
+/// 本文中のリンクから、Markdown 以外のローカルファイルを既定アプリで開く
+/// （F-VIEW-06 / 02.architecture.md §9.2）。
+///
+/// # 確認だけでは足りない
+///
+/// フロントはユーザーに確認してからここを呼ぶ。それでも**許可ディレクトリの外は開かない**。
+/// 中心ユースケースは「LLM が生成した、自分が書いていないファイルを開く」こと（ADR-0006）。
+/// `[実行](../../../Windows/System32/cmd.exe)` と書かれたリンクを、
+/// 確認ダイアログ 1 枚で既定アプリに渡してよい理由がない。
+///
+/// 許可範囲は `read_document` が積んだアセットルート（＝開いたファイルの親）と同じ。
+/// 「今読んでいる文書の周りにあるファイル」だけが対象になる。
+#[tauri::command]
+pub fn open_local_file(
+    app: tauri::AppHandle,
+    state: State<'_, AppState>,
+    path: String,
+) -> CoreResult<()> {
+    let resolved = scope::resolve_within(&state.asset_roots(), Path::new(&path))?;
+    tauri_plugin_opener::OpenerExt::opener(&app)
+        .open_path(resolved.display().to_string(), None::<&str>)
         .map_err(|e| CoreError::Io(e.to_string()))
 }
 

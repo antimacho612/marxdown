@@ -5,9 +5,9 @@
 `marxdown README.md` と打ってから本文が読めるまでの時間を、他の何よりも優先して設計している。
 常駐した 2 回目以降は WebView の初期化を払わずに開く。
 
-> **状態: M0（Spike & Foundation）**
-> 実測でアーキテクチャの前提を確かめ、開発基盤を整える段階。まだ日常利用できる状態ではない。
-> 「読む」体験が揃うのは M1。
+> **状態: M1（Reader）実装完了**
+> 「読む」体験は揃っている。開く・描く・探す・拡大するまで。
+> 編集・タブ・設定 UI は M2 以降。
 
 ---
 
@@ -47,10 +47,10 @@ URL パラメータで挙動を切り替えられる。
 
 | パラメータ | 効果 |
 | --- | --- |
+| `?welcome` | 引数なし起動（Welcome 画面）を再現する |
+| `?file=<path>` | 仮想 FS 上のファイルを開く |
 | `?spike=editor` | CodeMirror のスパイク画面（S4 / S5） |
 | `?parse=main` | Worker を使わずメインスレッドでパース |
-| `?paint=bulk` | 段階的描画をやめて一括描画 |
-| `?render=dom` | React を使わずシェルを描画 |
 
 ### 検査
 
@@ -72,7 +72,7 @@ pnpm fixtures                                  # bench/fixtures/ の基準ファ
 pnpm bench                                     # Markdown パイプライン単体
 pnpm build:app                                 # release ビルド（計測には必須）
 pnpm bench:boot                                # Cold Start（T0〜T9 の中央値）
-node scripts/bench-startup.mjs --sweep         # S2/S3/S7/S8 の A/B
+node scripts/bench-startup.mjs --sweep         # S3 の A/B（Worker / メインスレッド）
 node scripts/bench-startup.mjs --warm          # Warm Start（単一インスタンス）
 pnpm analyze && node scripts/analyze-chunks.mjs  # バンドルの内訳
 ```
@@ -86,6 +86,38 @@ pnpm analyze && node scripts/analyze-chunks.mjs  # バンドルの内訳
 marxdown --trace-startup out.json README.md    # T0〜T9 を JSON に書き出す
 marxdown --trace-startup nul README.md         # 計測はするが書き出さない
 ```
+
+### 自分で使う
+
+Marxdown の最初の目標は「作っている本人が毎日使う」こと。
+そのためには**ターミナルから `marxdown foo.md` と打てる**必要がある。
+
+```bash
+pnpm build:app
+```
+
+`src-tauri/target/release/marxdown.exe` が出来る。これを PATH に通す。
+
+```powershell
+# PowerShell（ユーザー環境変数に追記。1 回だけ）
+$exe = Resolve-Path .\src-tauri\target\release
+[Environment]::SetEnvironmentVariable(
+  'Path',
+  [Environment]::GetEnvironmentVariable('Path', 'User') + ';' + $exe,
+  'User'
+)
+```
+
+新しいターミナルを開くと `marxdown README.md` が通る。
+
+> **release ビルドのパスを直接通している**のは意図的。インストーラ
+> （`src-tauri/target/release/bundle/nsis/`）を入れると、ビルドのたびに
+> 再インストールが要る。`pnpm build:app` の出力をそのまま指しておけば、
+> ビルドし直すだけで次の起動から新しい版になる。
+
+2 回目以降の `marxdown foo.md` は新しいプロセスを立てず、常駐しているプロセスに
+パスを転送する（単一インスタンス / ADR-0004）。ここが速さの中心なので、
+**ドッグフーディングではウィンドウを閉じずに置いておく**のが本来の使い方。
 
 ---
 
