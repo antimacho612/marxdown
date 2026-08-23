@@ -5,9 +5,10 @@ name: CI
 # マイルストーンごとの手動計測とする（同 §5.5）。
 
 on:
-  push:
-    branches: [main]
-  pull_request:
+  # push:
+  #   branches: [main]
+  # pull_request:
+  workflow_dispatch:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
