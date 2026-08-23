@@ -27,18 +27,11 @@ pub enum ViewMode {
     Split,
 }
 
-/// 初期ドキュメントの受け渡し経路。S2 の A/B 比較用。
-///
-/// - `Script`: `initialization_script` で `window.__MARXDOWN_BOOTSTRAP__` に注入（本命）
-/// - `Invoke`: フロントから `take_bootstrap` を呼んで取得（IPC 1 往復ぶん遅い想定）
-#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
-#[serde(rename_all = "lowercase")]
-pub enum BootstrapChannel {
-    Script,
-    Invoke,
-}
-
 /// Markdown のパース場所。S3 の A/B 比較用。
+///
+/// **M1 終了時点で残っている唯一のスパイク切り替え。**
+/// Worker を維持するかどうか（OQ-18）が未決のため、比較経路を保持している。
+/// OQ-18 が決まったら、この enum ごと `SpikeFlags` を畳む。
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
 #[serde(rename_all = "lowercase")]
 pub enum ParseSite {
@@ -46,39 +39,20 @@ pub enum ParseSite {
     Main,
 }
 
-/// 本文の DOM 投入方法。S7 の A/B 比較用。
-#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
-#[serde(rename_all = "lowercase")]
-pub enum PaintStrategy {
-    Progressive,
-    Bulk,
-}
-
-/// シェルの描画方法。S8 の A/B 比較用（React マウントコストの切り分け）。
-#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
-#[serde(rename_all = "lowercase")]
-pub enum RenderMode {
-    React,
-    Dom,
-}
-
-/// M0 のスパイク切り替えフラグ。開発ビルドでのみ意味を持つ。
+/// スパイク切り替えフラグ。開発ビルドでのみ意味を持つ。
+///
+/// M0 では S2（bootstrap の経路）/ S7（描画方法）/ S8（シェルの描画）も切り替えられたが、
+/// 結論が出たので M1 の終わりに撤去した（OQ-20）。残っているのは S3 だけ。
 #[derive(Debug, Clone, Copy, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SpikeFlags {
-    pub bootstrap: BootstrapChannel,
     pub parse: ParseSite,
-    pub paint: PaintStrategy,
-    pub render: RenderMode,
 }
 
 impl Default for SpikeFlags {
     fn default() -> Self {
         Self {
-            bootstrap: BootstrapChannel::Script,
             parse: ParseSite::Worker,
-            paint: PaintStrategy::Progressive,
-            render: RenderMode::React,
         }
     }
 }
@@ -115,11 +89,8 @@ OPTIONS:
     -h, --help                 このヘルプを表示する
     -V, --version              バージョンを表示する
 
-SPIKE OPTIONS (M0 の計測用。開発ビルドでのみ意味を持つ):
-        --spike-bootstrap <script|invoke>       初期コンテンツの受け渡し経路 (S2)
-        --spike-parse <worker|main>             Markdown のパース場所 (S3)
-        --spike-paint <progressive|bulk>        本文の DOM 投入方法 (S7)
-        --spike-render <react|dom>              シェルの描画方法 (S8)
+SPIKE OPTIONS (計測用。開発ビルドでのみ意味を持つ):
+        --spike-parse <worker|main>             Markdown のパース場所 (S3 / OQ-18)
 ";
 
 /// `argv`（実行ファイル名を含まない）と `cwd` から引数を解析する。
@@ -185,17 +156,6 @@ pub fn parse(argv: &[String], cwd: &Path) -> CliArgs {
                     args.trace_startup = Some(resolve(cwd, &v));
                 }
             }
-            "--spike-bootstrap" => {
-                if let Some(v) = take_value!("--spike-bootstrap") {
-                    match v.as_str() {
-                        "script" => args.spike.bootstrap = BootstrapChannel::Script,
-                        "invoke" => args.spike.bootstrap = BootstrapChannel::Invoke,
-                        other => args
-                            .unknown
-                            .push(format!("--spike-bootstrap の値が不正: {other}")),
-                    }
-                }
-            }
             "--spike-parse" => {
                 if let Some(v) = take_value!("--spike-parse") {
                     match v.as_str() {
@@ -204,28 +164,6 @@ pub fn parse(argv: &[String], cwd: &Path) -> CliArgs {
                         other => args
                             .unknown
                             .push(format!("--spike-parse の値が不正: {other}")),
-                    }
-                }
-            }
-            "--spike-paint" => {
-                if let Some(v) = take_value!("--spike-paint") {
-                    match v.as_str() {
-                        "progressive" => args.spike.paint = PaintStrategy::Progressive,
-                        "bulk" => args.spike.paint = PaintStrategy::Bulk,
-                        other => args
-                            .unknown
-                            .push(format!("--spike-paint の値が不正: {other}")),
-                    }
-                }
-            }
-            "--spike-render" => {
-                if let Some(v) = take_value!("--spike-render") {
-                    match v.as_str() {
-                        "react" => args.spike.render = RenderMode::React,
-                        "dom" => args.spike.render = RenderMode::Dom,
-                        other => args
-                            .unknown
-                            .push(format!("--spike-render の値が不正: {other}")),
                     }
                 }
             }
@@ -331,27 +269,30 @@ mod tests {
 
     #[test]
     fn spike_defaults_match_designed_path() {
-        let a = args(&[]);
-        assert_eq!(a.spike.bootstrap, BootstrapChannel::Script);
-        assert_eq!(a.spike.parse, ParseSite::Worker);
-        assert_eq!(a.spike.paint, PaintStrategy::Progressive);
-        assert_eq!(a.spike.render, RenderMode::React);
+        assert_eq!(args(&[]).spike.parse, ParseSite::Worker);
     }
 
     #[test]
-    fn spike_flags_are_switchable() {
+    fn the_parse_site_is_switchable() {
+        let a = args(&["--spike-parse", "main"]);
+        assert_eq!(a.spike.parse, ParseSite::Main);
+        assert!(a.unknown.is_empty());
+
+        let b = args(&["--spike-parse=main"]);
+        assert_eq!(b.spike.parse, ParseSite::Main);
+    }
+
+    /// M1 の終わりに撤去したフラグ（OQ-20）。
+    /// 消したことを**テストで固定する**。うっかり復活させると落ちる。
+    #[test]
+    fn retired_spike_flags_are_no_longer_recognized() {
         let a = args(&[
             "--spike-bootstrap=invoke",
-            "--spike-parse",
-            "main",
             "--spike-paint=bulk",
             "--spike-render=dom",
         ]);
-        assert_eq!(a.spike.bootstrap, BootstrapChannel::Invoke);
-        assert_eq!(a.spike.parse, ParseSite::Main);
-        assert_eq!(a.spike.paint, PaintStrategy::Bulk);
-        assert_eq!(a.spike.render, RenderMode::Dom);
-        assert!(a.unknown.is_empty());
+        assert_eq!(a.unknown.len(), 3, "撤去したフラグは未知の引数として扱う");
+        assert!(a.paths.is_empty());
     }
 
     #[test]

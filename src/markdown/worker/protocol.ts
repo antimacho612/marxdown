@@ -11,11 +11,6 @@ export interface ParseRequest {
   type: 'parse'
   id: number
   text: string
-  /**
-   * 段階的描画のためにチャンク分割するか（S7 の A/B 比較）。
-   * `false` なら 1 つの HTML 文字列として返す。
-   */
-  progressive: boolean
   firstChunkBlocks: number
   chunkBlocks: number
 }
@@ -23,7 +18,10 @@ export interface ParseRequest {
 export interface ParseResponse {
   type: 'parsed'
   id: number
-  /** `progressive: false` のときは要素 1 つの配列。 */
+  /**
+   * トップレベルのブロック境界で割った HTML。
+   * 割れない入力（10MB の単一コードフェンスなど）では要素 1 つになる。
+   */
   chunks: string[]
   outline: OutlineItem[]
   frontMatter: string | null

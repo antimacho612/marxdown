@@ -7,22 +7,12 @@ use std::path::{Path, PathBuf};
 
 use tauri::{Manager, State, Window};
 
-use crate::bootstrap::Bootstrap;
 use crate::document::{self, DocumentPayload, SaveResult, WriteRequest};
 use crate::error::{CoreError, CoreResult};
 use crate::scope;
 use crate::state::AppState;
 use crate::store::{self, RecentEntry};
 use crate::trace::Mark;
-
-/// 起動時ペイロードの取得（1 回のみ有効）。
-///
-/// 本命の経路では `initialization_script` で注入済みなので、これは
-/// S2 の `--spike-bootstrap=invoke` と、256KB 超のファイルでのみ使われる。
-#[tauri::command]
-pub fn take_bootstrap(state: State<'_, AppState>) -> Option<Bootstrap> {
-    state.take_bootstrap()
-}
 
 #[tauri::command]
 pub fn read_document(state: State<'_, AppState>, path: String) -> CoreResult<DocumentPayload> {

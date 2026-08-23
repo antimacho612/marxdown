@@ -79,8 +79,7 @@ pub fn run() {
             .map(|d| format!("{} bytes, inlined={}", d.meta.size, d.content.is_some())),
     );
 
-    let channel = args.spike.bootstrap;
-    let state = state::AppState::new(args, trace, payload.clone(), store_data, store_path);
+    let state = state::AppState::new(args, trace, &payload, store_data, store_path);
 
     let mut builder = tauri::Builder::default();
 
@@ -123,7 +122,6 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .manage(state)
         .invoke_handler(tauri::generate_handler![
-            commands::take_bootstrap,
             commands::read_document,
             commands::write_document,
             commands::resolve_asset,
@@ -145,13 +143,7 @@ pub fn run() {
             // 切り分けられるようにする（05.performance-budget.md §5.2）。
             app.state::<state::AppState>().trace.mark("T2b", None);
 
-            window::create(
-                app.handle(),
-                window::MAIN_LABEL,
-                &payload,
-                channel,
-                restore_window,
-            )?;
+            window::create(app.handle(), window::MAIN_LABEL, &payload, restore_window)?;
             let state = app.state::<state::AppState>();
             state.trace.mark("T3", None);
             Ok(())

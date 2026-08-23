@@ -6,13 +6,9 @@
  *
  * # なぜ React を動的 import しないか
  *
- * 2 つ理由がある。
- *
- * 1. 動的 import にすると React が `main` チャンクから外れ、
- *    150KB の予算計測（size-limit の `main-*.js`）が実態を映さなくなる。
- * 2. S8 が測りたいのは「React の**マウント**コスト」であって
- *    「バンドル評価コスト」ではない。両経路が同じバンドルを評価したうえで
- *    マウントするかしないかだけが違う、という状態にしないと切り分けにならない。
+ * 動的 import にすると React が `main` チャンクから外れ、
+ * 150KB の予算計測（size-limit の `main-*.js`）が実態を映さなくなる。
+ * **予算を守るためには、予算の計測対象に載っている必要がある。**
  */
 import '@/styles/tokens.css'
 import '@/styles/reset.css'
@@ -22,18 +18,11 @@ import { createRoot } from 'react-dom/client'
 
 import { App } from '@/app/App'
 import { startup } from '@/app/bootstrap'
-import { renderShellWithoutReact } from '@/app/shell-dom'
-import type { SpikeFlags } from '@/platform'
 
 const root = document.getElementById('root')
 
-function renderShell(spike: SpikeFlags): void {
+function renderShell(): void {
   if (!root) return
-
-  if (spike.render === 'dom') {
-    renderShellWithoutReact(root)
-    return
-  }
 
   // StrictMode は付けない。開発時に副作用が 2 回走ると、
   // 起動計測と Worker への送信回数が実態と変わってしまう。

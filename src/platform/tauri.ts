@@ -58,10 +58,6 @@ export const tauriPlatform: Platform = {
     return globalThis.__MARXDOWN_BOOTSTRAP__ ?? null
   },
 
-  takeBootstrap() {
-    return invoke<Bootstrap | null>('take_bootstrap')
-  },
-
   readDocument(path) {
     return invoke<DocumentPayload>('read_document', { path })
   },

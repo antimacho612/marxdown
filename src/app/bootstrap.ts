@@ -45,13 +45,8 @@ import { adoptT4, drain, initTrace, isTracing, mark } from './trace'
 
 const PREVIEW_SELECTOR = '#mx-preview'
 
-/** `--spike-render` の既定。bootstrap が取れない場合の保険。 */
-const FALLBACK_SPIKE: SpikeFlags = {
-  bootstrap: 'script',
-  parse: 'worker',
-  paint: 'progressive',
-  render: 'react',
-}
+/** bootstrap が取れない場合の保険（`dev:web` の初回など）。 */
+const FALLBACK_SPIKE: SpikeFlags = { parse: 'worker' }
 
 /**
  * bootstrap を読む。**同期的に読めることが最重要**（§5.1 の要点 2）。
@@ -63,7 +58,7 @@ export function readBootstrap(): Bootstrap | null {
   return getPlatform().getBootstrap()
 }
 
-export async function startup(renderShell: (spike: SpikeFlags) => void): Promise<void> {
+export async function startup(renderShell: () => void): Promise<void> {
   const platform = getPlatform()
 
   const bootstrap = readBootstrap()
@@ -78,12 +73,7 @@ export async function startup(renderShell: (spike: SpikeFlags) => void): Promise
   applyZoom(bootstrap?.zoom ?? 1, false)
   useRecentStore.getState().setEntries(bootstrap?.recent ?? [])
 
-  configureOpener({
-    parser: createParser(spike.parse),
-    progressive: spike.paint === 'progressive',
-    site: spike.parse,
-    strategy: spike.paint,
-  })
+  configureOpener({ parser: createParser(spike.parse), site: spike.parse })
 
   // リンクハンドラとキーバインドは**本文を描くより前**に登録する。
   //
@@ -105,7 +95,7 @@ export async function startup(renderShell: (spike: SpikeFlags) => void): Promise
   const renderShellOnce = () => {
     if (shellRendered) return
     shellRendered = true
-    renderShell(spike)
+    renderShell()
   }
 
   const initial = await resolveInitialDocument(bootstrap)
@@ -150,11 +140,9 @@ function installLinks(): void {
 /**
  * 起動時に開くべき本文を確定させる。
  *
- * 通常は bootstrap に本文ごと載っている。載っていないのは 2 つの場合だけで、
- * どちらも IPC 往復が 1 回増える。
- *
- * - 256KB 超のファイル（初期化スクリプトに埋め込むと文字列化コストが往復を上回る）
- * - S2 の `--spike-bootstrap=invoke`（往復コストを測るための比較経路）
+ * 通常は bootstrap に本文ごと載っている。載っていないのは
+ * **256KB 超のファイル**のときだけで、この場合だけ IPC 往復が 1 回増える
+ * （初期化スクリプトに埋め込むと、文字列化のコストが往復のコストを上回る）。
  */
 async function resolveInitialDocument(
   bootstrap: Bootstrap | null,
@@ -171,14 +159,6 @@ async function resolveInitialDocument(
     } catch (e) {
       useDocumentStore.getState().setNotice({ level: 'error', message: toMessage(e) })
       return null
-    }
-  }
-
-  if (bootstrap?.spike.bootstrap === 'invoke') {
-    const late = await getPlatform().takeBootstrap()
-    const lateDoc = late?.document
-    if (lateDoc?.content !== null && lateDoc?.content !== undefined) {
-      return { ...lateDoc, content: lateDoc.content }
     }
   }
 

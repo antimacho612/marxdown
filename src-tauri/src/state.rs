@@ -18,8 +18,6 @@ use crate::trace::Trace;
 pub struct AppState {
     pub args: CliArgs,
     pub trace: Trace,
-    /// `take_bootstrap` で 1 回だけ取り出せる初期ペイロード（S2 の invoke 経路用）。
-    bootstrap: Mutex<Option<Bootstrap>>,
     /// 永続化ストア（最近開いたファイル / 表示倍率 / ウィンドウ状態）。
     /// 起動時に 1 回読み、変更のたびに書き戻す。
     store: Mutex<StoreData>,
@@ -37,7 +35,7 @@ impl AppState {
     pub fn new(
         args: CliArgs,
         trace: Trace,
-        bootstrap: Bootstrap,
+        bootstrap: &Bootstrap,
         store: StoreData,
         store_path: Option<PathBuf>,
     ) -> Self {
@@ -50,7 +48,6 @@ impl AppState {
         Self {
             args,
             trace,
-            bootstrap: Mutex::new(Some(bootstrap)),
             store: Mutex::new(store),
             store_path,
             asset_roots: Mutex::new(roots),
@@ -99,14 +96,6 @@ impl AppState {
     pub fn end_warm(&self, id: u64) -> Option<f64> {
         let started = self.warm.lock().ok()?.remove(&id)?;
         Some(started.elapsed().as_secs_f64() * 1000.0)
-    }
-
-    /// 初期ペイロードを取り出す。2 回目以降は `None`。
-    ///
-    /// 1 回限りにしているのは、これが「起動時の一度きりの受け渡し」であることを
-    /// 型ではなく振る舞いで表現するため。誤って再取得して古い状態に戻る事故を防ぐ。
-    pub fn take_bootstrap(&self) -> Option<Bootstrap> {
-        self.bootstrap.lock().ok().and_then(|mut b| b.take())
     }
 
     pub fn allow_asset_root(&self, dir: PathBuf) {

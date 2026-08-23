@@ -37,12 +37,8 @@ const PREVIEW_SELECTOR = '#mx-preview'
 
 export interface OpenerConfig {
   parser: MarkdownParser
-  /** S7: 段階的描画を使うか。 */
-  progressive: boolean
-  /** S3: パース場所。ステータスバーの表示に使う。 */
+  /** S3: パース場所。開発ビルドのステータスバー表示に使う（OQ-18）。 */
   site: 'worker' | 'main'
-  /** S7 の表示名。 */
-  strategy: 'progressive' | 'bulk'
 }
 
 let config: OpenerConfig | null = null
@@ -102,7 +98,7 @@ export async function openDocument(
 
   // パースを先に投げる。待つのは後。
   traceMark(options, 'T6', `${payload.content.length} chars`)
-  const parsing = config.parser.parse(payload.content, { progressive: config.progressive })
+  const parsing = config.parser.parse(payload.content)
 
   store.setMeta(payload)
   options.betweenParseAndPaint?.()
@@ -132,7 +128,7 @@ export async function openDocument(
       paintMs: result.firstChunkAt - startedAt,
       chunks: parsed.chunks.length,
     }
-    store.setStats({ ...outcome, site: config.site, strategy: config.strategy })
+    store.setStats({ ...outcome, site: config.site })
 
     // 本文に後から手を入れる（画像 / コピーボタン / ハイライト）。
     //

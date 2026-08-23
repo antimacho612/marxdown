@@ -46,13 +46,12 @@ export interface Notice {
 /** 情報通知の既定寿命（03.ux-spec.md §8.2「3 秒で自動消滅」）。 */
 export const INFO_NOTICE_MS = 3000
 
-/** M0 の計測結果。ステータスバーに出して、開発中に常に目に入るようにする。 */
+/** 描画の計測結果。開発ビルドのステータスバーに出す。 */
 export interface RenderStats {
   parseMs: number
   paintMs: number
   chunks: number
   site: 'worker' | 'main'
-  strategy: 'progressive' | 'bulk'
 }
 
 interface DocumentState {
@@ -77,9 +76,8 @@ interface DocumentState {
 /**
  * 自動消滅タイマー。
  *
- * React の effect ではなくストア側に置いているのは、`--spike-render=dom` の
- * 非 React 経路でも同じ挙動になるようにするため。
- * **1 回きりの `setTimeout` であって、ポーリングではない**
+ * React の effect ではなくストア側に置いているのは、通知を出す側（`open.ts` など）が
+ * React の外にいるため。**1 回きりの `setTimeout` であって、ポーリングではない**
  * （05.performance-budget.md §4.5「アイドル時のタイマーを増やさない」）。
  */
 let dismissTimer: ReturnType<typeof setTimeout> | null = null

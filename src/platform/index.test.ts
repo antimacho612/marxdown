@@ -25,7 +25,6 @@ describe('Platform 層', () => {
     const required: (keyof Platform)[] = [
       'kind',
       'getBootstrap',
-      'takeBootstrap',
       'readDocument',
       'writeDocument',
       'resolveAsset',

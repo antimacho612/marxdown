@@ -136,12 +136,7 @@ function initialBootstrap(): Bootstrap {
         },
     documentError: null,
     mode: (params.get('mode') as Bootstrap['mode']) ?? null,
-    spike: {
-      bootstrap: 'script',
-      parse: (params.get('parse') as 'worker' | 'main') ?? 'worker',
-      paint: (params.get('paint') as 'progressive' | 'bulk') ?? 'progressive',
-      render: (params.get('render') as 'react' | 'dom') ?? 'react',
-    },
+    spike: { parse: (params.get('parse') as 'worker' | 'main') ?? 'worker' },
     trace: { enabled: params.has('trace'), t0EpochMs: Date.now() },
     pendingPaths: [],
     unknownArgs: [],
@@ -158,10 +153,6 @@ export const webPlatform: Platform = {
   getBootstrap() {
     bootstrap ??= initialBootstrap()
     return bootstrap
-  },
-
-  async takeBootstrap() {
-    return this.getBootstrap()
   },
 
   async readDocument(path): Promise<DocumentPayload> {

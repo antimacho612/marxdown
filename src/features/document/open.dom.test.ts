@@ -85,12 +85,7 @@ beforeEach(() => {
   })
   useRecentStore.setState({ entries: [] })
 
-  configureOpener({
-    parser: fakeParser(),
-    progressive: true,
-    site: 'worker',
-    strategy: 'progressive',
-  })
+  configureOpener({ parser: fakeParser(), site: 'worker' })
 })
 
 afterEach(() => {
@@ -189,9 +184,7 @@ describe('起動シーケンスとの重ね合わせ (02.architecture.md §5.1)'
         },
         dispose: () => {},
       },
-      progressive: true,
       site: 'worker',
-      strategy: 'progressive',
     })
 
     const opening = openDocument(payload('C:/work/a.md'), {

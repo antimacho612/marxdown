@@ -55,18 +55,19 @@ export interface CoreError {
 }
 
 /* ------------------------------------------------------------------ */
-/* M0 のスパイク切り替え                                                */
+/* スパイク切り替え                                                      */
 /* ------------------------------------------------------------------ */
 
+/**
+ * スパイク切り替え。開発ビルドでのみ意味を持つ。
+ *
+ * M0 には S2（bootstrap の経路）/ S7（描画方法）/ S8（シェルの描画）もあったが、
+ * 結論が出たので M1 の終わりに撤去した（OQ-20）。
+ * **残っているのは S3 だけ**で、これは Worker を維持するか（OQ-18）が未決だから。
+ */
 export interface SpikeFlags {
-  /** S2: 初期コンテンツの受け渡し経路 */
-  bootstrap: 'script' | 'invoke'
   /** S3: Markdown のパース場所 */
   parse: 'worker' | 'main'
-  /** S7: 本文の DOM 投入方法 */
-  paint: 'progressive' | 'bulk'
-  /** S8: シェルの描画方法 */
-  render: 'react' | 'dom'
 }
 
 export interface TraceConfig {
@@ -149,8 +150,6 @@ export interface Platform {
   readonly kind: 'tauri' | 'web'
   /** 同期的に読める初期ペイロード。IPC 往復を挟まないことが最重要。 */
   getBootstrap(): Bootstrap | null
-  /** bootstrap に本文が無かった場合（256KB 超 / invoke 経路）の取得経路。 */
-  takeBootstrap(): Promise<Bootstrap | null>
   readDocument(path: string): Promise<DocumentPayload>
   writeDocument(req: WriteRequest): Promise<SaveResult>
   /**

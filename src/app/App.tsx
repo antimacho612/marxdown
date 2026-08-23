@@ -5,9 +5,8 @@
  * React が描くのはタイトルバー・ステータスバー・通知バー・Welcome だけで、
  * `.mx-preview` の中身は `paint.ts` が直接 DOM に入れる。
  *
- * この構造は S8（React マウントコストが起動時間に占める割合）を
- * 切り分け可能にするためでもある。React を外しても本文は同じ経路で出る
- * （`shell-dom.ts` が同じ DOM を作る）。
+ * 本文の受け皿（`#mx-preview`）は index.html 側にあり、React の管理下に無い。
+ * だから「本文が読める」までに React のコミットを待つ必要がない。
  */
 import { useCallback } from 'react'
 
@@ -171,7 +170,7 @@ function StatusStats({
   return (
     <>
       <span>
-        {stats.site} / {stats.strategy}
+        {stats.site}
         {stats.chunks > 1 ? ` / ${stats.chunks} chunks` : ''}
       </span>
       <span>{ja.status.parsedIn(stats.parseMs)}</span>

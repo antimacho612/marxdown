@@ -11,7 +11,6 @@
 use tauri::{Manager, WebviewUrl, WebviewWindow, WebviewWindowBuilder};
 
 use crate::bootstrap::Bootstrap;
-use crate::cli::BootstrapChannel;
 use crate::store::WindowState;
 
 pub const MAIN_LABEL: &str = "main";
@@ -33,10 +32,9 @@ pub fn create(
     app: &tauri::AppHandle,
     label: &str,
     bootstrap: &Bootstrap,
-    channel: BootstrapChannel,
     restore: Option<WindowState>,
 ) -> tauri::Result<WebviewWindow> {
-    let script = crate::bootstrap::to_init_script(bootstrap, channel);
+    let script = crate::bootstrap::to_init_script(bootstrap);
 
     let mut builder = WebviewWindowBuilder::new(app, label, WebviewUrl::default())
         .title("Marxdown")

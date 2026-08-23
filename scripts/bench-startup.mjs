@@ -355,14 +355,12 @@ if (opts.warm) {
   report.results.warm = warm.summary
   report.results.warmRecords = warm.records
 } else {
-  // S2 / S3 / S7 / S8 の A/B。既定は本命経路のみ。
+  // A/B は S3（パース場所）だけが残っている。
+  // S2 / S7 / S8 は結論が出たので M1 の終わりに撤去した（OQ-20）。
   const configs = opts.sweep
     ? [
-        { name: '本命（script / worker / progressive / react）', spike: {} },
-        { name: 'S2: invoke 経路', spike: { bootstrap: 'invoke' } },
-        { name: 'S3: メインスレッドでパース', spike: { parse: 'main' } },
-        { name: 'S7: 一括描画', spike: { paint: 'bulk' } },
-        { name: 'S8: React 抜き', spike: { render: 'dom' } },
+        { name: '本命（Worker でパース）', spike: {} },
+        { name: 'S3: メインスレッドでパース（OQ-18）', spike: { parse: 'main' } },
       ]
     : [{ name: `既定（${opts.file}）`, spike: opts.spike }]
 

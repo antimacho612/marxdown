@@ -5,9 +5,9 @@
 `marxdown README.md` と打ってから本文が読めるまでの時間を、他の何よりも優先して設計している。
 常駐した 2 回目以降は WebView の初期化を払わずに開く。
 
-> **状態: M0（Spike & Foundation）**
-> 実測でアーキテクチャの前提を確かめ、開発基盤を整える段階。まだ日常利用できる状態ではない。
-> 「読む」体験が揃うのは M1。
+> **状態: M1（Reader）実装完了**
+> 「読む」体験は揃っている。開く・描く・探す・拡大するまで。
+> 編集・タブ・設定 UI は M2 以降。
 
 ---
 
@@ -47,10 +47,10 @@ URL パラメータで挙動を切り替えられる。
 
 | パラメータ | 効果 |
 | --- | --- |
+| `?welcome` | 引数なし起動（Welcome 画面）を再現する |
+| `?file=<path>` | 仮想 FS 上のファイルを開く |
 | `?spike=editor` | CodeMirror のスパイク画面（S4 / S5） |
 | `?parse=main` | Worker を使わずメインスレッドでパース |
-| `?paint=bulk` | 段階的描画をやめて一括描画 |
-| `?render=dom` | React を使わずシェルを描画 |
 
 ### 検査
 
@@ -72,7 +72,7 @@ pnpm fixtures                                  # bench/fixtures/ の基準ファ
 pnpm bench                                     # Markdown パイプライン単体
 pnpm build:app                                 # release ビルド（計測には必須）
 pnpm bench:boot                                # Cold Start（T0〜T9 の中央値）
-node scripts/bench-startup.mjs --sweep         # S2/S3/S7/S8 の A/B
+node scripts/bench-startup.mjs --sweep         # S3 の A/B（Worker / メインスレッド）
 node scripts/bench-startup.mjs --warm          # Warm Start（単一インスタンス）
 pnpm analyze && node scripts/analyze-chunks.mjs  # バンドルの内訳
 ```

@@ -7,7 +7,7 @@
  * このファイルから DOM API を参照してはいけない。参照した瞬間にビルドは通るが
  * 実行時に落ちる。DOMPurify がここに来られないのもこれが理由（04.tech-stack.md §10）。
  */
-import { render, renderChunks } from '../pipeline'
+import { renderChunks } from '../pipeline'
 import { measure } from '../text-stats'
 import type { WorkerRequest, WorkerResponse } from './protocol'
 
@@ -17,12 +17,7 @@ self.addEventListener('message', (event: MessageEvent<WorkerRequest>) => {
 
   const started = performance.now()
   try {
-    const result = req.progressive
-      ? renderChunks(req.text, req.firstChunkBlocks, req.chunkBlocks)
-      : (() => {
-          const r = render(req.text)
-          return { chunks: [r.html], outline: r.outline, frontMatter: r.frontMatter }
-        })()
+    const result = renderChunks(req.text, req.firstChunkBlocks, req.chunkBlocks)
 
     const response: WorkerResponse = {
       type: 'parsed',

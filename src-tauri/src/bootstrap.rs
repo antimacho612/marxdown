@@ -128,21 +128,11 @@ pub fn build(args: &CliArgs, trace: &crate::trace::Trace, store: &StoreData) -> 
 /// CSP が `script-src 'self'` でインラインスクリプトを禁じているが、
 /// `initialization_script` は WebView のフックとして注入されるため CSP の対象外。
 ///
-/// S2 の `--spike-bootstrap=invoke` のときは本文を落として注入し、
-/// フロントに `take_bootstrap` で取りに行かせる（IPC 往復のコストを測るため）。
-pub fn to_init_script(bootstrap: &Bootstrap, channel: crate::cli::BootstrapChannel) -> String {
-    let payload = match channel {
-        crate::cli::BootstrapChannel::Script => std::borrow::Cow::Borrowed(bootstrap),
-        crate::cli::BootstrapChannel::Invoke => {
-            let mut stripped = bootstrap.clone();
-            if let Some(doc) = stripped.document.as_mut() {
-                doc.content = None;
-            }
-            std::borrow::Cow::Owned(stripped)
-        }
-    };
-
-    let json = serde_json::to_string(payload.as_ref()).unwrap_or_else(|_| "null".to_string());
+/// M0 には比較のため「本文を注入せず、フロントから `take_bootstrap` で取りに行く」
+/// 経路もあった（S2）。IPC 往復ぶん遅いことが実測で確認できたので M1 の終わりに撤去した
+/// （OQ-20 / measurements/M0.md §3）。**注入する経路しかない。**
+pub fn to_init_script(bootstrap: &Bootstrap) -> String {
+    let json = serde_json::to_string(bootstrap).unwrap_or_else(|_| "null".to_string());
 
     // `Object.freeze` しておくことで、本文 Markdown 由来のスクリプトに
     // bootstrap を書き換えられる経路を潰す（多層防御の一部）。
@@ -155,7 +145,6 @@ pub fn to_init_script(bootstrap: &Bootstrap, channel: crate::cli::BootstrapChann
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::cli::BootstrapChannel;
     use std::time::Instant;
 
     fn args_with(path: std::path::PathBuf) -> CliArgs {
@@ -229,21 +218,20 @@ mod tests {
     }
 
     #[test]
-    fn the_invoke_channel_strips_content_from_the_script() {
-        let dir = temp_dir("invoke");
+    fn the_script_carries_the_document_inline() {
+        let dir = temp_dir("inline");
         let p = dir.join("a.md");
-        std::fs::write(&p, "# secret-marker\n").unwrap();
+        std::fs::write(
+            &p,
+            "# secret-marker
+",
+        )
+        .unwrap();
         let trace = crate::trace::Trace::start(Instant::now());
         let b = build(&args_with(p), &trace, &StoreData::default());
 
-        let script = to_init_script(&b, BootstrapChannel::Script);
-        assert!(script.contains("secret-marker"));
-
-        let invoke = to_init_script(&b, BootstrapChannel::Invoke);
-        assert!(
-            !invoke.contains("secret-marker"),
-            "invoke 経路では本文を注入しない"
-        );
+        // 本文は初期化スクリプトに載る。ここが IPC 往復を 1 回省いている（§5.1）
+        assert!(to_init_script(&b).contains("secret-marker"));
 
         std::fs::remove_dir_all(&dir).ok();
     }
@@ -252,7 +240,7 @@ mod tests {
     fn the_script_is_valid_javascript_shaped_output() {
         let trace = crate::trace::Trace::start(Instant::now());
         let b = build(&CliArgs::default(), &trace, &StoreData::default());
-        let script = to_init_script(&b, BootstrapChannel::Script);
+        let script = to_init_script(&b);
         assert!(script.starts_with("globalThis.__MARXDOWN_BOOTSTRAP__ = Object.freeze({"));
         assert!(script.contains("__MARXDOWN_T4__"));
     }
