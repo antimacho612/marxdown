@@ -32,7 +32,13 @@
   line-break: strict;
 }
 
-.mx-preview > * {
+/*
+ * 本文幅の基準はここ 1 箇所だけ。`.mx-content` は `.mx-preview` の
+ * font-size をそのまま継承するので、`ch` は子要素ごとの font-size
+ * （h1: 1.9em など）に左右されない。子要素側は上下マージンだけを持ち、
+ * 自分の max-width / margin-inline は持たない（Issue #4 — 列幅のがたつき）。
+ */
+.mx-content {
   max-width: var(--mx-content-width);
   margin-inline: auto;
 }
@@ -48,45 +54,45 @@
 
 /* 「余白で階層を作る」— 上の余白が下より大きいことで、
    見出しが「次のまとまりの始まり」として読める。 */
-.mx-preview h1 {
+.mx-content h1 {
   font-size: 1.9em;
   font-weight: 700;
-  margin: 0 auto var(--mx-space-6);
+  margin: 0 0 var(--mx-space-6);
   padding-bottom: var(--mx-space-3);
   border-bottom: 1px solid var(--mx-color-border-subtle);
 }
 
-.mx-preview h2 {
+.mx-content h2 {
   font-size: 1.45em;
-  margin: calc(var(--mx-space-8) * 1.25) auto var(--mx-space-4);
+  margin: calc(var(--mx-space-8) * 1.25) 0 var(--mx-space-4);
   padding-bottom: var(--mx-space-2);
   border-bottom: 1px solid var(--mx-color-border-subtle);
 }
 
-.mx-preview h3 {
+.mx-content h3 {
   font-size: 1.2em;
-  margin: var(--mx-space-8) auto var(--mx-space-3);
+  margin: var(--mx-space-8) 0 var(--mx-space-3);
 }
 
-.mx-preview h4 {
+.mx-content h4 {
   font-size: 1.05em;
-  margin: var(--mx-space-6) auto var(--mx-space-2);
+  margin: var(--mx-space-6) 0 var(--mx-space-2);
 }
 
-.mx-preview :is(h5, h6) {
+.mx-content :is(h5, h6) {
   font-size: 1em;
   color: var(--mx-color-fg-muted);
-  margin: var(--mx-space-6) auto var(--mx-space-2);
+  margin: var(--mx-space-6) 0 var(--mx-space-2);
 }
 
 /* --- 本文 ------------------------------------------------------------- */
 
-.mx-preview p {
-  margin: 0 auto var(--mx-space-4);
+.mx-content p {
+  margin: 0 0 var(--mx-space-4);
 }
 
-.mx-preview :is(ul, ol) {
-  margin: 0 auto var(--mx-space-4);
+.mx-content :is(ul, ol) {
+  margin: 0 0 var(--mx-space-4);
   padding-left: 1.6em;
 }
 
@@ -99,8 +105,8 @@
   margin-bottom: 0;
 }
 
-.mx-preview blockquote {
-  margin: 0 auto var(--mx-space-4);
+.mx-content blockquote {
+  margin: 0 0 var(--mx-space-4);
   padding: var(--mx-space-1) 0 var(--mx-space-1) var(--mx-space-4);
   border-left: 3px solid var(--mx-color-border);
   color: var(--mx-color-fg-muted);
@@ -110,9 +116,8 @@
   margin-bottom: 0;
 }
 
-.mx-preview hr {
-  max-width: var(--mx-content-width);
-  margin: var(--mx-space-8) auto;
+.mx-content hr {
+  margin: var(--mx-space-8) 0;
   border: 0;
   border-top: 1px solid var(--mx-color-border-subtle);
 }
@@ -132,9 +137,16 @@
   background: var(--mx-color-bg-inset);
 }
 
-/* コードブロックは背景で面を作る。本文幅より少し広げて、
-   コードが折り返される頻度を下げる。 */
-.mx-preview pre {
+/*
+ * コードブロックは背景で面を作る。本文幅より少し広げて、
+ * コードが折り返される頻度を下げる。
+ *
+ * `.mx-content` 配下にあるため、この +8ch は `.mx-content` 自体の
+ * max-width を超えて広がりはしない（フォントサイズ由来のがたつきを消すための
+ * トレードオフとして許容 — Issue #4）。ウィンドウ幅が本文幅より狭いときの
+ * 「はみ出さない」動作は維持される。
+ */
+.mx-content pre {
   max-width: min(100%, calc(var(--mx-content-width) + 8ch));
   margin: 0 auto var(--mx-space-4);
   padding: var(--mx-space-4);
@@ -313,7 +325,7 @@
 
 /* --- 表 --------------------------------------------------------------- */
 
-.mx-preview table {
+.mx-content table {
   max-width: min(100%, calc(var(--mx-content-width) + 8ch));
   margin: 0 auto var(--mx-space-4);
   border-collapse: collapse;
