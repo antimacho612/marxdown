@@ -12,6 +12,7 @@ beforeEach(() => {
     frontMatter: null,
     notice: null,
     stats: null,
+    textStats: null,
   })
 })
 
@@ -32,7 +33,15 @@ describe('ドキュメントストア (ADR-0005)', () => {
     const keys = Object.keys(useDocumentStore.getState())
       .filter((k) => typeof (INITIAL as unknown as Record<string, unknown>)[k] !== 'function')
       .toSorted()
-    expect(keys).toEqual(['frontMatter', 'isDirty', 'meta', 'notice', 'outline', 'stats'])
+    expect(keys).toEqual([
+      'frontMatter',
+      'isDirty',
+      'meta',
+      'notice',
+      'outline',
+      'stats',
+      'textStats',
+    ])
   })
 
   it('メタ情報を更新できる', () => {

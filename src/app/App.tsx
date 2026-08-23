@@ -12,6 +12,8 @@
 import { useCallback } from 'react'
 
 import { useDocumentStore, type Notice, type NoticeAction } from '@/features/document/store'
+import { formatZoom, zoomReset } from '@/features/preview/zoom'
+import { useViewStore } from '@/features/view/store'
 import { Welcome } from '@/features/workspace/Welcome'
 import { ja } from '@/i18n/ja'
 import { splitPath } from '@/lib/path'
@@ -19,8 +21,6 @@ import { splitPath } from '@/lib/path'
 export function App() {
   const meta = useDocumentStore((s) => s.meta)
   const notice = useDocumentStore((s) => s.notice)
-  const stats = useDocumentStore((s) => s.stats)
-  const outline = useDocumentStore((s) => s.outline)
 
   const { dir, name } = splitPath(meta?.path ?? '')
 
@@ -35,21 +35,75 @@ export function App() {
 
       {meta ? null : <Welcome />}
 
-      <footer className="mx-statusbar">
-        {meta ? (
-          <>
-            <span>{meta.encoding.toUpperCase()}</span>
-            <span>{meta.eol.toUpperCase()}</span>
-            {meta.bom ? <span>BOM</span> : null}
-            <span>{ja.status.bytes(meta.size)}</span>
-            {meta.readonly ? <span>{ja.status.readonly}</span> : null}
-            {outline.length > 0 ? <span>見出し {outline.length}</span> : null}
-          </>
-        ) : null}
-        <span className="mx-statusbar__spacer" />
-        {stats ? <StatusStats stats={stats} /> : null}
-      </footer>
+      <StatusBar />
     </>
+  )
+}
+
+/**
+ * ステータスバー（03.ux-spec.md §8.3）。
+ *
+ * ```text
+ * Preview   UTF-8  LF   12,345 文字   約 4 分            100%
+ * ```
+ *
+ * §8.3 は「すべての項目がクリック可能」と書いているが、M1 で押せるのは倍率だけ。
+ * エンコーディングの再解釈も EOL の変換も M2 以降であり、**押しても何も起きない
+ * ものをボタンに見せない**。カーソル位置は Preview では出ない（§8.3 の但し書き）。
+ *
+ * 計測値（パース / 描画）は開発ビルドでのみ出す。M0 では常時表示していたが、
+ * これは開発中の道具であって、製品の画面に居座る理由が説明できない（§11 の不変条件）。
+ */
+function StatusBar() {
+  const meta = useDocumentStore((s) => s.meta)
+  const textStats = useDocumentStore((s) => s.textStats)
+  const stats = useDocumentStore((s) => s.stats)
+
+  return (
+    <footer className="mx-statusbar">
+      {meta ? (
+        <>
+          <span>{ja.status.mode}</span>
+          <span>{meta.encoding.toUpperCase()}</span>
+          <span>{meta.eol.toUpperCase()}</span>
+          {meta.bom ? <span>BOM</span> : null}
+          {meta.readonly ? <span>{ja.status.readonly}</span> : null}
+          {textStats ? (
+            <>
+              <span>{ja.status.chars(textStats.chars)}</span>
+              <span>{ja.status.readingTime(textStats.readingMinutes)}</span>
+            </>
+          ) : null}
+        </>
+      ) : null}
+
+      <span className="mx-statusbar__spacer" />
+
+      {import.meta.env.DEV && stats ? <StatusStats stats={stats} /> : null}
+      {meta ? <ZoomIndicator /> : null}
+    </footer>
+  )
+}
+
+/**
+ * 表示倍率（F-VIEW-11）。**クリックで等倍に戻る**（§8.3）。
+ *
+ * 倍率が 100% のときも出しておく。「今は等倍だ」と分かることと、
+ * 押せる場所がいつも同じ位置にあることのほうが、1 項目減らすより価値がある。
+ */
+function ZoomIndicator() {
+  const zoom = useViewStore((s) => s.zoom)
+  const onClick = useCallback(() => void zoomReset(), [])
+
+  return (
+    <button
+      type="button"
+      className="mx-statusbar__button"
+      onClick={onClick}
+      title={ja.status.zoomReset}
+    >
+      {formatZoom(zoom)}
+    </button>
   )
 }
 

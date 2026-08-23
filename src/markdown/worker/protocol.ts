@@ -5,6 +5,7 @@
  * DOM を触る処理（Mermaid / KaTeX / DOMPurify）はメインスレッド側に残す。
  */
 import type { OutlineItem } from '../plugins/line-map'
+import type { TextStats } from '../text-stats'
 
 export interface ParseRequest {
   type: 'parse'
@@ -28,6 +29,8 @@ export interface ParseResponse {
   frontMatter: string | null
   /** Worker 内部のパース所要時間（ms）。S3 の計測に使う。 */
   parseMs: number
+  /** 文字数と読了時間（03.ux-spec.md §8.3）。本文を持っている側で数える。 */
+  textStats: TextStats
 }
 
 export interface ErrorResponse {

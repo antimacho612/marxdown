@@ -36,6 +36,18 @@ export const ja = {
     imageOutOfScope: 'この画像は参照が許可されていない場所にあります',
     imageMissing: '画像が見つかりません',
   },
+  /** プレビュー内検索（F-VIEW-10）。 */
+  search: {
+    label: 'プレビュー内を検索',
+    placeholder: '検索',
+    previous: '前を検索',
+    next: '次を検索',
+    close: '検索を閉じる',
+    noMatch: '見つかりません',
+    /** `truncated` は上限で打ち切った場合。黙って切らずに `+` を付けて示す。 */
+    position: (index: number, total: number, truncated: boolean) =>
+      `${index} / ${total.toLocaleString('ja-JP')}${truncated ? '+' : ''}`,
+  },
   /** リンククリックの分岐（02.architecture.md §9.2）。 */
   link: {
     confirmOpen: (path: string) => `既定のアプリで開きますか: ${path}`,
@@ -46,10 +58,16 @@ export const ja = {
   notice: {
     dismiss: '通知を閉じる',
   },
+  /** ステータスバー（03.ux-spec.md §8.3）。 */
   status: {
+    /** M1 は Preview 固定。モード切替は M2。 */
+    mode: 'Preview',
     lines: (n: number) => `${n} 行`,
     bytes: (n: number) => `${formatBytes(n)}`,
+    chars: (n: number) => `${n.toLocaleString('ja-JP')} 文字`,
+    readingTime: (minutes: number) => `約 ${minutes} 分`,
     readonly: '読み取り専用',
+    zoomReset: 'クリックで等倍に戻す',
     parsedIn: (ms: number) => `パース ${ms.toFixed(1)}ms`,
     paintedIn: (ms: number) => `描画 ${ms.toFixed(1)}ms`,
   },

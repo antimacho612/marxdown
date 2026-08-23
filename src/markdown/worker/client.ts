@@ -98,6 +98,7 @@ function createInlineParser(): MarkdownParser {
     async parse(text, options) {
       const id = nextId++
       const { render, renderChunks } = await pipeline
+      const { measure } = await import('../text-stats')
       const started = performance.now()
       const result = options.progressive
         ? renderChunks(
@@ -116,6 +117,7 @@ function createInlineParser(): MarkdownParser {
         outline: result.outline,
         frontMatter: result.frontMatter,
         parseMs: performance.now() - started,
+        textStats: measure(text),
       }
     },
     dispose() {},

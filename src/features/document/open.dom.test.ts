@@ -41,6 +41,7 @@ function fakeParser(): MarkdownParser {
         outline: [{ level: 1, text: 'hello', slug: 'hello', line: 0 }],
         frontMatter: null,
         parseMs: 0.5,
+        textStats: { chars: text.length, words: 2, readingMinutes: 1 },
       }),
     dispose: () => {},
   }
@@ -207,6 +208,7 @@ describe('起動シーケンスとの重ね合わせ (02.architecture.md §5.1)'
       outline: [],
       frontMatter: null,
       parseMs: 0.1,
+      textStats: { chars: 1, words: 1, readingMinutes: 1 },
     })
     await opening
 

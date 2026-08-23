@@ -119,6 +119,7 @@ export async function openDocument(
 
     store.setOutline(parsed.outline)
     store.setFrontMatter(parsed.frontMatter)
+    store.setTextStats(parsed.textStats)
     store.setNotice(null)
 
     // 「読める」瞬間は DOM 挿入の完了ではなく**次のフレーム**。
@@ -142,6 +143,9 @@ export async function openDocument(
     // 直し、残りが入り終わったらもう一度呼ぶ（`enhance` は処理済みを飛ばす）。
     const enhanceOptions = { baseDir: dirOf(payload.path) }
     enhance(container, enhanceOptions)
+
+    // 検索が開いていれば、新しい本文で引き直す（閉じない理由は `search.ts`）。
+    searchRefresher?.()
 
     // 残りのチャンクは idle で入る。ここでは待たない。
     void result.done.then((at) => {
@@ -210,6 +214,19 @@ export async function openDropped(paths: string[]): Promise<OpenOutcome | null> 
     })
   }
   return outcome
+}
+
+/**
+ * 検索モジュールが自分を登録する口（F-VIEW-10）。
+ *
+ * ここから `import('@/features/preview/search')` を呼ぶわけにはいかない。
+ * 呼べば、検索を一度も使っていないユーザーのためにも `search` チャンクを
+ * 落とすことになる。**読み込まれたモジュールのほうから名乗り出る**形にする。
+ */
+let searchRefresher: (() => void) | null = null
+
+export function registerSearchRefresher(refresh: () => void): void {
+  searchRefresher = refresh
 }
 
 function traceMark(options: OpenOptions, id: string, note?: string): void {

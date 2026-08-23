@@ -8,6 +8,7 @@
  * 実行時に落ちる。DOMPurify がここに来られないのもこれが理由（04.tech-stack.md §10）。
  */
 import { render, renderChunks } from '../pipeline'
+import { measure } from '../text-stats'
 import type { WorkerRequest, WorkerResponse } from './protocol'
 
 self.addEventListener('message', (event: MessageEvent<WorkerRequest>) => {
@@ -30,6 +31,7 @@ self.addEventListener('message', (event: MessageEvent<WorkerRequest>) => {
       outline: result.outline,
       frontMatter: result.frontMatter,
       parseMs: performance.now() - started,
+      textStats: measure(req.text),
     }
     self.postMessage(response)
   } catch (e) {

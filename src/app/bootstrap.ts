@@ -43,6 +43,8 @@ import { getPlatform, type Bootstrap, type DocumentPayload, type SpikeFlags } fr
 import { bindKeys } from './shortcuts'
 import { adoptT4, drain, initTrace, isTracing, mark } from './trace'
 
+const PREVIEW_SELECTOR = '#mx-preview'
+
 /** `--spike-render` の既定。bootstrap が取れない場合の保険。 */
 const FALLBACK_SPIKE: SpikeFlags = {
   bootstrap: 'script',
@@ -83,13 +85,19 @@ export async function startup(renderShell: (spike: SpikeFlags) => void): Promise
     strategy: spike.paint,
   })
 
-  // リンクハンドラは**本文を描くより前**に登録する。
+  // リンクハンドラとキーバインドは**本文を描くより前**に登録する。
   //
-  // 描画の後に回すと、パースが失敗した / 描画が止まった状態で本文中のリンクを
+  // リンクを後回しにすると、パースが失敗した / 描画が止まった状態でリンクを
   // 押されたときに素の遷移が起きる。WebView がページ遷移するとアプリのシェルごと
   // 差し替わり、戻る手段が無い（N-SEC-04）。**塞ぐ側を先に置く。**
-  // 登録するのはリスナー 1 つで、クリティカルパスへの上乗せは無視できる。
+  //
+  // キーバインドを後回しにすると、`extreme.md` のような重いファイルを描いている間
+  // `Ctrl+O` が効かない。「別のファイルを開いて逃げる」ができないのは体験として悪い。
+  //
+  // どちらもリスナーの登録だけで IPC を伴わない。クリティカルパスへの上乗せは
+  // 無視できる（IPC を伴う購読は下の `ready()` の後に置いてある）。
   installLinks()
+  installShortcuts()
 
   // シェルは、本文があってもなくても同じ場所で描く。
   // 本文がある場合は `openDocument` がパース送信の直後に呼び出す。
@@ -121,9 +129,8 @@ export async function startup(renderShell: (spike: SpikeFlags) => void): Promise
   await platform.ready()
 
   // --- 以降は非同期 -------------------------------------------------------
-  // ウィンドウが見えた後に回す。購読とキーバインドの登録は
-  // 「本文が読める」瞬間に間に合う必要がない仕事であり、T8 より前に置く理由がない。
-  installShortcuts()
+  // ウィンドウが見えた後に回す。どちらも Rust 側への購読（IPC）を伴い、
+  // 「本文が読める」瞬間に間に合っている必要がない。
   installOpenRequestHandler()
   installDragAndDrop()
 }
@@ -136,7 +143,7 @@ export async function startup(renderShell: (spike: SpikeFlags) => void): Promise
  * 開くたびに登録するとリスナーが積み上がる。
  */
 function installLinks(): void {
-  const container = document.querySelector<HTMLElement>('#mx-preview')
+  const container = document.querySelector<HTMLElement>(PREVIEW_SELECTOR)
   if (container) installLinkHandler(container)
 }
 
@@ -207,7 +214,25 @@ function installShortcuts(): void {
     { key: 'Ctrl+=', run: () => void zoomIn() },
     { key: 'Ctrl+-', run: () => void zoomOut() },
     { key: 'Ctrl+0', run: () => void zoomReset() },
+
+    // 検索を**開く**キーだけがここにある。開いている間だけ効く F3 / Escape は、
+    // 検索モジュール自身が登録して自分で外す。押されてもいない機能のキーが
+    // グローバルに居座らないようにするため。
+    { key: 'Ctrl+F', run: () => void openSearchLazily(), whenEditing: true },
   ])
+}
+
+/**
+ * 検索を開く（F-VIEW-10）。
+ *
+ * `Ctrl+F` を押すまで `search` チャンクはロードされない。
+ * 2 回目以降の動的 import は解決済みの Promise を返すので、遅れるのは初回だけ。
+ */
+async function openSearchLazily(): Promise<void> {
+  const container = document.querySelector<HTMLElement>(PREVIEW_SELECTOR)
+  if (!container) return
+  const { openSearch } = await import('@/features/preview/search')
+  openSearch(container)
 }
 
 /**

@@ -15,6 +15,7 @@
 import { create } from 'zustand'
 
 import type { OutlineItem } from '@/markdown/plugins/line-map'
+import type { TextStats } from '@/markdown/text-stats'
 import type { DocumentMeta } from '@/platform'
 
 /** 通知バーの選択肢（03.ux-spec.md §8.2 の「再読み込み / 無視」など）。 */
@@ -61,6 +62,8 @@ interface DocumentState {
   frontMatter: string | null
   notice: Notice | null
   stats: RenderStats | null
+  /** 文字数と読了時間（03.ux-spec.md §8.3）。Worker が数えた派生値。 */
+  textStats: TextStats | null
 
   setMeta(meta: DocumentMeta | null): void
   setDirty(dirty: boolean): void
@@ -68,6 +71,7 @@ interface DocumentState {
   setFrontMatter(frontMatter: string | null): void
   setNotice(notice: Notice | null): void
   setStats(stats: RenderStats | null): void
+  setTextStats(textStats: TextStats | null): void
 }
 
 /**
@@ -101,6 +105,7 @@ export const useDocumentStore = create<DocumentState>((set) => ({
   frontMatter: null,
   notice: null,
   stats: null,
+  textStats: null,
 
   setMeta: (meta) => set({ meta }),
   setDirty: (isDirty) => set({ isDirty }),
@@ -111,6 +116,7 @@ export const useDocumentStore = create<DocumentState>((set) => ({
     scheduleDismiss(notice, () => set({ notice: null }))
   },
   setStats: (stats) => set({ stats }),
+  setTextStats: (textStats) => set({ textStats }),
 }))
 
 /** 情報通知を出す。3 秒で自動的に消える（03.ux-spec.md §8.2）。 */

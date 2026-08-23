@@ -69,6 +69,10 @@
   --mx-color-warning: #a06a00;
   --mx-color-selection: rgb(59 91 219 / 18%);
 
+  /* プレビュー内検索の一致（F-VIEW-10）。現在位置だけを塗りつぶして区別する */
+  --mx-color-search-match: rgb(255 196 0 / 45%);
+  --mx-color-search-current: var(--mx-color-accent);
+
   /*
    * シンタックスハイライト（F-VIEW-03）。
    *
@@ -110,6 +114,9 @@
   --mx-color-warning: #e0b341;
   --mx-color-selection: rgb(141 162 251 / 22%);
 
+  --mx-color-search-match: rgb(255 196 0 / 35%);
+  --mx-color-search-current: var(--mx-color-accent);
+
   --mx-color-code-comment: #7f858d;
   --mx-color-code-keyword: #c4a7fb;
   --mx-color-code-string: #6ecfb8;
@@ -138,6 +145,9 @@
     --mx-color-danger: #ff8b8b;
     --mx-color-warning: #e0b341;
     --mx-color-selection: rgb(141 162 251 / 22%);
+
+    --mx-color-search-match: rgb(255 196 0 / 35%);
+    --mx-color-search-current: var(--mx-color-accent);
 
     --mx-color-code-comment: #7f858d;
     --mx-color-code-keyword: #c4a7fb;
