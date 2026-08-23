@@ -10,9 +10,23 @@ export const ja = {
   app: {
     name: 'Marxdown',
   },
+  /**
+   * Welcome 画面（03.ux-spec.md §9.1）。
+   *
+   * チュートリアルもツアーも出さない。**ショートカットを併記することが唯一の教育**。
+   * 「フォルダを開く」「新規ファイル」は M3 / M2 の担当なので、まだ並べない。
+   * 押せない項目を並べるのは Principle 3「Simple Means Low Cognitive Load」に反する。
+   */
   welcome: {
-    title: 'ファイルが開かれていません',
-    hint: 'ターミナルから marxdown <file.md> で開くか、ここにファイルをドロップしてください',
+    title: 'Marxdown',
+    openFile: 'ファイルを開く',
+    recent: '最近開いたファイル',
+    noRecent: 'まだ何も開いていません',
+    dropHint: 'ここに Markdown ファイルをドロップ',
+    cliHint: 'ターミナルからは marxdown <file.md>',
+  },
+  open: {
+    droppedExtra: (n: number) => `${n} 件は開いていません（複数タブは M3 で対応）`,
   },
   notice: {
     dismiss: '通知を閉じる',

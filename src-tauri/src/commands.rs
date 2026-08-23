@@ -70,6 +70,41 @@ pub fn resolve_asset(
     Ok(resolved.display().to_string())
 }
 
+/// ファイル選択ダイアログを開く（F-OPEN-07）。選ばれなければ `None`。
+///
+/// `@tauri-apps/plugin-dialog` を入れず Rust 側で包んでいるのは、`open_external` と同じ理由。
+/// フロントの依存が増えず、クリティカルパスの重さにも響かない（04.tech-stack.md §6.1）。
+///
+/// 返すのは**正規化済み絶対パス**。ここで揃えておかないと、
+/// 最近開いたファイル（F-OPEN-09）に表記の違う同じファイルが二重に積もる。
+#[tauri::command]
+pub async fn pick_file(window: Window) -> CoreResult<Option<String>> {
+    use tauri_plugin_dialog::DialogExt;
+
+    // 容量 1 の一度きりの受け口。ダイアログのコールバックは UI スレッドで走るので、
+    // ここで待つ側をブロックしない `try_send` を使う。
+    let (tx, mut rx) = tauri::async_runtime::channel(1);
+
+    window
+        .dialog()
+        .file()
+        .set_parent(&window)
+        .add_filter("Markdown", &["md", "markdown"])
+        .add_filter("すべてのファイル", &["*"])
+        .pick_file(move |picked| {
+            let _ = tx.try_send(picked);
+        });
+
+    let Some(Some(picked)) = rx.recv().await else {
+        return Ok(None);
+    };
+
+    let path = picked
+        .into_path()
+        .map_err(|e| CoreError::InvalidArgument(e.to_string()))?;
+    Ok(Some(document::canonicalize(&path)?.display().to_string()))
+}
+
 /* ------------------------------------------------------------------ */
 /* 永続化ストア（F-OPEN-09 / F-VIEW-11 / F-CONF-10）                     */
 /* ------------------------------------------------------------------ */

@@ -5,7 +5,8 @@
  * IPC 呼び出し回数は性能に直結する。
  */
 import { invoke } from '@tauri-apps/api/core'
-import { listen } from '@tauri-apps/api/event'
+import { listen, type UnlistenFn } from '@tauri-apps/api/event'
+import { getCurrentWebview } from '@tauri-apps/api/webview'
 
 import type {
   Bootstrap,
@@ -19,6 +20,29 @@ import type {
 } from './types'
 
 const EVENT_OPEN_REQUEST = 'marxdown://open-request'
+
+/**
+ * Tauri の購読 API を「同期的に解除関数を返す」形に均す。
+ *
+ * `listen` 系は解除関数を Promise で返すため、購読が確立する前に解除された場合を
+ * 取りこぼさないようにする。呼び出し側（Domain 層）は購読が非同期であることを
+ * 知らずに済む。
+ */
+function subscribe(start: () => Promise<UnlistenFn>): () => void {
+  let dispose: UnlistenFn | null = null
+  let disposed = false
+
+  void start().then((un) => {
+    if (disposed) un()
+    else dispose = un
+    return un
+  })
+
+  return () => {
+    disposed = true
+    dispose?.()
+  }
+}
 
 declare global {
   // eslint-disable-next-line no-var
@@ -62,6 +86,20 @@ export const tauriPlatform: Platform = {
     return invoke<void>('store_set_zoom', { zoom })
   },
 
+  pickFile() {
+    return invoke<string | null>('pick_file')
+  },
+
+  onDragDrop(handler) {
+    return subscribe(() =>
+      getCurrentWebview().onDragDropEvent(({ payload }) => {
+        if (payload.type === 'drop') handler({ type: 'drop', paths: payload.paths })
+        else if (payload.type === 'over') handler({ type: 'over' })
+        else handler({ type: 'leave' })
+      }),
+    )
+  },
+
   ready() {
     return invoke<void>('ready')
   },
@@ -83,17 +121,8 @@ export const tauriPlatform: Platform = {
   },
 
   onOpenRequest(handler) {
-    // listen は Promise を返すため、解除は「解除されるまで待ってから呼ぶ」形にする
-    let dispose: (() => void) | null = null
-    let disposed = false
-    void listen<OpenRequest>(EVENT_OPEN_REQUEST, (event) => handler(event.payload)).then((un) => {
-      if (disposed) un()
-      else dispose = un
-      return un
-    })
-    return () => {
-      disposed = true
-      dispose?.()
-    }
+    return subscribe(() =>
+      listen<OpenRequest>(EVENT_OPEN_REQUEST, (event) => handler(event.payload)),
+    )
   },
 }

@@ -134,27 +134,140 @@ body {
   color: var(--mx-color-warning);
 }
 
-/* Welcome 画面（引数なし起動 / F-OPEN-09） */
+/*
+ * Welcome 画面（引数なし起動 / F-OPEN-03, 09 / 03.ux-spec.md §9.1）。
+ *
+ * 中央寄せではなく**左揃えのブロックを中央に置く**。
+ * 項目とショートカットが縦に揃わないと、一覧として読めない。
+ */
 .mx-welcome {
   grid-area: 2 / 1;
   z-index: 5;
   display: grid;
   place-content: center;
-  gap: var(--mx-space-2);
-  color: var(--mx-color-fg-subtle);
-  text-align: center;
   background: var(--mx-color-bg);
+  overflow-y: auto;
+}
+
+.mx-welcome__panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mx-space-3);
+  width: min(30rem, 80vw);
+  padding: var(--mx-space-8) 0;
 }
 
 .mx-welcome__title {
-  font-size: 20px;
-  font-weight: 600;
-  color: var(--mx-color-fg-muted);
-  margin: 0;
+  margin: 0 0 var(--mx-space-2);
+  font-size: 22px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  color: var(--mx-color-fg);
 }
 
-.mx-welcome p {
+.mx-welcome__heading {
+  margin: var(--mx-space-4) 0 var(--mx-space-1);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--mx-color-fg-subtle);
+}
+
+/* 「ファイルを開く   Ctrl+O」— 動作とショートカットを両端に置いて対応づける */
+.mx-welcome__action {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--mx-space-4);
+  padding: var(--mx-space-2) var(--mx-space-3);
+  margin-inline: calc(-1 * var(--mx-space-3));
+  border: none;
+  border-radius: var(--mx-radius);
+  background: none;
+  color: var(--mx-color-accent);
+  font: inherit;
+  font-size: var(--mx-font-size-ui);
+  text-align: start;
+  cursor: pointer;
+}
+
+.mx-welcome__list {
+  list-style: none;
   margin: 0;
+  padding: 0;
+}
+
+.mx-welcome__item {
+  display: flex;
+  align-items: baseline;
+  gap: var(--mx-space-3);
+  width: 100%;
+  padding: var(--mx-space-1) var(--mx-space-3);
+  margin-inline: calc(-1 * var(--mx-space-3));
+  border: none;
+  border-radius: var(--mx-radius-sm);
+  background: none;
+  color: var(--mx-color-fg);
+  font: inherit;
+  font-size: var(--mx-font-size-ui);
+  text-align: start;
+  cursor: pointer;
+}
+
+.mx-welcome__item-name {
+  flex: none;
+}
+
+/* ディレクトリは補助情報。長いパスは頭を削って末尾（＝現在地）を残す */
+.mx-welcome__item-dir {
+  flex: 1;
+  min-width: 0;
+  color: var(--mx-color-fg-subtle);
+  font-size: 11px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  direction: rtl;
+  text-align: start;
+}
+
+.mx-welcome__action:hover,
+.mx-welcome__item:hover {
+  background: var(--mx-color-bg-hover);
+}
+
+.mx-welcome__action:focus-visible,
+.mx-welcome__item:focus-visible {
+  outline: 2px solid var(--mx-color-accent);
+  outline-offset: -2px;
+}
+
+.mx-welcome__empty,
+.mx-welcome__hint {
+  margin: 0;
+  color: var(--mx-color-fg-subtle);
+  font-size: var(--mx-font-size-ui);
+}
+
+.mx-welcome__hint:first-of-type {
+  margin-top: var(--mx-space-4);
+}
+
+/*
+ * ドラッグ中の見た目（F-OPEN-08）。
+ *
+ * 属性 1 つで表すのは、ドラッグ中 `over` が毎フレーム飛んでくるため。
+ * React を経由させない（ADR-0005 と同じ判断）。
+ */
+:root[data-mx-dragover] body::after {
+  content: '';
+  position: fixed;
+  inset: var(--mx-titlebar-height) 0 var(--mx-statusbar-height);
+  z-index: 20;
+  pointer-events: none;
+  border: 2px dashed var(--mx-color-accent);
+  background: var(--mx-color-selection);
 }
 
 kbd {

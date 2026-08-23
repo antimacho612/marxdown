@@ -43,7 +43,12 @@ pub fn create(
         .min_inner_size(480.0, 360.0)
         .visible(false) // 描画準備が整うまで見せない
         .decorations(true)
-        .disable_drag_drop_handler() // ドラッグ＆ドロップは JS 側で扱う（F-OPEN-08）
+        // ドラッグ＆ドロップは**ネイティブのハンドラに任せる**（F-OPEN-08）。
+        //
+        // M0 では `disable_drag_drop_handler()` を呼んで HTML5 のドロップイベントを
+        // 使う想定だったが、WebView の `DataTransfer` はファイルの**絶対パスを渡さない**。
+        // パスが無いと最近開いたファイルにも積めず、相対パスの画像も解決できない
+        // （F-VIEW-08 / N-SEC-05）。Tauri のドラッグ＆ドロップイベントは実パスを渡す。
         .initialization_script(&script);
 
     match restore.filter(|s| is_on_some_monitor(app, s)) {

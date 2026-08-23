@@ -1,5 +1,6 @@
 import { useDocumentStore } from '@/features/document/store'
 import { ja } from '@/i18n/ja'
+import { splitPath } from '@/lib/path'
 
 /**
  * React を使わないシェル描画（S8 の比較対象）。
@@ -10,7 +11,6 @@ import { ja } from '@/i18n/ja'
  * この経路が成立していること自体が、
  * 「本文が React に依存していない」（ADR-0005）の実証にもなっている。
  */
-import { splitPath } from './App'
 
 function el(tag: string, className?: string, text?: string): HTMLElement {
   const node = document.createElement(tag)

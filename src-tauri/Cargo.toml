@@ -20,6 +20,10 @@ tauri-build = { version = "2", features = [] }
 # protocol-asset: ローカル画像を asset URL 経由で表示する（F-VIEW-08 / N-SEC-05）
 tauri = { version = "2", features = ["protocol-asset"] }
 tauri-plugin-opener = "2"
+# 04.tech-stack.md §6.1 — ファイル選択ダイアログ（F-OPEN-07）。
+# JS 側の `@tauri-apps/plugin-dialog` は入れない。`opener` と同じく Rust から呼び、
+# 自作コマンドで包む。フロントの依存もクリティカルパスの重さも増えない。
+tauri-plugin-dialog = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 

@@ -12,7 +12,9 @@
 import { useCallback } from 'react'
 
 import { useDocumentStore, type Notice, type NoticeAction } from '@/features/document/store'
+import { Welcome } from '@/features/workspace/Welcome'
 import { ja } from '@/i18n/ja'
+import { splitPath } from '@/lib/path'
 
 export function App() {
   const meta = useDocumentStore((s) => s.meta)
@@ -31,12 +33,7 @@ export function App() {
 
       {notice ? <NoticeBar notice={notice} /> : null}
 
-      {meta ? null : (
-        <div className="mx-welcome">
-          <p className="mx-welcome__title">{ja.welcome.title}</p>
-          <p>{ja.welcome.hint}</p>
-        </div>
-      )}
+      {meta ? null : <Welcome />}
 
       <footer className="mx-statusbar">
         {meta ? (
@@ -127,11 +124,4 @@ function StatusStats({
       <span>{ja.status.paintedIn(stats.paintMs)}</span>
     </>
   )
-}
-
-/** パスをディレクトリとファイル名に割る。Windows と POSIX の両方を受ける。 */
-export function splitPath(path: string): { dir: string; name: string } {
-  const index = Math.max(path.lastIndexOf('\\'), path.lastIndexOf('/'))
-  if (index < 0) return { dir: '', name: path }
-  return { dir: path.slice(0, index), name: path.slice(index + 1) }
 }

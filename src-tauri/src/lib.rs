@@ -120,12 +120,14 @@ pub fn run() {
 
     builder
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_dialog::init())
         .manage(state)
         .invoke_handler(tauri::generate_handler![
             commands::take_bootstrap,
             commands::read_document,
             commands::write_document,
             commands::resolve_asset,
+            commands::pick_file,
             commands::store_push_recent,
             commands::store_remove_recent,
             commands::store_set_zoom,

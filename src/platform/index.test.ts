@@ -32,6 +32,8 @@ describe('Platform 層', () => {
       'pushRecent',
       'removeRecent',
       'setZoom',
+      'pickFile',
+      'onDragDrop',
       'ready',
       'reportTrace',
       'warmDone',

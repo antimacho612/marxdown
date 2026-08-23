@@ -126,6 +126,20 @@ export interface TraceMark {
 }
 
 /**
+ * ウィンドウへのドラッグ＆ドロップ（F-OPEN-08）。
+ *
+ * ブラウザの `DataTransfer` ではなく **OS 側のイベント**を使う。WebView は
+ * ドロップされたファイルの絶対パスを JS に渡さないため、`DataTransfer` からでは
+ * 最近開いたファイルに積めず、相対パスの画像も解決できない（F-VIEW-08 / N-SEC-05）。
+ */
+export type DragDropEvent =
+  /** ウィンドウの上にファイルが来ている。ドロップ先の見た目を出す。 */
+  | { type: 'over' }
+  | { type: 'drop'; paths: string[] }
+  /** 外へ出た / 取り消された。 */
+  | { type: 'leave' }
+
+/**
  * Platform 層のインタフェース。
  *
  * Domain 層はこれだけを見る。Tauri の存在を知らないことで、
@@ -149,6 +163,13 @@ export interface Platform {
    * 反映は呼び出し側が即座に行う。ここは保存だけなので、デバウンスして呼ぶこと。
    */
   setZoom(zoom: number): Promise<void>
+  /**
+   * ファイル選択ダイアログを開く（F-OPEN-07）。
+   * 選ばれなければ `null`。返るのは正規化済み絶対パス。
+   */
+  pickFile(): Promise<string | null>
+  /** ウィンドウへのドラッグ＆ドロップを購読する（F-OPEN-08）。 */
+  onDragDrop(handler: (event: DragDropEvent) => void): () => void
   /** 描画準備完了。ウィンドウを表示させる。 */
   ready(): Promise<void>
   reportTrace(marks: TraceMark[]): Promise<void>
