@@ -10,8 +10,6 @@ lerna-debug.log*
 node_modules
 dist
 dist-ssr
-*.local
-CLAUDE.local.md
 
 # Editor directories and files
 .vscode/*
@@ -24,6 +22,8 @@ CLAUDE.local.md
 *.sln
 *.sw?
 
+*.local
+
 # 計測用の基準ファイル（scripts/gen-fixtures.mjs で再生成する）
 bench/fixtures/*.md
 
@@ -31,8 +31,6 @@ bench/fixtures/*.md
 *.trace.json
 /measurements-tmp/
 
-# 個人用のプロジェクト指示。Git 管理外（`*.local` にマッチしないため明示する）
-CLAUDE.local.md
-
 # Claude Code のワークツリー
+CLAUDE.local.md
 .claude/worktrees/
