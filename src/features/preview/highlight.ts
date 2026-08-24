@@ -18,9 +18,9 @@
  * 未登録の言語はハイライトされないだけで、コードは普通に読める。
  * **登録しないことの害は小さく、積むことの害はバンドル予算に直接来る。**
  */
-import hljs from 'highlight.js/lib/core'
+import hljs from 'highlight.js/lib/core';
 
-import { sanitize } from '@/markdown/sanitize'
+import { sanitize } from '@/markdown/sanitize';
 
 /**
  * 登録する言語。増やすときは 05.performance-budget.md §6 の判定手順を通すこと。
@@ -47,12 +47,12 @@ const LANGUAGES = {
   typescript: () => import('highlight.js/lib/languages/typescript'),
   xml: () => import('highlight.js/lib/languages/xml'), // html もこれ
   yaml: () => import('highlight.js/lib/languages/yaml'),
-} as const
+} as const;
 
-type LanguageName = keyof typeof LANGUAGES
+type LanguageName = keyof typeof LANGUAGES;
 
 /** `markdown-it` が付ける言語クラスから言語名を取り出す。 */
-const LANGUAGE_CLASS = /(?:^|\s)language-([\w+#-]+)/
+const LANGUAGE_CLASS = /(?:^|\s)language-([\w+#-]+)/;
 
 /**
  * 別名の解決。highlight.js の `registerAliases` を使わず自前で持つのは、
@@ -97,20 +97,20 @@ const ALIASES: Record<string, LanguageName> = {
   yaml: 'yaml',
   yml: 'yaml',
   zsh: 'bash',
-}
+};
 
-const registered = new Set<LanguageName>()
+const registered = new Set<LanguageName>();
 
 /** 対応している言語か。呼び出し側がロードを諦める判断に使う。 */
 export function resolveLanguage(raw: string): LanguageName | null {
-  return ALIASES[raw.toLowerCase()] ?? null
+  return ALIASES[raw.toLowerCase()] ?? null;
 }
 
 /** `<code class="language-ts">` から言語を取り出す。 */
 export function languageOf(code: Element): LanguageName | null {
-  const matched = LANGUAGE_CLASS.exec(code.className)
-  const raw = matched?.[1]
-  return raw === undefined ? null : resolveLanguage(raw)
+  const matched = LANGUAGE_CLASS.exec(code.className);
+  const raw = matched?.[1];
+  return raw === undefined ? null : resolveLanguage(raw);
 }
 
 /**
@@ -120,25 +120,25 @@ export function languageOf(code: Element): LanguageName | null {
  * Java と SQL の文法まで読み込む理由がない。
  */
 export async function highlightElement(code: HTMLElement): Promise<void> {
-  const language = languageOf(code)
-  if (language === null) return
+  const language = languageOf(code);
+  if (language === null) return;
 
-  await ensureRegistered(language)
+  await ensureRegistered(language);
 
-  const source = code.textContent ?? ''
-  if (source === '') return
+  const source = code.textContent ?? '';
+  if (source === '') return;
 
-  const { value } = hljs.highlight(source, { language, ignoreIllegals: true })
+  const { value } = hljs.highlight(source, { language, ignoreIllegals: true });
 
   // hljs の出力は入力テキストからしか作られないが、**innerHTML に入る HTML 文字列**である
   // ことに変わりはない。ADR-0006 の「DOM に入る HTML は必ず Layer 3 を通る」を
   // 例外なしに保つ（Mermaid の SVG を同じサニタイザに通すのと同じ理由）。
-  code.innerHTML = sanitize(value)
+  code.innerHTML = sanitize(value);
 }
 
 async function ensureRegistered(language: LanguageName): Promise<void> {
-  if (registered.has(language)) return
-  const module = await LANGUAGES[language]()
-  hljs.registerLanguage(language, module.default)
-  registered.add(language)
+  if (registered.has(language)) return;
+  const module = await LANGUAGES[language]();
+  hljs.registerLanguage(language, module.default);
+  registered.add(language);
 }

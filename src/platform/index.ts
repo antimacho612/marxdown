@@ -4,11 +4,11 @@
  * ここより上（Domain / UI）は `platform` だけを見る。
  * テストでは `setPlatform()` でインメモリ実装に差し替える。
  */
-import { tauriPlatform } from './tauri'
-import type { Platform } from './types'
-import { webPlatform } from './web'
+import { tauriPlatform } from './tauri';
+import type { Platform } from './types';
+import { webPlatform } from './web';
 
-export * from './types'
+export * from './types';
 
 /**
  * Tauri の中で動いているか。
@@ -20,16 +20,16 @@ function isTauri(): boolean {
   return (
     typeof globalThis !== 'undefined' &&
     ('__TAURI_INTERNALS__' in globalThis || '__MARXDOWN_BOOTSTRAP__' in globalThis)
-  )
+  );
 }
 
-let current: Platform = isTauri() ? tauriPlatform : webPlatform
+let current: Platform = isTauri() ? tauriPlatform : webPlatform;
 
 export function getPlatform(): Platform {
-  return current
+  return current;
 }
 
 /** テストと Storybook 用。プロダクションコードから呼ばない。 */
 export function setPlatform(next: Platform): void {
-  current = next
+  current = next;
 }

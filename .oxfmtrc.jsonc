@@ -3,7 +3,7 @@
   "printWidth": 100,
   "tabWidth": 2,
   "useTabs": false,
-  "semi": false,
+  "semi": true,
   "singleQuote": true,
   "jsxSingleQuote": false,
   "quoteProps": "as-needed",
@@ -15,9 +15,6 @@
   "endOfLine": "lf",
   "insertFinalNewline": true,
   "sortImports": true,
-  // Markdown は整形対象にしない。
-  // 日本語の散文は意図した位置で改行しており、自動整形すると読みにくくなる。
-  // ドキュメントの見た目は Markdown そのものの問題であって、コードの整形規約ではない。
   "ignorePatterns": [
     "dist",
     "node_modules",

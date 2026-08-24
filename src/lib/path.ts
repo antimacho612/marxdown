@@ -10,14 +10,14 @@
 
 /** パスをディレクトリとファイル名に割る。Windows と POSIX の両方を受ける。 */
 export function splitPath(path: string): { dir: string; name: string } {
-  const index = Math.max(path.lastIndexOf('\\'), path.lastIndexOf('/'))
-  if (index < 0) return { dir: '', name: path }
-  return { dir: path.slice(0, index), name: path.slice(index + 1) }
+  const index = Math.max(path.lastIndexOf('\\'), path.lastIndexOf('/'));
+  if (index < 0) return { dir: '', name: path };
+  return { dir: path.slice(0, index), name: path.slice(index + 1) };
 }
 
 /** 親ディレクトリ。相対パスの基準に使う。 */
 export function dirOf(path: string): string {
-  return splitPath(path).dir
+  return splitPath(path).dir;
 }
 
 /**
@@ -29,11 +29,11 @@ export function dirOf(path: string): string {
  * ずれた状態でスコープ検証をすると、そこが穴になる（N-SEC-05）。
  */
 export function joinPath(baseDir: string, relative: string): string {
-  if (baseDir === '' || isAbsolutePath(relative)) return relative
+  if (baseDir === '' || isAbsolutePath(relative)) return relative;
 
-  const separator = baseDir.includes('\\') ? '\\' : '/'
-  const trimmed = baseDir.replace(/[\\/]+$/, '')
-  return `${trimmed}${separator}${relative.replace(/^[\\/]+/, '')}`
+  const separator = baseDir.includes('\\') ? '\\' : '/';
+  const trimmed = baseDir.replace(/[\\/]+$/, '');
+  return `${trimmed}${separator}${relative.replace(/^[\\/]+/, '')}`;
 }
 
 /**
@@ -45,7 +45,7 @@ export function joinPath(baseDir: string, relative: string): string {
  * 勝手に「開いているファイルからの相対」と読み替えるほうが驚きが大きい。
  */
 export function isAbsolutePath(path: string): boolean {
-  return /^[a-z]:[\\/]/i.test(path) || path.startsWith('/') || path.startsWith('\\')
+  return /^[a-z]:[\\/]/i.test(path) || path.startsWith('/') || path.startsWith('\\');
 }
 
 /**
@@ -54,6 +54,6 @@ export function isAbsolutePath(path: string): boolean {
  * クエリとフラグメント（`./other.md#section`）を落としてから見る。
  */
 export function isMarkdownPath(path: string): boolean {
-  const bare = path.replace(/[?#].*$/, '')
-  return /\.(?:md|markdown|mdown|mkd)$/i.test(bare)
+  const bare = path.replace(/[?#].*$/, '');
+  return /\.(?:md|markdown|mdown|mkd)$/i.test(bare);
 }

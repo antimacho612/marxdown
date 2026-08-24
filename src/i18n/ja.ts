@@ -83,10 +83,10 @@ export const ja = {
     unknownArgs: (args: string[]) => `解釈できない引数: ${args.join(', ')}`,
     renderFailed: 'このファイルの表示に失敗しました',
   },
-} as const
+} as const;
 
 export function formatBytes(n: number): string {
-  if (n < 1024) return `${n} B`
-  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`
-  return `${(n / 1024 / 1024).toFixed(2)} MB`
+  if (n < 1024) return `${n} B`;
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
+  return `${(n / 1024 / 1024).toFixed(2)} MB`;
 }

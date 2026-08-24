@@ -16,27 +16,27 @@ import type {
   RecentEntry,
   SaveResult,
   WriteRequest,
-} from './types'
+} from './types';
 
-const STORE_KEY = 'marxdown:web-fs'
-const STATE_KEY = 'marxdown:web-state'
+const STORE_KEY = 'marxdown:web-fs';
+const STATE_KEY = 'marxdown:web-state';
 
 interface VirtualFile {
-  content: string
-  mtimeMs: number
+  content: string;
+  mtimeMs: number;
 }
 
 function loadFs(): Record<string, VirtualFile> {
   try {
-    return JSON.parse(localStorage.getItem(STORE_KEY) ?? '{}') as Record<string, VirtualFile>
+    return JSON.parse(localStorage.getItem(STORE_KEY) ?? '{}') as Record<string, VirtualFile>;
   } catch {
-    return {}
+    return {};
   }
 }
 
 function saveFs(fs: Record<string, VirtualFile>): void {
   try {
-    localStorage.setItem(STORE_KEY, JSON.stringify(fs))
+    localStorage.setItem(STORE_KEY, JSON.stringify(fs));
   } catch {
     // 容量超過。dev 専用なので黙って諦める
   }
@@ -44,22 +44,22 @@ function saveFs(fs: Record<string, VirtualFile>): void {
 
 /** `src-tauri/src/store.rs` の `StoreData` に対応するモック。 */
 interface WebState {
-  recent: RecentEntry[]
-  zoom: number
+  recent: RecentEntry[];
+  zoom: number;
 }
 
 function loadState(): WebState {
   try {
-    const raw = JSON.parse(localStorage.getItem(STATE_KEY) ?? '{}') as Partial<WebState>
-    return { recent: raw.recent ?? [], zoom: raw.zoom ?? 1 }
+    const raw = JSON.parse(localStorage.getItem(STATE_KEY) ?? '{}') as Partial<WebState>;
+    return { recent: raw.recent ?? [], zoom: raw.zoom ?? 1 };
   } catch {
-    return { recent: [], zoom: 1 }
+    return { recent: [], zoom: 1 };
   }
 }
 
 function saveState(state: WebState): void {
   try {
-    localStorage.setItem(STATE_KEY, JSON.stringify(state))
+    localStorage.setItem(STATE_KEY, JSON.stringify(state));
   } catch {
     // 容量超過。dev 専用なので黙って諦める
   }
@@ -87,7 +87,7 @@ const platform: Platform = import.meta.env.DEV ? webPlatform : tauriPlatform
 \`\`\`
 
 > Platform 層があることで、この 2 つは同じ Domain 層から使える。
-`
+`;
 
 /**
  * 実ファイルを仮想 FS に取り込み、仮想パスを返す。
@@ -96,29 +96,29 @@ const platform: Platform = import.meta.env.DEV ? webPlatform : tauriPlatform
  * dev:web ではそれで構わないので、`/virtual/<名前>` を割り当てて中身だけ取り込む。
  */
 async function adoptFile(file: File): Promise<string | null> {
-  const path = `/virtual/${file.name}`
+  const path = `/virtual/${file.name}`;
   try {
-    const fs = loadFs()
-    fs[path] = { content: await file.text(), mtimeMs: file.lastModified }
-    saveFs(fs)
-    return path
+    const fs = loadFs();
+    fs[path] = { content: await file.text(), mtimeMs: file.lastModified };
+    saveFs(fs);
+    return path;
   } catch {
-    return null
+    return null;
   }
 }
 
 /** URL の `?file=` で内容を差し替えられるようにしておくと、fixture の確認が楽になる。 */
 function initialBootstrap(): Bootstrap {
-  const params = new URLSearchParams(globalThis.location?.search ?? '')
-  const path = params.get('file') ?? '/virtual/welcome.md'
-  const fs = loadFs()
-  const existing = fs[path]
-  const content = existing?.content ?? SAMPLE
-  const state = loadState()
+  const params = new URLSearchParams(globalThis.location?.search ?? '');
+  const path = params.get('file') ?? '/virtual/welcome.md';
+  const fs = loadFs();
+  const existing = fs[path];
+  const content = existing?.content ?? SAMPLE;
+  const state = loadState();
 
   // `?welcome` で「引数なし起動」を再現する。Welcome 画面（03.ux-spec.md §9.1）を
   // ブラウザだけで作り込めるようにするため。
-  const empty = params.has('welcome')
+  const empty = params.has('welcome');
 
   return {
     version: 1,
@@ -142,23 +142,23 @@ function initialBootstrap(): Bootstrap {
     unknownArgs: [],
     recent: state.recent,
     zoom: state.zoom,
-  }
+  };
 }
 
-let bootstrap: Bootstrap | null = null
+let bootstrap: Bootstrap | null = null;
 
 export const webPlatform: Platform = {
   kind: 'web',
 
   getBootstrap() {
-    bootstrap ??= initialBootstrap()
-    return bootstrap
+    bootstrap ??= initialBootstrap();
+    return bootstrap;
   },
 
   async readDocument(path): Promise<DocumentPayload> {
-    const fs = loadFs()
-    const file = fs[path]
-    if (!file) throw { kind: 'not-found', message: path }
+    const fs = loadFs();
+    const file = fs[path];
+    if (!file) throw { kind: 'not-found', message: path };
     return {
       path,
       content: file.content,
@@ -168,64 +168,64 @@ export const webPlatform: Platform = {
       mtimeMs: file.mtimeMs,
       size: new TextEncoder().encode(file.content).length,
       readonly: false,
-    }
+    };
   },
 
   async writeDocument(req: WriteRequest): Promise<SaveResult> {
-    const fs = loadFs()
-    const existing = fs[req.path]
+    const fs = loadFs();
+    const existing = fs[req.path];
     if (existing && existing.mtimeMs !== req.expectedMtimeMs) {
-      return { status: 'conflict', diskMtimeMs: existing.mtimeMs }
+      return { status: 'conflict', diskMtimeMs: existing.mtimeMs };
     }
-    const mtimeMs = Date.now()
-    fs[req.path] = { content: req.content, mtimeMs }
-    saveFs(fs)
-    return { status: 'saved', mtimeMs, size: new TextEncoder().encode(req.content).length }
+    const mtimeMs = Date.now();
+    fs[req.path] = { content: req.content, mtimeMs };
+    saveFs(fs);
+    return { status: 'saved', mtimeMs, size: new TextEncoder().encode(req.content).length };
   },
 
   async resolveAsset(href) {
-    return href
+    return href;
   },
 
   async pushRecent(path) {
-    const state = loadState()
+    const state = loadState();
     state.recent = [
       { path, openedAtMs: Date.now() },
       ...state.recent.filter((e) => e.path !== path),
-    ].slice(0, 20)
-    saveState(state)
-    return state.recent
+    ].slice(0, 20);
+    saveState(state);
+    return state.recent;
   },
 
   async removeRecent(path) {
-    const state = loadState()
-    state.recent = state.recent.filter((e) => e.path !== path)
-    saveState(state)
-    return state.recent
+    const state = loadState();
+    state.recent = state.recent.filter((e) => e.path !== path);
+    saveState(state);
+    return state.recent;
   },
 
   async setZoom(zoom) {
-    const state = loadState()
-    state.zoom = zoom
-    saveState(state)
+    const state = loadState();
+    state.zoom = zoom;
+    saveState(state);
   },
 
   async pickFile() {
     return new Promise<string | null>((resolve) => {
-      const input = document.createElement('input')
-      input.type = 'file'
-      input.accept = '.md,.markdown,text/markdown'
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = '.md,.markdown,text/markdown';
       input.addEventListener('change', () => {
-        const file = input.files?.[0]
+        const file = input.files?.[0];
         if (!file) {
-          resolve(null)
-          return
+          resolve(null);
+          return;
         }
-        void adoptFile(file).then(resolve)
-      })
+        void adoptFile(file).then(resolve);
+      });
       // 取り消しは change が飛ばない。dev 用なので待ちっぱなしを許容する
-      input.click()
-    })
+      input.click();
+    });
   },
 
   onDragDrop(handler) {
@@ -233,28 +233,28 @@ export const webPlatform: Platform = {
     // 実装では絶対パスが取れないため、落ちてきた中身を仮想 FS に取り込んでから
     // その仮想パスを渡す。Domain 層から見た形は Tauri 実装と同じになる。
     const onOver = (e: DragEvent) => {
-      e.preventDefault()
-      handler({ type: 'over' })
-    }
-    const onLeave = () => handler({ type: 'leave' })
+      e.preventDefault();
+      handler({ type: 'over' });
+    };
+    const onLeave = () => handler({ type: 'leave' });
     const onDrop = (e: DragEvent) => {
-      e.preventDefault()
-      const files = [...(e.dataTransfer?.files ?? [])]
+      e.preventDefault();
+      const files = [...(e.dataTransfer?.files ?? [])];
       void Promise.all(files.map(adoptFile)).then((paths) => {
-        handler({ type: 'drop', paths: paths.filter((p): p is string => p !== null) })
-        return paths
-      })
-    }
+        handler({ type: 'drop', paths: paths.filter((p): p is string => p !== null) });
+        return paths;
+      });
+    };
 
-    globalThis.addEventListener('dragover', onOver)
-    globalThis.addEventListener('dragleave', onLeave)
-    globalThis.addEventListener('drop', onDrop)
+    globalThis.addEventListener('dragover', onOver);
+    globalThis.addEventListener('dragleave', onLeave);
+    globalThis.addEventListener('drop', onDrop);
 
     return () => {
-      globalThis.removeEventListener('dragover', onOver)
-      globalThis.removeEventListener('dragleave', onLeave)
-      globalThis.removeEventListener('drop', onDrop)
-    }
+      globalThis.removeEventListener('dragover', onOver);
+      globalThis.removeEventListener('dragleave', onLeave);
+      globalThis.removeEventListener('drop', onDrop);
+    };
   },
 
   async ready() {
@@ -262,21 +262,21 @@ export const webPlatform: Platform = {
   },
 
   async reportTrace(marks) {
-    console.info('[marxdown] trace', marks)
+    console.info('[marxdown] trace', marks);
   },
 
   async warmDone() {
     // ブラウザには argv 転送が無い
-    return null
+    return null;
   },
 
   async openExternal(url) {
-    globalThis.open(url, '_blank', 'noopener,noreferrer')
+    globalThis.open(url, '_blank', 'noopener,noreferrer');
   },
 
   async openLocalFile(path) {
     // ブラウザには既定アプリの概念が無い。呼ばれたことだけ分かるようにしておく
-    console.info('[marxdown] openLocalFile', path)
+    console.info('[marxdown] openLocalFile', path);
   },
 
   async revealInFileManager() {
@@ -284,6 +284,6 @@ export const webPlatform: Platform = {
   },
 
   onOpenRequest(_handler: (req: OpenRequest) => void) {
-    return () => {}
+    return () => {};
   },
-}
+};

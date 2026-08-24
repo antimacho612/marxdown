@@ -20,16 +20,16 @@
  * 処理済みの要素には印を付けて、2 回目は新しく増えたぶんだけを見る。
  * MutationObserver を常駐させないのは、アイドル時の監視を増やさないため。
  */
-import { ja } from '@/i18n/ja'
-import { processInIdle } from '@/lib/idle'
-import { getPlatform } from '@/platform'
+import { ja } from '@/i18n/ja';
+import { processInIdle } from '@/lib/idle';
+import { getPlatform } from '@/platform';
 
 /** 処理済みの印。2 回目の `enhance` がここを見て取りこぼしだけ拾う。 */
-const DONE = 'mxEnhanced'
+const DONE = 'mxEnhanced';
 
 export interface EnhanceOptions {
   /** 相対パスの画像を解決する基準。開いているファイルの親ディレクトリ。 */
-  baseDir: string
+  baseDir: string;
 }
 
 /**
@@ -39,8 +39,8 @@ export interface EnhanceOptions {
  * 画像 1 枚の解決が遅いせいでコピーボタンが出ない、という結合を作らない。
  */
 export function enhance(container: HTMLElement, options: EnhanceOptions): void {
-  void enhanceCodeBlocks(container)
-  void enhanceImages(container, options.baseDir)
+  void enhanceCodeBlocks(container);
+  void enhanceImages(container, options.baseDir);
 }
 
 /* ------------------------------------------------------------------ */
@@ -50,26 +50,26 @@ export function enhance(container: HTMLElement, options: EnhanceOptions): void {
 async function enhanceCodeBlocks(container: HTMLElement): Promise<void> {
   const blocks = [...container.querySelectorAll<HTMLElement>('pre > code')].filter(
     (code) => !(DONE in (code.parentElement?.dataset ?? {})),
-  )
-  if (blocks.length === 0) return
+  );
+  if (blocks.length === 0) return;
 
   for (const code of blocks) {
-    const pre = code.parentElement
+    const pre = code.parentElement;
     if (pre) {
-      pre.dataset[DONE] = ''
-      addCopyButton(pre, code)
+      pre.dataset[DONE] = '';
+      addCopyButton(pre, code);
     }
   }
 
   // ハイライトは**遅延チャンク**。コードブロックが 1 つも無いドキュメントでは
   // ここに到達しないので、`highlight` チャンクはロードすらされない
   // （02.architecture.md §5.3 の分割境界）。
-  const { highlightElement, languageOf } = await import('./highlight')
-  const targets = blocks.filter((code) => languageOf(code) !== null)
+  const { highlightElement, languageOf } = await import('./highlight');
+  const targets = blocks.filter((code) => languageOf(code) !== null);
 
   await processInIdle(targets, (code) => {
-    void highlightElement(code)
-  })
+    void highlightElement(code);
+  });
 }
 
 /**
@@ -79,39 +79,39 @@ async function enhanceCodeBlocks(container: HTMLElement): Promise<void> {
  * 見えるのはホバー時とフォーカス時だけ（03.ux-spec.md §2.1 の「静けさ」）。
  */
 function addCopyButton(pre: HTMLElement, code: HTMLElement): void {
-  const button = document.createElement('button')
-  button.type = 'button'
-  button.className = 'mx-copy'
-  button.textContent = ja.preview.copy
-  button.setAttribute('aria-label', ja.preview.copyLabel)
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = 'mx-copy';
+  button.textContent = ja.preview.copy;
+  button.setAttribute('aria-label', ja.preview.copyLabel);
 
   button.addEventListener('click', () => {
     void copy(code.textContent ?? '').then((ok) => {
-      button.textContent = ok ? ja.preview.copied : ja.preview.copyFailed
-      button.dataset['mxState'] = ok ? 'ok' : 'error'
+      button.textContent = ok ? ja.preview.copied : ja.preview.copyFailed;
+      button.dataset['mxState'] = ok ? 'ok' : 'error';
       // 1 回きりのタイマー。押されたときにしか作られない。
       setTimeout(() => {
-        button.textContent = ja.preview.copy
-        delete button.dataset['mxState']
-      }, COPY_FEEDBACK_MS)
-      return ok
-    })
-  })
+        button.textContent = ja.preview.copy;
+        delete button.dataset['mxState'];
+      }, COPY_FEEDBACK_MS);
+      return ok;
+    });
+  });
 
-  pre.append(button)
+  pre.append(button);
 }
 
 /** コピー後の表示を戻すまでの時間。 */
-const COPY_FEEDBACK_MS = 1200
+const COPY_FEEDBACK_MS = 1200;
 
 async function copy(text: string): Promise<boolean> {
   try {
-    await navigator.clipboard.writeText(text)
-    return true
+    await navigator.clipboard.writeText(text);
+    return true;
   } catch {
     // 権限が無い / セキュアコンテキストでない。通知バーに出すほどのことではないので、
     // ボタン自身の表示で伝える。
-    return false
+    return false;
   }
 }
 
@@ -125,57 +125,57 @@ async function copy(text: string): Promise<boolean> {
  * `http(s):` と `data:` はそのまま出せる（CSP の `img-src` が許可している）。
  * それ以外＝ローカルのパスだけを `resolve_asset` に通す。
  */
-const READY = /^(?:https?:|data:|asset:|blob:)/i
+const READY = /^(?:https?:|data:|asset:|blob:)/i;
 
 async function enhanceImages(container: HTMLElement, baseDir: string): Promise<void> {
   const images = [...container.querySelectorAll<HTMLImageElement>('img[src]')].filter(
     (img) => !(DONE in img.dataset),
-  )
-  if (images.length === 0) return
+  );
+  if (images.length === 0) return;
 
-  for (const img of images) img.dataset[DONE] = ''
+  for (const img of images) img.dataset[DONE] = '';
 
-  const local = images.filter((img) => !READY.test(img.getAttribute('src') ?? ''))
-  if (local.length === 0 || baseDir === '') return
+  const local = images.filter((img) => !READY.test(img.getAttribute('src') ?? ''));
+  if (local.length === 0 || baseDir === '') return;
 
   // 1 枚ごとに IPC が 1 往復する。アイドルに刻んで、スクロールを妨げない。
   await processInIdle(local, (img) => {
-    const href = img.getAttribute('src') ?? ''
-    void resolveImage(img, href, baseDir)
-  })
+    const href = img.getAttribute('src') ?? '';
+    void resolveImage(img, href, baseDir);
+  });
 }
 
 async function resolveImage(img: HTMLImageElement, href: string, baseDir: string): Promise<void> {
   try {
-    img.src = await getPlatform().resolveAsset(href, baseDir)
+    img.src = await getPlatform().resolveAsset(href, baseDir);
   } catch (e) {
     // 許可ディレクトリの外か、そもそも無い。**黙って壊れた画像を出さない。**
     //
     // 中心ユースケースは「LLM が生成した、自分が書いていないファイルを開く」こと
     // （ADR-0006）。`![](../../../.ssh/id_rsa)` が拒まれたことは、
     // ユーザーに見える形で伝わったほうがよい。
-    img.replaceWith(blockedPlaceholder(href, isOutOfScope(e)))
+    img.replaceWith(blockedPlaceholder(href, isOutOfScope(e)));
   }
 }
 
 function isOutOfScope(e: unknown): boolean {
-  return typeof e === 'object' && e !== null && 'kind' in e && e.kind === 'out-of-scope'
+  return typeof e === 'object' && e !== null && 'kind' in e && e.kind === 'out-of-scope';
 }
 
 function blockedPlaceholder(href: string, outOfScope: boolean): HTMLElement {
-  const box = document.createElement('span')
-  box.className = 'mx-image-blocked'
-  box.dataset['mxReason'] = outOfScope ? 'out-of-scope' : 'missing'
+  const box = document.createElement('span');
+  box.className = 'mx-image-blocked';
+  box.dataset['mxReason'] = outOfScope ? 'out-of-scope' : 'missing';
 
-  const label = document.createElement('span')
-  label.className = 'mx-image-blocked__reason'
-  label.textContent = outOfScope ? ja.preview.imageOutOfScope : ja.preview.imageMissing
+  const label = document.createElement('span');
+  label.className = 'mx-image-blocked__reason';
+  label.textContent = outOfScope ? ja.preview.imageOutOfScope : ja.preview.imageMissing;
 
-  const path = document.createElement('code')
-  path.className = 'mx-image-blocked__path'
+  const path = document.createElement('code');
+  path.className = 'mx-image-blocked__path';
   // textContent なので、href がどんな文字列でもここから HTML にはならない
-  path.textContent = href
+  path.textContent = href;
 
-  box.append(label, path)
-  return box
+  box.append(label, path);
+  return box;
 }

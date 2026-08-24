@@ -18,21 +18,21 @@
  * 「フォルダを開く」（M3）と「新規ファイル」（M2）はまだ並べていない。
  * 押しても何も起きない項目を置くのは Principle 3 に反する。
  */
-import { useCallback } from 'react'
+import { useCallback } from 'react';
 
-import { openPath, openViaDialog } from '@/features/document/open'
-import { ja } from '@/i18n/ja'
-import { splitPath } from '@/lib/path'
-import type { RecentEntry } from '@/platform'
+import { openPath, openViaDialog } from '@/features/document/open';
+import { ja } from '@/i18n/ja';
+import { splitPath } from '@/lib/path';
+import type { RecentEntry } from '@/platform';
 
-import { useRecentStore } from './recent'
+import { useRecentStore } from './recent';
 
 export function Welcome() {
-  const entries = useRecentStore((s) => s.entries)
+  const entries = useRecentStore((s) => s.entries);
 
   const onOpen = useCallback(() => {
-    void openViaDialog()
-  }, [])
+    void openViaDialog();
+  }, []);
 
   return (
     <div className="mx-welcome">
@@ -63,7 +63,7 @@ export function Welcome() {
         </p>
       </div>
     </div>
-  )
+  );
 }
 
 /**
@@ -72,15 +72,15 @@ export function Welcome() {
  * 少なく見せるのは意図的で、§9.1 のスケッチも 3 件。
  * ここが長い一覧になった瞬間、Welcome 画面は「履歴ビューア」という別の道具になる。
  */
-const RECENT_SHOWN = 6
+const RECENT_SHOWN = 6;
 
 function RecentItem({ entry }: { entry: RecentEntry }) {
-  const { dir, name } = splitPath(entry.path)
+  const { dir, name } = splitPath(entry.path);
 
   const onClick = useCallback(() => {
     // 開けなかった場合の通知と履歴からの除去は `openPath` の担当。
-    void openPath(entry.path)
-  }, [entry.path])
+    void openPath(entry.path);
+  }, [entry.path]);
 
   return (
     <li>
@@ -89,5 +89,5 @@ function RecentItem({ entry }: { entry: RecentEntry }) {
         <span className="mx-welcome__item-dir">{dir}</span>
       </button>
     </li>
-  )
+  );
 }

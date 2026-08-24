@@ -8,20 +8,20 @@
  * 本文の受け皿（`#mx-preview`）は index.html 側にあり、React の管理下に無い。
  * だから「本文が読める」までに React のコミットを待つ必要がない。
  */
-import { useCallback } from 'react'
+import { useCallback } from 'react';
 
-import { useDocumentStore, type Notice, type NoticeAction } from '@/features/document/store'
-import { formatZoom, zoomReset } from '@/features/preview/zoom'
-import { useViewStore } from '@/features/view/store'
-import { Welcome } from '@/features/workspace/Welcome'
-import { ja } from '@/i18n/ja'
-import { splitPath } from '@/lib/path'
+import { useDocumentStore, type Notice, type NoticeAction } from '@/features/document/store';
+import { formatZoom, zoomReset } from '@/features/preview/zoom';
+import { useViewStore } from '@/features/view/store';
+import { Welcome } from '@/features/workspace/Welcome';
+import { ja } from '@/i18n/ja';
+import { splitPath } from '@/lib/path';
 
 export function App() {
-  const meta = useDocumentStore((s) => s.meta)
-  const notice = useDocumentStore((s) => s.notice)
+  const meta = useDocumentStore((s) => s.meta);
+  const notice = useDocumentStore((s) => s.notice);
 
-  const { dir, name } = splitPath(meta?.path ?? '')
+  const { dir, name } = splitPath(meta?.path ?? '');
 
   return (
     <>
@@ -36,7 +36,7 @@ export function App() {
 
       <StatusBar />
     </>
-  )
+  );
 }
 
 /**
@@ -54,9 +54,9 @@ export function App() {
  * これは開発中の道具であって、製品の画面に居座る理由が説明できない（§11 の不変条件）。
  */
 function StatusBar() {
-  const meta = useDocumentStore((s) => s.meta)
-  const textStats = useDocumentStore((s) => s.textStats)
-  const stats = useDocumentStore((s) => s.stats)
+  const meta = useDocumentStore((s) => s.meta);
+  const textStats = useDocumentStore((s) => s.textStats);
+  const stats = useDocumentStore((s) => s.stats);
 
   return (
     <footer className="mx-statusbar">
@@ -81,7 +81,7 @@ function StatusBar() {
       {import.meta.env.DEV && stats ? <StatusStats stats={stats} /> : null}
       {meta ? <ZoomIndicator /> : null}
     </footer>
-  )
+  );
 }
 
 /**
@@ -91,8 +91,8 @@ function StatusBar() {
  * 押せる場所がいつも同じ位置にあることのほうが、1 項目減らすより価値がある。
  */
 function ZoomIndicator() {
-  const zoom = useViewStore((s) => s.zoom)
-  const onClick = useCallback(() => void zoomReset(), [])
+  const zoom = useViewStore((s) => s.zoom);
+  const onClick = useCallback(() => void zoomReset(), []);
 
   return (
     <button
@@ -103,7 +103,7 @@ function ZoomIndicator() {
     >
       {formatZoom(zoom)}
     </button>
-  )
+  );
 }
 
 /**
@@ -113,8 +113,8 @@ function ZoomIndicator() {
  * 情報は `status`（穏やかに読み上げる）、警告とエラーは `alert`（割り込む）。
  */
 function NoticeBar({ notice }: { notice: Notice }) {
-  const setNotice = useDocumentStore((s) => s.setNotice)
-  const dismiss = useCallback(() => setNotice(null), [setNotice])
+  const setNotice = useDocumentStore((s) => s.setNotice);
+  const dismiss = useCallback(() => setNotice(null), [setNotice]);
 
   return (
     <div
@@ -134,7 +134,7 @@ function NoticeBar({ notice }: { notice: Notice }) {
         ✕
       </button>
     </div>
-  )
+  );
 }
 
 /**
@@ -147,25 +147,25 @@ function NoticeActionButton({
   action,
   onDismiss,
 }: {
-  action: NoticeAction
-  onDismiss: () => void
+  action: NoticeAction;
+  onDismiss: () => void;
 }) {
   const onClick = useCallback(() => {
-    onDismiss()
-    action.run()
-  }, [action, onDismiss])
+    onDismiss();
+    action.run();
+  }, [action, onDismiss]);
 
   return (
     <button type="button" className="mx-notice__action" onClick={onClick}>
       {action.label}
     </button>
-  )
+  );
 }
 
 function StatusStats({
   stats,
 }: {
-  stats: NonNullable<ReturnType<typeof useDocumentStore.getState>['stats']>
+  stats: NonNullable<ReturnType<typeof useDocumentStore.getState>['stats']>;
 }) {
   return (
     <>
@@ -176,5 +176,5 @@ function StatusStats({
       <span>{ja.status.parsedIn(stats.parseMs)}</span>
       <span>{ja.status.paintedIn(stats.paintMs)}</span>
     </>
-  )
+  );
 }

@@ -16,30 +16,30 @@
  * Rust の T0 は UNIX epoch で渡されているので、
  * `timeOrigin + now - t0EpochMs` で「T0 からの経過ミリ秒」になる。
  */
-import type { TraceConfig, TraceMark } from '@/platform'
+import type { TraceConfig, TraceMark } from '@/platform';
 
-let config: TraceConfig | null = null
-const marks: TraceMark[] = []
+let config: TraceConfig | null = null;
+const marks: TraceMark[] = [];
 
 export function initTrace(next: TraceConfig | null): void {
-  config = next
+  config = next;
 }
 
 export function isTracing(): boolean {
-  return config?.enabled === true
+  return config?.enabled === true;
 }
 
 /** `performance.now()` の値を T0 起点に載せ替える。 */
 function toT0(now: number): number {
-  if (!config) return now
-  return performance.timeOrigin + now - config.t0EpochMs
+  if (!config) return now;
+  return performance.timeOrigin + now - config.t0EpochMs;
 }
 
 export function mark(id: string, note?: string): void {
-  if (!config?.enabled) return
+  if (!config?.enabled) return;
   // performance.mark も打っておく。DevTools のタイムラインで見えるようにするため。
   try {
-    performance.mark(`marxdown:${id}`)
+    performance.mark(`marxdown:${id}`);
   } catch {
     // 計測が本体を壊してはいけない
   }
@@ -47,7 +47,7 @@ export function mark(id: string, note?: string): void {
     note === undefined
       ? { id, atMs: toT0(performance.now()) }
       : { id, atMs: toT0(performance.now()), note },
-  )
+  );
 }
 
 /**
@@ -57,13 +57,13 @@ export function mark(id: string, note?: string): void {
  * だからこそ Rust 側の注入スクリプトで先に記録しておく必要がある。
  */
 export function adoptT4(): void {
-  if (!config?.enabled) return
-  const raw = (globalThis as { __MARXDOWN_T4__?: number }).__MARXDOWN_T4__
-  if (typeof raw === 'number') marks.push({ id: 'T4', atMs: toT0(raw) })
+  if (!config?.enabled) return;
+  const raw = (globalThis as { __MARXDOWN_T4__?: number }).__MARXDOWN_T4__;
+  if (typeof raw === 'number') marks.push({ id: 'T4', atMs: toT0(raw) });
 }
 
 export function drain(): TraceMark[] {
-  const out = marks.slice()
-  marks.length = 0
-  return out
+  const out = marks.slice();
+  marks.length = 0;
+  return out;
 }

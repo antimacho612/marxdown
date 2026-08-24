@@ -1,6 +1,6 @@
-import { fileURLToPath, URL } from 'node:url'
+import { fileURLToPath, URL } from 'node:url';
 
-import { defineConfig } from 'vitest/config'
+import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
   resolve: {
@@ -16,4 +16,4 @@ export default defineConfig({
     // 既定は node。DOM が要るテストはファイル冒頭に `// @vitest-environment jsdom` を書く。
     environment: 'node',
   },
-})
+});

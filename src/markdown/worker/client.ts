@@ -11,16 +11,16 @@ import {
   type ParseResponse,
   type WorkerRequest,
   type WorkerResponse,
-} from './protocol'
+} from './protocol';
 
 export interface ParseOptions {
-  firstChunkBlocks?: number
-  chunkBlocks?: number
+  firstChunkBlocks?: number;
+  chunkBlocks?: number;
 }
 
 export interface MarkdownParser {
-  parse(text: string, options?: ParseOptions): Promise<ParseResponse>
-  dispose(): void
+  parse(text: string, options?: ParseOptions): Promise<ParseResponse>;
+  dispose(): void;
 }
 
 /** Worker を使う実装（本命）。 */
@@ -28,50 +28,50 @@ function createWorkerParser(): MarkdownParser {
   const worker = new Worker(new URL('./md-worker.ts', import.meta.url), {
     type: 'module',
     name: 'md-worker',
-  })
+  });
 
-  let nextId = 1
+  let nextId = 1;
   const pending = new Map<
     number,
     { resolve: (r: ParseResponse) => void; reject: (e: Error) => void }
-  >()
+  >();
 
   worker.addEventListener('message', (event: MessageEvent<WorkerResponse>) => {
-    const res = event.data
-    const entry = pending.get(res.id)
-    if (!entry) return
-    pending.delete(res.id)
-    if (res.type === 'parsed') entry.resolve(res)
-    else entry.reject(new Error(res.message))
-  })
+    const res = event.data;
+    const entry = pending.get(res.id);
+    if (!entry) return;
+    pending.delete(res.id);
+    if (res.type === 'parsed') entry.resolve(res);
+    else entry.reject(new Error(res.message));
+  });
 
   worker.addEventListener('error', (event) => {
-    const error = new Error(event.message || 'md-worker が落ちた')
-    for (const entry of pending.values()) entry.reject(error)
-    pending.clear()
-  })
+    const error = new Error(event.message || 'md-worker が落ちた');
+    for (const entry of pending.values()) entry.reject(error);
+    pending.clear();
+  });
 
   return {
     parse(text, options = {}) {
-      const id = nextId++
+      const id = nextId++;
       const req: WorkerRequest = {
         type: 'parse',
         id,
         text,
         firstChunkBlocks: options.firstChunkBlocks ?? DEFAULT_FIRST_CHUNK_BLOCKS,
         chunkBlocks: options.chunkBlocks ?? DEFAULT_CHUNK_BLOCKS,
-      }
+      };
       return new Promise<ParseResponse>((resolve, reject) => {
-        pending.set(id, { resolve, reject })
-        worker.postMessage(req)
-      })
+        pending.set(id, { resolve, reject });
+        worker.postMessage(req);
+      });
     },
     dispose() {
       // N-PERF-06: タブを閉じたときに確実に解放する
-      worker.terminate()
-      pending.clear()
+      worker.terminate();
+      pending.clear();
     },
-  }
+  };
 }
 
 /**
@@ -89,20 +89,20 @@ function createWorkerParser(): MarkdownParser {
  * `parseMs` の外側に出る点に注意（初回のみ）。
  */
 function createInlineParser(): MarkdownParser {
-  let nextId = 1
-  const pipeline = import('../pipeline')
+  let nextId = 1;
+  const pipeline = import('../pipeline');
 
   return {
     async parse(text, options = {}) {
-      const id = nextId++
-      const { renderChunks } = await pipeline
-      const { measure } = await import('../text-stats')
-      const started = performance.now()
+      const id = nextId++;
+      const { renderChunks } = await pipeline;
+      const { measure } = await import('../text-stats');
+      const started = performance.now();
       const result = renderChunks(
         text,
         options.firstChunkBlocks ?? DEFAULT_FIRST_CHUNK_BLOCKS,
         options.chunkBlocks ?? DEFAULT_CHUNK_BLOCKS,
-      )
+      );
       return {
         type: 'parsed',
         id,
@@ -111,12 +111,12 @@ function createInlineParser(): MarkdownParser {
         frontMatter: result.frontMatter,
         parseMs: performance.now() - started,
         textStats: measure(text),
-      }
+      };
     },
     dispose() {},
-  }
+  };
 }
 
 export function createParser(site: 'worker' | 'main'): MarkdownParser {
-  return site === 'worker' ? createWorkerParser() : createInlineParser()
+  return site === 'worker' ? createWorkerParser() : createInlineParser();
 }

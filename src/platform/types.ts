@@ -4,42 +4,42 @@
  * ここが唯一の対応表なので、Rust 側を変えたらここも必ず変える。
  */
 
-export type Eol = 'lf' | 'crlf'
+export type Eol = 'lf' | 'crlf';
 
-export type Encoding = 'utf8' | 'utf16-le' | 'utf16-be' | 'shift-jis' | 'euc-jp'
+export type Encoding = 'utf8' | 'utf16-le' | 'utf16-be' | 'shift-jis' | 'euc-jp';
 
-export type ViewMode = 'preview' | 'edit' | 'split'
+export type ViewMode = 'preview' | 'edit' | 'split';
 
 /** 02.architecture.md §4.2 `DocumentPayload` のメタ部分。 */
 export interface DocumentMeta {
   /** 正規化済み絶対パス */
-  path: string
-  eol: Eol
-  bom: boolean
-  encoding: Encoding
-  mtimeMs: number
-  size: number
-  readonly: boolean
+  path: string;
+  eol: Eol;
+  bom: boolean;
+  encoding: Encoding;
+  mtimeMs: number;
+  size: number;
+  readonly: boolean;
 }
 
 export interface DocumentPayload extends DocumentMeta {
   /** EOL を LF に正規化した本文 */
-  content: string
+  content: string;
 }
 
 export interface WriteRequest {
-  path: string
-  content: string
-  eol: Eol
-  bom: boolean
-  encoding: Encoding
+  path: string;
+  content: string;
+  eol: Eol;
+  bom: boolean;
+  encoding: Encoding;
   /** `null` は新規ファイル。既存ファイルがあれば衝突扱いになる。 */
-  expectedMtimeMs: number | null
+  expectedMtimeMs: number | null;
 }
 
 export type SaveResult =
   | { status: 'saved'; mtimeMs: number; size: number }
-  | { status: 'conflict'; diskMtimeMs: number }
+  | { status: 'conflict'; diskMtimeMs: number };
 
 /** `src-tauri/src/error.rs` の `CoreError` のシリアライズ形。 */
 export interface CoreError {
@@ -50,8 +50,8 @@ export interface CoreError {
     | 'too-large'
     | 'conflict'
     | 'invalid-argument'
-    | 'io'
-  message: string
+    | 'io';
+  message: string;
 }
 
 /* ------------------------------------------------------------------ */
@@ -67,63 +67,63 @@ export interface CoreError {
  */
 export interface SpikeFlags {
   /** S3: Markdown のパース場所 */
-  parse: 'worker' | 'main'
+  parse: 'worker' | 'main';
 }
 
 export interface TraceConfig {
-  enabled: boolean
+  enabled: boolean;
   /** T0 時点の UNIX epoch ミリ秒。performance.timeOrigin をこの軸に載せ替える。 */
-  t0EpochMs: number
+  t0EpochMs: number;
 }
 
 export interface BootstrapDocument extends DocumentMeta {
   /** 256KB を超えるファイルでは `null`。`readDocument` で取りに行く。 */
-  content: string | null
+  content: string | null;
 }
 
 export interface BootstrapError {
-  path: string
-  kind: CoreError['kind']
-  message: string
+  path: string;
+  kind: CoreError['kind'];
+  message: string;
 }
 
 /** 最近開いたファイル（F-OPEN-09）。`src-tauri/src/store.rs` の `RecentEntry`。 */
 export interface RecentEntry {
   /** 正規化済み絶対パス。表示用の分割は `splitPath` で行う。 */
-  path: string
-  openedAtMs: number
+  path: string;
+  openedAtMs: number;
 }
 
 /** `window.__MARXDOWN_BOOTSTRAP__` の中身。 */
 export interface Bootstrap {
-  version: number
-  document: BootstrapDocument | null
-  documentError: BootstrapError | null
-  mode: ViewMode | null
-  spike: SpikeFlags
-  trace: TraceConfig | null
-  pendingPaths: string[]
-  unknownArgs: string[]
+  version: number;
+  document: BootstrapDocument | null;
+  documentError: BootstrapError | null;
+  mode: ViewMode | null;
+  spike: SpikeFlags;
+  trace: TraceConfig | null;
+  pendingPaths: string[];
+  unknownArgs: string[];
   /** Welcome 画面が起動直後に描くため、IPC 往復ではなくここに載る。 */
-  recent: RecentEntry[]
+  recent: RecentEntry[];
   /** 表示倍率（F-VIEW-11）。最初のフレームから正しい倍率で描くために要る。 */
-  zoom: number
+  zoom: number;
 }
 
 /** 別インスタンスから転送された起動要求（ウォーム起動）。 */
 export interface OpenRequest {
   /** この要求の計測 ID。描画完了後に `warmDone` へ返す（S6）。 */
-  requestId: number
-  paths: string[]
-  newWindow: boolean
-  mode: ViewMode | null
-  trace: boolean
+  requestId: number;
+  paths: string[];
+  newWindow: boolean;
+  mode: ViewMode | null;
+  trace: boolean;
 }
 
 export interface TraceMark {
-  id: string
-  atMs: number
-  note?: string
+  id: string;
+  atMs: number;
+  note?: string;
 }
 
 /**
@@ -138,7 +138,7 @@ export type DragDropEvent =
   | { type: 'over' }
   | { type: 'drop'; paths: string[] }
   /** 外へ出た / 取り消された。 */
-  | { type: 'leave' }
+  | { type: 'leave' };
 
 /**
  * Platform 層のインタフェース。
@@ -147,46 +147,46 @@ export type DragDropEvent =
  * Vitest 上でも `dev:web` のブラウザ上でも同じコードが動く（02.architecture.md §3.1）。
  */
 export interface Platform {
-  readonly kind: 'tauri' | 'web'
+  readonly kind: 'tauri' | 'web';
   /** 同期的に読める初期ペイロード。IPC 往復を挟まないことが最重要。 */
-  getBootstrap(): Bootstrap | null
-  readDocument(path: string): Promise<DocumentPayload>
-  writeDocument(req: WriteRequest): Promise<SaveResult>
+  getBootstrap(): Bootstrap | null;
+  readDocument(path: string): Promise<DocumentPayload>;
+  writeDocument(req: WriteRequest): Promise<SaveResult>;
   /**
    * 相対パスの画像を、許可ディレクトリ配下であることを検証したうえで
    * **そのまま `<img src>` に入れられる URL** に変換する（F-VIEW-08 / N-SEC-05）。
    */
-  resolveAsset(href: string, baseDir: string): Promise<string>
+  resolveAsset(href: string, baseDir: string): Promise<string>;
   /** 最近開いたファイルに 1 件積む。更新後の一覧を返す（F-OPEN-09）。 */
-  pushRecent(path: string): Promise<RecentEntry[]>
+  pushRecent(path: string): Promise<RecentEntry[]>;
   /** 開けなくなったファイルを一覧から外す。更新後の一覧を返す。 */
-  removeRecent(path: string): Promise<RecentEntry[]>
+  removeRecent(path: string): Promise<RecentEntry[]>;
   /**
    * 表示倍率を永続化する（F-VIEW-11）。
    * 反映は呼び出し側が即座に行う。ここは保存だけなので、デバウンスして呼ぶこと。
    */
-  setZoom(zoom: number): Promise<void>
+  setZoom(zoom: number): Promise<void>;
   /**
    * ファイル選択ダイアログを開く（F-OPEN-07）。
    * 選ばれなければ `null`。返るのは正規化済み絶対パス。
    */
-  pickFile(): Promise<string | null>
+  pickFile(): Promise<string | null>;
   /** ウィンドウへのドラッグ＆ドロップを購読する（F-OPEN-08）。 */
-  onDragDrop(handler: (event: DragDropEvent) => void): () => void
+  onDragDrop(handler: (event: DragDropEvent) => void): () => void;
   /** 描画準備完了。ウィンドウを表示させる。 */
-  ready(): Promise<void>
-  reportTrace(marks: TraceMark[]): Promise<void>
+  ready(): Promise<void>;
+  reportTrace(marks: TraceMark[]): Promise<void>;
   /**
    * ウォーム起動の完了報告（S6）。argv 転送を受けてから
    * 「本文が読める」までの経過ミリ秒を返す。
    */
-  warmDone(requestId: number, path: string, detail: string): Promise<number | null>
-  openExternal(url: string): Promise<void>
+  warmDone(requestId: number, path: string, detail: string): Promise<number | null>;
+  openExternal(url: string): Promise<void>;
   /**
    * Markdown 以外のローカルファイルを OS の既定アプリで開く（F-VIEW-06）。
    * 許可ディレクトリの外は Rust 側で拒まれる。
    */
-  openLocalFile(path: string): Promise<void>
-  revealInFileManager(path: string): Promise<void>
-  onOpenRequest(handler: (req: OpenRequest) => void): () => void
+  openLocalFile(path: string): Promise<void>;
+  revealInFileManager(path: string): Promise<void>;
+  onOpenRequest(handler: (req: OpenRequest) => void): () => void;
 }

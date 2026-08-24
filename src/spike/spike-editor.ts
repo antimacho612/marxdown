@@ -9,11 +9,11 @@
  *
  * `?spike=editor` で開く。動的 import なので `main` チャンクには載らない。
  */
-import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirror/commands'
-import { markdown, markdownLanguage } from '@codemirror/lang-markdown'
-import { bracketMatching, defaultHighlightStyle, syntaxHighlighting } from '@codemirror/language'
-import { search, searchKeymap } from '@codemirror/search'
-import { EditorState } from '@codemirror/state'
+import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirror/commands';
+import { markdown, markdownLanguage } from '@codemirror/lang-markdown';
+import { bracketMatching, defaultHighlightStyle, syntaxHighlighting } from '@codemirror/language';
+import { search, searchKeymap } from '@codemirror/search';
+import { EditorState } from '@codemirror/state';
 import {
   EditorView,
   drawSelection,
@@ -23,10 +23,10 @@ import {
   keymap,
   lineNumbers,
   rectangularSelection,
-} from '@codemirror/view'
-import { vscodeKeymap } from '@replit/codemirror-vscode-keymap'
+} from '@codemirror/view';
+import { vscodeKeymap } from '@replit/codemirror-vscode-keymap';
 
-import { livePreview } from '@/features/editor/live-preview/decorations'
+import { livePreview } from '@/features/editor/live-preview/decorations';
 
 const SAMPLE = `# S4 / S5 スパイク
 
@@ -60,7 +60,7 @@ const x: number = 1
 | 表は | 装飾しない |
 | --- | --- |
 | 等幅のまま | 整形表示する |
-`
+`;
 
 function createEditor(parent: HTMLElement, useLivePreview: boolean): EditorView {
   return new EditorView({
@@ -97,55 +97,55 @@ function createEditor(parent: HTMLElement, useLivePreview: boolean): EditorView 
         ...(useLivePreview ? [livePreview()] : []),
       ],
     }),
-  })
+  });
 }
 
 export function mountEditorSpike(container: HTMLElement): () => void {
-  container.replaceChildren()
-  container.style.display = 'grid'
-  container.style.gridTemplateRows = 'auto 1fr'
-  container.style.height = '100%'
+  container.replaceChildren();
+  container.style.display = 'grid';
+  container.style.gridTemplateRows = 'auto 1fr';
+  container.style.height = '100%';
 
-  const bar = document.createElement('div')
+  const bar = document.createElement('div');
   bar.style.cssText =
-    'display:flex;gap:12px;align-items:center;padding:8px 16px;border-bottom:1px solid var(--mx-color-border-subtle);background:var(--mx-color-bg-subtle);font-size:13px'
+    'display:flex;gap:12px;align-items:center;padding:8px 16px;border-bottom:1px solid var(--mx-color-border-subtle);background:var(--mx-color-bg-subtle);font-size:13px';
 
-  const label = document.createElement('label')
-  label.style.cssText = 'display:flex;gap:6px;align-items:center;cursor:pointer'
-  const toggle = document.createElement('input')
-  toggle.type = 'checkbox'
-  toggle.checked = true
-  label.append(toggle, document.createTextNode('Live Preview の装飾 (S5)'))
+  const label = document.createElement('label');
+  label.style.cssText = 'display:flex;gap:6px;align-items:center;cursor:pointer';
+  const toggle = document.createElement('input');
+  toggle.type = 'checkbox';
+  toggle.checked = true;
+  label.append(toggle, document.createTextNode('Live Preview の装飾 (S5)'));
 
-  const note = document.createElement('span')
-  note.style.color = 'var(--mx-color-fg-muted)'
-  note.textContent = 'チェックを外すと素の Edit モード相当になる。切り替えて比べる。'
+  const note = document.createElement('span');
+  note.style.color = 'var(--mx-color-fg-muted)';
+  note.textContent = 'チェックを外すと素の Edit モード相当になる。切り替えて比べる。';
 
-  bar.append(label, note)
+  bar.append(label, note);
 
-  const host = document.createElement('div')
-  host.style.cssText = 'min-height:0;overflow:hidden'
+  const host = document.createElement('div');
+  host.style.cssText = 'min-height:0;overflow:hidden';
 
-  container.append(bar, host)
+  container.append(bar, host);
 
-  let view = createEditor(host, toggle.checked)
+  let view = createEditor(host, toggle.checked);
 
   toggle.addEventListener('change', () => {
     // ドキュメントを引き継いで作り直す。
     // M2 以降は同一インスタンスの Compartment 差し替えにする（02.architecture.md §7.1）が、
     // スパイクの目的は「装飾の有無で挙動がどう変わるか」の比較なので、ここは作り直しでよい。
-    const doc = view.state.doc.toString()
-    const selection = view.state.selection
-    view.destroy()
-    view = createEditor(host, toggle.checked)
-    view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: doc }, selection })
-    view.focus()
-  })
+    const doc = view.state.doc.toString();
+    const selection = view.state.selection;
+    view.destroy();
+    view = createEditor(host, toggle.checked);
+    view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: doc }, selection });
+    view.focus();
+  });
 
-  view.focus()
+  view.focus();
 
   return () => {
-    view.destroy()
-    container.replaceChildren()
-  }
+    view.destroy();
+    container.replaceChildren();
+  };
 }

@@ -21,17 +21,17 @@
  * どの分岐に落ちても `preventDefault()` する。WebView がページ遷移すると
  * アプリのシェルごと差し替わり、復帰する手段が無い（N-SEC-04）。
  */
-import { openPath } from '@/features/document/open'
-import { useDocumentStore } from '@/features/document/store'
-import { ja } from '@/i18n/ja'
-import { dirOf, isMarkdownPath, joinPath } from '@/lib/path'
-import { getPlatform } from '@/platform'
+import { openPath } from '@/features/document/open';
+import { useDocumentStore } from '@/features/document/store';
+import { ja } from '@/i18n/ja';
+import { dirOf, isMarkdownPath, joinPath } from '@/lib/path';
+import { getPlatform } from '@/platform';
 
 /** 既定ブラウザ / メールクライアントに渡してよいスキーム。 */
-const EXTERNAL = /^(?:https?|mailto):/i
+const EXTERNAL = /^(?:https?|mailto):/i;
 
 /** 何らかのスキームが付いているか。付いていなければ相対パス。 */
-const SCHEME = /^([a-z][a-z0-9+.-]*):/i
+const SCHEME = /^([a-z][a-z0-9+.-]*):/i;
 
 /**
  * プレビュー内のクリックを 1 か所で受ける。
@@ -43,54 +43,54 @@ export function installLinkHandler(container: HTMLElement): () => void {
   const onClick = (event: MouseEvent) => {
     // 修飾クリックと中クリックは「別の場所で開く」意図。M1 にタブが無いので、
     // 何もしないほうが、既定の挙動（＝ナビゲーション）が漏れるより安全。
-    if (event.defaultPrevented) return
+    if (event.defaultPrevented) return;
 
-    const anchor = (event.target as Element | null)?.closest('a')
-    if (!anchor) return
+    const anchor = (event.target as Element | null)?.closest('a');
+    if (!anchor) return;
 
-    const href = anchor.getAttribute('href')
-    event.preventDefault()
+    const href = anchor.getAttribute('href');
+    event.preventDefault();
 
     // サニタイザが落とした href（未知のスキーム）はここに来ない。
     // 二重に見るのは、DOMPurify の既定が緩んだときの影響を受けないため。
-    if (href === null || href === '') return
+    if (href === null || href === '') return;
 
-    handle(href, container)
-  }
+    handle(href, container);
+  };
 
-  container.addEventListener('click', onClick)
-  return () => container.removeEventListener('click', onClick)
+  container.addEventListener('click', onClick);
+  return () => container.removeEventListener('click', onClick);
 }
 
 function handle(href: string, container: HTMLElement): void {
   // --- ページ内アンカー（F-VIEW-07） ---------------------------------
   if (href.startsWith('#')) {
-    scrollToAnchor(container, href.slice(1))
-    return
+    scrollToAnchor(container, href.slice(1));
+    return;
   }
 
-  const scheme = SCHEME.exec(href)?.[1]?.toLowerCase()
+  const scheme = SCHEME.exec(href)?.[1]?.toLowerCase();
 
   // --- 外部リンク（F-VIEW-06 / N-SEC-04） ----------------------------
   if (scheme !== undefined && EXTERNAL.test(href)) {
-    void getPlatform().openExternal(href)
-    return
+    void getPlatform().openExternal(href);
+    return;
   }
 
   // --- ローカルのパス（F-VIEW-05） -----------------------------------
-  const localPath = toLocalPath(href, scheme)
-  if (localPath === null) return // 未知のスキーム。何もしない
+  const localPath = toLocalPath(href, scheme);
+  if (localPath === null) return; // 未知のスキーム。何もしない
 
-  const baseDir = dirOf(useDocumentStore.getState().meta?.path ?? '')
-  const resolved = joinPath(baseDir, localPath)
+  const baseDir = dirOf(useDocumentStore.getState().meta?.path ?? '');
+  const resolved = joinPath(baseDir, localPath);
 
   if (isMarkdownPath(resolved)) {
     // 相対パスの正規化は Rust 側（`read_document` の canonicalize）に任せる。
-    void openPath(resolved)
-    return
+    void openPath(resolved);
+    return;
   }
 
-  confirmOpenExternally(resolved)
+  confirmOpenExternally(resolved);
 }
 
 /**
@@ -114,18 +114,18 @@ function confirmOpenExternally(path: string): void {
               // 許可ディレクトリの外だと Rust 側が拒む。何が起きたか黙らない。
               useDocumentStore
                 .getState()
-                .setNotice({ level: 'error', message: ja.link.outOfScope(path) })
-            })
+                .setNotice({ level: 'error', message: ja.link.outOfScope(path) });
+            });
         },
       },
       {
         label: ja.link.reveal,
         run: () => {
-          void getPlatform().revealInFileManager(path)
+          void getPlatform().revealInFileManager(path);
         },
       },
     ],
-  })
+  });
 }
 
 /**
@@ -135,14 +135,14 @@ function confirmOpenExternally(path: string): void {
  * 同じ id があった場合に本文の外へ飛ばないようにするため。
  */
 function scrollToAnchor(container: HTMLElement, rawId: string): void {
-  const id = safeDecode(rawId)
-  if (id === '') return
+  const id = safeDecode(rawId);
+  if (id === '') return;
 
   const target =
     container.querySelector(`[id="${cssEscape(id)}"]`) ??
-    container.querySelector(`[name="${cssEscape(id)}"]`)
+    container.querySelector(`[name="${cssEscape(id)}"]`);
 
-  target?.scrollIntoView({ block: 'start', behavior: 'auto' })
+  target?.scrollIntoView({ block: 'start', behavior: 'auto' });
 }
 
 /**
@@ -152,25 +152,25 @@ function scrollToAnchor(container: HTMLElement, rawId: string): void {
  * `sanitize.ts` の `isAllowedUri` と同じ判定をここでも行う。
  */
 function toLocalPath(href: string, scheme: string | undefined): string | null {
-  if (scheme === undefined) return href // 相対パス
-  if (scheme.length === 1 && /^[a-z]:[\\/]/i.test(href)) return href // ドライブレター
+  if (scheme === undefined) return href; // 相対パス
+  if (scheme.length === 1 && /^[a-z]:[\\/]/i.test(href)) return href; // ドライブレター
 
   if (scheme === 'file') {
     try {
-      return safeDecode(new URL(href).pathname.replace(/^\/(?=[a-z]:)/i, ''))
+      return safeDecode(new URL(href).pathname.replace(/^\/(?=[a-z]:)/i, ''));
     } catch {
-      return null
+      return null;
     }
   }
 
-  return null
+  return null;
 }
 
 function safeDecode(value: string): string {
   try {
-    return decodeURIComponent(value)
+    return decodeURIComponent(value);
   } catch {
-    return value
+    return value;
   }
 }
 
@@ -178,5 +178,5 @@ function safeDecode(value: string): string {
 function cssEscape(value: string): string {
   return typeof CSS !== 'undefined' && typeof CSS.escape === 'function'
     ? CSS.escape(value)
-    : value.replace(/["\\]/g, '\\$&')
+    : value.replace(/["\\]/g, '\\$&');
 }

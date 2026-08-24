@@ -1,10 +1,10 @@
-import { fileURLToPath, URL } from 'node:url'
+import { fileURLToPath, URL } from 'node:url';
 
-import react from '@vitejs/plugin-react'
-import { visualizer } from 'rollup-plugin-visualizer'
-import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react';
+import { visualizer } from 'rollup-plugin-visualizer';
+import { defineConfig } from 'vite';
 
-const host = process.env.TAURI_DEV_HOST
+const host = process.env.TAURI_DEV_HOST;
 
 /**
  * チャンク境界は 02.architecture.md §5.3 の表がそのまま仕様になっている。
@@ -55,8 +55,8 @@ export default defineConfig(({ mode }) => ({
           // Vite が解決するのは ESM ビルド（`es/`）で、CJS の `lib/` ではない。
           const isLanguage = /highlight\.js[\\/](?:es|lib)[\\/]languages[\\/]/.test(
             chunk.facadeModuleId ?? '',
-          )
-          return isLanguage ? 'assets/hljs-[name]-[hash].js' : 'assets/[name]-[hash].js'
+          );
+          return isLanguage ? 'assets/hljs-[name]-[hash].js' : 'assets/[name]-[hash].js';
         },
         assetFileNames: 'assets/[name]-[hash][extname]',
         manualChunks(id) {
@@ -68,9 +68,9 @@ export default defineConfig(({ mode }) => ({
             id.includes('node_modules/style-mod') ||
             id.includes('node_modules/w3c-keyname')
           ) {
-            return 'editor'
+            return 'editor';
           }
-          return undefined
+          return undefined;
         },
       },
     },
@@ -84,4 +84,4 @@ export default defineConfig(({ mode }) => ({
     hmr: host ? { protocol: 'ws', host, port: 1421 } : undefined,
     watch: { ignored: ['**/src-tauri/**', '**/bench/fixtures/**'] },
   },
-}))
+}));

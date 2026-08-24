@@ -16,24 +16,24 @@
  * 適用は CSS カスタムプロパティの書き換え 1 回で終わる。React の再レンダリングは
  * 挟まない（ADR-0005）。ストアに書くのは、ステータスバーに数字を出すためだけ。
  */
-import { useViewStore } from '@/features/view/store'
-import { getPlatform } from '@/platform'
+import { useViewStore } from '@/features/view/store';
+import { getPlatform } from '@/platform';
 
 /** `src-tauri/src/store.rs` の `ZOOM_MIN` / `ZOOM_MAX` と揃える。 */
-export const ZOOM_MIN = 0.5
-export const ZOOM_MAX = 3
-export const ZOOM_DEFAULT = 1
+export const ZOOM_MIN = 0.5;
+export const ZOOM_MAX = 3;
+export const ZOOM_DEFAULT = 1;
 
 /**
  * 倍率の刻み。等比ではなく、よく使う値（100% / 125% / 150%）にきっちり止まるよう並べる。
  * 「押した回数」ではなく「見えている数字」で操作する道具にしたい。
  */
-const STEPS = [0.5, 0.67, 0.75, 0.8, 0.9, 1, 1.1, 1.25, 1.5, 1.75, 2, 2.5, 3] as const
+const STEPS = [0.5, 0.67, 0.75, 0.8, 0.9, 1, 1.1, 1.25, 1.5, 1.75, 2, 2.5, 3] as const;
 
 /** 永続化を待つ時間。`Ctrl+=` の連打で毎回ファイルを書かないため。 */
-const PERSIST_DEBOUNCE_MS = 400
+const PERSIST_DEBOUNCE_MS = 400;
 
-let persistTimer: ReturnType<typeof setTimeout> | null = null
+let persistTimer: ReturnType<typeof setTimeout> | null = null;
 
 /**
  * 倍率を適用する。
@@ -42,28 +42,28 @@ let persistTimer: ReturnType<typeof setTimeout> | null = null
  * （読み出した値を、そのまま書き戻す必要はない）。
  */
 export function applyZoom(zoom: number, persist = true): number {
-  const next = clamp(zoom)
-  document.documentElement.style.setProperty('--mx-zoom', String(next))
-  useViewStore.getState().setZoom(next)
-  if (persist) schedulePersist(next)
-  return next
+  const next = clamp(zoom);
+  document.documentElement.style.setProperty('--mx-zoom', String(next));
+  useViewStore.getState().setZoom(next);
+  if (persist) schedulePersist(next);
+  return next;
 }
 
 export function zoomIn(): number {
-  return applyZoom(nextStep(useViewStore.getState().zoom, 1))
+  return applyZoom(nextStep(useViewStore.getState().zoom, 1));
 }
 
 export function zoomOut(): number {
-  return applyZoom(nextStep(useViewStore.getState().zoom, -1))
+  return applyZoom(nextStep(useViewStore.getState().zoom, -1));
 }
 
 export function zoomReset(): number {
-  return applyZoom(ZOOM_DEFAULT)
+  return applyZoom(ZOOM_DEFAULT);
 }
 
 /** 表示用。`1.25` → `125%`。 */
 export function formatZoom(zoom: number): string {
-  return `${Math.round(zoom * 100)}%`
+  return `${Math.round(zoom * 100)}%`;
 }
 
 /**
@@ -74,14 +74,14 @@ export function formatZoom(zoom: number): string {
  */
 function nextStep(current: number, direction: 1 | -1): number {
   if (direction === 1) {
-    return STEPS.find((s) => s > current + 1e-6) ?? ZOOM_MAX
+    return STEPS.find((s) => s > current + 1e-6) ?? ZOOM_MAX;
   }
-  return STEPS.findLast((s) => s < current - 1e-6) ?? ZOOM_MIN
+  return STEPS.findLast((s) => s < current - 1e-6) ?? ZOOM_MIN;
 }
 
 function clamp(zoom: number): number {
-  if (!Number.isFinite(zoom)) return ZOOM_DEFAULT
-  return Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, zoom))
+  if (!Number.isFinite(zoom)) return ZOOM_DEFAULT;
+  return Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, zoom));
 }
 
 /**
@@ -89,9 +89,9 @@ function clamp(zoom: number): number {
  * （05.performance-budget.md §4.5）。
  */
 function schedulePersist(zoom: number): void {
-  if (persistTimer !== null) clearTimeout(persistTimer)
+  if (persistTimer !== null) clearTimeout(persistTimer);
   persistTimer = setTimeout(() => {
-    persistTimer = null
-    void getPlatform().setZoom(zoom)
-  }, PERSIST_DEBOUNCE_MS)
+    persistTimer = null;
+    void getPlatform().setZoom(zoom);
+  }, PERSIST_DEBOUNCE_MS);
 }

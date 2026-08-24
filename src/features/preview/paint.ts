@@ -10,14 +10,14 @@
  * 2. 残りは requestIdleCallback で順次追加
  * ```
  */
-import { requestIdle, type IdleDeadline } from '@/lib/idle'
-import { sanitize } from '@/markdown/sanitize'
+import { requestIdle, type IdleDeadline } from '@/lib/idle';
+import { sanitize } from '@/markdown/sanitize';
 
 export interface PaintResult {
   /** 最初のチャンクが入った時刻（performance.now()）。 */
-  firstChunkAt: number
+  firstChunkAt: number;
   /** すべてのチャンクが入ったら解決する。 */
-  done: Promise<number>
+  done: Promise<number>;
 }
 
 /**
@@ -31,55 +31,55 @@ export function paint(
   chunks: string[],
   frontMatter: string | null = null,
 ): PaintResult {
-  container.replaceChildren()
+  container.replaceChildren();
 
   // Front Matter は本文と一緒にスクロールするため、プレビューの中に入れる（F-VIEW-09）。
   // textContent で入れるので、中身がどんな文字列でもここから HTML にはならない。
   if (frontMatter !== null) {
-    const pre = document.createElement('pre')
-    pre.className = 'mx-front-matter'
-    pre.textContent = frontMatter
-    container.append(pre)
+    const pre = document.createElement('pre');
+    pre.className = 'mx-front-matter';
+    pre.textContent = frontMatter;
+    container.append(pre);
   }
 
-  const first = chunks[0]
+  const first = chunks[0];
   if (first === undefined) {
-    const firstChunkAt = performance.now()
-    return { firstChunkAt, done: Promise.resolve(firstChunkAt) }
+    const firstChunkAt = performance.now();
+    return { firstChunkAt, done: Promise.resolve(firstChunkAt) };
   }
 
   // 本文幅の基準点（`.mx-content`）を 1 箇所に絞る。見出しごとに font-size が
   // 違っても、`ch` はここでしか計算されないので列幅がずれない（Issue #4）。
-  const content = document.createElement('div')
-  content.className = 'mx-content'
-  container.append(content)
-  content.append(toFragment(first))
-  const firstChunkAt = performance.now()
+  const content = document.createElement('div');
+  content.className = 'mx-content';
+  container.append(content);
+  content.append(toFragment(first));
+  const firstChunkAt = performance.now();
 
-  const rest = chunks.slice(1)
+  const rest = chunks.slice(1);
   if (rest.length === 0) {
-    return { firstChunkAt, done: Promise.resolve(firstChunkAt) }
+    return { firstChunkAt, done: Promise.resolve(firstChunkAt) };
   }
 
   const done = new Promise<number>((resolve) => {
-    let index = 0
+    let index = 0;
     const step = (deadline: IdleDeadline) => {
       // 1 回のアイドルで入れられるだけ入れる。1 チャンクずつだと
       // huge.md で idle コールバックの往復回数が支配的になる。
       do {
-        const chunk = rest[index]
-        if (chunk === undefined) break
-        content.append(toFragment(chunk))
-        index++
-      } while (index < rest.length && (deadline.timeRemaining() > 4 || deadline.didTimeout))
+        const chunk = rest[index];
+        if (chunk === undefined) break;
+        content.append(toFragment(chunk));
+        index++;
+      } while (index < rest.length && (deadline.timeRemaining() > 4 || deadline.didTimeout));
 
-      if (index < rest.length) requestIdle(step)
-      else resolve(performance.now())
-    }
-    requestIdle(step)
-  })
+      if (index < rest.length) requestIdle(step);
+      else resolve(performance.now());
+    };
+    requestIdle(step);
+  });
 
-  return { firstChunkAt, done }
+  return { firstChunkAt, done };
 }
 
 /**
@@ -89,7 +89,7 @@ export function paint(
  * `<template>` 経由でパースしてから append することで、追記が O(追加分) になる。
  */
 function toFragment(html: string): DocumentFragment {
-  const template = document.createElement('template')
-  template.innerHTML = sanitize(html)
-  return template.content
+  const template = document.createElement('template');
+  template.innerHTML = sanitize(html);
+  return template.content;
 }

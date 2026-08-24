@@ -4,9 +4,9 @@
  * 02.architecture.md §3.1: 「どこからでも `invoke()` が呼ばれる」状態を防ぐ。
  * IPC 呼び出し回数は性能に直結する。
  */
-import { convertFileSrc, invoke } from '@tauri-apps/api/core'
-import { listen, type UnlistenFn } from '@tauri-apps/api/event'
-import { getCurrentWebview } from '@tauri-apps/api/webview'
+import { convertFileSrc, invoke } from '@tauri-apps/api/core';
+import { listen, type UnlistenFn } from '@tauri-apps/api/event';
+import { getCurrentWebview } from '@tauri-apps/api/webview';
 
 import type {
   Bootstrap,
@@ -17,9 +17,9 @@ import type {
   SaveResult,
   TraceMark,
   WriteRequest,
-} from './types'
+} from './types';
 
-const EVENT_OPEN_REQUEST = 'marxdown://open-request'
+const EVENT_OPEN_REQUEST = 'marxdown://open-request';
 
 /**
  * Tauri の購読 API を「同期的に解除関数を返す」形に均す。
@@ -29,102 +29,102 @@ const EVENT_OPEN_REQUEST = 'marxdown://open-request'
  * 知らずに済む。
  */
 function subscribe(start: () => Promise<UnlistenFn>): () => void {
-  let dispose: UnlistenFn | null = null
-  let disposed = false
+  let dispose: UnlistenFn | null = null;
+  let disposed = false;
 
   void start().then((un) => {
-    if (disposed) un()
-    else dispose = un
-    return un
-  })
+    if (disposed) un();
+    else dispose = un;
+    return un;
+  });
 
   return () => {
-    disposed = true
-    dispose?.()
-  }
+    disposed = true;
+    dispose?.();
+  };
 }
 
 declare global {
   // eslint-disable-next-line no-var
-  var __MARXDOWN_BOOTSTRAP__: Bootstrap | undefined
+  var __MARXDOWN_BOOTSTRAP__: Bootstrap | undefined;
   // eslint-disable-next-line no-var
-  var __MARXDOWN_T4__: number | undefined
+  var __MARXDOWN_T4__: number | undefined;
 }
 
 export const tauriPlatform: Platform = {
   kind: 'tauri',
 
   getBootstrap() {
-    return globalThis.__MARXDOWN_BOOTSTRAP__ ?? null
+    return globalThis.__MARXDOWN_BOOTSTRAP__ ?? null;
   },
 
   readDocument(path) {
-    return invoke<DocumentPayload>('read_document', { path })
+    return invoke<DocumentPayload>('read_document', { path });
   },
 
   writeDocument(req: WriteRequest) {
-    return invoke<SaveResult>('write_document', { req })
+    return invoke<SaveResult>('write_document', { req });
   },
 
   async resolveAsset(href, baseDir) {
     // Rust が返すのは検証済みの絶対パス。`asset:` プロトコルの URL に変換して
     // 初めて WebView が読める（CSP の `img-src` が許可しているのはこの形）。
-    return convertFileSrc(await invoke<string>('resolve_asset', { href, baseDir }))
+    return convertFileSrc(await invoke<string>('resolve_asset', { href, baseDir }));
   },
 
   pushRecent(path) {
-    return invoke<RecentEntry[]>('store_push_recent', { path })
+    return invoke<RecentEntry[]>('store_push_recent', { path });
   },
 
   removeRecent(path) {
-    return invoke<RecentEntry[]>('store_remove_recent', { path })
+    return invoke<RecentEntry[]>('store_remove_recent', { path });
   },
 
   setZoom(zoom) {
-    return invoke<void>('store_set_zoom', { zoom })
+    return invoke<void>('store_set_zoom', { zoom });
   },
 
   pickFile() {
-    return invoke<string | null>('pick_file')
+    return invoke<string | null>('pick_file');
   },
 
   onDragDrop(handler) {
     return subscribe(() =>
       getCurrentWebview().onDragDropEvent(({ payload }) => {
-        if (payload.type === 'drop') handler({ type: 'drop', paths: payload.paths })
-        else if (payload.type === 'over') handler({ type: 'over' })
-        else handler({ type: 'leave' })
+        if (payload.type === 'drop') handler({ type: 'drop', paths: payload.paths });
+        else if (payload.type === 'over') handler({ type: 'over' });
+        else handler({ type: 'leave' });
       }),
-    )
+    );
   },
 
   ready() {
-    return invoke<void>('ready')
+    return invoke<void>('ready');
   },
 
   reportTrace(marks: TraceMark[]) {
-    return invoke<void>('report_trace', { marks })
+    return invoke<void>('report_trace', { marks });
   },
 
   warmDone(requestId, path, detail) {
-    return invoke<number | null>('warm_done', { requestId, path, detail })
+    return invoke<number | null>('warm_done', { requestId, path, detail });
   },
 
   openExternal(url) {
-    return invoke<void>('open_external', { url })
+    return invoke<void>('open_external', { url });
   },
 
   openLocalFile(path) {
-    return invoke<void>('open_local_file', { path })
+    return invoke<void>('open_local_file', { path });
   },
 
   revealInFileManager(path) {
-    return invoke<void>('reveal_in_file_manager', { path })
+    return invoke<void>('reveal_in_file_manager', { path });
   },
 
   onOpenRequest(handler) {
     return subscribe(() =>
       listen<OpenRequest>(EVENT_OPEN_REQUEST, (event) => handler(event.payload)),
-    )
+    );
   },
-}
+};

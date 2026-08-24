@@ -10,23 +10,23 @@
  * 150KB の予算計測（size-limit の `main-*.js`）が実態を映さなくなる。
  * **予算を守るためには、予算の計測対象に載っている必要がある。**
  */
-import '@/styles/tokens.css'
-import '@/styles/reset.css'
-import '@/styles/shell.css'
-import '@/styles/preview/preview.css'
-import { createRoot } from 'react-dom/client'
+import '@/styles/tokens.css';
+import '@/styles/reset.css';
+import '@/styles/shell.css';
+import '@/styles/preview/preview.css';
+import { createRoot } from 'react-dom/client';
 
-import { App } from '@/app/App'
-import { startup } from '@/app/bootstrap'
+import { App } from '@/app/App';
+import { startup } from '@/app/bootstrap';
 
-const root = document.getElementById('root')
+const root = document.getElementById('root');
 
 function renderShell(): void {
-  if (!root) return
+  if (!root) return;
 
   // StrictMode は付けない。開発時に副作用が 2 回走ると、
   // 起動計測と Worker への送信回数が実態と変わってしまう。
-  createRoot(root).render(<App />)
+  createRoot(root).render(<App />);
 }
 
 /**
@@ -37,14 +37,14 @@ function renderShell(): void {
  * （02.architecture.md §5.1 の要点 3）の実証になっている。
  */
 function spikeRoute(): string | null {
-  return new URLSearchParams(globalThis.location.search).get('spike')
+  return new URLSearchParams(globalThis.location.search).get('spike');
 }
 
 if (spikeRoute() === 'editor') {
-  const host = document.getElementById('mx-preview')
+  const host = document.getElementById('mx-preview');
   if (host) {
-    void import('@/spike/spike-editor').then(({ mountEditorSpike }) => mountEditorSpike(host))
+    void import('@/spike/spike-editor').then(({ mountEditorSpike }) => mountEditorSpike(host));
   }
 } else {
-  void startup(renderShell)
+  void startup(renderShell);
 }

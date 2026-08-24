@@ -16,31 +16,31 @@
  * 3. `Decoration.replace` で記号を隠したときの選択・カーソル移動の挙動
  * 4. IME 入力中に装飾が暴れないか（M5 の最大リスク・完了条件）
  */
-import { syntaxTree } from '@codemirror/language'
-import { type Extension, type Range, StateEffect, StateField } from '@codemirror/state'
+import { syntaxTree } from '@codemirror/language';
+import { type Extension, type Range, StateEffect, StateField } from '@codemirror/state';
 import {
   Decoration,
   type DecorationSet,
   EditorView,
   ViewPlugin,
   type ViewUpdate,
-} from '@codemirror/view'
+} from '@codemirror/view';
 
 /** 見出しレベルごとの行装飾。実サイズはテーマ側で決める。 */
 const HEADING_LINE = [1, 2, 3, 4, 5, 6].map((level) =>
   Decoration.line({ class: `cm-mx-heading cm-mx-h${level}` }),
-)
+);
 
-const STRONG_MARK = Decoration.mark({ class: 'cm-mx-strong' })
-const EM_MARK = Decoration.mark({ class: 'cm-mx-em' })
+const STRONG_MARK = Decoration.mark({ class: 'cm-mx-strong' });
+const EM_MARK = Decoration.mark({ class: 'cm-mx-em' });
 /** 記法そのものを隠す。`replace` なので幅ゼロになる。 */
-const HIDE = Decoration.replace({})
+const HIDE = Decoration.replace({});
 
 /* ------------------------------------------------------------------ */
 /* IME 変換中の抑制                                                    */
 /* ------------------------------------------------------------------ */
 
-const setComposing = StateEffect.define<boolean>()
+const setComposing = StateEffect.define<boolean>();
 
 /**
  * IME 変換中は装飾を更新しない。
@@ -53,26 +53,26 @@ const composingField = StateField.define<boolean>({
   create: () => false,
   update(value, tr) {
     for (const effect of tr.effects) {
-      if (effect.is(setComposing)) return effect.value
+      if (effect.is(setComposing)) return effect.value;
     }
-    return value
+    return value;
   },
-})
+});
 
 const compositionTracker = EditorView.domEventHandlers({
   compositionstart(_event, view) {
-    view.dispatch({ effects: setComposing.of(true) })
-    return false
+    view.dispatch({ effects: setComposing.of(true) });
+    return false;
   },
   compositionend(_event, view) {
     // compositionend の直後はまだ確定テキストが反映されていないことがある。
     // 次のフレームで解除して、装飾の再計算を確定後に回す。
     requestAnimationFrame(() => {
-      view.dispatch({ effects: setComposing.of(false) })
-    })
-    return false
+      view.dispatch({ effects: setComposing.of(false) });
+    });
+    return false;
   },
-})
+});
 
 /* ------------------------------------------------------------------ */
 /* 装飾の構築                                                          */
@@ -80,12 +80,12 @@ const compositionTracker = EditorView.domEventHandlers({
 
 /** カーソル（と選択範囲の端）がある行の集合。ここでは記法を隠さない。 */
 function revealedLines(view: EditorView): Set<number> {
-  const lines = new Set<number>()
+  const lines = new Set<number>();
   for (const range of view.state.selection.ranges) {
-    lines.add(view.state.doc.lineAt(range.head).number)
-    if (!range.empty) lines.add(view.state.doc.lineAt(range.anchor).number)
+    lines.add(view.state.doc.lineAt(range.head).number);
+    if (!range.empty) lines.add(view.state.doc.lineAt(range.anchor).number);
   }
-  return lines
+  return lines;
 }
 
 /**
@@ -96,69 +96,69 @@ function revealedLines(view: EditorView): Set<number> {
  * 第 2 引数がソートを引き受ける。
  */
 function build(view: EditorView): DecorationSet {
-  const ranges: Range<Decoration>[] = []
-  const revealed = revealedLines(view)
-  const seenLines = new Set<number>()
+  const ranges: Range<Decoration>[] = [];
+  const revealed = revealedLines(view);
+  const seenLines = new Set<number>();
 
   for (const { from, to } of view.visibleRanges) {
     syntaxTree(view.state).iterate({
       from,
       to,
       enter: (node) => {
-        const headingMatch = /^ATXHeading([1-6])$/.exec(node.name)
+        const headingMatch = /^ATXHeading([1-6])$/.exec(node.name);
         if (headingMatch?.[1]) {
-          const line = view.state.doc.lineAt(node.from)
+          const line = view.state.doc.lineAt(node.from);
           if (!seenLines.has(line.number)) {
-            seenLines.add(line.number)
-            const deco = HEADING_LINE[Number(headingMatch[1]) - 1]
-            if (deco) ranges.push(deco.range(line.from))
+            seenLines.add(line.number);
+            const deco = HEADING_LINE[Number(headingMatch[1]) - 1];
+            if (deco) ranges.push(deco.range(line.from));
           }
-          return
+          return;
         }
 
         // `#` の記号。カーソル行でなければ、続く空白ごと隠す。
         // 空白を残すと本文が 1 文字ぶん右にずれて、見出しの左端が揃わない。
         if (node.name === 'HeaderMark') {
-          const line = view.state.doc.lineAt(node.from)
-          if (revealed.has(line.number)) return
-          const next = view.state.doc.sliceString(node.to, node.to + 1)
-          const end = next === ' ' ? node.to + 1 : node.to
-          if (end > node.from) ranges.push(HIDE.range(node.from, end))
-          return
+          const line = view.state.doc.lineAt(node.from);
+          if (revealed.has(line.number)) return;
+          const next = view.state.doc.sliceString(node.to, node.to + 1);
+          const end = next === ' ' ? node.to + 1 : node.to;
+          if (end > node.from) ranges.push(HIDE.range(node.from, end));
+          return;
         }
 
         if (node.name === 'StrongEmphasis') {
-          ranges.push(STRONG_MARK.range(node.from, node.to))
-          return
+          ranges.push(STRONG_MARK.range(node.from, node.to));
+          return;
         }
         if (node.name === 'Emphasis') {
-          ranges.push(EM_MARK.range(node.from, node.to))
-          return
+          ranges.push(EM_MARK.range(node.from, node.to));
+          return;
         }
         if (node.name === 'EmphasisMark') {
-          const line = view.state.doc.lineAt(node.from)
-          if (!revealed.has(line.number)) ranges.push(HIDE.range(node.from, node.to))
+          const line = view.state.doc.lineAt(node.from);
+          if (!revealed.has(line.number)) ranges.push(HIDE.range(node.from, node.to));
         }
       },
-    })
+    });
   }
 
-  return Decoration.set(ranges, true)
+  return Decoration.set(ranges, true);
 }
 
 const livePreviewPlugin = ViewPlugin.fromClass(
   class {
-    decorations: DecorationSet
+    decorations: DecorationSet;
 
     constructor(view: EditorView) {
-      this.decorations = build(view)
+      this.decorations = build(view);
     }
 
     update(update: ViewUpdate) {
       // IME 変換中は一切触らない
-      if (update.state.field(composingField, false) === true) return
+      if (update.state.field(composingField, false) === true) return;
       if (update.docChanged || update.viewportChanged || update.selectionSet) {
-        this.decorations = build(update.view)
+        this.decorations = build(update.view);
       }
     }
   },
@@ -169,7 +169,7 @@ const livePreviewPlugin = ViewPlugin.fromClass(
     provide: (plugin) =>
       EditorView.atomicRanges.of((view) => view.plugin(plugin)?.decorations ?? Decoration.none),
   },
-)
+);
 
 export const livePreviewTheme = EditorView.theme({
   '.cm-mx-heading': { fontWeight: '650', lineHeight: '1.35' },
@@ -181,8 +181,8 @@ export const livePreviewTheme = EditorView.theme({
   '.cm-mx-h6': { fontSize: '1em', color: 'var(--mx-color-fg-muted)' },
   '.cm-mx-strong': { fontWeight: '700' },
   '.cm-mx-em': { fontStyle: 'italic' },
-})
+});
 
 export function livePreview(): Extension {
-  return [composingField, compositionTracker, livePreviewPlugin, livePreviewTheme]
+  return [composingField, compositionTracker, livePreviewPlugin, livePreviewTheme];
 }
