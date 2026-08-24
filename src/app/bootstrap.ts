@@ -31,6 +31,7 @@ import {
   openDropped,
   openPath,
   openViaDialog,
+  reloadCurrent,
 } from '@/features/document/open'
 import { useDocumentStore } from '@/features/document/store'
 import { installLinkHandler } from '@/features/preview/links'
@@ -191,6 +192,18 @@ function reportStartupProblems(bootstrap: Bootstrap | null): void {
 function installShortcuts(): void {
   bindKeys([
     { key: 'Ctrl+O', run: () => void openViaDialogSafely() },
+
+    // F5 は**必ず飲み込む**（Issue #8）。
+    //
+    // 素通しすると WebView がページごと再読み込みし、`initialization_script` に
+    // 載っている**起動時の** bootstrap が再適用される。コマンドラインで指定した
+    // ファイルが、その後に D&D やダイアログで開いたファイルを押しのけて戻ってくる。
+    //
+    // 何も開いていないときも同じ理由で飲み込む（`reloadCurrent` は何もしない）。
+    // `whenEditing: true` なのは、検索欄にフォーカスがあるときも同じ事故が
+    // 起きるため。「このキーは WebView に渡さない」が要件そのものになっている。
+    { key: 'F5', run: () => void reloadCurrent(), whenEditing: true },
+
     { key: 'Ctrl+=', run: () => void zoomIn() },
     { key: 'Ctrl+-', run: () => void zoomOut() },
     { key: 'Ctrl+0', run: () => void zoomReset() },

@@ -31,7 +31,7 @@ import { dirOf } from '@/lib/path'
 import type { MarkdownParser } from '@/markdown/worker/client'
 import { getPlatform, type DocumentPayload } from '@/platform'
 
-import { INFO_NOTICE_MS, useDocumentStore } from './store'
+import { INFO_NOTICE_MS, notifyInfo, useDocumentStore } from './store'
 
 const PREVIEW_SELECTOR = '#mx-preview'
 
@@ -60,6 +60,11 @@ export interface OpenOptions {
   startedAt?: number
   /** 先頭までスクロールを戻すか。起動直後は既に先頭なので不要。 */
   resetScroll?: boolean
+  /**
+   * 描画後に戻すスクロール位置。同じファイルを開き直す再読み込み（F5）だけが使う。
+   * `resetScroll` と同時に指定しない。
+   */
+  restoreScroll?: number
   /** 最近開いたファイルに積むか。既定 true。 */
   remember?: boolean
   /** 起動計測の T6 / T7 / T8 を打つか。コールド起動だけが true。 */
@@ -112,6 +117,7 @@ export async function openDocument(
 
     const result = paint(container, parsed.chunks, parsed.frontMatter)
     if (options.resetScroll === true) container.scrollTop = 0
+    else if (options.restoreScroll !== undefined) container.scrollTop = options.restoreScroll
 
     store.setOutline(parsed.outline)
     store.setFrontMatter(parsed.frontMatter)
@@ -146,6 +152,11 @@ export async function openDocument(
     // 残りのチャンクは idle で入る。ここでは待たない。
     void result.done.then((at) => {
       enhance(container, enhanceOptions)
+      // 段階的描画では、まだ入っていないチャンクのぶん scrollHeight が足りず、
+      // 復元位置が頭打ちになる。全部入ったところでもう一度当てる。
+      if (options.restoreScroll !== undefined && container.scrollTop < options.restoreScroll) {
+        container.scrollTop = options.restoreScroll
+      }
       if (options.trace === true) mark('T8-all', `${(at - startedAt).toFixed(1)}ms`)
       return at
     })
@@ -209,6 +220,45 @@ export async function openDropped(paths: string[]): Promise<OpenOutcome | null> 
       autoDismissMs: INFO_NOTICE_MS,
     })
   }
+  return outcome
+}
+
+/**
+ * いま開いているファイルを、ディスクの最新の内容で開き直す（F5 / Issue #8）。
+ *
+ * # なぜアプリ側の仕事なのか
+ *
+ * F5 は WebView 自身の「再読み込み」に割り当たっている。そのまま通すと
+ * ページごと再評価され、`initialization_script` に載っている**起動時の**
+ * bootstrap がもう一度適用される。つまりコマンドラインで指定したファイルが、
+ * その後に開いたファイルを押しのけて戻ってくる。
+ *
+ * ページを作り直させないのが前提なので、「再読み込み」の意味はここで与える。
+ * WebView の再読み込みは 6MB のバンドル評価と WebView 内部の作り直しを伴うが、
+ * こちらは読み直しとパースだけで済む（ウォーム起動と同じ経路）。
+ *
+ * スクロール位置は保つ。同じファイルを見続けているのだから、
+ * 先頭に飛ばされるのは「更新」ではなく「開き直し」になってしまう。
+ *
+ * 何も開いていなければ何もしない。M2 で編集が入ったら、
+ * ダーティな本文を捨てないための確認をここに足すこと。
+ */
+export async function reloadCurrent(): Promise<OpenOutcome | null> {
+  const meta = useDocumentStore.getState().meta
+  if (meta === null) return null
+
+  const container = document.querySelector<HTMLElement>(PREVIEW_SELECTOR)
+
+  const outcome = await openPath(meta.path, {
+    resetScroll: false,
+    restoreScroll: container?.scrollTop ?? 0,
+    // 既に一覧の先頭にあるファイルを開き直すだけ。順序は変わらないので IPC を省く。
+    remember: false,
+  })
+
+  // 内容が変わっていないと画面は 1 ピクセルも動かない。押した操作が
+  // 届いたことは伝える（03.ux-spec.md §8.2 の情報通知。3 秒で消える）。
+  if (outcome) notifyInfo(ja.open.reloaded)
   return outcome
 }
 

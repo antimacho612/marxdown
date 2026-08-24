@@ -27,6 +27,7 @@ export const ja = {
   },
   open: {
     droppedExtra: (n: number) => `${n} 件は開いていません（複数タブは M3 で対応）`,
+    reloaded: '再読み込みしました',
   },
   preview: {
     copy: 'コピー',
