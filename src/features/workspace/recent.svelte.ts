@@ -7,19 +7,13 @@
  *
  * 更新系のコマンドは更新後の一覧を返す。追加のたびに読み直す往復を省くため。
  */
-import { create } from 'zustand';
-
 import { getPlatform, type RecentEntry } from '@/platform';
 
-interface RecentState {
-  entries: RecentEntry[];
-  setEntries(entries: RecentEntry[]): void;
+class RecentStore {
+  entries = $state<RecentEntry[]>([]);
 }
 
-export const useRecentStore = create<RecentState>((set) => ({
-  entries: [],
-  setEntries: (entries) => set({ entries }),
-}));
+export const recentStore = new RecentStore();
 
 /**
  * 開いたファイルを記録する。
@@ -29,7 +23,7 @@ export const useRecentStore = create<RecentState>((set) => ({
  */
 export async function rememberRecent(path: string): Promise<void> {
   try {
-    useRecentStore.getState().setEntries(await getPlatform().pushRecent(path));
+    recentStore.entries = await getPlatform().pushRecent(path);
   } catch {
     // 記録できなくても、開く操作そのものは成功している
   }
@@ -43,7 +37,7 @@ export async function rememberRecent(path: string): Promise<void> {
  */
 export async function forgetRecent(path: string): Promise<void> {
   try {
-    useRecentStore.getState().setEntries(await getPlatform().removeRecent(path));
+    recentStore.entries = await getPlatform().removeRecent(path);
   } catch {
     // 同上
   }

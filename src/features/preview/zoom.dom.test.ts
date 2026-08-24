@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { getPlatform, setPlatform, type Platform } from '@/platform';
 
-import { useViewStore } from '../view/store';
+import { viewStore } from '../view/store.svelte';
 import { applyZoom, formatZoom, ZOOM_MAX, ZOOM_MIN, zoomIn, zoomOut, zoomReset } from './zoom';
 
 const original = getPlatform();
@@ -15,7 +15,7 @@ function zoomVar(): string {
 beforeEach(() => {
   vi.useFakeTimers();
   document.documentElement.removeAttribute('style');
-  useViewStore.setState({ zoom: 1 });
+  viewStore.zoom = 1;
 });
 
 afterEach(() => {
@@ -27,7 +27,7 @@ describe('表示倍率 (F-VIEW-11)', () => {
   it('CSS 変数に書き、ストアにも映す', () => {
     applyZoom(1.25, false);
     expect(zoomVar()).toBe('1.25');
-    expect(useViewStore.getState().zoom).toBe(1.25);
+    expect(viewStore.zoom).toBe(1.25);
   });
 
   it('刻みを 1 つずつ動く', () => {

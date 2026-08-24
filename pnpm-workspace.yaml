@@ -1,3 +1,6 @@
 allowBuilds:
   esbuild: true
   lefthook: true
+  # eslint-import-resolver-typescript が使う napi ネイティブ解決器。
+  # `@/` エイリアスを解決できないと import-x/no-cycle が機能しない。
+  unrs-resolver: true

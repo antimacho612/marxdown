@@ -17,19 +17,11 @@
  * 4. IME 入力中に装飾が暴れないか（M5 の最大リスク・完了条件）
  */
 import { syntaxTree } from '@codemirror/language';
-import { type Extension, type Range, StateEffect, StateField } from '@codemirror/state';
-import {
-  Decoration,
-  type DecorationSet,
-  EditorView,
-  ViewPlugin,
-  type ViewUpdate,
-} from '@codemirror/view';
+import { StateEffect, StateField, type Extension, type Range } from '@codemirror/state';
+import { Decoration, EditorView, ViewPlugin, type DecorationSet, type ViewUpdate } from '@codemirror/view';
 
 /** 見出しレベルごとの行装飾。実サイズはテーマ側で決める。 */
-const HEADING_LINE = [1, 2, 3, 4, 5, 6].map((level) =>
-  Decoration.line({ class: `cm-mx-heading cm-mx-h${level}` }),
-);
+const HEADING_LINE = [1, 2, 3, 4, 5, 6].map((level) => Decoration.line({ class: `cm-mx-heading cm-mx-h${level}` }));
 
 const STRONG_MARK = Decoration.mark({ class: 'cm-mx-strong' });
 const EM_MARK = Decoration.mark({ class: 'cm-mx-em' });
@@ -166,8 +158,7 @@ const livePreviewPlugin = ViewPlugin.fromClass(
     decorations: (plugin) => plugin.decorations,
     // 記号を隠した範囲にカーソルが入ったときのために、
     // atomicRanges を提供して矢印キーが「中に入らない」ようにする。
-    provide: (plugin) =>
-      EditorView.atomicRanges.of((view) => view.plugin(plugin)?.decorations ?? Decoration.none),
+    provide: (plugin) => EditorView.atomicRanges.of((view) => view.plugin(plugin)?.decorations ?? Decoration.none),
   },
 );
 

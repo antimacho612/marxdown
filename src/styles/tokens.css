@@ -18,10 +18,8 @@
   /* --- タイポグラフィ -------------------------------------------------- */
   /* 日本語と英数字の混植を前提としたスタック（§10.2）。
      英数字を先に置き、日本語は後段のフォントに拾わせる。 */
-  --mx-font-ui:
-    'Segoe UI Variable Text', 'Segoe UI', system-ui, 'Yu Gothic UI', 'Meiryo', sans-serif;
-  --mx-font-content:
-    'Segoe UI Variable Text', 'Segoe UI', system-ui, 'Yu Gothic', 'Yu Mincho', 'Meiryo', sans-serif;
+  --mx-font-ui: 'Segoe UI Variable Text', 'Segoe UI', system-ui, 'Yu Gothic UI', 'Meiryo', sans-serif;
+  --mx-font-content: 'Segoe UI Variable Text', 'Segoe UI', system-ui, 'Yu Gothic', 'Yu Mincho', 'Meiryo', sans-serif;
   --mx-font-code: 'Cascadia Code', 'Consolas', 'BIZ UDGothic', 'Meiryo', monospace;
 
   --mx-font-size-ui: 13px;

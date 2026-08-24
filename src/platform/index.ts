@@ -18,8 +18,7 @@ export * from './types';
  */
 function isTauri(): boolean {
   return (
-    typeof globalThis !== 'undefined' &&
-    ('__TAURI_INTERNALS__' in globalThis || '__MARXDOWN_BOOTSTRAP__' in globalThis)
+    typeof globalThis !== 'undefined' && ('__TAURI_INTERNALS__' in globalThis || '__MARXDOWN_BOOTSTRAP__' in globalThis)
   );
 }
 

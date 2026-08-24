@@ -1,6 +1,6 @@
 import { fileURLToPath, URL } from 'node:url';
 
-import react from '@vitejs/plugin-react';
+import { svelte } from '@sveltejs/vite-plugin-svelte';
 import { visualizer } from 'rollup-plugin-visualizer';
 import { defineConfig } from 'vite';
 
@@ -12,7 +12,7 @@ const host = process.env.TAURI_DEV_HOST;
  */
 export default defineConfig(({ mode }) => ({
   plugins: [
-    react(),
+    svelte(),
     ...(mode === 'analyze'
       ? [visualizer({ filename: 'dist/stats.html', gzipSize: true, brotliSize: true, open: false })]
       : []),
@@ -53,9 +53,7 @@ export default defineConfig(({ mode }) => ({
          */
         chunkFileNames(chunk) {
           // Vite が解決するのは ESM ビルド（`es/`）で、CJS の `lib/` ではない。
-          const isLanguage = /highlight\.js[\\/](?:es|lib)[\\/]languages[\\/]/.test(
-            chunk.facadeModuleId ?? '',
-          );
+          const isLanguage = /highlight\.js[\\/](?:es|lib)[\\/]languages[\\/]/.test(chunk.facadeModuleId ?? '');
           return isLanguage ? 'assets/hljs-[name]-[hash].js' : 'assets/[name]-[hash].js';
         },
         assetFileNames: 'assets/[name]-[hash][extname]',

@@ -26,11 +26,7 @@ export interface PaintResult {
  * 最初のチャンクは**同期的に**入れる。ここを非同期にすると
  * 「読める最初のフレーム」が 1 フレーム遅れる。
  */
-export function paint(
-  container: HTMLElement,
-  chunks: string[],
-  frontMatter: string | null = null,
-): PaintResult {
+export function paint(container: HTMLElement, chunks: string[], frontMatter: string | null = null): PaintResult {
   container.replaceChildren();
 
   // Front Matter は本文と一緒にスクロールするため、プレビューの中に入れる（F-VIEW-09）。

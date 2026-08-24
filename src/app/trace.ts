@@ -43,11 +43,7 @@ export function mark(id: string, note?: string): void {
   } catch {
     // 計測が本体を壊してはいけない
   }
-  marks.push(
-    note === undefined
-      ? { id, atMs: toT0(performance.now()) }
-      : { id, atMs: toT0(performance.now()), note },
-  );
+  marks.push(note === undefined ? { id, atMs: toT0(performance.now()) } : { id, atMs: toT0(performance.now()), note });
 }
 
 /**

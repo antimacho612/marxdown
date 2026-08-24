@@ -28,9 +28,7 @@ function type(value: string): void {
 }
 
 function press(key: string, shiftKey = false): void {
-  input().dispatchEvent(
-    new KeyboardEvent('keydown', { key, shiftKey, bubbles: true, cancelable: true }),
-  );
+  input().dispatchEvent(new KeyboardEvent('keydown', { key, shiftKey, bubbles: true, cancelable: true }));
 }
 
 beforeEach(() => {

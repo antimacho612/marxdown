@@ -31,10 +31,7 @@ function createWorkerParser(): MarkdownParser {
   });
 
   let nextId = 1;
-  const pending = new Map<
-    number,
-    { resolve: (r: ParseResponse) => void; reject: (e: Error) => void }
-  >();
+  const pending = new Map<number, { resolve: (r: ParseResponse) => void; reject: (e: Error) => void }>();
 
   worker.addEventListener('message', (event: MessageEvent<WorkerResponse>) => {
     const res = event.data;

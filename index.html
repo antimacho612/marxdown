@@ -8,19 +8,20 @@
 
   <body>
     <!--
-      本文の受け皿。**React の外**に置いてある（ADR-0005 / 02.architecture.md §8.1）。
+      本文の受け皿。**コンポーネントツリーの外**に置いてある
+      （ADR-0005 / ADR-0007 / 02.architecture.md §8.1）。
 
-      ここが React の管理下にあると、
-      1) 本文の HTML 文字列が React を通過してしまう
-      2) 「読める最初のフレーム」が React のコミットを待つ
+      ここが Svelte の管理下にあると、
+      1) 本文の HTML 文字列がリアクティビティを通過してしまう
+      2) 「読める最初のフレーム」がコンポーネントのマウントを待つ
       の 2 つが起きる。どちらも Cold Start の予算に直接効く。
 
-      レイアウトは body 側の grid で行い、React ルートは display: contents で
+      レイアウトは body 側の grid で行い、Svelte のマウント先は display: contents で
       その grid にクロームだけを差し込む。
     -->
     <div id="mx-preview" class="mx-preview" role="document"></div>
     <div id="root"></div>
 
-    <script type="module" src="/src/main.tsx"></script>
+    <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

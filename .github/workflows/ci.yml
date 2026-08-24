@@ -29,14 +29,18 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
-      - name: Lint (oxlint)
-        run: pnpm exec oxlint
+      - name: Lint (ESLint)
+        run: pnpm exec eslint .
 
-      - name: Format (oxfmt)
-        run: pnpm exec oxfmt --check .
+      - name: Format (Prettier)
+        run: pnpm exec prettier --check .
 
       - name: 型チェック
         run: pnpm exec tsc --noEmit
+
+      # `.svelte` は tsc が読まない。型の網を通すにはこちらが要る。
+      - name: 型チェック (Svelte)
+        run: pnpm exec svelte-check --threshold error
 
       - name: テスト
         run: pnpm exec vitest run

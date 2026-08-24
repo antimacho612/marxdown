@@ -25,13 +25,13 @@
 import { mark } from '@/app/trace';
 import { enhance } from '@/features/preview/enhance';
 import { paint } from '@/features/preview/paint';
-import { forgetRecent, rememberRecent } from '@/features/workspace/recent';
+import { forgetRecent, rememberRecent } from '@/features/workspace/recent.svelte';
 import { ja } from '@/i18n/ja';
 import { dirOf } from '@/lib/path';
 import type { MarkdownParser } from '@/markdown/worker/client';
 import { getPlatform, type DocumentPayload } from '@/platform';
 
-import { INFO_NOTICE_MS, notifyInfo, useDocumentStore } from './store';
+import { documentStore, INFO_NOTICE_MS, notifyInfo } from './store.svelte';
 
 const PREVIEW_SELECTOR = '#mx-preview';
 
@@ -92,29 +92,20 @@ export interface OpenOutcome {
  * 起動時の bootstrap 経路がこれを使う。**ファイルを読み直さない**ことが要点で、
  * Rust が WebView 初期化と並行して読んでおいたものを、そのまま使い切る。
  */
-export async function openDocument(
-  payload: DocumentPayload,
-  options: OpenOptions = {},
-): Promise<OpenOutcome | null> {
+export async function openDocument(payload: DocumentPayload, options: OpenOptions = {}): Promise<OpenOutcome | null> {
   if (!config) throw new Error('configureOpener が呼ばれていない');
 
   const startedAt = options.startedAt ?? performance.now();
-  const store = useDocumentStore.getState();
-
   // パースを先に投げる。待つのは後。
   traceMark(options, 'T6', `${payload.content.length} chars`);
   const parsing = config.parser.parse(payload.content);
 
-  store.setMeta(payload);
+  documentStore.meta = payload;
   options.betweenParseAndPaint?.();
 
   try {
     const parsed = await parsing;
-    traceMark(
-      options,
-      'T7',
-      `${parsed.chunks.length} chunks, parse=${parsed.parseMs.toFixed(1)}ms`,
-    );
+    traceMark(options, 'T7', `${parsed.chunks.length} chunks, parse=${parsed.parseMs.toFixed(1)}ms`);
 
     const container = document.querySelector<HTMLElement>(PREVIEW_SELECTOR);
     if (!container) throw new Error(`${PREVIEW_SELECTOR} が見つからない`);
@@ -123,10 +114,10 @@ export async function openDocument(
     if (options.resetScroll === true) container.scrollTop = 0;
     else if (options.restoreScroll !== undefined) container.scrollTop = options.restoreScroll;
 
-    store.setOutline(parsed.outline);
-    store.setFrontMatter(parsed.frontMatter);
-    store.setTextStats(parsed.textStats);
-    store.setNotice(null);
+    documentStore.outline = parsed.outline;
+    documentStore.frontMatter = parsed.frontMatter;
+    documentStore.textStats = parsed.textStats;
+    documentStore.notice = null;
 
     // 「読める」瞬間は DOM 挿入の完了ではなく**次のフレーム**。
     // DOM に入れただけでは、まだ一度も描かれていない（05.performance-budget.md §5.2）。
@@ -138,7 +129,7 @@ export async function openDocument(
       paintMs: result.firstChunkAt - startedAt,
       chunks: parsed.chunks.length,
     };
-    store.setStats({ ...outcome, site: config.site });
+    documentStore.stats = { ...outcome, site: config.site };
 
     // 本文に後から手を入れる（画像 / コピーボタン / ハイライト）。
     //
@@ -170,7 +161,7 @@ export async function openDocument(
 
     return outcome;
   } catch (e) {
-    store.setNotice({ level: 'error', message: `${ja.error.renderFailed}: ${toMessage(e)}` });
+    documentStore.notice = { level: 'error', message: `${ja.error.renderFailed}: ${toMessage(e)}` };
     return null;
   }
 }
@@ -181,17 +172,14 @@ export async function openDocument(
  * 開けなかったファイルは履歴から外す。消えたファイルを一覧に残し続けると、
  * 次の起動でも同じ失敗を踏むことになる（03.ux-spec.md §9.1 の一覧は道具であって記録ではない）。
  */
-export async function openPath(
-  path: string,
-  options: OpenOptions = {},
-): Promise<OpenOutcome | null> {
+export async function openPath(path: string, options: OpenOptions = {}): Promise<OpenOutcome | null> {
   const startedAt = options.startedAt ?? performance.now();
 
   let payload: DocumentPayload;
   try {
     payload = await getPlatform().readDocument(path);
   } catch (e) {
-    useDocumentStore.getState().setNotice({ level: 'error', message: describeOpenError(e, path) });
+    documentStore.notice = { level: 'error', message: describeOpenError(e, path) };
     if (kindOf(e) === 'not-found') void forgetRecent(path);
     return null;
   }
@@ -218,11 +206,11 @@ export async function openDropped(paths: string[]): Promise<OpenOutcome | null> 
 
   const outcome = await openPath(first);
   if (outcome && paths.length > 1) {
-    useDocumentStore.getState().setNotice({
+    documentStore.notice = {
       level: 'info',
       message: ja.open.droppedExtra(paths.length - 1),
       autoDismissMs: INFO_NOTICE_MS,
-    });
+    };
   }
   return outcome;
 }
@@ -248,7 +236,7 @@ export async function openDropped(paths: string[]): Promise<OpenOutcome | null> 
  * ダーティな本文を捨てないための確認をここに足すこと。
  */
 export async function reloadCurrent(): Promise<OpenOutcome | null> {
-  const meta = useDocumentStore.getState().meta;
+  const meta = documentStore.meta;
   if (meta === null) return null;
 
   const container = document.querySelector<HTMLElement>(PREVIEW_SELECTOR);
@@ -311,7 +299,6 @@ export function describeOpenError(e: unknown, path: string): string {
 
 function toMessage(e: unknown): string {
   if (e instanceof Error) return e.message;
-  if (typeof e === 'object' && e !== null && 'message' in e)
-    return String((e as { message: unknown }).message);
+  if (typeof e === 'object' && e !== null && 'message' in e) return String((e as { message: unknown }).message);
   return String(e);
 }

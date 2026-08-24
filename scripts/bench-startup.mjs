@@ -110,9 +110,7 @@ function findExe() {
     process.exit(1);
   }
   if (exe.includes('debug')) {
-    console.warn(
-      '⚠ debug ビルドを計測している。05.performance-budget.md §2 は release を要求する。',
-    );
+    console.warn('⚠ debug ビルドを計測している。05.performance-budget.md §2 は release を要求する。');
   }
   return exe;
 }
@@ -126,11 +124,10 @@ function runOnce(exe, file, tracePath, spike, timeoutMs) {
   return new Promise((resolve) => {
     rmSync(tracePath, { force: true });
     const started = process.hrtime.bigint();
-    const child = spawn(
-      exe,
-      ['--trace-startup', tracePath, '--exit-after-trace', ...spikeArgs(spike), file],
-      { stdio: 'ignore', windowsHide: true },
-    );
+    const child = spawn(exe, ['--trace-startup', tracePath, '--exit-after-trace', ...spikeArgs(spike), file], {
+      stdio: 'ignore',
+      windowsHide: true,
+    });
 
     const timer = setTimeout(() => {
       child.kill();
@@ -180,21 +177,7 @@ function summarize(results) {
   }
   // T2b / T2c は T2→T3 の内訳（M1 で追加）。ここが伸びたときに
   // 「WebView2 が重いのか、自分たちが足したものが重いのか」を切り分ける。
-  const order = [
-    'T0',
-    'T1',
-    'T2',
-    'T2b',
-    'T2c',
-    'T3',
-    'T4',
-    'T5',
-    'T6',
-    'T7',
-    'T8',
-    'T8-all',
-    'T9',
-  ];
+  const order = ['T0', 'T1', 'T2', 'T2b', 'T2c', 'T3', 'T4', 'T5', 'T6', 'T7', 'T8', 'T8-all', 'T9'];
   const marks = [];
   for (const id of order) {
     const values = byMark.get(id);
@@ -310,23 +293,14 @@ async function benchWarm(exe, files, opts) {
     secondProcessWallMedianMs: median(wall),
   };
   console.log(`  計測回数                          : ${summary.n}`);
-  console.log(
-    `  argv 受信 → 本文が読める (中央値) : ${summary.forwardToReadableMedianMs.toFixed(1)}ms`,
-  );
+  console.log(`  argv 受信 → 本文が読める (中央値) : ${summary.forwardToReadableMedianMs.toFixed(1)}ms`);
   console.log(
     `    最小 / 最大                     : ${summary.forwardToReadableMinMs.toFixed(1)} / ${summary.forwardToReadableMaxMs.toFixed(1)}ms`,
   );
-  console.log(
-    `  2 番目のプロセスの実時間 (中央値) : ${summary.secondProcessWallMedianMs.toFixed(1)}ms`,
-  );
+  console.log(`  2 番目のプロセスの実時間 (中央値) : ${summary.secondProcessWallMedianMs.toFixed(1)}ms`);
   console.log('    ※ 転送してすぐ終了するプロセスの寿命。上の値と時間的に重なる。');
   const total = summary.forwardToReadableMedianMs;
-  const verdict =
-    total <= 120
-      ? '✓ 目標 120ms 以内'
-      : total <= 250
-        ? '△ 許容上限 250ms 以内'
-        : '✗ 許容上限 250ms 超過';
+  const verdict = total <= 120 ? '✓ 目標 120ms 以内' : total <= 250 ? '△ 許容上限 250ms 以内' : '✗ 許容上限 250ms 超過';
   console.log(`  判定                              : ${verdict}`);
   return { records, summary };
 }
@@ -362,9 +336,7 @@ if (!existsSync(file)) {
 const report = { generatedAt: new Date().toISOString(), exe, runs: opts.runs, results: {} };
 
 if (opts.warm) {
-  const files = [file, join(FIXTURES, 'tiny.md'), join(FIXTURES, 'spec.md')].filter((p) =>
-    existsSync(p),
-  );
+  const files = [file, join(FIXTURES, 'tiny.md'), join(FIXTURES, 'spec.md')].filter((p) => existsSync(p));
   const warm = await benchWarm(exe, files, opts);
   report.results.warm = warm.summary;
   report.results.warmRecords = warm.records;

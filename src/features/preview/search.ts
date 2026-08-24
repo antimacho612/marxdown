@@ -14,11 +14,6 @@
  * 代わりに **CSS Custom Highlight API** を使う。`Range` を登録するだけで、
  * DOM には一切触らない。WebView2 Evergreen / WKWebView のみを対象とする
  * 設計（04.tech-stack.md §8）なので、この API を前提にしてよい。
- *
- * # React を通さない
- *
- * パネルは素の DOM で作る。1 打鍵ごとに検索が走る経路であり、
- * React のコミットを挟む理由がない（ADR-0005 と同じ判断）。
  */
 import { bindKeys } from '@/app/shortcuts';
 import { registerSearchRefresher } from '@/features/document/open';
@@ -153,12 +148,7 @@ function mount(container: HTMLElement): SearchState {
   return created;
 }
 
-function button(
-  className: string,
-  label: string,
-  aria: string,
-  onClick: () => void,
-): HTMLButtonElement {
+function button(className: string, label: string, aria: string, onClick: () => void): HTMLButtonElement {
   const el = document.createElement('button');
   el.type = 'button';
   el.className = className;
@@ -210,10 +200,7 @@ function step(delta: number): void {
  * ノードをまたぐ一致（`<em>` で割れている語など）も拾えるように、
  * 連結した文字列の上で探してから、オフセットをノードに割り戻す。
  */
-function findRanges(
-  container: HTMLElement,
-  query: string,
-): { ranges: Range[]; truncated: boolean } {
+function findRanges(container: HTMLElement, query: string): { ranges: Range[]; truncated: boolean } {
   const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT, {
     acceptNode(node) {
       // 空白だけのノードと、非表示の要素の中は飛ばす
@@ -266,11 +253,7 @@ function toRange(nodes: Text[], starts: number[], start: number, end: number): R
   return range;
 }
 
-function locate(
-  nodes: Text[],
-  starts: number[],
-  position: number,
-): { node: Text; offset: number } | null {
+function locate(nodes: Text[], starts: number[], position: number): { node: Text; offset: number } | null {
   // starts は昇順なので二分探索できる
   let lo = 0;
   let hi = nodes.length - 1;
@@ -307,10 +290,7 @@ function paintHighlights(current: SearchState): void {
   const others = current.ranges.filter((r) => r !== currentRange);
 
   CSS.highlights.set(HIGHLIGHT_ALL, new Highlight(...others));
-  CSS.highlights.set(
-    HIGHLIGHT_CURRENT,
-    currentRange ? new Highlight(currentRange) : new Highlight(),
-  );
+  CSS.highlights.set(HIGHLIGHT_CURRENT, currentRange ? new Highlight(currentRange) : new Highlight());
 }
 
 function clearHighlights(): void {

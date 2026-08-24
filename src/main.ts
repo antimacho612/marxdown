@@ -4,9 +4,9 @@
  * ここに import を足すと、そのままクリティカルパスに載る。
  * 追加の前に 05.performance-budget.md §6 の判定手順を通すこと。
  *
- * # なぜ React を動的 import しないか
+ * # なぜ Svelte を動的 import しないか
  *
- * 動的 import にすると React が `main` チャンクから外れ、
+ * 動的 import にすると Svelte のランタイムが `main` チャンクから外れ、
  * 150KB の予算計測（size-limit の `main-*.js`）が実態を映さなくなる。
  * **予算を守るためには、予算の計測対象に載っている必要がある。**
  */
@@ -14,19 +14,17 @@ import '@/styles/tokens.css';
 import '@/styles/reset.css';
 import '@/styles/shell.css';
 import '@/styles/preview/preview.css';
-import { createRoot } from 'react-dom/client';
 
-import { App } from '@/app/App';
+import { mount } from 'svelte';
+
+import App from '@/app/App.svelte';
 import { startup } from '@/app/bootstrap';
 
 const root = document.getElementById('root');
 
 function renderShell(): void {
   if (!root) return;
-
-  // StrictMode は付けない。開発時に副作用が 2 回走ると、
-  // 起動計測と Worker への送信回数が実態と変わってしまう。
-  createRoot(root).render(<App />);
+  mount(App, { target: root });
 }
 
 /**

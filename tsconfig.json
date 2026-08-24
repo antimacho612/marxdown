@@ -13,7 +13,6 @@
     "resolveJsonModule": true,
     "isolatedModules": true,
     "noEmit": true,
-    "jsx": "react-jsx",
 
     /* 04.tech-stack.md §8 */
     "strict": true,
@@ -29,8 +28,13 @@
       "@/*": ["./src/*"]
     },
 
-    "types": ["vite/client"]
+    // `svelte` はランタイムの型ではなく、`$state` などの**ルーンの ambient 宣言**のために要る。
+    // これが無いと `.svelte.ts` のストアが tsc から未定義の関数呼び出しに見える。
+    "types": ["vite/client", "svelte"]
   },
-  "include": ["src", "tests"],
-  "references": [{ "path": "./tsconfig.node.json" }]
+  "include": ["src", "tests"]
+  // `references` は置かない。**あると import の解決器が `paths` を読まなくなる**
+  // （solution-style の tsconfig と見なされ、参照先の tsconfig.node.json に委譲される）。
+  // 結果として ESLint から `@/*` が全滅する。tsconfig.node.json は
+  // `tsc -p` で個別に指すものとして残してある（ADR-0007）。
 }

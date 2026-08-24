@@ -1,28 +1,39 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { INFO_NOTICE_MS, notifyInfo, useDocumentStore } from './store';
+import { documentStore, INFO_NOTICE_MS, notifyInfo } from './store.svelte';
 
-const INITIAL = useDocumentStore.getState();
+/**
+ * ストアが公開している状態の名前を集める。
+ *
+ * ルーンで宣言したフィールド（`meta` など）はインスタンスの own プロパティになり、
+ * 手書きのアクセサ（`notice`）はプロトタイプに乗る。**置き場所が 2 つに分かれる**ので、
+ * ADR-0005 の見張りを続けるには両方を見る必要がある。
+ * `#dismissTimer` のような private フィールドはどちらにも現れない（状態ではないので正しい）。
+ */
+function stateKeys(): string[] {
+  const proto: object = Object.getPrototypeOf(documentStore);
+  const inherited = Object.entries(Object.getOwnPropertyDescriptors(proto))
+    .filter(([k, d]) => k !== 'constructor' && typeof d.get === 'function')
+    .map(([k]) => k);
+  return [...Object.getOwnPropertyNames(documentStore), ...inherited];
+}
 
 beforeEach(() => {
-  useDocumentStore.setState({
-    meta: null,
-    isDirty: false,
-    outline: [],
-    frontMatter: null,
-    notice: null,
-    stats: null,
-    textStats: null,
-  });
+  documentStore.meta = null;
+  documentStore.isDirty = false;
+  documentStore.outline = [];
+  documentStore.frontMatter = null;
+  documentStore.stats = null;
+  documentStore.textStats = null;
+  // 代入すると自動消滅のタイマーも解除される
+  documentStore.notice = null;
 });
 
 describe('ドキュメントストア (ADR-0005)', () => {
   it('本文を保持するフィールドを持たない', () => {
     // ここに content / html が生えたら ADR-0005 違反。
-    // 1 打鍵ごとに巨大な文字列が React を通過し、入力レスポンス 16ms を満たせなくなる。
-    const keys = Object.keys(useDocumentStore.getState()).filter(
-      (k) => typeof (INITIAL as unknown as Record<string, unknown>)[k] !== 'function',
-    );
+    // 1 打鍵ごとに巨大な文字列がリアクティビティを通過し、入力レスポンス 16ms を満たせなくなる。
+    const keys = stateKeys();
     expect(keys).not.toContain('content');
     expect(keys).not.toContain('html');
     expect(keys).not.toContain('text');
@@ -30,10 +41,7 @@ describe('ドキュメントストア (ADR-0005)', () => {
   });
 
   it('派生値だけを持つ', () => {
-    const keys = Object.keys(useDocumentStore.getState())
-      .filter((k) => typeof (INITIAL as unknown as Record<string, unknown>)[k] !== 'function')
-      .toSorted();
-    expect(keys).toEqual([
+    expect(stateKeys().toSorted()).toEqual([
       'frontMatter',
       'isDirty',
       'meta',
@@ -45,7 +53,7 @@ describe('ドキュメントストア (ADR-0005)', () => {
   });
 
   it('メタ情報を更新できる', () => {
-    useDocumentStore.getState().setMeta({
+    documentStore.meta = {
       path: 'C:/work/a.md',
       eol: 'crlf',
       bom: true,
@@ -53,15 +61,14 @@ describe('ドキュメントストア (ADR-0005)', () => {
       mtimeMs: 1,
       size: 10,
       readonly: false,
-    });
-    expect(useDocumentStore.getState().meta?.eol).toBe('crlf');
+    };
+    expect(documentStore.meta?.eol).toBe('crlf');
   });
 
   it('通知はひとつだけ保持する（積み上げない）', () => {
-    const { setNotice } = useDocumentStore.getState();
-    setNotice({ level: 'warning', message: 'a' });
-    setNotice({ level: 'error', message: 'b' });
-    expect(useDocumentStore.getState().notice).toEqual({ level: 'error', message: 'b' });
+    documentStore.notice = { level: 'warning', message: 'a' };
+    documentStore.notice = { level: 'error', message: 'b' };
+    expect(documentStore.notice).toEqual({ level: 'error', message: 'b' });
   });
 });
 
@@ -77,29 +84,29 @@ describe('通知の自動消滅 (03.ux-spec.md §8.2)', () => {
 
   it('情報通知は既定の時間で消える', () => {
     notifyInfo('外部の変更を読み込みました');
-    expect(useDocumentStore.getState().notice?.message).toBe('外部の変更を読み込みました');
+    expect(documentStore.notice?.message).toBe('外部の変更を読み込みました');
 
     vi.advanceTimersByTime(INFO_NOTICE_MS);
 
-    expect(useDocumentStore.getState().notice).toBeNull();
+    expect(documentStore.notice).toBeNull();
   });
 
   it('警告とエラーは消えない', () => {
-    useDocumentStore.getState().setNotice({ level: 'error', message: '読み込めませんでした' });
+    documentStore.notice = { level: 'error', message: '読み込めませんでした' };
 
     vi.advanceTimersByTime(INFO_NOTICE_MS * 10);
 
-    expect(useDocumentStore.getState().notice?.message).toBe('読み込めませんでした');
+    expect(documentStore.notice?.message).toBe('読み込めませんでした');
   });
 
   it('自動消滅の待機中に差し替わったら、後から出た通知を消さない', () => {
     notifyInfo('情報');
     vi.advanceTimersByTime(INFO_NOTICE_MS - 1);
-    useDocumentStore.getState().setNotice({ level: 'error', message: 'エラー' });
+    documentStore.notice = { level: 'error', message: 'エラー' };
 
     vi.advanceTimersByTime(INFO_NOTICE_MS * 2);
 
-    expect(useDocumentStore.getState().notice?.message).toBe('エラー');
+    expect(documentStore.notice?.message).toBe('エラー');
   });
 
   it('タイマーは 1 本しか走らない（ポーリングにしない / §4.5）', () => {

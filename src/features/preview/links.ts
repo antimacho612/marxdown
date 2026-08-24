@@ -22,7 +22,7 @@
  * アプリのシェルごと差し替わり、復帰する手段が無い（N-SEC-04）。
  */
 import { openPath } from '@/features/document/open';
-import { useDocumentStore } from '@/features/document/store';
+import { documentStore } from '@/features/document/store.svelte';
 import { ja } from '@/i18n/ja';
 import { dirOf, isMarkdownPath, joinPath } from '@/lib/path';
 import { getPlatform } from '@/platform';
@@ -81,7 +81,7 @@ function handle(href: string, container: HTMLElement): void {
   const localPath = toLocalPath(href, scheme);
   if (localPath === null) return; // 未知のスキーム。何もしない
 
-  const baseDir = dirOf(useDocumentStore.getState().meta?.path ?? '');
+  const baseDir = dirOf(documentStore.meta?.path ?? '');
   const resolved = joinPath(baseDir, localPath);
 
   if (isMarkdownPath(resolved)) {
@@ -101,7 +101,7 @@ function handle(href: string, container: HTMLElement): void {
  * モーダルにしないのは、データ消失の可能性が無いから（03.ux-spec.md §8.2）。
  */
 function confirmOpenExternally(path: string): void {
-  useDocumentStore.getState().setNotice({
+  documentStore.notice = {
     level: 'info',
     message: ja.link.confirmOpen(path),
     actions: [
@@ -112,9 +112,7 @@ function confirmOpenExternally(path: string): void {
             .openLocalFile(path)
             .catch(() => {
               // 許可ディレクトリの外だと Rust 側が拒む。何が起きたか黙らない。
-              useDocumentStore
-                .getState()
-                .setNotice({ level: 'error', message: ja.link.outOfScope(path) });
+              documentStore.notice = { level: 'error', message: ja.link.outOfScope(path) };
             });
         },
       },
@@ -125,7 +123,7 @@ function confirmOpenExternally(path: string): void {
         },
       },
     ],
-  });
+  };
 }
 
 /**
@@ -139,8 +137,7 @@ function scrollToAnchor(container: HTMLElement, rawId: string): void {
   if (id === '') return;
 
   const target =
-    container.querySelector(`[id="${cssEscape(id)}"]`) ??
-    container.querySelector(`[name="${cssEscape(id)}"]`);
+    container.querySelector(`[id="${cssEscape(id)}"]`) ?? container.querySelector(`[name="${cssEscape(id)}"]`);
 
   target?.scrollIntoView({ block: 'start', behavior: 'auto' });
 }

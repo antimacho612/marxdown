@@ -128,9 +128,7 @@ async function copy(text: string): Promise<boolean> {
 const READY = /^(?:https?:|data:|asset:|blob:)/i;
 
 async function enhanceImages(container: HTMLElement, baseDir: string): Promise<void> {
-  const images = [...container.querySelectorAll<HTMLImageElement>('img[src]')].filter(
-    (img) => !(DONE in img.dataset),
-  );
+  const images = [...container.querySelectorAll<HTMLImageElement>('img[src]')].filter((img) => !(DONE in img.dataset));
   if (images.length === 0) return;
 
   for (const img of images) img.dataset[DONE] = '';
