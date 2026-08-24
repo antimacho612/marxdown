@@ -11,10 +11,10 @@
  * あちらはクロームごと拡大してしまう。`shortcuts.ts` が `preventDefault()` で
  * 既定動作を止めているので、二重には掛からない。
  *
- * # React を通さない
+ * # Svelte を通さない
  *
- * 適用は CSS カスタムプロパティの書き換え 1 回で終わる。React の再レンダリングは
- * 挟まない（ADR-0005）。ストアに書くのは、ステータスバーに数字を出すためだけ。
+ * 適用は CSS カスタムプロパティの書き換え 1 回で終わる。
+ * ストアに書くのは、ステータスバーに数字を出すためだけ。
  */
 import { viewStore } from '@/features/view/store.svelte';
 import { getPlatform } from '@/platform';

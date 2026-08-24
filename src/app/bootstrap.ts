@@ -244,7 +244,7 @@ async function openViaDialogSafely(): Promise<void> {
 /**
  * 別インスタンスからの起動要求（ウォーム起動 / S6）。
  *
- * ここには WebView の初期化も、バンドルの評価も、React のマウントも存在しない。
+ * ここには WebView の初期化も、バンドルの評価も、Svelte のマウントも存在しない。
  * **Worker が既に温まっており、パースだけが仕事になる**（02.architecture.md §5.2）。
  *
  * M1 では「タブを増やす」のではなく現在の本文を置き換える。
@@ -278,7 +278,7 @@ function installOpenRequestHandler(): void {
 /**
  * ウィンドウへのドラッグ＆ドロップ（F-OPEN-08）。
  *
- * ドロップ先の見た目は `data-mx-dragover` 属性 1 つで表す。React を通さないのは、
+ * ドロップ先の見た目は `data-mx-dragover` 属性 1 つで表す。Svelte を通さないのは、
  * ドラッグ中は毎フレーム `over` が飛んでくるため（ADR-0005 と同じ判断）。
  */
 function installDragAndDrop(): void {

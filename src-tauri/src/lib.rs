@@ -26,7 +26,7 @@ use tauri::{Emitter, Manager};
 /// 別インスタンスから転送された起動要求（ADR-0004）。
 ///
 /// 02.architecture.md §5.2 のウォーム起動。ここには WebView の初期化も、
-/// バンドルの評価も、React のマウントも存在しない。
+/// バンドルの評価も、Svelte のマウントも存在しない。
 #[derive(Debug, Clone, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct OpenRequest {
