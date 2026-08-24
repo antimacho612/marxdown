@@ -2,6 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { useRecentStore } from '@/features/workspace/recent'
+import { ja } from '@/i18n/ja'
 import type { MarkdownParser } from '@/markdown/worker/client'
 import type { ParseResponse } from '@/markdown/worker/protocol'
 import {
@@ -12,7 +13,14 @@ import {
   type RecentEntry,
 } from '@/platform'
 
-import { configureOpener, openDocument, openDropped, openPath, openViaDialog } from './open'
+import {
+  configureOpener,
+  openDocument,
+  openDropped,
+  openPath,
+  openViaDialog,
+  reloadCurrent,
+} from './open'
 import { useDocumentStore } from './store'
 
 const original = getPlatform()
@@ -255,5 +263,89 @@ describe('ファイルダイアログ (F-OPEN-07)', () => {
     expect(outcome).toBeNull()
     expect(spies.readDocument).not.toHaveBeenCalled()
     expect(useDocumentStore.getState().notice).toBeNull()
+  })
+})
+
+/**
+ * jsdom はレイアウトを持たないので `scrollTop` の書き込みが観測できない。
+ * 書き込みの履歴を残す形に差し替えて、「戻した / 戻さなかった」を見えるようにする。
+ */
+function trackScrollTop(element: HTMLElement): number[] {
+  const writes: number[] = []
+  Object.defineProperty(element, 'scrollTop', {
+    configurable: true,
+    get: () => writes.at(-1) ?? 0,
+    set: (value: number) => {
+      writes.push(value)
+    },
+  })
+  return writes
+}
+
+describe('再読み込み (F5 / Issue #8)', () => {
+  it('いま開いているファイルをディスクから読み直す', async () => {
+    const spies = install()
+    await openPath('C:/work/b.md')
+    spies.readDocument.mockClear()
+    spies.pushRecent.mockClear()
+
+    const outcome = await reloadCurrent()
+
+    expect(outcome).not.toBeNull()
+    expect(spies.readDocument).toHaveBeenCalledWith('C:/work/b.md')
+    expect(useDocumentStore.getState().meta?.path).toBe('C:/work/b.md')
+    // 既に一覧の先頭にあるファイル。順序は変わらないので積み直さない
+    expect(spies.pushRecent).not.toHaveBeenCalled()
+  })
+
+  it('スクロール位置を保つ（別のファイルを開く経路は先頭に戻す）', async () => {
+    install()
+    const container = document.querySelector<HTMLElement>('#mx-preview')
+    if (!container) throw new Error('#mx-preview が無い')
+    const writes = trackScrollTop(container)
+
+    await openPath('C:/work/b.md')
+    expect(writes.at(-1)).toBe(0)
+
+    container.scrollTop = 400
+    await reloadCurrent()
+
+    expect(writes.at(-1)).toBe(400)
+  })
+
+  it('再読み込みしたことを情報通知で伝える（内容が同じでも画面は動かないため）', async () => {
+    install()
+    await openPath('C:/work/b.md')
+
+    await reloadCurrent()
+
+    expect(useDocumentStore.getState().notice).toMatchObject({
+      level: 'info',
+      message: ja.open.reloaded,
+    })
+  })
+
+  it('何も開いていなければ何もしない', async () => {
+    const spies = install()
+
+    const outcome = await reloadCurrent()
+
+    expect(outcome).toBeNull()
+    expect(spies.readDocument).not.toHaveBeenCalled()
+    expect(useDocumentStore.getState().notice).toBeNull()
+  })
+
+  it('読み直せなくなっていたら通知を出し、本文はそのまま残す', async () => {
+    install()
+    await openPath('C:/work/b.md')
+    install({
+      readDocument: vi.fn(() => Promise.reject({ kind: 'not-found', message: 'no such file' })),
+    })
+
+    const outcome = await reloadCurrent()
+
+    expect(outcome).toBeNull()
+    expect(useDocumentStore.getState().notice?.level).toBe('error')
+    expect(useDocumentStore.getState().meta?.path).toBe('C:/work/b.md')
   })
 })
