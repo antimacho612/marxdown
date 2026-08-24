@@ -33,10 +33,10 @@ import {
   openViaDialog,
   reloadCurrent,
 } from '@/features/document/open';
-import { useDocumentStore } from '@/features/document/store';
+import { documentStore } from '@/features/document/store.svelte';
 import { installLinkHandler } from '@/features/preview/links';
 import { applyZoom, zoomIn, zoomOut, zoomReset } from '@/features/preview/zoom';
-import { useRecentStore } from '@/features/workspace/recent';
+import { recentStore } from '@/features/workspace/recent.svelte';
 import { ja } from '@/i18n/ja';
 import { createParser } from '@/markdown/worker/client';
 import { getPlatform, type Bootstrap, type DocumentPayload, type SpikeFlags } from '@/platform';
@@ -72,7 +72,7 @@ export async function startup(renderShell: () => void): Promise<void> {
   // 倍率は**本文を描くより前**に当てる（F-VIEW-11）。
   // 後から当てると、既定倍率で 1 フレーム描かれてから跳ねる。
   applyZoom(bootstrap?.zoom ?? 1, false);
-  useRecentStore.getState().setEntries(bootstrap?.recent ?? []);
+  recentStore.entries = bootstrap?.recent ?? [];
 
   configureOpener({ parser: createParser(spike.parse), site: spike.parse });
 
@@ -145,9 +145,7 @@ function installLinks(): void {
  * **256KB 超のファイル**のときだけで、この場合だけ IPC 往復が 1 回増える
  * （初期化スクリプトに埋め込むと、文字列化のコストが往復のコストを上回る）。
  */
-async function resolveInitialDocument(
-  bootstrap: Bootstrap | null,
-): Promise<DocumentPayload | null> {
+async function resolveInitialDocument(bootstrap: Bootstrap | null): Promise<DocumentPayload | null> {
   const doc = bootstrap?.document ?? null;
 
   if (doc?.content !== null && doc?.content !== undefined) {
@@ -158,7 +156,7 @@ async function resolveInitialDocument(
     try {
       return await getPlatform().readDocument(doc.path);
     } catch (e) {
-      useDocumentStore.getState().setNotice({ level: 'error', message: toMessage(e) });
+      documentStore.notice = { level: 'error', message: toMessage(e) };
       return null;
     }
   }
@@ -172,14 +170,15 @@ async function resolveInitialDocument(
  * 本文の描画とは独立なので、シェルが描かれた直後（= 見える最初のフレーム）に流す。
  */
 function reportStartupProblems(bootstrap: Bootstrap | null): void {
-  const store = useDocumentStore.getState();
-
   if (bootstrap?.documentError) {
     const e = bootstrap.documentError;
-    store.setNotice({ level: 'error', message: describeError(e.kind, e.path, e.message) });
+    documentStore.notice = { level: 'error', message: describeError(e.kind, e.path, e.message) };
   }
   if (bootstrap && bootstrap.unknownArgs.length > 0) {
-    store.setNotice({ level: 'warning', message: ja.error.unknownArgs(bootstrap.unknownArgs) });
+    documentStore.notice = {
+      level: 'warning',
+      message: ja.error.unknownArgs(bootstrap.unknownArgs),
+    };
   }
 }
 
@@ -238,7 +237,7 @@ async function openViaDialogSafely(): Promise<void> {
   try {
     await openViaDialog();
   } catch (e) {
-    useDocumentStore.getState().setNotice({ level: 'error', message: toMessage(e) });
+    documentStore.notice = { level: 'error', message: toMessage(e) };
   }
 }
 
@@ -308,7 +307,6 @@ function describeError(kind: string, path: string, fallback: string): string {
 
 function toMessage(e: unknown): string {
   if (e instanceof Error) return e.message;
-  if (typeof e === 'object' && e !== null && 'message' in e)
-    return String((e as { message: unknown }).message);
+  if (typeof e === 'object' && e !== null && 'message' in e) return String((e as { message: unknown }).message);
   return String(e);
 }

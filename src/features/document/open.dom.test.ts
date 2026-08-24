@@ -1,27 +1,14 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { useRecentStore } from '@/features/workspace/recent';
+import { recentStore } from '@/features/workspace/recent.svelte';
 import { ja } from '@/i18n/ja';
 import type { MarkdownParser } from '@/markdown/worker/client';
 import type { ParseResponse } from '@/markdown/worker/protocol';
-import {
-  getPlatform,
-  setPlatform,
-  type DocumentPayload,
-  type Platform,
-  type RecentEntry,
-} from '@/platform';
+import { getPlatform, setPlatform, type DocumentPayload, type Platform, type RecentEntry } from '@/platform';
 
-import {
-  configureOpener,
-  openDocument,
-  openDropped,
-  openPath,
-  openViaDialog,
-  reloadCurrent,
-} from './open';
-import { useDocumentStore } from './store';
+import { configureOpener, openDocument, openDropped, openPath, openViaDialog, reloadCurrent } from './open';
+import { documentStore } from './store.svelte';
 
 const original = getPlatform();
 
@@ -65,9 +52,7 @@ interface Spies {
 function install(overrides: Partial<Platform> = {}): Spies {
   const spies: Spies = {
     readDocument: vi.fn((path: string) => Promise.resolve(payload(path))),
-    pushRecent: vi.fn((path: string) =>
-      Promise.resolve([{ path, openedAtMs: 1 }] as RecentEntry[]),
-    ),
+    pushRecent: vi.fn((path: string) => Promise.resolve([{ path, openedAtMs: 1 }] as RecentEntry[])),
     removeRecent: vi.fn(() => Promise.resolve([] as RecentEntry[])),
     pickFile: vi.fn(() => Promise.resolve(null)),
   };
@@ -84,14 +69,12 @@ beforeEach(() => {
   vi.stubGlobal('requestIdleCallback', undefined);
 
   document.body.innerHTML = '<div id="mx-preview"></div>';
-  useDocumentStore.setState({
-    meta: null,
-    outline: [],
-    frontMatter: null,
-    notice: null,
-    stats: null,
-  });
-  useRecentStore.setState({ entries: [] });
+  documentStore.meta = null;
+  documentStore.outline = [];
+  documentStore.frontMatter = null;
+  documentStore.stats = null;
+  documentStore.notice = null;
+  recentStore.entries = [];
 
   configureOpener({ parser: fakeParser(), site: 'worker' });
 });
@@ -108,9 +91,9 @@ describe('開く経路の集約 (F-OPEN-01, 05, 07, 08)', () => {
     const outcome = await openPath('C:/work/a.md');
 
     expect(outcome).not.toBeNull();
-    expect(useDocumentStore.getState().meta?.path).toBe('C:/work/a.md');
-    expect(useDocumentStore.getState().outline).toHaveLength(1);
-    expect(useDocumentStore.getState().stats?.chunks).toBe(1);
+    expect(documentStore.meta?.path).toBe('C:/work/a.md');
+    expect(documentStore.outline).toHaveLength(1);
+    expect(documentStore.stats?.chunks).toBe(1);
     expect(document.querySelector('#mx-preview')?.textContent).not.toBe('');
   });
 
@@ -120,7 +103,7 @@ describe('開く経路の集約 (F-OPEN-01, 05, 07, 08)', () => {
     await openPath('C:/work/a.md');
 
     expect(spies.pushRecent).toHaveBeenCalledWith('C:/work/a.md');
-    expect(useRecentStore.getState().entries[0]?.path).toBe('C:/work/a.md');
+    expect(recentStore.entries[0]?.path).toBe('C:/work/a.md');
   });
 
   it('remember: false なら履歴に積まない', async () => {
@@ -133,11 +116,11 @@ describe('開く経路の集約 (F-OPEN-01, 05, 07, 08)', () => {
 
   it('前の通知は開いた時点で消える', async () => {
     install();
-    useDocumentStore.getState().setNotice({ level: 'error', message: '前のエラー' });
+    documentStore.notice = { level: 'error', message: '前のエラー' };
 
     await openPath('C:/work/a.md');
 
-    expect(useDocumentStore.getState().notice).toBeNull();
+    expect(documentStore.notice).toBeNull();
   });
 
   it('開けなかったら通知を出し、本文は差し替えない', async () => {
@@ -148,9 +131,9 @@ describe('開く経路の集約 (F-OPEN-01, 05, 07, 08)', () => {
     const outcome = await openPath('C:/work/secret.md');
 
     expect(outcome).toBeNull();
-    expect(useDocumentStore.getState().meta).toBeNull();
-    expect(useDocumentStore.getState().notice?.level).toBe('error');
-    expect(useDocumentStore.getState().notice?.message).toContain('C:/work/secret.md');
+    expect(documentStore.meta).toBeNull();
+    expect(documentStore.notice?.level).toBe('error');
+    expect(documentStore.notice?.message).toContain('C:/work/secret.md');
   });
 
   it('消えたファイルは履歴から外す（次の起動で同じ失敗を踏まないため）', async () => {
@@ -223,9 +206,9 @@ describe('ドラッグ＆ドロップ (F-OPEN-08)', () => {
 
     await openDropped(['C:/work/a.md', 'C:/work/b.md', 'C:/work/c.md']);
 
-    expect(useDocumentStore.getState().meta?.path).toBe('C:/work/a.md');
-    expect(useDocumentStore.getState().notice?.level).toBe('info');
-    expect(useDocumentStore.getState().notice?.message).toContain('2');
+    expect(documentStore.meta?.path).toBe('C:/work/a.md');
+    expect(documentStore.notice?.level).toBe('info');
+    expect(documentStore.notice?.message).toContain('2');
   });
 
   it('1 つだけなら余計な通知を出さない', async () => {
@@ -233,7 +216,7 @@ describe('ドラッグ＆ドロップ (F-OPEN-08)', () => {
 
     await openDropped(['C:/work/a.md']);
 
-    expect(useDocumentStore.getState().notice).toBeNull();
+    expect(documentStore.notice).toBeNull();
   });
 
   it('空のドロップは何もしない', async () => {
@@ -252,7 +235,7 @@ describe('ファイルダイアログ (F-OPEN-07)', () => {
     await openViaDialog();
 
     expect(spies.readDocument).toHaveBeenCalledWith('C:/work/picked.md');
-    expect(useDocumentStore.getState().meta?.path).toBe('C:/work/picked.md');
+    expect(documentStore.meta?.path).toBe('C:/work/picked.md');
   });
 
   it('取り消しは失敗ではない。何も起きず、通知も出ない', async () => {
@@ -262,7 +245,7 @@ describe('ファイルダイアログ (F-OPEN-07)', () => {
 
     expect(outcome).toBeNull();
     expect(spies.readDocument).not.toHaveBeenCalled();
-    expect(useDocumentStore.getState().notice).toBeNull();
+    expect(documentStore.notice).toBeNull();
   });
 });
 
@@ -293,7 +276,7 @@ describe('再読み込み (F5 / Issue #8)', () => {
 
     expect(outcome).not.toBeNull();
     expect(spies.readDocument).toHaveBeenCalledWith('C:/work/b.md');
-    expect(useDocumentStore.getState().meta?.path).toBe('C:/work/b.md');
+    expect(documentStore.meta?.path).toBe('C:/work/b.md');
     // 既に一覧の先頭にあるファイル。順序は変わらないので積み直さない
     expect(spies.pushRecent).not.toHaveBeenCalled();
   });
@@ -319,7 +302,7 @@ describe('再読み込み (F5 / Issue #8)', () => {
 
     await reloadCurrent();
 
-    expect(useDocumentStore.getState().notice).toMatchObject({
+    expect(documentStore.notice).toMatchObject({
       level: 'info',
       message: ja.open.reloaded,
     });
@@ -332,7 +315,7 @@ describe('再読み込み (F5 / Issue #8)', () => {
 
     expect(outcome).toBeNull();
     expect(spies.readDocument).not.toHaveBeenCalled();
-    expect(useDocumentStore.getState().notice).toBeNull();
+    expect(documentStore.notice).toBeNull();
   });
 
   it('読み直せなくなっていたら通知を出し、本文はそのまま残す', async () => {
@@ -345,7 +328,7 @@ describe('再読み込み (F5 / Issue #8)', () => {
     const outcome = await reloadCurrent();
 
     expect(outcome).toBeNull();
-    expect(useDocumentStore.getState().notice?.level).toBe('error');
-    expect(useDocumentStore.getState().meta?.path).toBe('C:/work/b.md');
+    expect(documentStore.notice?.level).toBe('error');
+    expect(documentStore.meta?.path).toBe('C:/work/b.md');
   });
 });

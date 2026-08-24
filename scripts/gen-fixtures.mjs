@@ -67,15 +67,7 @@ function codeBlock(rng, lines = 8) {
   const lang = pick(rng, LANGS);
   const body = [];
   for (let i = 0; i < lines; i++) {
-    body.push(
-      '  const value' +
-        i +
-        ' = compute(' +
-        Math.floor(rng() * 1000) +
-        ', "' +
-        sentence(rng, 0) +
-        '")',
-    );
+    body.push('  const value' + i + ' = compute(' + Math.floor(rng() * 1000) + ', "' + sentence(rng, 0) + '")');
   }
   return ['```' + lang, ...body, '```'].join('\n');
 }
@@ -317,7 +309,5 @@ for (const [name, build] of FIXTURES) {
   // EOL は LF 固定。CRLF/BOM の検証は Rust 側のユニットテストで専用の入力を使う。
   writeFileSync(path, build().replaceAll('\r\n', '\n'), 'utf8');
   const kb = statSync(path).size / 1024;
-  console.log(
-    name.padEnd(12) + ' ' + (kb >= 1024 ? (kb / 1024).toFixed(2) + ' MB' : kb.toFixed(1) + ' KB'),
-  );
+  console.log(name.padEnd(12) + ' ' + (kb >= 1024 ? (kb / 1024).toFixed(2) + ' MB' : kb.toFixed(1) + ' KB'));
 }

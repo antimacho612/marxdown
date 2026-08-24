@@ -31,6 +31,9 @@ bench/fixtures/*.md
 *.trace.json
 /measurements-tmp/
 
-# Claude Code のワークツリー
+# Storybook のビルド成果物
+storybook-static/
+
+# Claude
 CLAUDE.local.md
 .claude/worktrees/

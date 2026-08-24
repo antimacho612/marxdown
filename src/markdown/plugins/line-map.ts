@@ -51,9 +51,7 @@ export function lineMapPlugin(md: MarkdownIt): void {
         // token.map は [開始行, 終了行) の 0 始まり
         token.attrSet('data-line', String(token.map[0]));
       }
-      return original
-        ? original(tokens, idx, options, env, self)
-        : self.renderToken(tokens, idx, options);
+      return original ? original(tokens, idx, options, env, self) : self.renderToken(tokens, idx, options);
     };
     md.renderer.rules[rule] = patched;
   }
@@ -62,9 +60,7 @@ export function lineMapPlugin(md: MarkdownIt): void {
     const original = md.renderer.rules[rule];
 
     const patched: RendererRule = (tokens, idx, options, env, self) => {
-      const html = original
-        ? original(tokens, idx, options, env, self)
-        : self.renderToken(tokens, idx, options);
+      const html = original ? original(tokens, idx, options, env, self) : self.renderToken(tokens, idx, options);
       const line = tokens[idx]?.map?.[0];
       if (line === undefined) return html;
       return html.replace('<pre', `<pre data-line="${line}"`);

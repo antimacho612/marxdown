@@ -16,7 +16,7 @@
  * 適用は CSS カスタムプロパティの書き換え 1 回で終わる。React の再レンダリングは
  * 挟まない（ADR-0005）。ストアに書くのは、ステータスバーに数字を出すためだけ。
  */
-import { useViewStore } from '@/features/view/store';
+import { viewStore } from '@/features/view/store.svelte';
 import { getPlatform } from '@/platform';
 
 /** `src-tauri/src/store.rs` の `ZOOM_MIN` / `ZOOM_MAX` と揃える。 */
@@ -44,17 +44,17 @@ let persistTimer: ReturnType<typeof setTimeout> | null = null;
 export function applyZoom(zoom: number, persist = true): number {
   const next = clamp(zoom);
   document.documentElement.style.setProperty('--mx-zoom', String(next));
-  useViewStore.getState().setZoom(next);
+  viewStore.zoom = next;
   if (persist) schedulePersist(next);
   return next;
 }
 
 export function zoomIn(): number {
-  return applyZoom(nextStep(useViewStore.getState().zoom, 1));
+  return applyZoom(nextStep(viewStore.zoom, 1));
 }
 
 export function zoomOut(): number {
-  return applyZoom(nextStep(useViewStore.getState().zoom, -1));
+  return applyZoom(nextStep(viewStore.zoom, -1));
 }
 
 export function zoomReset(): number {

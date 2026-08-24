@@ -3,13 +3,13 @@
 pre-commit:
   parallel: true
   jobs:
-    - name: oxfmt
-      glob: '*.{ts,tsx,js,mjs,json,jsonc}'
-      run: pnpm exec oxfmt {staged_files}
+    - name: prettier
+      glob: '*.{ts,js,mjs,svelte,css,json,jsonc,yml,html}'
+      run: pnpm exec prettier --write {staged_files}
       stage_fixed: true
-    - name: oxlint
-      glob: '*.{ts,tsx,js,mjs}'
-      run: pnpm exec oxlint {staged_files}
+    - name: eslint
+      glob: '*.{ts,js,mjs,svelte}'
+      run: pnpm exec eslint --no-warn-ignored {staged_files}
     - name: rustfmt
       glob: '*.rs'
       root: src-tauri/
@@ -20,6 +20,8 @@ pre-push:
   jobs:
     - name: tsc
       run: pnpm exec tsc --noEmit
+    - name: svelte-check
+      run: pnpm exec svelte-check --threshold error
     - name: vitest
       run: pnpm exec vitest run
     - name: clippy

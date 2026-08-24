@@ -15,9 +15,9 @@ import { bracketMatching, defaultHighlightStyle, syntaxHighlighting } from '@cod
 import { search, searchKeymap } from '@codemirror/search';
 import { EditorState } from '@codemirror/state';
 import {
-  EditorView,
   drawSelection,
   dropCursor,
+  EditorView,
   highlightActiveLine,
   highlightSpecialChars,
   keymap,
@@ -81,13 +81,7 @@ function createEditor(parent: HTMLElement, useLivePreview: boolean): EditorView 
         markdown({ base: markdownLanguage }),
         syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
         // vscodeKeymap を先に置く。後段の defaultKeymap と衝突したときは先勝ち。
-        keymap.of([
-          ...vscodeKeymap,
-          ...searchKeymap,
-          ...historyKeymap,
-          ...defaultKeymap,
-          indentWithTab,
-        ]),
+        keymap.of([...vscodeKeymap, ...searchKeymap, ...historyKeymap, ...defaultKeymap, indentWithTab]),
         EditorView.lineWrapping,
         EditorView.theme({
           '&': { height: '100%', fontSize: '15px' },

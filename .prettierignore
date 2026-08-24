@@ -1,0 +1,9 @@
+dist
+node_modules
+storybook-static
+src-tauri/target
+src-tauri/gen
+bench/fixtures
+pnpm-lock.yaml
+.claude
+*.md

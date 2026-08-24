@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { useDocumentStore } from '@/features/document/store';
+import { documentStore } from '@/features/document/store.svelte';
 import { getPlatform, setPlatform, type Platform } from '@/platform';
 
 import { installLinkHandler } from './links';
@@ -39,18 +39,16 @@ beforeEach(() => {
   container = document.querySelector('#mx-preview') as HTMLElement;
   dispose = installLinkHandler(container);
 
-  useDocumentStore.setState({
-    meta: {
-      path: 'C:\\work\\docs\\index.md',
-      eol: 'lf',
-      bom: false,
-      encoding: 'utf8',
-      mtimeMs: 1,
-      size: 1,
-      readonly: false,
-    },
-    notice: null,
-  });
+  documentStore.meta = {
+    path: 'C:\\work\\docs\\index.md',
+    eol: 'lf',
+    bom: false,
+    encoding: 'utf8',
+    mtimeMs: 1,
+    size: 1,
+    readonly: false,
+  };
+  documentStore.notice = null;
 });
 
 afterEach(() => {
@@ -96,7 +94,7 @@ describe('リンククリックの分岐 (02.architecture.md §9.2)', () => {
 
     expect(spies.openLocalFile).not.toHaveBeenCalled();
 
-    const notice = useDocumentStore.getState().notice;
+    const notice = documentStore.notice;
     expect(notice?.level).toBe('info');
     expect(notice?.actions?.map((a) => a.label)).toEqual(['開く', 'フォルダで表示']);
 
@@ -118,7 +116,7 @@ describe('リンククリックの分岐 (02.architecture.md §9.2)', () => {
     expect(spies.openExternal).not.toHaveBeenCalled();
     expect(spies.openLocalFile).not.toHaveBeenCalled();
     expect(openPathSpy).not.toHaveBeenCalled();
-    expect(useDocumentStore.getState().notice).toBeNull();
+    expect(documentStore.notice).toBeNull();
   });
 
   it('どの分岐でも既定動作を止める（ページ遷移させない / N-SEC-04）', () => {
@@ -158,8 +156,7 @@ describe('見出しアンカー (F-VIEW-07)', () => {
   });
 
   it('日本語の見出しにも飛べる（GitHub と同じくスラッグが日本語のまま残る）', () => {
-    container.innerHTML =
-      '<a href="#%E8%A6%8B%E5%87%BA%E3%81%97">go</a><h2 id="見出し">見出し</h2>';
+    container.innerHTML = '<a href="#%E8%A6%8B%E5%87%BA%E3%81%97">go</a><h2 id="見出し">見出し</h2>';
     const target = container.querySelector('h2') as HTMLElement;
     target.scrollIntoView = vi.fn();
 

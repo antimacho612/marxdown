@@ -31,9 +31,7 @@ describe('スクリプト実行経路を塞ぐ', () => {
   });
 
   it('form を落とす', () => {
-    expect(pipeline('<form action="https://evil.example"><input name="a"></form>')).not.toContain(
-      '<form',
-    );
+    expect(pipeline('<form action="https://evil.example"><input name="a"></form>')).not.toContain('<form');
   });
 
   it('on* 属性を落とす', () => {
@@ -147,9 +145,7 @@ describe('リンクの後処理', () => {
   });
 
   it('target を落とす（ナビゲーションは JS が捕捉する）', () => {
-    expect(pipeline('<a href="https://example.com/" target="_blank">x</a>')).not.toContain(
-      'target=',
-    );
+    expect(pipeline('<a href="https://example.com/" target="_blank">x</a>')).not.toContain('target=');
   });
 
   it('落とした参照に痕跡を残す', () => {

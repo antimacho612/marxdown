@@ -38,19 +38,11 @@ export interface WriteRequest {
 }
 
 export type SaveResult =
-  | { status: 'saved'; mtimeMs: number; size: number }
-  | { status: 'conflict'; diskMtimeMs: number };
+  { status: 'saved'; mtimeMs: number; size: number } | { status: 'conflict'; diskMtimeMs: number };
 
 /** `src-tauri/src/error.rs` の `CoreError` のシリアライズ形。 */
 export interface CoreError {
-  kind:
-    | 'not-found'
-    | 'permission-denied'
-    | 'out-of-scope'
-    | 'too-large'
-    | 'conflict'
-    | 'invalid-argument'
-    | 'io';
+  kind: 'not-found' | 'permission-denied' | 'out-of-scope' | 'too-large' | 'conflict' | 'invalid-argument' | 'io';
   message: string;
 }
 

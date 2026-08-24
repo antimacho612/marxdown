@@ -52,14 +52,25 @@ URL パラメータで挙動を切り替えられる。
 | `?spike=editor` | CodeMirror のスパイク画面（S4 / S5） |
 | `?parse=main` | Worker を使わずメインスレッドでパース |
 
+### コンポーネントの状態を並べて見る
+
+```bash
+pnpm storybook        # http://localhost:6006
+```
+
+通知バーの 3 段階も、履歴が空の Welcome も、実アプリでは特定の失敗を再現しないと
+見られない。Storybook はそれを並べるためだけに入っている。
+
 ### 検査
 
 ```bash
-pnpm check            # oxlint + oxfmt --check + tsc --noEmit
-pnpm fix              # oxlint --fix + oxfmt
+pnpm check            # eslint + prettier --check + tsc --noEmit + svelte-check
+pnpm fix              # eslint --fix + prettier --write
 pnpm test             # Vitest
 pnpm size             # バンドル予算のチェック
 ```
+
+`tsc` は `.svelte` を読まないので、型チェックは `svelte-check` と 2 本立てになっている。
 
 Rust 側は `src-tauri/` で `cargo fmt` / `cargo clippy --all-targets -- -D warnings` / `cargo test`。
 
@@ -130,6 +141,7 @@ src/
   markdown/       markdown-it パイプライン・Worker・サニタイズ
   platform/       Tauri API の唯一の呼び出し口（テスト時は差し替え）
   styles/         デザイントークンとプレビューのタイポグラフィ
+                  （コンポーネント固有の CSS は各 .svelte の <style> に同居）
 src-tauri/src/
   cli.rs          CLI 引数解析
   bootstrap.rs    起動時の先読みと初期ペイロード
@@ -144,7 +156,7 @@ src-tauri/src/
    エディタ・Mermaid・KaTeX・ハイライタはすべて遅延チャンク。
 2. **Markdown テキストが唯一の真実。** AST も DOM も派生物で、テキストへ書き戻す経路を作らない。
    編集・保存で、触っていない箇所のバイト列を変えない。
-3. **ドキュメント本体を React state に置かない。** 本文の DOM は React の管理外にある。
+3. **ドキュメント本体をリアクティブな状態に置かない。** 本文の DOM はコンポーネントツリーの外にある。
 4. **Rust は速いことだけを担当する。** UI ロジックと Markdown の意味解釈は TypeScript 側。
 
 設計の全体は `docs.local/` にある（`.gitignore` により Git 管理外）。

@@ -47,10 +47,7 @@ export function processInIdle<T>(items: readonly T[], step: (item: T) => void): 
         if (item === undefined) break;
         step(item);
         index++;
-      } while (
-        index < items.length &&
-        (deadline.timeRemaining() > SLICE_FLOOR || deadline.didTimeout)
-      );
+      } while (index < items.length && (deadline.timeRemaining() > SLICE_FLOOR || deadline.didTimeout));
 
       if (index < items.length) requestIdle(run);
       else resolve();

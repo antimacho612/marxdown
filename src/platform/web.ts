@@ -8,15 +8,7 @@
  * Rust 実装と同じ形で再現するが、**原子性と衝突検知の正しさは保証しない**。
  * そこは Rust 側のユニットテストの担当。
  */
-import type {
-  Bootstrap,
-  DocumentPayload,
-  OpenRequest,
-  Platform,
-  RecentEntry,
-  SaveResult,
-  WriteRequest,
-} from './types';
+import type { Bootstrap, DocumentPayload, OpenRequest, Platform, RecentEntry, SaveResult, WriteRequest } from './types';
 
 const STORE_KEY = 'marxdown:web-fs';
 const STATE_KEY = 'marxdown:web-state';
@@ -189,10 +181,7 @@ export const webPlatform: Platform = {
 
   async pushRecent(path) {
     const state = loadState();
-    state.recent = [
-      { path, openedAtMs: Date.now() },
-      ...state.recent.filter((e) => e.path !== path),
-    ].slice(0, 20);
+    state.recent = [{ path, openedAtMs: Date.now() }, ...state.recent.filter((e) => e.path !== path)].slice(0, 20);
     saveState(state);
     return state.recent;
   },

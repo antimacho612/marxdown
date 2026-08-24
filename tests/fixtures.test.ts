@@ -28,15 +28,7 @@ import { DEFAULT_CHUNK_BLOCKS, DEFAULT_FIRST_CHUNK_BLOCKS } from '@/markdown/wor
 const FIXTURES = join(dirname(fileURLToPath(import.meta.url)), '..', 'bench', 'fixtures');
 
 /** §3 の基準ファイルセット。`gen-fixtures.mjs` が作るものと対応する。 */
-const NAMES = [
-  'tiny.md',
-  'readme.md',
-  'spec.md',
-  'diagram.md',
-  'math.md',
-  'huge.md',
-  'extreme.md',
-] as const;
+const NAMES = ['tiny.md', 'readme.md', 'spec.md', 'diagram.md', 'math.md', 'huge.md', 'extreme.md'] as const;
 
 function load(name: string): string | null {
   const path = join(FIXTURES, name);

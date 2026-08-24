@@ -45,9 +45,9 @@ function subscribe(start: () => Promise<UnlistenFn>): () => void {
 }
 
 declare global {
-  // eslint-disable-next-line no-var
+  // `var` でなければならない。`let` / `const` は `globalThis` に生えず、
+  // Rust の initialization_script が注入した値を型として拾えない。
   var __MARXDOWN_BOOTSTRAP__: Bootstrap | undefined;
-  // eslint-disable-next-line no-var
   var __MARXDOWN_T4__: number | undefined;
 }
 
@@ -123,8 +123,6 @@ export const tauriPlatform: Platform = {
   },
 
   onOpenRequest(handler) {
-    return subscribe(() =>
-      listen<OpenRequest>(EVENT_OPEN_REQUEST, (event) => handler(event.payload)),
-    );
+    return subscribe(() => listen<OpenRequest>(EVENT_OPEN_REQUEST, (event) => handler(event.payload)));
   },
 };
