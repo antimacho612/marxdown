@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256" role="img" aria-label="Marxdown">
+  <!--
+    Marxdown アプリアイコンのマスター（透過版 / 64px 以下で使う）。
+    大サイズで使う墨の円版は `source-disc.svg`。**形を直すときは両方直す。**
+    生成は `pnpm icons`（`scripts/build-icons.mjs`）。手で `tauri icon` を叩かないこと。
+
+    形の由来: マルクのジェスターハット。二股が上に立ち、その先端の玉が M の 2 つの山に乗る。
+    左右で山の高さ・足の開き・玉の大きさを変えてあるのは意図的で、
+    対称にすると「ただの M」になって帽子に見えなくなる。
+
+      - 山の高さ: 左 58 / 右 92（左が高い）
+      - 足: 左だけ外へ開く（つばの広がり）。右はほぼ直線
+      - 玉: 左 r24 / 右 r20。どちらも先端から外へずらして、垂れて見えるようにしてある
+
+    中央の三画（山→谷→山）は直線のまま保つ。ここを曲げると 16px で M が読めなくなる。
+
+    背景は敷かない。16px で出る頻度が高く、円で囲うと実効サイズが 66% に落ちるため。
+    グラデーションは 32px 以下では消えてフラットに退化するが、形は壊れない。
+  -->
+  <defs>
+    <linearGradient id="b" gradientUnits="userSpaceOnUse" x1="86" y1="48" x2="52" y2="212">
+      <stop offset="0" stop-color="#5b7bf0" />
+      <stop offset="1" stop-color="#2b45b4" />
+    </linearGradient>
+    <linearGradient id="r" gradientUnits="userSpaceOnUse" x1="192" y1="84" x2="210" y2="210">
+      <stop offset="0" stop-color="#f4626a" />
+      <stop offset="1" stop-color="#c62630" />
+    </linearGradient>
+    <radialGradient id="y" cx="0.36" cy="0.3" r="0.82">
+      <stop offset="0" stop-color="#ffe694" />
+      <stop offset="1" stop-color="#f2ac12" />
+    </radialGradient>
+  </defs>
+
+  <!--
+    光学的な重心合わせ。図形の外接矩形は x 36..226 / y 18..216 なので、
+    幾何中心に置くと下に余白が偏る。y だけ +11 して上下を揃えた。
+    x は動かしていない。左の方が重い（玉が大きく足が開く）ので、
+    外接矩形が中心より 3px 右にある今の状態がちょうど釣り合う。
+  -->
+  <g transform="translate(0 11)">
+    <g fill="none" stroke-width="32" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M52 200 C 70 176, 92 132, 86 58 L 136 156" stroke="url(#b)" />
+      <path d="M136 156 L 192 92 C 196 124, 202 164, 210 196" stroke="url(#r)" />
+    </g>
+    <circle cx="74" cy="42" r="24" fill="url(#y)" />
+    <circle cx="200" cy="72" r="20" fill="url(#y)" />
+  </g>
+</svg>

@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 72" width="256" height="72" role="img" aria-label="Marxdown">
+  <!--
+    README 用の横組みロゴ（暗 背景向け）。
+    形のマスターは `src-tauri/icons/source.svg`。形を直したらここも直す。
+
+    GitHub の README はライト / ダークで地色が変わるので、
+    ワードマークの色が片方で読めなくなる。`<picture>` で 2 枚出し分けている。
+    SVG 内部の prefers-color-scheme は <img> 経由だと効かない環境がある。
+
+    マークは透過版。墨の円版はこの表示サイズ（高さ 48px）では中身が潰れる。
+
+    ワードマークは <text> のまま置いてある。アウトライン化していないので、
+    環境によって字形と幅が変わる。厳密な再現が要る用途では使わないこと。
+  -->
+  <defs>
+    <linearGradient id="b" gradientUnits="userSpaceOnUse" x1="86" y1="48" x2="52" y2="212">
+      <stop offset="0" stop-color="#5b7bf0" />
+      <stop offset="1" stop-color="#2b45b4" />
+    </linearGradient>
+    <linearGradient id="r" gradientUnits="userSpaceOnUse" x1="192" y1="84" x2="210" y2="210">
+      <stop offset="0" stop-color="#f4626a" />
+      <stop offset="1" stop-color="#c62630" />
+    </linearGradient>
+    <radialGradient id="y" cx="0.36" cy="0.3" r="0.82">
+      <stop offset="0" stop-color="#ffe694" />
+      <stop offset="1" stop-color="#f2ac12" />
+    </radialGradient>
+  </defs>
+
+  <!-- 0.2424 = 48 / 198（マークの実描画高）。左端に高さ 48 で置く -->
+  <g transform="translate(0 12) scale(0.2424) translate(-36 -18)">
+    <g fill="none" stroke-width="32" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M52 200 C 70 176, 92 132, 86 58 L 136 156" stroke="url(#b)" />
+      <path d="M136 156 L 192 92 C 196 124, 202 164, 210 196" stroke="url(#r)" />
+    </g>
+    <circle cx="74" cy="42" r="24" fill="url(#y)" />
+    <circle cx="200" cy="72" r="20" fill="url(#y)" />
+  </g>
+
+  <text
+    x="64"
+    y="50"
+    font-family="'Segoe UI Variable Display', 'Segoe UI', system-ui, -apple-system, 'Helvetica Neue', Arial, sans-serif"
+    font-size="40"
+    font-weight="650"
+    letter-spacing="-0.4"
+    fill="#edeef0"
+  >Marxdown</text>
+</svg>

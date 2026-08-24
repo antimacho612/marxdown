@@ -16,6 +16,7 @@
     "size": "size-limit",
     "analyze": "vite build --mode analyze",
     "fixtures": "node scripts/gen-fixtures.mjs",
+    "icons": "node scripts/build-icons.mjs",
     "bench:boot": "node scripts/bench-startup.mjs",
     "tauri": "tauri",
     "storybook": "storybook dev -p 6006",

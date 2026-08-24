@@ -1,4 +1,7 @@
-# Marxdown
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="assets/logo-dark.svg" />
+  <img src="assets/logo-light.svg" alt="Marxdown" width="256" height="72" />
+</picture>
 
 速く開く Markdown ビューア / エディタ。
 

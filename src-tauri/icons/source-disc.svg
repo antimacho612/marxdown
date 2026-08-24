@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256" role="img" aria-label="Marxdown">
+  <!--
+    Marxdown アプリアイコンのマスター（墨の円版 / 128px 以上で使う）。
+    透過版は `source.svg`。**形を直すときは両方直す。**（パスは 2 ファイルで同一）
+
+    小サイズに円を敷かないのは、円で囲うとマークの実効サイズが 74% に落ちるため。
+    16px では中身が 12px しか残らない。逆に 128px 以上では余白がありすぎて
+    マークが浮くので、そこだけ地を敷く。境界は ICO の標準サイズに合わせて 64 / 128 の間。
+
+    青と赤は透過版より明るい。#14161a の上だと透過版の暗端（#2b45b4）は
+    コントラスト比 2.25 しか出ず、左の足が地に沈む。持ち上げて 3.7 まで出している。
+  -->
+  <defs>
+    <linearGradient id="b" gradientUnits="userSpaceOnUse" x1="86" y1="48" x2="52" y2="212">
+      <stop offset="0" stop-color="#8aa2f9" />
+      <stop offset="1" stop-color="#4767dd" />
+    </linearGradient>
+    <linearGradient id="r" gradientUnits="userSpaceOnUse" x1="192" y1="84" x2="210" y2="210">
+      <stop offset="0" stop-color="#f87078" />
+      <stop offset="1" stop-color="#d9333e" />
+    </linearGradient>
+    <radialGradient id="y" cx="0.36" cy="0.3" r="0.82">
+      <stop offset="0" stop-color="#ffe694" />
+      <stop offset="1" stop-color="#f2ac12" />
+    </radialGradient>
+  </defs>
+
+  <circle cx="128" cy="128" r="128" fill="#14161a" />
+
+  <!--
+    0.74 = 円の直径に対するマークの占有率。これ以上小さいと円の中で浮き、
+    大きいと玉が縁に迫る。translate(-128 -126) は外接矩形の中心 (131, 117) を
+    円の中心へ寄せたうえで、右 +3 / 下 +2 の光学補正を入れた値。
+  -->
+  <g transform="translate(128 128) scale(0.74) translate(-128 -126)">
+    <g fill="none" stroke-width="32" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M52 200 C 70 176, 92 132, 86 58 L 136 156" stroke="url(#b)" />
+      <path d="M136 156 L 192 92 C 196 124, 202 164, 210 196" stroke="url(#r)" />
+    </g>
+    <circle cx="74" cy="42" r="24" fill="url(#y)" />
+    <circle cx="200" cy="72" r="20" fill="url(#y)" />
+  </g>
+</svg>
