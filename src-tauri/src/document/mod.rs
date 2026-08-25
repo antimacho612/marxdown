@@ -93,7 +93,9 @@ pub fn canonicalize(path: &Path) -> CoreResult<PathBuf> {
     Ok(parent.join(name))
 }
 
-fn mtime_ms(meta: &std::fs::Metadata) -> i64 {
+/// `pub` なのは、ファイル監視（`watch.rs`）が同じ規則で mtime を見る必要があるため。
+/// 自己イベントの照合が読み書きと 1ms でもずれると、弾けなくなる。
+pub fn mtime_ms(meta: &std::fs::Metadata) -> i64 {
     meta.modified()
         .ok()
         .and_then(|t| t.duration_since(UNIX_EPOCH).ok())

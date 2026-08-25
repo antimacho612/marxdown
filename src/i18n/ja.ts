@@ -28,6 +28,11 @@ export const ja = {
   open: {
     droppedExtra: (n: number) => `${n} 件は開いていません（複数タブは M3 で対応）`,
     reloaded: '再読み込みしました',
+    /**
+     * 外部変更を自動で読み込んだとき（03.ux-spec.md §8.2 の 1 行目）。
+     * 自分では何もしていないので、**何が起きたか**を先に言う。
+     */
+    reloadedExternal: '外部の変更を読み込みました',
   },
   preview: {
     copy: 'コピー',

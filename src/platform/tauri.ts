@@ -11,6 +11,7 @@ import { getCurrentWebview } from '@tauri-apps/api/webview';
 import type {
   Bootstrap,
   DocumentPayload,
+  FileChange,
   OpenRequest,
   Platform,
   RecentEntry,
@@ -22,6 +23,8 @@ import type {
 } from './types';
 
 const EVENT_OPEN_REQUEST = 'marxdown://open-request';
+const EVENT_FILE_CHANGED = 'marxdown://file-changed';
+const EVENT_SETTINGS_CHANGED = 'marxdown://settings-changed';
 
 /**
  * Tauri の購読 API を「同期的に解除関数を返す」形に均す。
@@ -100,6 +103,22 @@ export const tauriPlatform: Platform = {
 
   openSettingsFile() {
     return invoke<void>('open_settings_file');
+  },
+
+  watchPath(path) {
+    return invoke<void>('watch_path', { path });
+  },
+
+  unwatchPath(path) {
+    return invoke<void>('unwatch_path', { path });
+  },
+
+  onFileChanged(handler) {
+    return subscribe(() => listen<FileChange>(EVENT_FILE_CHANGED, (event) => handler(event.payload)));
+  },
+
+  onSettingsChanged(handler) {
+    return subscribe(() => listen(EVENT_SETTINGS_CHANGED, () => handler()));
   },
 
   onDragDrop(handler) {

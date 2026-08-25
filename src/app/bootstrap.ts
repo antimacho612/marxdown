@@ -34,9 +34,10 @@ import {
   reloadCurrent,
 } from '@/features/document/open';
 import { documentStore } from '@/features/document/store.svelte';
+import { installFileWatch } from '@/features/document/watch';
 import { installLinkHandler } from '@/features/preview/links';
 import { applyZoom, zoomIn, zoomOut, zoomReset } from '@/features/preview/zoom';
-import { initSettings, reportSettingsProblem } from '@/features/settings/store.svelte';
+import { initSettings, installSettingsWatch, reportSettingsProblem } from '@/features/settings/store.svelte';
 import { recentStore } from '@/features/workspace/recent.svelte';
 import { ja } from '@/i18n/ja';
 import { createParser } from '@/markdown/worker/client';
@@ -125,10 +126,15 @@ export async function startup(renderShell: () => void): Promise<void> {
   await platform.ready();
 
   // --- 以降は非同期 -------------------------------------------------------
-  // ウィンドウが見えた後に回す。どちらも Rust 側への購読（IPC）を伴い、
+  // ウィンドウが見えた後に回す。いずれも Rust 側への購読（IPC）を伴い、
   // 「本文が読める」瞬間に間に合っている必要がない。
+  //
+  // ファイル監視の購読が遅れたときの最悪は「起動直後の数十 ms に起きた外部変更を
+  // 取りこぼす」ことで、`F5` で回復できる（02.architecture.md §5.1 の判断基準）。
   installOpenRequestHandler();
   installDragAndDrop();
+  installFileWatch();
+  installSettingsWatch();
 }
 
 /**
@@ -193,6 +199,20 @@ function reportStartupProblems(bootstrap: Bootstrap | null): void {
 }
 
 /**
+ * アプリの再読み込みに置き換えるキー（03.ux-spec.md §5.3 / OQ-19）。
+ *
+ * **WebView の再読み込みは 1 つのキーに割り当たっているのではない。**
+ * `F5` / `Ctrl+R` が通常の再読み込み、`Ctrl+Shift+R` / `Ctrl+F5` / `Shift+F5` が
+ * キャッシュを無視した再読み込みで、Chromium 系ではどれも効く。
+ * 1 つでも取りこぼすと、そこだけ「開いているファイルが消える」経路が残る。
+ *
+ * **トレイ常駐でプロセスの寿命が延びるほど、1 回の誤爆の被害が重くなる**（§5.3）。
+ * 意味の違い（キャッシュを使うかどうか）はアプリ側の再読み込みには無いので、
+ * 全部同じ動作に倒す。
+ */
+const RELOAD_KEYS = ['F5', 'Ctrl+R', 'Ctrl+Shift+R', 'Ctrl+F5', 'Shift+F5'];
+
+/**
  * グローバルキーバインド（03.ux-spec.md §5.3）。
  *
  * ここに並ぶのは**アプリ全体で効くもの**だけ。プレビュー内検索のように
@@ -202,7 +222,7 @@ function installShortcuts(): void {
   bindKeys([
     { key: 'Ctrl+O', run: () => void openViaDialogSafely() },
 
-    // F5 は**必ず飲み込む**。
+    // 再読み込みのキーは**必ず飲み込む**。
     //
     // 素通しすると WebView がページごと再読み込みし、`initialization_script` に
     // 載っている**起動時の** bootstrap が再適用される。コマンドラインで指定した
@@ -211,7 +231,7 @@ function installShortcuts(): void {
     // 何も開いていないときも同じ理由で飲み込む（`reloadCurrent` は何もしない）。
     // `whenEditing: true` なのは、検索欄にフォーカスがあるときも同じ事故が
     // 起きるため。「このキーは WebView に渡さない」が要件そのものになっている。
-    { key: 'F5', run: () => void reloadCurrent(), whenEditing: true },
+    ...RELOAD_KEYS.map((key) => ({ key, run: () => void reloadCurrent(), whenEditing: true })),
 
     { key: 'Ctrl+=', run: () => void zoomIn() },
     { key: 'Ctrl+-', run: () => void zoomOut() },

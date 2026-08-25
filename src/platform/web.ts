@@ -272,6 +272,23 @@ export const webPlatform: Platform = {
     });
   },
 
+  async watchPath() {
+    // 仮想 FS はこのタブの中にしかなく、外から書き換わることがない。
+    // 監視の有無で Domain 層の分岐が増えないよう、口だけ合わせておく
+  },
+
+  async unwatchPath() {
+    // 同上
+  },
+
+  onFileChanged() {
+    return () => {};
+  },
+
+  onSettingsChanged() {
+    return () => {};
+  },
+
   onDragDrop(handler) {
     // ブラウザには OS のドラッグ＆ドロップイベントが無いので HTML5 で代用する。
     // 実装では絶対パスが取れないため、落ちてきた中身を仮想 FS に取り込んでから

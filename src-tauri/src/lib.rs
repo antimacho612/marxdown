@@ -18,6 +18,7 @@ pub mod settings;
 pub mod state;
 pub mod store;
 pub mod trace;
+pub mod watch;
 pub mod window;
 
 use std::time::Instant;
@@ -147,6 +148,8 @@ pub fn run() {
             commands::read_settings,
             commands::write_settings,
             commands::open_settings_file,
+            commands::watch_path,
+            commands::unwatch_path,
             commands::report_trace,
             commands::ready,
             commands::open_external,
@@ -169,8 +172,26 @@ pub fn run() {
                 let _ = app.asset_protocol_scope().allow_directory(root, true);
             }
 
+            // ファイル監視（§4.4）。**ウィンドウを作る前に `manage` する。**
+            // WebView が動き出した直後の `watch_path` が、まだ管理されていない状態を
+            // 引き当てないようにするため。ここで起きるのはスレッド 1 本ぶんの生成だけで、
+            // ファイル I/O は伴わない（実際に何を見るかは下で決める）。
+            app.manage(watch::FileWatcher::start(app.handle().clone()));
+
             window::create(app.handle(), window::MAIN_LABEL, &payload, restore_window)?;
             state.trace.mark("T3", None);
+
+            // 監視の登録は T3 の後。ここから先は「本文が読める」までの経路に載らない
+            // （§5.1 の判断基準: IPC を伴わず、遅れても最悪 300ms 反映が遅れるだけ）。
+            //
+            // 開いているドキュメントの登録はフロントが `watch_path` で行う。
+            // **`settings.json` だけは Rust 側で登録する。** パスを知っているのは
+            // こちらだけであり、取りに行かせると IPC が 1 往復増える（§4.5）。
+            if let Some(path) = state.settings_path() {
+                app.state::<watch::FileWatcher>()
+                    .watch(path, watch::Role::Settings);
+            }
+
             Ok(())
         })
         // ウィンドウ位置・サイズの保存（F-CONF-10）。

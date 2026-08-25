@@ -79,6 +79,16 @@ export interface OpenOptions {
   betweenParseAndPaint?: () => void;
 }
 
+export interface ReloadOptions {
+  /**
+   * 読み直した後に出す情報通知の文言。既定は「再読み込みしました」（`F5`）。
+   *
+   * **文言だけを差し替えられれば足りる。** 自分で押したのか外から変わったのかで
+   * 変わるのは「何が起きたか」の説明であって、読み直しの手順ではない。
+   */
+  notice?: string;
+}
+
 export interface OpenOutcome {
   parseMs: number;
   /** 最初のチャンクが見えるまでの経過ミリ秒（`startedAt` 起点）。 */
@@ -159,6 +169,11 @@ export async function openDocument(payload: DocumentPayload, options: OpenOption
     // 履歴への記録は本文が見えた**後**。IPC 1 回ぶんでも T8 の手前に置かない。
     if (options.remember !== false) void rememberRecent(payload.path);
 
+    // 監視の付け替え（F-EDIT-16）。**開いているファイルだけを見る**（N-PERF-05）。
+    // 前のファイルの監視は Rust 側で外れるので、ここに解除は要らない。
+    // 履歴と同じ理由で T8 の後に置く。失敗しても本文はもう画面に出ている。
+    void watch(payload.path);
+
     return outcome;
   } catch (e) {
     documentStore.notice = { level: 'error', message: `${ja.error.renderFailed}: ${toMessage(e)}` };
@@ -234,8 +249,11 @@ export async function openDropped(paths: string[]): Promise<OpenOutcome | null> 
  *
  * 何も開いていなければ何もしない。編集（M2）が入ったら、
  * ダーティな本文を捨てないための確認をここに足すこと。
+ *
+ * 外部変更を検知したときの自動再読み込み（`watch.ts`）もここを通る。
+ * **スクロール位置を保つ理由がそちらでは一層強い**（自分では何も操作していない）。
  */
-export async function reloadCurrent(): Promise<OpenOutcome | null> {
+export async function reloadCurrent(options: ReloadOptions = {}): Promise<OpenOutcome | null> {
   const meta = documentStore.meta;
   if (meta === null) return null;
 
@@ -250,8 +268,17 @@ export async function reloadCurrent(): Promise<OpenOutcome | null> {
 
   // 内容が変わっていないと画面は 1 ピクセルも動かない。押した操作が
   // 届いたことは伝える（03.ux-spec.md §8.2 の情報通知。3 秒で消える）。
-  if (outcome) notifyInfo(ja.open.reloaded);
+  if (outcome) notifyInfo(options.notice ?? ja.open.reloaded);
   return outcome;
+}
+
+/** 監視の付け替え。失敗しても開く操作は成功しているので、握り潰す。 */
+async function watch(path: string): Promise<void> {
+  try {
+    await getPlatform().watchPath(path);
+  } catch {
+    // 監視できなくても `F5` で読み直せる
+  }
 }
 
 /**
