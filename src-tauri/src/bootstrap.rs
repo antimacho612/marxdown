@@ -17,6 +17,7 @@ use serde::Serialize;
 
 use crate::cli::{CliArgs, SpikeFlags, ViewMode};
 use crate::document::{self, DocumentMeta, INLINE_CONTENT_LIMIT};
+use crate::settings::{Settings, SettingsLoad, SettingsProblem};
 use crate::store::{RecentEntry, StoreData};
 
 /// フロントエンドが `window.__MARXDOWN_BOOTSTRAP__` として同期的に読む値。
@@ -41,6 +42,15 @@ pub struct Bootstrap {
     /// 表示倍率（F-VIEW-11）。最初のフレームから正しい倍率で描くために必要。
     /// 後から当てると、本文が一度既定倍率で描かれてから跳ねる。
     pub zoom: f64,
+    /// ユーザー設定の**全体**（F-CONF-03 / 02.architecture.md §4.5）。
+    ///
+    /// 「どの設定が初回フレームに間に合う必要があるか」を毎回考えなくて済むよう、
+    /// 選ばずに丸ごと載せる。想定サイズは 1KB 未満で、本文の 256KB 閾値に比べれば
+    /// 無視できる。**フロントから取りに行く経路は作らない。**
+    pub settings: Settings,
+    /// `settings.json` を読めなかった事実。UI が通知バーに出す（03.ux-spec.md §8.2）。
+    /// これが `Some` の間、`write_settings` は書き戻しを拒否する。
+    pub settings_error: Option<SettingsProblem>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -73,7 +83,12 @@ pub struct TraceConfig {
 ///
 /// **この関数はウィンドウ生成の前に呼ばれ、ファイル I/O を含む。**
 /// 呼び出し側は WebView の初期化と並行になるよう配置すること。
-pub fn build(args: &CliArgs, trace: &crate::trace::Trace, store: &StoreData) -> Bootstrap {
+pub fn build(
+    args: &CliArgs,
+    trace: &crate::trace::Trace,
+    store: &StoreData,
+    settings: &SettingsLoad,
+) -> Bootstrap {
     let mut document = None;
     let mut document_error = None;
 
@@ -120,6 +135,8 @@ pub fn build(args: &CliArgs, trace: &crate::trace::Trace, store: &StoreData) -> 
         unknown_args: args.unknown.clone(),
         recent: store.recent.clone(),
         zoom: store.zoom,
+        settings: settings.values.clone(),
+        settings_error: settings.broken.clone(),
     }
 }
 
@@ -165,7 +182,12 @@ mod tests {
         let p = dir.join("a.md");
         std::fs::write(&p, "# hello\n").unwrap();
         let trace = crate::trace::Trace::start(Instant::now());
-        let b = build(&args_with(p), &trace, &StoreData::default());
+        let b = build(
+            &args_with(p),
+            &trace,
+            &StoreData::default(),
+            &SettingsLoad::default(),
+        );
         let doc = b.document.expect("document");
         assert_eq!(doc.content.as_deref(), Some("# hello\n"));
         std::fs::remove_dir_all(&dir).ok();
@@ -177,7 +199,12 @@ mod tests {
         let p = dir.join("big.md");
         std::fs::write(&p, "x".repeat((INLINE_CONTENT_LIMIT + 1) as usize)).unwrap();
         let trace = crate::trace::Trace::start(Instant::now());
-        let b = build(&args_with(p), &trace, &StoreData::default());
+        let b = build(
+            &args_with(p),
+            &trace,
+            &StoreData::default(),
+            &SettingsLoad::default(),
+        );
         let doc = b.document.expect("document");
         assert!(doc.content.is_none(), "256KB 超は埋め込まない");
         assert!(doc.meta.size > INLINE_CONTENT_LIMIT);
@@ -192,6 +219,7 @@ mod tests {
             &args_with(dir.join("nope.md")),
             &trace,
             &StoreData::default(),
+            &SettingsLoad::default(),
         );
         assert!(b.document.is_none());
         assert_eq!(
@@ -211,7 +239,12 @@ mod tests {
             ..Default::default()
         };
         let trace = crate::trace::Trace::start(Instant::now());
-        let b = build(&args, &trace, &StoreData::default());
+        let b = build(
+            &args,
+            &trace,
+            &StoreData::default(),
+            &SettingsLoad::default(),
+        );
         assert_eq!(b.pending_paths.len(), 2);
         std::fs::remove_dir_all(&dir).ok();
     }
@@ -227,7 +260,12 @@ mod tests {
         )
         .unwrap();
         let trace = crate::trace::Trace::start(Instant::now());
-        let b = build(&args_with(p), &trace, &StoreData::default());
+        let b = build(
+            &args_with(p),
+            &trace,
+            &StoreData::default(),
+            &SettingsLoad::default(),
+        );
 
         // 本文は初期化スクリプトに載る。ここが IPC 往復を 1 回省いている（§5.1）
         assert!(to_init_script(&b).contains("secret-marker"));
@@ -235,10 +273,63 @@ mod tests {
         std::fs::remove_dir_all(&dir).ok();
     }
 
+    /// §4.5「bootstrap には設定全体を載せる」。
+    /// **フロントから取りに行く経路を作らない**ので、ここに全部載っている必要がある。
+    #[test]
+    fn the_script_carries_the_whole_settings() {
+        let trace = crate::trace::Trace::start(Instant::now());
+        let settings = SettingsLoad {
+            values: crate::settings::Settings {
+                theme: crate::settings::Theme::Dark,
+                ..Default::default()
+            },
+            broken: None,
+        };
+        let b = build(
+            &CliArgs::default(),
+            &trace,
+            &StoreData::default(),
+            &settings,
+        );
+
+        let script = to_init_script(&b);
+        assert!(script.contains(r#""theme":"dark""#), "{script}");
+        assert!(script.contains(r#""preview.maxWidth""#), "{script}");
+        assert!(
+            script.contains(r#""window.closeBehavior":"tray""#),
+            "{script}"
+        );
+    }
+
+    /// 壊れている事実も bootstrap に載る。通知バーは初回フレームで出せる（§8.2）。
+    #[test]
+    fn a_broken_settings_file_is_reported_through_the_bootstrap() {
+        let trace = crate::trace::Trace::start(Instant::now());
+        let dir = temp_dir("broken-settings");
+        let p = dir.join("settings.json");
+        std::fs::write(&p, "{ 途中まで").unwrap();
+
+        let b = build(
+            &CliArgs::default(),
+            &trace,
+            &StoreData::default(),
+            &crate::settings::load(Some(&p)),
+        );
+
+        assert!(b.settings_error.is_some());
+        assert_eq!(b.settings, crate::settings::Settings::default());
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
     #[test]
     fn the_script_is_valid_javascript_shaped_output() {
         let trace = crate::trace::Trace::start(Instant::now());
-        let b = build(&CliArgs::default(), &trace, &StoreData::default());
+        let b = build(
+            &CliArgs::default(),
+            &trace,
+            &StoreData::default(),
+            &SettingsLoad::default(),
+        );
         let script = to_init_script(&b);
         assert!(script.starts_with("globalThis.__MARXDOWN_BOOTSTRAP__ = Object.freeze({"));
         assert!(script.contains("__MARXDOWN_T4__"));

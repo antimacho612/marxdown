@@ -14,6 +14,7 @@ pub mod commands;
 pub mod document;
 pub mod error;
 pub mod scope;
+pub mod settings;
 pub mod state;
 pub mod store;
 pub mod trace;
@@ -69,8 +70,14 @@ pub fn run() {
     let store_data = store::load(store_path.as_deref());
     let restore_window = store_data.window;
 
+    // 設定も同じ理由でここで読む。見た目に効く値（テーマ / 本文幅 / フォント）は
+    // **本文を描くより前**に当たっている必要があり、後から当てると FOUC になる
+    // （02.architecture.md §5.1 の判断基準）。1KB 未満のファイル 1 枚。
+    let settings_path = settings::settings_path(&context.config().identifier);
+    let settings_data = settings::load(settings_path.as_deref());
+
     // T2: ファイル読み込み。ウィンドウ生成の前に行い、WebView 初期化と重ねる。
-    let payload = bootstrap::build(&args, &trace, &store_data);
+    let payload = bootstrap::build(&args, &trace, &store_data, &settings_data);
     trace.mark(
         "T2",
         payload
@@ -79,7 +86,15 @@ pub fn run() {
             .map(|d| format!("{} bytes, inlined={}", d.meta.size, d.content.is_some())),
     );
 
-    let state = state::AppState::new(args, trace, &payload, store_data, store_path);
+    let state = state::AppState::new(
+        args,
+        trace,
+        &payload,
+        store_data,
+        store_path,
+        settings_data,
+        settings_path,
+    );
 
     let mut builder = tauri::Builder::default();
 
@@ -129,6 +144,9 @@ pub fn run() {
             commands::store_push_recent,
             commands::store_remove_recent,
             commands::store_set_zoom,
+            commands::read_settings,
+            commands::write_settings,
+            commands::open_settings_file,
             commands::report_trace,
             commands::ready,
             commands::open_external,

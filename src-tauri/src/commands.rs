@@ -10,6 +10,7 @@ use tauri::{Manager, State, Window};
 use crate::document::{self, DocumentPayload, SaveResult, WriteRequest};
 use crate::error::{CoreError, CoreResult};
 use crate::scope;
+use crate::settings;
 use crate::state::AppState;
 use crate::store::{self, RecentEntry};
 use crate::trace::Mark;
@@ -151,6 +152,47 @@ pub fn store_set_zoom(state: State<'_, AppState>, zoom: f64) {
         store::ZOOM_DEFAULT
     };
     state.update_store(|s| s.zoom = clamped);
+}
+
+/* ------------------------------------------------------------------ */
+/* ユーザー設定（F-CONF-03 / 02.architecture.md §4.5）                    */
+/* ------------------------------------------------------------------ */
+
+/// 設定を読み直す。
+///
+/// **起動時の読み込みはここを通らない。** 設定は bootstrap に丸ごと載っており、
+/// フロントが取りに行く経路は無い（§4.5）。ここが要るのは、外部エディタで
+/// 編集されたあとの読み直し（Phase 2 のファイル監視）と設定 UI の再表示。
+#[tauri::command]
+pub fn read_settings(state: State<'_, AppState>) -> settings::SettingsLoad {
+    state.reload_settings()
+}
+
+/// 変更したキーだけを書き戻す。更新後の設定全体を返す。
+///
+/// `null` を渡したキーは削除する（既定値に戻る）。未知のキーは保持される。
+/// **`settings.json` が読めない状態では拒否する**（§4.5）。
+#[tauri::command]
+pub fn write_settings(
+    state: State<'_, AppState>,
+    patch: serde_json::Map<String, serde_json::Value>,
+) -> CoreResult<settings::Settings> {
+    state.patch_settings(patch)
+}
+
+/// `settings.json` を OS の既定アプリで開く（F-CONF-06 / 03.ux-spec.md §8.2）。
+///
+/// **パスを引数に取らない。** 開く先は Rust 側が知っている 1 か所だけであり、
+/// 任意のパスを受け取る `open_local_file` と違って許可範囲の判断が要らない。
+/// 壊れた設定を通知バーの `ファイルを開く` から直せるようにするための口。
+#[tauri::command]
+pub fn open_settings_file(app: tauri::AppHandle, state: State<'_, AppState>) -> CoreResult<()> {
+    let path = state
+        .settings_path()
+        .ok_or_else(|| CoreError::Io("設定の保存先が決まらない".into()))?;
+    tauri_plugin_opener::OpenerExt::opener(&app)
+        .open_path(path.display().to_string(), None::<&str>)
+        .map_err(|e| CoreError::Io(e.to_string()))
 }
 
 /// フロント側の performance.mark を受け取ってトレースに合流させる。

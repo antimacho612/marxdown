@@ -36,6 +36,7 @@ import {
 import { documentStore } from '@/features/document/store.svelte';
 import { installLinkHandler } from '@/features/preview/links';
 import { applyZoom, zoomIn, zoomOut, zoomReset } from '@/features/preview/zoom';
+import { initSettings, reportSettingsProblem } from '@/features/settings/store.svelte';
 import { recentStore } from '@/features/workspace/recent.svelte';
 import { ja } from '@/i18n/ja';
 import { createParser } from '@/markdown/worker/client';
@@ -73,6 +74,10 @@ export async function startup(renderShell: () => void): Promise<void> {
   // 後から当てると、既定倍率で 1 フレーム描かれてから跳ねる。
   applyZoom(bootstrap?.zoom ?? 1, false);
   recentStore.entries = bootstrap?.recent ?? [];
+
+  // 設定も同じ理由でここ。bootstrap に丸ごと載っているので IPC 往復は無い
+  // （02.architecture.md §4.5 / §5.1）。値を見た目に当てるのは M1.5 Phase 4。
+  initSettings(bootstrap);
 
   configureOpener({ parser: createParser(spike.parse), site: spike.parse });
 
@@ -170,6 +175,11 @@ async function resolveInitialDocument(bootstrap: Bootstrap | null): Promise<Docu
  * 本文の描画とは独立なので、シェルが描かれた直後（= 見える最初のフレーム）に流す。
  */
 function reportStartupProblems(bootstrap: Bootstrap | null): void {
+  // 通知は 1 つしか出ない（後から出したものが勝つ）ので、**弱いものから順に**出す。
+  // 設定が壊れていても既定値で読めているが、本文が開けなかったのは
+  // ユーザーがやろうとしたこと自体の失敗であり、そちらを見せる。
+  reportSettingsProblem(bootstrap?.settingsError ?? null);
+
   if (bootstrap?.documentError) {
     const e = bootstrap.documentError;
     documentStore.notice = { level: 'error', message: describeError(e.kind, e.path, e.message) };
