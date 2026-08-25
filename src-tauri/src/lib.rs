@@ -141,10 +141,17 @@ pub fn run() {
             // T2b: Tauri のブートとプラグイン初期化が終わった時点。
             // T2→T3 が伸びたときに「WebView2 が重いのか、自分たちが足したものが重いのか」を
             // 切り分けられるようにする（05.performance-budget.md §5.2）。
-            app.state::<state::AppState>().trace.mark("T2b", None);
+            let state = app.state::<state::AppState>();
+            state.trace.mark("T2b", None);
+
+            // bootstrap で開いた初期ドキュメントは IPC（read_document）を経由しないため、
+            // ここで改めて Tauri 本体の asset プロトコルスコープに登録しないと
+            // 最初に開いたファイルの相対パス画像が 403 になる。
+            for root in state.asset_roots() {
+                let _ = app.asset_protocol_scope().allow_directory(root, true);
+            }
 
             window::create(app.handle(), window::MAIN_LABEL, &payload, restore_window)?;
-            let state = app.state::<state::AppState>();
             state.trace.mark("T3", None);
             Ok(())
         })
