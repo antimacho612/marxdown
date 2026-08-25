@@ -127,7 +127,7 @@
 .mx-preview code {
   font-family: var(--mx-font-code);
   font-size: var(--mx-font-size-code);
-  font-variant-ligatures: none;
+  font-variant-ligatures: var(--mx-font-ligatures-code);
 }
 
 /* インラインコードは「面」ではなく「印」。本文のリズムを乱さない量にとどめる。 */

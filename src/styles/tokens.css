@@ -25,6 +25,7 @@
   --mx-font-size-ui: 13px;
   --mx-font-size-content: 16px;
   --mx-font-size-code: 0.875em;
+  --mx-font-ligatures-code: normal;
 
   --mx-line-height: 1.75;
   --mx-line-height-tight: 1.35;
