@@ -18,6 +18,12 @@
     "gzip": true
   },
   {
+    "name": "settings (設定 UI。Ctrl+, を押すまでロードしない)",
+    "path": ["dist/assets/settings-*.js"],
+    "limit": "6 KB",
+    "gzip": true
+  },
+  {
     "name": "highlight (コア + 全言語。1 ドキュメントが読むのはこのうち数個)",
     "path": ["dist/assets/highlight-*.js", "dist/assets/hljs-*.js"],
     "limit": "45 KB",

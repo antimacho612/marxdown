@@ -38,6 +38,7 @@ import { installFileWatch } from '@/features/document/watch';
 import { installLinkHandler } from '@/features/preview/links';
 import { openSearchLazily } from '@/features/preview/open-search';
 import { applyZoom, zoomIn, zoomOut, zoomReset } from '@/features/preview/zoom';
+import { openSettingsLazily } from '@/features/settings/open-settings';
 import { initSettings, installSettingsWatch, reportSettingsProblem } from '@/features/settings/store.svelte';
 import { recentStore } from '@/features/workspace/recent.svelte';
 import { ja } from '@/i18n/ja';
@@ -79,7 +80,9 @@ export async function startup(renderShell: () => void): Promise<void> {
   recentStore.entries = bootstrap?.recent ?? [];
 
   // 設定も同じ理由でここ。bootstrap に丸ごと載っているので IPC 往復は無い
-  // （02.architecture.md §4.5 / §5.1）。値を見た目に当てるのは M1.5 Phase 4。
+  // （02.architecture.md §4.5 / §5.1）。テーマ・フォント・本文幅は
+  // `initSettings` の中で**同期的に** CSS 変数へ当たる。後から当てると、
+  // 一度出た絵が描き変わる（§5.1 の「後回しにしてよいもの」の表）。
   initSettings(bootstrap);
 
   configureOpener({ parser: createParser(spike.parse), site: spike.parse });
@@ -110,17 +113,18 @@ export async function startup(renderShell: () => void): Promise<void> {
   const initial = await resolveInitialDocument(bootstrap);
 
   if (initial) {
-    await openDocument(initial, {
-      trace: true,
-      betweenParseAndPaint: () => {
-        renderShellOnce();
-        reportStartupProblems(bootstrap);
-      },
-    });
+    await openDocument(initial, { trace: true, betweenParseAndPaint: renderShellOnce });
   } else {
     renderShellOnce();
-    reportStartupProblems(bootstrap);
   }
+
+  // 通知は**本文を描いた後**に出す。`openDocument` は描画に成功した時点で
+  // 通知バーを下げる（開けなかったことを知らせる通知を、開けたあとも
+  // 残さないため）ので、手前で出すと `settings.json` が壊れていることが
+  // 本文と一緒に消えてしまう。
+  //
+  // 本文の描画とは独立な情報なので、1 フレーム遅れて出て構わない。
+  reportStartupProblems(bootstrap);
 
   // --- ウィンドウを見せる -------------------------------------------------
   // 04.tech-stack.md §9.1: 最初に見えるフレームが既に本文である状態を作る。
@@ -182,9 +186,9 @@ async function resolveInitialDocument(bootstrap: Bootstrap | null): Promise<Docu
 }
 
 /**
- * CLI 引数まわりの問題を通知バーに出す。
+ * 起動時に見つかった問題（CLI 引数 / 設定）を通知バーに出す。
  *
- * 本文の描画とは独立なので、シェルが描かれた直後（= 見える最初のフレーム）に流す。
+ * 本文の描画とは独立だが、**描画の後**に呼ぶ（呼び出し側にその理由がある）。
  */
 function reportStartupProblems(bootstrap: Bootstrap | null): void {
   // 通知は 1 つしか出ない（後から出したものが勝つ）ので、**弱いものから順に**出す。
@@ -238,6 +242,13 @@ function installShortcuts(): void {
     // `whenEditing: true` なのは、検索欄にフォーカスがあるときも同じ事故が
     // 起きるため。「このキーは WebView に渡さない」が要件そのものになっている。
     ...RELOAD_KEYS.map((key) => ({ key, run: () => void reloadCurrent(), whenEditing: true })),
+
+    // VS Code と同じ `Ctrl+,`（Familiar）。03.ux-spec.md §5.3 の一覧に
+    // このキーは無く、**Phase 4 での仕様追加**にあたる。
+    // `whenEditing: true` なのは、設定パネルの入力欄にフォーカスがあるまま
+    // もう一度押したときも「設定を開く」であってほしいため（開いていれば
+    // フォーカスが戻るだけで、2 枚目は出ない）。
+    { key: 'Ctrl+,', run: () => void openSettingsLazily(), whenEditing: true },
 
     { key: 'Ctrl+=', run: () => void zoomIn() },
     { key: 'Ctrl+-', run: () => void zoomOut() },

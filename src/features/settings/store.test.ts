@@ -1,3 +1,5 @@
+// @vitest-environment jsdom
+// 値が変わるたびに `applyAppearance` が `:root` を触る（Phase 4）ので DOM が要る。
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { documentStore } from '@/features/document/store.svelte';
@@ -65,6 +67,22 @@ describe('設定ストア (02.architecture.md §4.5)', () => {
   it('bootstrap が無くても既定値で動く', () => {
     initSettings(null);
     expect(settingsStore.values).toEqual(DEFAULT_SETTINGS);
+  });
+
+  /**
+   * 02.architecture.md §5.1「テーマ / 本文幅 / フォントは描画より前」。
+   *
+   * `initSettings` は `bootstrap.ts` が本文を描くより前に呼ぶ。**その場で
+   * 当たっている**ことをここで見張る。`$effect` で購読する形に変えると
+   * 当たる瞬間がマイクロタスク以降にずれ、一度出た絵が描き変わる。
+   */
+  it('読み込んだ時点で見た目に当たっている（後から当てない）', () => {
+    initSettings(bootstrapWith({ settings: { ...DEFAULT_SETTINGS, theme: 'dark', 'preview.maxWidth': 80 } }));
+
+    expect(document.documentElement.dataset['theme']).toBe('dark');
+    expect(document.documentElement.style.getPropertyValue('--mx-content-width')).toBe('80ch');
+
+    initSettings(null);
   });
 
   /** §4.5「常駐が既定」。実際に効くのは Phase 7 だが、キーと既定値はここで決まる。 */

@@ -19,8 +19,22 @@
   /* 日本語と英数字の混植を前提としたスタック（§10.2）。
      英数字を先に置き、日本語は後段のフォントに拾わせる。 */
   --mx-font-ui: 'Segoe UI Variable Text', 'Segoe UI', system-ui, 'Yu Gothic UI', 'Meiryo', sans-serif;
-  --mx-font-content: 'Segoe UI Variable Text', 'Segoe UI', system-ui, 'Yu Gothic', 'Yu Mincho', 'Meiryo', sans-serif;
   --mx-font-code: 'Cascadia Code', 'Consolas', 'BIZ UDGothic', 'Meiryo', monospace;
+
+  /*
+   * 本文のフォント（F-CONF-04）。
+   *
+   * **スタックを 1 段分けてある。** `preview.fontFamily` で指定されたフォントは
+   * `--mx-font-content` の先頭に足され、後ろにこのスタックがそのまま残る。
+   * そのフォントが入っていない環境でも、混植スタック（§10.2）が生き延びる。
+   *
+   * 分けているのは JS 側に既定スタックの文字列を持たせないためでもある。
+   * 書き写すと二重管理になり、必ずずれる（Storybook が `tokens.css` を
+   * そのまま読んでいるのと同じ理由）。
+   */
+  --mx-font-content-stack:
+    'Segoe UI Variable Text', 'Segoe UI', system-ui, 'Yu Gothic', 'Yu Mincho', 'Meiryo', sans-serif;
+  --mx-font-content: var(--mx-font-content-stack);
 
   --mx-font-size-ui: 13px;
   --mx-font-size-content: 16px;
@@ -116,7 +130,20 @@
   --mx-caption-button-width: 46px;
 }
 
+/*
+ * テーマを明示的に選んだとき（F-CONF-01）は `color-scheme` も一緒に固定する。
+ *
+ * `:root` の `color-scheme: light dark` は OS の設定を拾う宣言であり、
+ * これだけだと「OS はライト / アプリはダーク」のときにスクロールバーと
+ * フォームコントロールだけが白いまま残る。**自分たちで塗っていない部品**が
+ * テーマから外れるので、属性と対で指定する。
+ */
+:root[data-theme='light'] {
+  color-scheme: light;
+}
+
 :root[data-theme='dark'] {
+  color-scheme: dark;
   --mx-color-bg: #111315;
   --mx-color-bg-subtle: #191b1d;
   --mx-color-bg-inset: #202325;

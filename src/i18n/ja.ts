@@ -43,10 +43,11 @@ export const ja = {
    * ハンバーガーメニュー（03.ux-spec.md §2.3「初学者の逃げ道」）。
    *
    * **メニューバーは置かない**という決定の代わりに、タイトルバー左端に 1 つだけ置く。
-   * 並べるのは**いま押せるものだけ**。「設定」は Phase 4、「終了」は Phase 7 で増える。
+   * 並べるのは**いま押せるものだけ**。「終了」は Phase 7 で増える。
    */
   menu: {
     open: 'ファイルを開く',
+    settings: '設定',
     recent: '最近開いたファイル',
     noRecent: 'まだ何も開いていません',
     reload: '再読み込み',
@@ -105,6 +106,36 @@ export const ja = {
   settings: {
     broken: 'settings.json を読めませんでした。既定の設定で表示しています',
     openFile: 'ファイルを開く',
+
+    /*
+     * 設定 UI（F-CONF-05）。
+     *
+     * **「セットアップ」ではなく「調整」の画面**（03.ux-spec.md §1「Defaults Matter」）。
+     * 説明文を項目ごとに付けず、既定値のままで完成していることを前提に、
+     * 触ったときだけ意味が要る 2 か所（フォントと本文幅）にだけ補足を置く。
+     */
+    title: '設定',
+    close: '設定を閉じる',
+    /** 壊れている間は保存を**試みない**。理由をここに出して入力欄を止める（§4.5）。 */
+    readOnly: 'settings.json を読めないため、変更を保存できません。ファイルを直してから開き直してください',
+    theme: 'テーマ',
+    themeSystem: 'OS に合わせる',
+    themeLight: 'ライト',
+    themeDark: 'ダーク',
+    fontFamily: '本文のフォント',
+    /** ウェブフォントは CSP（`font-src 'self'`）で読み込めない（02.architecture.md §10.3）。 */
+    fontFamilyHint: 'OS に入っているフォント名。無いフォントを書いても既定のフォントに落ちる',
+    fontFamilyPlaceholder: '既定のフォント',
+    fontSize: '文字サイズ',
+    lineHeight: '行間',
+    maxWidth: '本文幅',
+    maxWidthHint: '1 行に収まる半角文字の数',
+    unitPx: 'px',
+    unitCh: 'ch',
+    reset: '既定に戻す',
+    resetOf: (label: string) => `${label}を既定に戻す`,
+    edit: 'settings.json を開く',
+    editHint: 'ここに無い項目は settings.json に直接書ける',
   },
   /** ステータスバー（03.ux-spec.md §8.3）。 */
   status: {

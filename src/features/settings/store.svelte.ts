@@ -17,10 +17,16 @@ import { documentStore } from '@/features/document/store.svelte';
 import { ja } from '@/i18n/ja';
 import { DEFAULT_SETTINGS, getPlatform, type Bootstrap, type Settings, type SettingsProblem } from '@/platform';
 
+import { applyAppearance } from './appearance';
+
 class SettingsStore {
   /**
    * 設定の全体。**既定値で埋まった後の姿**が入る（欠けたキーは Rust 側で埋まる）。
-   * 実際に見た目へ適用するのは M1.5 Phase 4 以降。
+   *
+   * 見た目への適用は `applyAppearance` が担当する。**このストアを購読して
+   * 当てる形にはしていない**（`$effect` を張ると、当たる瞬間が
+   * マイクロタスク以降にずれて初期フレームに間に合わない）。
+   * 値が変わる場所は 3 つしかないので、そこで明示的に呼ぶ。
    */
   values = $state<Settings>(DEFAULT_SETTINGS);
 }
@@ -28,13 +34,14 @@ class SettingsStore {
 export const settingsStore = new SettingsStore();
 
 /**
- * bootstrap から**同期的に**初期化する。
+ * bootstrap から**同期的に**初期化し、その場で見た目に当てる。
  *
  * 本文を描くより前に呼ぶこと。倍率（`applyZoom`）と同じ理由で、
  * 後から当てると一度既定の見た目で描かれてから切り替わる。
  */
 export function initSettings(bootstrap: Bootstrap | null): void {
   settingsStore.values = bootstrap?.settings ?? DEFAULT_SETTINGS;
+  applyAppearance(settingsStore.values);
 }
 
 /**
@@ -67,7 +74,10 @@ export async function refreshSettings(): Promise<void> {
     return;
   }
 
+  // 外部エディタでの編集も、設定 UI からの変更と同じ 1 本を通って見た目に届く。
+  // **ここが「設定を試行錯誤しながら使える」の実体**（02.architecture.md §4.5）。
   settingsStore.values = loaded.values;
+  applyAppearance(loaded.values);
 
   if (loaded.broken) {
     reportSettingsProblem(loaded.broken);
