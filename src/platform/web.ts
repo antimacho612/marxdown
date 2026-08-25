@@ -337,6 +337,13 @@ export const webPlatform: Platform = {
     return () => {};
   },
 
+  // Snap Layouts は Windows のウィンドウ管理の機能。ブラウザには相当物が無い。
+  async setSnapLayoutsTarget() {},
+
+  onMaximizeHoverChanged() {
+    return () => {};
+  },
+
   async ready() {
     // ブラウザにはウィンドウの表示制御が無い
   },

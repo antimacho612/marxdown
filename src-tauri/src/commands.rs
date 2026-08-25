@@ -170,6 +170,21 @@ pub fn window_is_maximized(window: Window) -> bool {
     window.is_maximized().unwrap_or(false)
 }
 
+/// 最大化ボタンの矩形（論理 px）を Windows へ答えられるようにする。
+///
+/// `decorations: false` にすると Windows はボタンの位置を知らず、
+/// Snap Layouts のフライアウトが出ない（`snap_layouts.rs`）。
+/// **どこにあるかを知っているのはフロントだけ**なので、レイアウトが変わるたびに
+/// こちらへ知らせてもらう。Windows 以外では何もしない。
+#[tauri::command]
+pub fn set_snap_layouts_target(app: tauri::AppHandle, x: f64, y: f64, width: f64, height: f64) {
+    #[cfg(windows)]
+    crate::snap_layouts::set_target(&app, x, y, width, height);
+
+    #[cfg(not(windows))]
+    let _ = (app, x, y, width, height);
+}
+
 /* ------------------------------------------------------------------ */
 /* 永続化ストア（F-OPEN-09 / F-VIEW-11 / F-CONF-10）                     */
 /* ------------------------------------------------------------------ */
@@ -304,6 +319,17 @@ pub fn ready(window: Window, state: State<'_, AppState>) {
     state.trace.mark("T9", None);
     let _ = window.show();
     let _ = window.set_focus();
+
+    // Snap Layouts（最大化ボタンのホバーメニュー / `snap_layouts.rs`）。
+    //
+    // **ここより前では付けられない。** ウィンドウのサブクラス化には HWND が要り、
+    // `hwnd()` はイベントループへの問い合わせなので `setup()` の中では答えが返らない。
+    // 失敗しても中で握り潰す。付かなかったときに起きるのは
+    // 「ホバーしてもフライアウトが出ない」ことだけで、ボタン自体は押せる。
+    #[cfg(windows)]
+    if let Some(main) = window.get_webview_window(crate::window::MAIN_LABEL) {
+        crate::snap_layouts::install(window.app_handle(), &main);
+    }
 
     state.trace.flush("cold", state.args.spike);
     if state.trace.exit_after() {

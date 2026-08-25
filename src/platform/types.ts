@@ -324,6 +324,23 @@ export interface Platform {
    * **押した側で状態を持たず、OS を真実にする**。Rust 側が変化したときだけ流す。
    */
   onWindowMaximizedChanged(handler: (maximized: boolean) => void): () => void;
+  /**
+   * 最大化ボタンの居場所（CSS ピクセル）を知らせる（Windows の Snap Layouts）。
+   *
+   * `decorations: false` にすると Windows はボタンの位置を知らず、
+   * ホバーしてもレイアウト選択のフライアウトが出ない
+   * （`src-tauri/src/snap_layouts.rs`）。**どこにあるかを知っているのは
+   * レイアウトを組んでいるこちらだけ**なので、変わるたびに知らせる。
+   */
+  setSnapLayoutsTarget(rect: { x: number; y: number; width: number; height: number }): Promise<void>;
+  /**
+   * 最大化ボタンのホバー（Windows の Snap Layouts）。
+   *
+   * フライアウトを出すために非クライアント領域だと答えているので、
+   * **その範囲には WebView のマウスイベントが届かない**（CSS の `:hover` が効かない）。
+   * 最大化ボタンだけ反応しないのは目立つので、Rust 側が出入りを知らせてくる。
+   */
+  onMaximizeHoverChanged(handler: (hovered: boolean) => void): () => void;
   /** 描画準備完了。ウィンドウを表示させる。 */
   ready(): Promise<void>;
   reportTrace(marks: TraceMark[]): Promise<void>;

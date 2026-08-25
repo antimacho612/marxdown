@@ -42,6 +42,8 @@ describe('Platform 層', () => {
       'closeWindow',
       'isWindowMaximized',
       'onWindowMaximizedChanged',
+      'setSnapLayoutsTarget',
+      'onMaximizeHoverChanged',
       'ready',
       'reportTrace',
       'warmDone',

@@ -15,6 +15,8 @@ pub mod document;
 pub mod error;
 pub mod scope;
 pub mod settings;
+/// Windows の Snap Layouts。**Windows 以外では空**（ファイル冒頭の `#![cfg(windows)]`）。
+pub mod snap_layouts;
 pub mod state;
 pub mod store;
 pub mod trace;
@@ -161,6 +163,7 @@ pub fn run() {
             commands::window_toggle_maximize,
             commands::window_close,
             commands::window_is_maximized,
+            commands::set_snap_layouts_target,
             commands::report_trace,
             commands::ready,
             commands::open_external,
@@ -189,6 +192,9 @@ pub fn run() {
             // ファイル I/O は伴わない（実際に何を見るかは下で決める）。
             app.manage(watch::FileWatcher::start(app.handle().clone()));
 
+            // Snap Layouts のサブクラス化は**ここではできない**。`hwnd()` は
+            // イベントループへの問い合わせで、まだ回っていない（`snap_layouts.rs`）。
+            // `ready` コマンドの中で付ける。
             window::create(app.handle(), window::MAIN_LABEL, &payload, restore_window)?;
             state.trace.mark("T3", None);
 

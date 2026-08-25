@@ -36,6 +36,21 @@ notify-debouncer-full = "0.6"
 [target.'cfg(any(target_os = "windows", target_os = "macos", all(unix, not(target_os = "macos"))))'.dependencies]
 tauri-plugin-single-instance = "2"
 
+# Snap Layouts（`src/snap_layouts.rs`）。カスタムタイトルバーにしたぶん、
+# 最大化ボタンの位置を Windows へ自分で答える必要がある（06.roadmap.md §5.2）。
+# **新しい依存ツリーは増えない。** tao が同じ 0.61 を既に引いており、
+# 使うのはウィンドウのサブクラス化まわりの数関数だけ。
+[target.'cfg(windows)'.dependencies.windows]
+version = "0.61"
+features = [
+  "Win32_Foundation",
+  "Win32_Graphics_Gdi",
+  "Win32_UI_HiDpi",
+  "Win32_UI_Input_KeyboardAndMouse",
+  "Win32_UI_Shell",
+  "Win32_UI_WindowsAndMessaging",
+]
+
 # 04.tech-stack.md §6.2
 [dependencies.encoding_rs]
 version = "0.8"

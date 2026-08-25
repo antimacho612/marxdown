@@ -19,6 +19,16 @@ class ViewStore {
    * `app/window.ts` の購読だけで、ボタン側から反転させない。
    */
   maximized = $state(false);
+
+  /**
+   * 最大化ボタンにマウスが乗っているか（Windows の Snap Layouts）。
+   *
+   * **CSS の `:hover` の代わり。** フライアウトを出すために、その矩形は
+   * 非クライアント領域だと Windows へ答えており（`snap_layouts.rs`）、
+   * そこには WebView のマウスイベントが届かない。Windows 以外では常に false で、
+   * そちらでは素の `:hover` が効いている。
+   */
+  maximizeHovered = $state(false);
 }
 
 export const viewStore = new ViewStore();

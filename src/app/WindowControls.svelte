@@ -21,9 +21,23 @@
   import { viewStore } from '@/features/view/store.svelte';
   import { ja } from '@/i18n/ja';
 
-  import { closeWindow, minimizeWindow, toggleMaximizeWindow } from './window';
+  import { closeWindow, minimizeWindow, toggleMaximizeWindow, trackSnapLayoutsTarget } from './window';
 
   const maximized = $derived(viewStore.maximized);
+
+  let maximizeButton: HTMLButtonElement;
+
+  /*
+   * 最大化ボタンの居場所を Rust へ知らせる（Windows の Snap Layouts）。
+   *
+   * ホバーでレイアウト選択のフライアウトを出すには、Windows に
+   * 「ここが最大化ボタンだ」と答える必要がある（`snap_layouts.rs`）。
+   * その代償として、その矩形には WebView のマウスイベントが届かなくなるので、
+   * ホバーの塗りも Rust 側からの通知で行う（`viewStore.maximizeHovered`）。
+   *
+   * Windows 以外では通知が来ないだけで、素の `:hover` がそのまま効く。
+   */
+  $effect(() => trackSnapLayoutsTarget(maximizeButton));
 </script>
 
 <div class="mx-caption">
@@ -43,6 +57,8 @@
   <button
     type="button"
     class="mx-caption__button"
+    class:mx-caption__button--hover={viewStore.maximizeHovered}
+    bind:this={maximizeButton}
     aria-label={maximized ? ja.titlebar.restore : ja.titlebar.maximize}
     title={maximized ? ja.titlebar.restore : ja.titlebar.maximize}
     onclick={toggleMaximizeWindow}
@@ -97,7 +113,8 @@
     cursor: default;
   }
 
-  .mx-caption__button:hover {
+  .mx-caption__button:hover,
+  .mx-caption__button--hover {
     background: var(--mx-color-bg-hover);
     color: var(--mx-color-fg);
   }
