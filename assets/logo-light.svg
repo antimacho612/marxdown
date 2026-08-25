@@ -27,14 +27,14 @@
     </radialGradient>
   </defs>
 
-  <!-- 0.2424 = 48 / 198（マークの実描画高）。左端に高さ 48 で置く -->
-  <g transform="translate(0 12) scale(0.2424) translate(-36 -18)">
-    <g fill="none" stroke-width="32" stroke-linecap="round" stroke-linejoin="round">
+  <!-- 0.2233 = 48 / 215（マークの実描画高）。左端に高さ 48 で置く -->
+  <g transform="translate(0 12) scale(0.2233) translate(-29 -8)">
+    <g fill="none" stroke-width="46" stroke-linecap="round" stroke-linejoin="round">
       <path d="M52 200 C 70 176, 92 132, 86 58 L 136 156" stroke="url(#b)" />
       <path d="M136 156 L 192 92 C 196 124, 202 164, 210 196" stroke="url(#r)" />
     </g>
-    <circle cx="74" cy="42" r="24" fill="url(#y)" />
-    <circle cx="200" cy="72" r="20" fill="url(#y)" />
+    <circle cx="74" cy="42" r="34" fill="url(#y)" />
+    <circle cx="200" cy="72" r="29" fill="url(#y)" />
   </g>
 
   <text
