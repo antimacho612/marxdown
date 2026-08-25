@@ -1,7 +1,7 @@
 import type { StorybookConfig } from '@storybook/svelte-vite';
 
 /**
- * Storybook の設定（ADR-0007）。
+ * Storybook の設定（04.tech-stack.md §7.2）。
  *
  * # 何のためにあるか
  *

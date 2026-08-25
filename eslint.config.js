@@ -1,12 +1,10 @@
 /**
- * ESLint の設定（ADR-0007）。
+ * ESLint の設定（04.tech-stack.md §7）。
  *
- * M0〜M1 は oxlint を使っていたが、`.svelte` を読めないため M2 の頭で ESLint に一本化した。
- * **ここにある規則は、そのときの `.oxlintrc.json` を写したもの**である。
+ * Lint は ESLint 1 本に絞ってある。`.ts` と `.svelte` を同じ設定で見るため。
  *
- * oxlint の `categories`（correctness / suspicious / perf をまとめて error にする仕組み）は
- * ESLint に無いので、各プラグインの recommended を土台にして、
- * 明示していたルールを個別に足し、**当時有効でなかったものを落とす**形にしてある。
+ * 各プラグインの recommended を土台にし、個別のルールを足し引きする形にしている。
+ * 落としているものについては `UNICORN_NOT_ENFORCED_BEFORE` を見ること。
  */
 import js from '@eslint/js';
 import prettier from 'eslint-config-prettier/flat';
@@ -23,14 +21,13 @@ import tseslint from 'typescript-eslint';
 const INJECTED_GLOBALS = ['__MARXDOWN_BOOTSTRAP__', '__MARXDOWN_T4__', '__TAURI_INTERNALS__'];
 
 /**
- * `unicorn.configs.recommended` のうち、**移行時点の既存コードが違反していたもの**。
+ * `unicorn.configs.recommended` のうち、**既存コードが違反しているため落としているもの**。
  *
- * oxlint 時代はカテゴリで絞っていたため、unicorn の style 寄りのルールは有効でなかった。
- * ここで全部を有効にすると移行と無関係な差分が数百行出て、
- * 「Svelte 化で何が変わったか」が読めなくなる。
+ * ここで全部を有効にすると、いま取り組んでいる変更と無関係な差分が数百行出て、
+ * その変更で何が変わったのかが読めなくなる。
  *
  * **現状維持のためのスナップショットであって、恒久的な否定ではない。**
- * 直したくなったらこの配列から外して直せばよい。
+ * 直すときは、この配列から外す変更だけを単独のコミットにすること。
  */
 const UNICORN_NOT_ENFORCED_BEFORE = [
   'catch-error-name',

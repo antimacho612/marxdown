@@ -111,7 +111,8 @@ export function sanitize(html: string): string {
 
 /**
  * Mermaid が生成した SVG も**同じサニタイザ**を通す（§9.1 Layer 3）。
- * M4 で使う。ここに置いておくのは、経路が 2 つに分岐しないようにするため。
+ * 使うのは Mermaid が入る M4 だが、ここに置いておくのは
+ * **DOM に入る HTML の経路を 2 つに分岐させない**ため。
  */
 export function sanitizeSvg(svg: string): string {
   configure();

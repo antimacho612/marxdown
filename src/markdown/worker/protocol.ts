@@ -25,7 +25,7 @@ export interface ParseResponse {
   chunks: string[];
   outline: OutlineItem[];
   frontMatter: string | null;
-  /** Worker 内部のパース所要時間（ms）。S3 の計測に使う。 */
+  /** Worker 内部のパース所要時間（ms）。起動計測とベンチに使う。 */
   parseMs: number;
   /** 文字数と読了時間（03.ux-spec.md §8.3）。本文を持っている側で数える。 */
   textStats: TextStats;

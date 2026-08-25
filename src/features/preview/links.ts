@@ -41,7 +41,7 @@ const SCHEME = /^([a-z][a-z0-9+.-]*):/i;
  */
 export function installLinkHandler(container: HTMLElement): () => void {
   const onClick = (event: MouseEvent) => {
-    // 修飾クリックと中クリックは「別の場所で開く」意図。M1 にタブが無いので、
+    // 修飾クリックと中クリックは「別の場所で開く」意図。タブが実装されるまでは、
     // 何もしないほうが、既定の挙動（＝ナビゲーション）が漏れるより安全。
     if (event.defaultPrevented) return;
 

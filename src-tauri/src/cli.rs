@@ -2,8 +2,7 @@
 //!
 //! # なぜ `tauri-plugin-cli` を使わないか
 //!
-//! 04.tech-stack.md §6.1 は `tauri-plugin-cli` を MUST としているが、
-//! 同プラグインの `matches()` は `App` の構築後（`setup()` の中）でしか呼べない。
+//! `tauri-plugin-cli` の `matches()` は `App` の構築後（`setup()` の中）でしか呼べない。
 //!
 //! 一方 02.architecture.md §5.1 の起動シーケンスは、
 //! **ウィンドウ生成より前に**パスを確定させ、ファイル読み込みを WebView 初期化と
@@ -14,7 +13,7 @@
 //!
 //! よって argv は `std::env::args_os()` から直接読む。
 //! 引数体系は 03.ux-spec.md に閉じており、clap を要する複雑さはない。
-//! → この逸脱は docs.local/measurements/M0.md に記録している。
+//! → 04.tech-stack.md §6.3
 
 use std::path::{Path, PathBuf};
 
@@ -27,11 +26,10 @@ pub enum ViewMode {
     Split,
 }
 
-/// Markdown のパース場所。S3 の A/B 比較用。
+/// Markdown のパース場所。Worker あり / なしの A/B 比較用。
 ///
-/// **M1 終了時点で残っている唯一のスパイク切り替え。**
-/// Worker を維持するかどうか（OQ-18）が未決のため、比較経路を保持している。
-/// OQ-18 が決まったら、この enum ごと `SpikeFlags` を畳む。
+/// **Worker を維持するかどうか（OQ-15）が未決のため、比較経路を保持している。**
+/// 結論が出たら、この enum ごと `SpikeFlags` を畳む。
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
 #[serde(rename_all = "lowercase")]
 pub enum ParseSite {
@@ -39,10 +37,10 @@ pub enum ParseSite {
     Main,
 }
 
-/// スパイク切り替えフラグ。開発ビルドでのみ意味を持つ。
+/// 比較経路の切り替えフラグ。開発ビルドでのみ意味を持つ。
 ///
-/// M0 では S2（bootstrap の経路）/ S7（描画方法）/ S8（シェルの描画）も切り替えられたが、
-/// 結論が出たので M1 の終わりに撤去した（OQ-20）。残っているのは S3 だけ。
+/// **比較のためだけに存在する経路は、本命経路の予算を壊す事故の温床になる。**
+/// 結論の出たものは残さない（撤去済みのフラグは下のテストで固定してある）。
 #[derive(Debug, Clone, Copy, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SpikeFlags {
@@ -89,8 +87,8 @@ OPTIONS:
     -h, --help                 このヘルプを表示する
     -V, --version              バージョンを表示する
 
-SPIKE OPTIONS (計測用。開発ビルドでのみ意味を持つ):
-        --spike-parse <worker|main>             Markdown のパース場所 (S3 / OQ-18)
+COMPARISON OPTIONS (計測用。開発ビルドでのみ意味を持つ):
+        --spike-parse <worker|main>             Markdown のパース場所 (OQ-15)
 ";
 
 /// `argv`（実行ファイル名を含まない）と `cwd` から引数を解析する。
@@ -282,7 +280,7 @@ mod tests {
         assert_eq!(b.spike.parse, ParseSite::Main);
     }
 
-    /// M1 の終わりに撤去したフラグ（OQ-20）。
+    /// 過去に存在し、結論が出たので撤去したフラグ。
     /// 消したことを**テストで固定する**。うっかり復活させると落ちる。
     #[test]
     fn retired_spike_flags_are_no_longer_recognized() {

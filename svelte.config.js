@@ -1,7 +1,7 @@
 import { vitePreprocess } from '@sveltejs/vite-plugin-svelte';
 
 /**
- * Svelte の設定（ADR-0007）。
+ * Svelte の設定（ADR-0005）。
  *
  * `vitePreprocess` は `<script lang="ts">` と `<style>` を Vite のパイプラインに
  * 通すためだけのもの。ここに変換を足すとビルドが遅くなるだけなので増やさない。

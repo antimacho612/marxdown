@@ -1,19 +1,20 @@
 /**
- * S5 — Live Preview の装飾を CodeMirror 6 でどこまで書けるかの検証。
+ * Live Preview の装飾（02.architecture.md §7.2 / ADR-0002）。
  *
- * 02.architecture.md §7.2 / ADR-0002。**見出しと強調だけ**を実装して、
- * M5 の実現可能性を判断するのがこのファイルの目的。全記法は書かない。
+ * **見出しと強調だけ**を実装した骨格。全記法を書くのは M5 の担当で、
+ * ここは方式が成立することを確かめ、拡張の型を示すためのもの。
  *
  * # 中核の UX
  *
  * 「カーソルがある行では記法を表示する」（Obsidian の Live Preview と同じ）。
  * これにより「見た目通りに読める」と「Markdown を直接編集できる」が両立する。
  *
- * # 検証したい論点
+ * # 記法を足すときに見る論点
  *
- * 1. Lezer の構文木を走査して Decoration を当てる書き味
- * 2. カーソル行だけ記法を復活させる制御が素直に書けるか
+ * 1. Lezer の構文木を走査して Decoration を当てる
+ * 2. カーソル行だけ記法を復活させる
  * 3. `Decoration.replace` で記号を隠したときの選択・カーソル移動の挙動
+ *    （`EditorView.atomicRanges` を併せて提供する）
  * 4. IME 入力中に装飾が暴れないか（M5 の最大リスク・完了条件）
  */
 import { syntaxTree } from '@codemirror/language';
@@ -38,8 +39,8 @@ const setComposing = StateEffect.define<boolean>();
  * IME 変換中は装飾を更新しない。
  *
  * 変換中の未確定文字列に対して Decoration を差し替えると、
- * WebView が composition を中断することがある。これが M5 の最大のリスク。
- * ここで「抑制できる形に書けるか」までを M0 で確かめておく。
+ * WebView が composition を中断することがある。**これが WYSIWYG の最大のリスク**であり、
+ * 実際の IME で破綻しないかは実機で触るまで判定できない（ADR-0002）。
  */
 const composingField = StateField.define<boolean>({
   create: () => false,

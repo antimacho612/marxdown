@@ -2,8 +2,7 @@
 //!
 //! # なぜ `tauri-plugin-window-state` を使わないか
 //!
-//! 04.tech-stack.md §6.1 は `tauri-plugin-window-state` を SHOULD としていたが、
-//! M1 で自作に変更した。理由は §6.3 で `tauri-plugin-fs` を自作に倒したのと同じ構図である。
+//! 04.tech-stack.md §6.5。`tauri-plugin-fs` を自作コマンドに倒したのと同じ構図である。
 //!
 //! 1. **ウィンドウをコードで生成している**（`window.rs`）。位置とサイズを
 //!    `WebviewWindowBuilder` に直接渡せるため、生成後に復元するプラグイン方式と違って

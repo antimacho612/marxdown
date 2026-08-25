@@ -45,7 +45,7 @@ export function paint(container: HTMLElement, chunks: string[], frontMatter: str
   }
 
   // 本文幅の基準点（`.mx-content`）を 1 箇所に絞る。見出しごとに font-size が
-  // 違っても、`ch` はここでしか計算されないので列幅がずれない（Issue #4）。
+  // 違っても、`ch` はここでしか計算されないので列幅がずれない。
   const content = document.createElement('div');
   content.className = 'mx-content';
   container.append(content);

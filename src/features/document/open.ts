@@ -3,14 +3,14 @@
  *
  * # なぜ 1 本にまとめるのか
  *
- * M1 の時点で、開く入口は 5 つある。
+ * 開く入口は 5 つある。
  *
  * ```text
  * 起動時の bootstrap            → openDocument（本文が既に手元にある）
  * 別インスタンスからの argv 転送 → openPath
  * ファイルダイアログ (Ctrl+O)   → openPath
  * ドラッグ＆ドロップ            → openPath
- * 本文中の相対リンク（M1 後半） → openPath
+ * 本文中の相対リンク            → openPath
  * ```
  *
  * 入口ごとに「読む → パース → 描く → 派生状態を更新する」を書くと、
@@ -37,14 +37,14 @@ const PREVIEW_SELECTOR = '#mx-preview';
 
 export interface OpenerConfig {
   parser: MarkdownParser;
-  /** S3: パース場所。開発ビルドのステータスバー表示に使う（OQ-18）。 */
+  /** パース場所。開発ビルドのステータスバー表示に使う（OQ-15）。 */
   site: 'worker' | 'main';
 }
 
 let config: OpenerConfig | null = null;
 
 /**
- * パーサとスパイク設定を渡す。起動時に 1 回だけ呼ぶ。
+ * パーサと設定を渡す。起動時に 1 回だけ呼ぶ。
  *
  * 開く側（ダイアログ / D&D / リンク）がパーサの存在を知らずに済むようにするための注入。
  */
@@ -197,8 +197,8 @@ export async function openViaDialog(): Promise<OpenOutcome | null> {
 /**
  * 落とされたファイルを開く（F-OPEN-08）。
  *
- * 複数落とされても M1 では**先頭 1 つだけ**を開く。タブは M3 の担当なので、
- * 残りを開く先がまだ無い。黙って捨てずに、その旨を通知する。
+ * 複数落とされても**先頭 1 つだけ**を開く。タブ（M3）が入るまで、
+ * 残りを開く先が無いため。黙って捨てずに、その旨を通知する。
  */
 export async function openDropped(paths: string[]): Promise<OpenOutcome | null> {
   const first = paths[0];
@@ -216,7 +216,7 @@ export async function openDropped(paths: string[]): Promise<OpenOutcome | null> 
 }
 
 /**
- * いま開いているファイルを、ディスクの最新の内容で開き直す（F5 / Issue #8）。
+ * いま開いているファイルを、ディスクの最新の内容で開き直す（F5）。
  *
  * # なぜアプリ側の仕事なのか
  *
@@ -232,7 +232,7 @@ export async function openDropped(paths: string[]): Promise<OpenOutcome | null> 
  * スクロール位置は保つ。同じファイルを見続けているのだから、
  * 先頭に飛ばされるのは「更新」ではなく「開き直し」になってしまう。
  *
- * 何も開いていなければ何もしない。M2 で編集が入ったら、
+ * 何も開いていなければ何もしない。編集（M2）が入ったら、
  * ダーティな本文を捨てないための確認をここに足すこと。
  */
 export async function reloadCurrent(): Promise<OpenOutcome | null> {

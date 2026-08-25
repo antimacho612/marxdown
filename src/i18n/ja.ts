@@ -1,7 +1,7 @@
 /**
  * UI 文言。
  *
- * i18n ライブラリは導入しない（04.tech-stack.md §5.1 / OQ-14）。
+ * i18n ライブラリは導入しない（04.tech-stack.md §5.1 / OQ-11）。
  * 当面は日本語のみだが、**文言を定数に集約しておく**ことで
  * 将来の抽出をコード変更なしに行えるようにしておく。
  */
@@ -14,7 +14,7 @@ export const ja = {
    * Welcome 画面（03.ux-spec.md §9.1）。
    *
    * チュートリアルもツアーも出さない。**ショートカットを併記することが唯一の教育**。
-   * 「フォルダを開く」「新規ファイル」は M3 / M2 の担当なので、まだ並べない。
+   * 「フォルダを開く」（M3）「新規ファイル」（M2）は、まだ動かないので並べない。
    * 押せない項目を並べるのは Principle 3「Simple Means Low Cognitive Load」に反する。
    */
   welcome: {
@@ -61,7 +61,7 @@ export const ja = {
   },
   /** ステータスバー（03.ux-spec.md §8.3）。 */
   status: {
-    /** M1 は Preview 固定。モード切替は M2。 */
+    /** モード切り替え（M2）が入るまでは Preview 固定。 */
     mode: 'Preview',
     lines: (n: number) => `${n} 行`,
     bytes: (n: number) => `${formatBytes(n)}`,

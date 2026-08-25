@@ -128,9 +128,8 @@ pub fn build(args: &CliArgs, trace: &crate::trace::Trace, store: &StoreData) -> 
 /// CSP が `script-src 'self'` でインラインスクリプトを禁じているが、
 /// `initialization_script` は WebView のフックとして注入されるため CSP の対象外。
 ///
-/// M0 には比較のため「本文を注入せず、フロントから `take_bootstrap` で取りに行く」
-/// 経路もあった（S2）。IPC 往復ぶん遅いことが実測で確認できたので M1 の終わりに撤去した
-/// （OQ-20 / measurements/M0.md §3）。**注入する経路しかない。**
+/// 本文をここで注入するのは、IPC 往復（実測 約 17ms）をクリティカルパスから
+/// 外すため（02.architecture.md §5.1）。**フロントから取りに行く経路は無い。**
 pub fn to_init_script(bootstrap: &Bootstrap) -> String {
     let json = serde_json::to_string(bootstrap).unwrap_or_else(|_| "null".to_string());
 
