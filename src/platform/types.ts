@@ -2,6 +2,7 @@
  * Platform 層の型。Rust 側（`src-tauri/src/`）の serde 定義と 1:1 で対応する。
  *
  * ここが唯一の対応表なので、Rust 側を変えたらここも必ず変える。
+ * 設定の既定値（`DEFAULT_SETTINGS`）だけは値だが、同じ理由でここに置いている。
  */
 
 export type Eol = 'lf' | 'crlf';
@@ -42,8 +43,79 @@ export type SaveResult =
 
 /** `src-tauri/src/error.rs` の `CoreError` のシリアライズ形。 */
 export interface CoreError {
-  kind: 'not-found' | 'permission-denied' | 'out-of-scope' | 'too-large' | 'conflict' | 'invalid-argument' | 'io';
+  kind:
+    | 'not-found'
+    | 'permission-denied'
+    | 'out-of-scope'
+    | 'too-large'
+    | 'conflict'
+    | 'invalid-argument'
+    | 'settings-broken'
+    | 'io';
   message: string;
+}
+
+/* ------------------------------------------------------------------ */
+/* ユーザー設定（02.architecture.md §4.5）                               */
+/* ------------------------------------------------------------------ */
+
+export type Theme = 'system' | 'light' | 'dark';
+
+/** ウィンドウを閉じたときの挙動。**実際に効くのは M1.5 Phase 7 から。** */
+export type WindowCloseBehavior = 'tray' | 'exit';
+
+/**
+ * `settings.json` の中身（`src-tauri/src/settings.rs` の `Settings`）。
+ *
+ * **キーは VS Code と同じフラットなドット区切り**（F-CONF-06）。
+ * ネストしたオブジェクトにしないのは、手で書く / 部分的に上書きする / 未知のキーを
+ * 保持する、のすべてが 1 階層のほうが素直になるため。
+ *
+ * ここに現れないキーもファイルには入りうる（未知のキーは保持される）。
+ */
+export interface Settings {
+  theme: Theme;
+  /** 空文字は「トークン層の既定スタックを使う」。 */
+  'preview.fontFamily': string;
+  'preview.fontSize': number;
+  'preview.lineHeight': number;
+  /** 本文幅。単位は `ch`（02.architecture.md §10.2）。 */
+  'preview.maxWidth': number;
+  'window.closeBehavior': WindowCloseBehavior;
+}
+
+/**
+ * 既定値。`src-tauri/src/settings.rs` の `Settings::default()` と 1:1 で対応する。
+ *
+ * 実際に届く値は Rust 側で既定値を埋めた後のものなので、これが要るのは
+ * bootstrap を持たない経路（`dev:web` の初回・テスト）だけ。
+ */
+export const DEFAULT_SETTINGS: Settings = {
+  theme: 'system',
+  'preview.fontFamily': '',
+  'preview.fontSize': 16,
+  'preview.lineHeight': 1.75,
+  'preview.maxWidth': 100,
+  'window.closeBehavior': 'tray',
+};
+
+/** 変更したキーだけを渡す。**`null` はキーを消す**（既定値に戻る）。 */
+export type SettingsPatch = { [K in keyof Settings]?: Settings[K] | null };
+
+/**
+ * `settings.json` を読めなかった事実（03.ux-spec.md §8.2）。
+ *
+ * これがある間、**アプリは既定値で動くがファイルを上書きしない**。
+ * ユーザーが手で書いたものだから（02.architecture.md §4.5）。
+ */
+export interface SettingsProblem {
+  path: string;
+  message: string;
+}
+
+export interface SettingsLoad {
+  values: Settings;
+  broken: SettingsProblem | null;
 }
 
 /* ------------------------------------------------------------------ */
@@ -99,6 +171,15 @@ export interface Bootstrap {
   recent: RecentEntry[];
   /** 表示倍率（F-VIEW-11）。最初のフレームから正しい倍率で描くために要る。 */
   zoom: number;
+  /**
+   * ユーザー設定の**全体**（02.architecture.md §4.5）。
+   *
+   * 「どの設定が初回フレームに間に合う必要があるか」を毎回考えなくて済むよう、
+   * 選ばずに丸ごと載っている。**取りに行く経路（IPC 往復）は作らない。**
+   */
+  settings: Settings;
+  /** `settings.json` を読めなかった事実。通知バーに出す（03.ux-spec.md §8.2）。 */
+  settingsError: SettingsProblem | null;
 }
 
 /** 別インスタンスから転送された起動要求（ウォーム起動）。 */
@@ -162,6 +243,23 @@ export interface Platform {
    * 選ばれなければ `null`。返るのは正規化済み絶対パス。
    */
   pickFile(): Promise<string | null>;
+  /**
+   * 設定を読み直す（F-CONF-03）。
+   *
+   * **起動時はこれを呼ばない。** 設定は bootstrap に丸ごと載っている。
+   * ここが要るのは、外部エディタで編集されたあとの読み直しと設定 UI の再表示。
+   */
+  readSettings(): Promise<SettingsLoad>;
+  /**
+   * 変更したキーだけを書き戻す。更新後の設定全体を返す。
+   * `settings.json` が読めない状態では拒否される（02.architecture.md §4.5）。
+   */
+  writeSettings(patch: SettingsPatch): Promise<Settings>;
+  /**
+   * `settings.json` を OS の既定アプリで開く（F-CONF-06）。
+   * 壊れた設定を通知バーから直せるようにするための逃げ道。
+   */
+  openSettingsFile(): Promise<void>;
   /** ウィンドウへのドラッグ＆ドロップを購読する（F-OPEN-08）。 */
   onDragDrop(handler: (event: DragDropEvent) => void): () => void;
   /** 描画準備完了。ウィンドウを表示させる。 */

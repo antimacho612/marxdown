@@ -15,6 +15,8 @@ import type {
   Platform,
   RecentEntry,
   SaveResult,
+  Settings,
+  SettingsLoad,
   TraceMark,
   WriteRequest,
 } from './types';
@@ -86,6 +88,18 @@ export const tauriPlatform: Platform = {
 
   pickFile() {
     return invoke<string | null>('pick_file');
+  },
+
+  readSettings() {
+    return invoke<SettingsLoad>('read_settings');
+  },
+
+  writeSettings(patch) {
+    return invoke<Settings>('write_settings', { patch });
+  },
+
+  openSettingsFile() {
+    return invoke<void>('open_settings_file');
   },
 
   onDragDrop(handler) {

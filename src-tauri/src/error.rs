@@ -27,6 +27,13 @@ pub enum CoreError {
     #[error("不正な引数: {0}")]
     InvalidArgument(String),
 
+    /// `settings.json` を読めていない状態での書き戻しを拒む（02.architecture.md §4.5）。
+    ///
+    /// これを「保存できなかった」一般の I/O エラーと混ぜてはいけない。
+    /// ユーザーが手で直している最中であり、UI が出すべき文言も対処も違う。
+    #[error("settings.json を読めていないため書き戻せない: {0}")]
+    SettingsBroken(String),
+
     #[error("入出力エラー: {0}")]
     Io(String),
 }
@@ -41,6 +48,7 @@ impl CoreError {
             Self::TooLarge { .. } => "too-large",
             Self::Conflict => "conflict",
             Self::InvalidArgument(_) => "invalid-argument",
+            Self::SettingsBroken(_) => "settings-broken",
             Self::Io(_) => "io",
         }
     }

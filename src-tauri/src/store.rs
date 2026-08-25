@@ -140,7 +140,9 @@ pub fn store_path(identifier: &str) -> Option<PathBuf> {
     Some(config_dir(identifier)?.join(FILE_NAME))
 }
 
-fn config_dir(identifier: &str) -> Option<PathBuf> {
+/// アプリのデータ置き場。`settings.rs` も同じディレクトリを使う（02.architecture.md §4.5）。
+/// 2 か所で辿ると、片方だけ規則が変わったときに設定と状態が別の場所に散る。
+pub fn config_dir(identifier: &str) -> Option<PathBuf> {
     #[cfg(windows)]
     let base = std::env::var_os("APPDATA").map(PathBuf::from);
 

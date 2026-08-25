@@ -59,6 +59,17 @@ export const ja = {
   notice: {
     dismiss: '通知を閉じる',
   },
+  /**
+   * ユーザー設定（02.architecture.md §4.5 / 03.ux-spec.md §8.2）。
+   *
+   * 「読めませんでした」で止めるのは、**既定値で動いていること**と
+   * **ファイルは上書きしていないこと**の両方を、短い 1 行に収めるため。
+   * 原因（何行目が壊れているか）はエディタが教えてくれる。
+   */
+  settings: {
+    broken: 'settings.json を読めませんでした。既定の設定で表示しています',
+    openFile: 'ファイルを開く',
+  },
   /** ステータスバー（03.ux-spec.md §8.3）。 */
   status: {
     /** モード切り替え（M2）が入るまでは Preview 固定。 */
@@ -79,6 +90,7 @@ export const ja = {
     'too-large': (path: string) => `ファイルが大きすぎます: ${path}`,
     conflict: 'ファイルが外部で変更されています',
     'invalid-argument': (detail: string) => `引数が不正です: ${detail}`,
+    'settings-broken': 'settings.json を読めないため、設定を保存できません',
     io: (detail: string) => `入出力エラー: ${detail}`,
     unknownArgs: (args: string[]) => `解釈できない引数: ${args.join(', ')}`,
     renderFailed: 'このファイルの表示に失敗しました',
