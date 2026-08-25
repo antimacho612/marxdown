@@ -6,7 +6,7 @@
 
 use std::collections::HashMap;
 use std::path::PathBuf;
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::Mutex;
 use std::time::Instant;
 
@@ -35,6 +35,11 @@ pub struct AppState {
     /// ウォーム起動（S6）の計測。argv 転送を受けた時刻を要求 ID ごとに保持する。
     warm: Mutex<HashMap<u64, Instant>>,
     warm_counter: AtomicU64,
+    /// 最後にフロントへ知らせた「最大化されているか」。
+    ///
+    /// `Resized` はドラッグ中に毎フレーム飛んでくる。**変化したときだけ**
+    /// イベントを出すために、直前の値をここに置く。
+    maximized: AtomicBool,
 }
 
 impl AppState {
@@ -63,6 +68,7 @@ impl AppState {
             asset_roots: Mutex::new(roots),
             warm: Mutex::new(HashMap::new()),
             warm_counter: AtomicU64::new(1),
+            maximized: AtomicBool::new(false),
         }
     }
 
@@ -159,6 +165,15 @@ impl AppState {
     pub fn end_warm(&self, id: u64) -> Option<f64> {
         let started = self.warm.lock().ok()?.remove(&id)?;
         Some(started.elapsed().as_secs_f64() * 1000.0)
+    }
+
+    /// 最大化状態が**変化していれば** true を返し、新しい値を覚える。
+    ///
+    /// `WindowEvent::Resized` はウィンドウをドラッグしている間ずっと飛んでくる。
+    /// そのたびにイベントを出すと、フロントに意味のない IPC が毎フレーム届く。
+    /// 「変わったときだけ知らせる」の判定をここに閉じ込める。
+    pub fn note_maximized(&self, now: bool) -> bool {
+        self.maximized.swap(now, Ordering::Relaxed) != now
     }
 
     pub fn allow_asset_root(&self, dir: PathBuf) {

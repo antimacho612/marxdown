@@ -41,7 +41,7 @@
 <style>
   /* モーダルにせず、本文の上に重ねる。 */
   .mx-notice {
-    grid-area: 2 / 1;
+    grid-area: main;
     align-self: start;
     z-index: 10;
     display: flex;

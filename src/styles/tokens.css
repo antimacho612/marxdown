@@ -68,6 +68,17 @@
   --mx-color-warning: #a06a00;
   --mx-color-selection: rgb(59 91 219 / 18%);
 
+  /*
+   * ウィンドウ操作ボタンの「閉じる」（03.ux-spec.md §2.1）。
+   *
+   * ここだけテーマに追従しない。Windows の閉じるボタンはライトでもダークでも
+   * この赤で、**押し間違えてはいけない場所の色**として学習されている。
+   * トークン層に置いてあるのは、カスタムテーマから触れるようにするため。
+   */
+  --mx-color-caption-close: #c42b1c;
+  --mx-color-caption-close-active: #b21b0c;
+  --mx-color-caption-close-fg: #ffffff;
+
   /* プレビュー内検索の一致（F-VIEW-10）。現在位置だけを塗りつぶして区別する */
   --mx-color-search-match: rgb(255 196 0 / 45%);
   --mx-color-search-current: var(--mx-color-accent);
@@ -95,6 +106,14 @@
   /* --- レイアウト ------------------------------------------------------ */
   --mx-titlebar-height: 34px;
   --mx-statusbar-height: 24px;
+
+  /*
+   * ウィンドウ操作ボタン 1 つぶんの幅（03.ux-spec.md §2.1）。
+   *
+   * Windows 11 の実寸（46px）に合わせる。ここを詰めると「押しやすさが
+   * OS のものと違う」ことが手に伝わるので、見た目の都合で縮めない。
+   */
+  --mx-caption-button-width: 46px;
 }
 
 :root[data-theme='dark'] {

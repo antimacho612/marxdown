@@ -7,26 +7,25 @@
 
   本文の受け皿（`#mx-preview`）は index.html 側にあり、Svelte の管理下に無い。
   だから「本文が読める」までにコンポーネントのマウントを待つ必要がない。
+
+  行の並びは DOM 順ではなく `shell.css` の `grid-template-areas` が決める。
+  M3 でタブが入るときは `TitleBar` の `center` にタブストリップを渡す
+  （タブはタイトルバーと同じ 1 段に入る / 03.ux-spec.md §2.2）。
+  Phase 6 のライトペインは `grid-area: rightpane` を持つコンポーネントを
+  ここに 1 つ足すだけでよく、grid の定義は作り直さない。
 -->
 <script lang="ts">
   import { documentStore } from '@/features/document/store.svelte';
   import Welcome from '@/features/workspace/Welcome.svelte';
-  import { ja } from '@/i18n/ja';
-  import { splitPath } from '@/lib/path';
 
   import NoticeBar from './NoticeBar.svelte';
   import StatusBar from './StatusBar.svelte';
+  import TitleBar from './TitleBar.svelte';
 
   const meta = $derived(documentStore.meta);
-  const split = $derived(splitPath(meta?.path ?? ''));
 </script>
 
-<header class="mx-titlebar">
-  <span class="mx-titlebar__name">{meta ? split.name : ja.app.name}</span>
-  {#if meta}
-    <span class="mx-titlebar__dir">{split.dir}</span>
-  {/if}
-</header>
+<TitleBar />
 
 {#if documentStore.notice}
   <NoticeBar notice={documentStore.notice} />
@@ -37,35 +36,3 @@
 {/if}
 
 <StatusBar />
-
-<style>
-  /*
-   * 行を DOM 順ではなく `grid-area` で明示しているのは、
-   * 本文が DOM 上で先に来る（= クロームのマウントを待たずに描ける）ため。
-   * grid 本体の定義は shell.css 側にある（本文と共有するレイアウトなので）。
-   */
-  .mx-titlebar {
-    grid-area: 1 / 1;
-    display: flex;
-    align-items: center;
-    gap: var(--mx-space-2);
-    padding-inline: var(--mx-space-4);
-    border-bottom: 1px solid var(--mx-color-border-subtle);
-    background: var(--mx-color-bg-subtle);
-    font-size: var(--mx-font-size-ui);
-    min-width: 0;
-  }
-
-  .mx-titlebar__name {
-    font-weight: 600;
-    white-space: nowrap;
-  }
-
-  .mx-titlebar__dir {
-    color: var(--mx-color-fg-subtle);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    min-width: 0;
-  }
-</style>

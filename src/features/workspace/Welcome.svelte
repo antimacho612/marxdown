@@ -85,7 +85,7 @@
    * 項目とショートカットが縦に揃わないと、一覧として読めない。
    */
   .mx-welcome {
-    grid-area: 2 / 1;
+    grid-area: main;
     z-index: 5;
     display: grid;
     place-content: center;

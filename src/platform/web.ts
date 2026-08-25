@@ -318,6 +318,32 @@ export const webPlatform: Platform = {
     };
   },
 
+  /*
+   * ウィンドウ操作。ブラウザにはタブを最小化する概念も、閉じさせる権限も無い。
+   * **口だけ合わせて何もしない。** ここで `window.close()` を呼ぶような
+   * 「それらしい代用」をすると、dev:web でタイトルバーを触るたびに画面が消える。
+   */
+  async minimizeWindow() {},
+
+  async toggleMaximizeWindow() {},
+
+  async closeWindow() {},
+
+  async isWindowMaximized() {
+    return false;
+  },
+
+  onWindowMaximizedChanged() {
+    return () => {};
+  },
+
+  // Snap Layouts は Windows のウィンドウ管理の機能。ブラウザには相当物が無い。
+  async setSnapLayoutsTarget() {},
+
+  onMaximizeHoverChanged() {
+    return () => {};
+  },
+
   async ready() {
     // ブラウザにはウィンドウの表示制御が無い
   },

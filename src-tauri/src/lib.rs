@@ -15,6 +15,8 @@ pub mod document;
 pub mod error;
 pub mod scope;
 pub mod settings;
+/// Windows の Snap Layouts。**Windows 以外では空**（ファイル冒頭の `#![cfg(windows)]`）。
+pub mod snap_layouts;
 pub mod state;
 pub mod store;
 pub mod trace;
@@ -42,6 +44,13 @@ pub struct OpenRequest {
 }
 
 pub const EVENT_OPEN_REQUEST: &str = "marxdown://open-request";
+
+/// 最大化状態が変わったことをフロントへ知らせる（ペイロードは `bool`）。
+///
+/// カスタムタイトルバー（OQ-02 = B）にしたので、`□` と `❐` の描き分けは
+/// フロントの仕事になった。**変化したときだけ**流す。`Resized` はドラッグ中に
+/// 毎フレーム飛んでくるので、素通しすると意味のない IPC が積み上がる。
+pub const EVENT_WINDOW_MAXIMIZED: &str = "marxdown://window-maximized";
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -150,6 +159,11 @@ pub fn run() {
             commands::open_settings_file,
             commands::watch_path,
             commands::unwatch_path,
+            commands::window_minimize,
+            commands::window_toggle_maximize,
+            commands::window_close,
+            commands::window_is_maximized,
+            commands::set_snap_layouts_target,
             commands::report_trace,
             commands::ready,
             commands::open_external,
@@ -178,6 +192,9 @@ pub fn run() {
             // ファイル I/O は伴わない（実際に何を見るかは下で決める）。
             app.manage(watch::FileWatcher::start(app.handle().clone()));
 
+            // Snap Layouts のサブクラス化は**ここではできない**。`hwnd()` は
+            // イベントループへの問い合わせで、まだ回っていない（`snap_layouts.rs`）。
+            // `ready` コマンドの中で付ける。
             window::create(app.handle(), window::MAIN_LABEL, &payload, restore_window)?;
             state.trace.mark("T3", None);
 
@@ -199,10 +216,24 @@ pub fn run() {
         // 閉じる瞬間にだけ書く。移動・リサイズのたびに書くと、ウィンドウを
         // ドラッグしている間ずっとファイル I/O が走る。
         .on_window_event(|window, event| {
-            if !matches!(event, tauri::WindowEvent::CloseRequested { .. }) {
+            if window.label() != window::MAIN_LABEL {
                 return;
             }
-            if window.label() != window::MAIN_LABEL {
+
+            // 最大化状態の変化をフロントへ流す（ウィンドウ操作ボタンの絵柄）。
+            //
+            // ボタンを押したときだけでなく、`Win+↑` / ダブルクリック / 上端への
+            // ドラッグでも変わる。**押した側で状態を持たず、OS が真実**という形にすると、
+            // 経路が増えても絵柄がずれない。変化の判定は `AppState` が持つ。
+            if matches!(event, tauri::WindowEvent::Resized(_)) {
+                let now = window.is_maximized().unwrap_or(false);
+                if window.state::<state::AppState>().note_maximized(now) {
+                    let _ = window.emit(EVENT_WINDOW_MAXIMIZED, now);
+                }
+                return;
+            }
+
+            if !matches!(event, tauri::WindowEvent::CloseRequested { .. }) {
                 return;
             }
             let Some(webview) = window.get_webview_window(window::MAIN_LABEL) else {

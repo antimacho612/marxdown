@@ -54,7 +54,23 @@ export default defineConfig(({ mode }) => ({
         chunkFileNames(chunk) {
           // Vite が解決するのは ESM ビルド（`es/`）で、CJS の `lib/` ではない。
           const isLanguage = /highlight\.js[\\/](?:es|lib)[\\/]languages[\\/]/.test(chunk.facadeModuleId ?? '');
-          return isLanguage ? 'assets/hljs-[name]-[hash].js' : 'assets/[name]-[hash].js';
+          if (isLanguage) return 'assets/hljs-[name]-[hash].js';
+
+          /*
+           * ハンバーガーメニューの中身（M1.5 Phase 3）。
+           *
+           * 分割そのものは動的 import の結果であって、ここでやっているのは
+           * **名前付けだけ**（hljs と同じ）。`manualChunks` で 'menu' に寄せてはいけない。
+           * `main` と共有しているモジュール（`open.ts` / `zoom.ts` など）まで
+           * menu チャンク側へ引き寄せられ、**`main` がそれを静的 import する**形になって、
+           * 遅延どころか起動時に読み込まれるチャンクになる（実測で確認済み）。
+           *
+           * 名前を固定しているのは size-limit から名指しするため。「中身が遅延チャンクに
+           * 載っている」ことが M1.5 の完了条件（06.roadmap.md §5.3）なので、
+           * 予算として監視できる形にしておく。
+           */
+          const isMenu = /[\\/]src[\\/]features[\\/]menu[\\/]/.test(chunk.facadeModuleId ?? '');
+          return isMenu ? 'assets/menu-[hash].js' : 'assets/[name]-[hash].js';
         },
         assetFileNames: 'assets/[name]-[hash][extname]',
         manualChunks(id) {

@@ -301,6 +301,46 @@ export interface Platform {
   onSettingsChanged(handler: () => void): () => void;
   /** ウィンドウへのドラッグ＆ドロップを購読する（F-OPEN-08）。 */
   onDragDrop(handler: (event: DragDropEvent) => void): () => void;
+  /**
+   * ウィンドウ操作（カスタムタイトルバー / 03.ux-spec.md §2.1 / OQ-02 = B）。
+   *
+   * `decorations: false` にしたぶん、`─ □ ✕` は自分たちの `<button>` になった。
+   * 実体は Rust 側の自作コマンドで、JS の `@tauri-apps/api/window` は入れていない
+   * （04.tech-stack.md §6.2 と同じ判断）。
+   *
+   * ドラッグとダブルクリックによる最大化はここに無い。Tauri 本体が注入する
+   * `data-tauri-drag-region` の処理が担当していて、フロントは属性を書くだけ。
+   */
+  minimizeWindow(): Promise<void>;
+  toggleMaximizeWindow(): Promise<void>;
+  /** 閉じる。**Phase 7 でトレイ格納に化けるのはこの先**（`window.closeBehavior`）。 */
+  closeWindow(): Promise<void>;
+  /** 最大化中か。購読を始めるときに 1 回だけ聞く。 */
+  isWindowMaximized(): Promise<boolean>;
+  /**
+   * 最大化状態の変化を購読する。
+   *
+   * ボタン以外（`Win+↑` / ダブルクリック / 上端へのドラッグ）でも変わるので、
+   * **押した側で状態を持たず、OS を真実にする**。Rust 側が変化したときだけ流す。
+   */
+  onWindowMaximizedChanged(handler: (maximized: boolean) => void): () => void;
+  /**
+   * 最大化ボタンの居場所（CSS ピクセル）を知らせる（Windows の Snap Layouts）。
+   *
+   * `decorations: false` にすると Windows はボタンの位置を知らず、
+   * ホバーしてもレイアウト選択のフライアウトが出ない
+   * （`src-tauri/src/snap_layouts.rs`）。**どこにあるかを知っているのは
+   * レイアウトを組んでいるこちらだけ**なので、変わるたびに知らせる。
+   */
+  setSnapLayoutsTarget(rect: { x: number; y: number; width: number; height: number }): Promise<void>;
+  /**
+   * 最大化ボタンのホバー（Windows の Snap Layouts）。
+   *
+   * フライアウトを出すために非クライアント領域だと答えているので、
+   * **その範囲には WebView のマウスイベントが届かない**（CSS の `:hover` が効かない）。
+   * 最大化ボタンだけ反応しないのは目立つので、Rust 側が出入りを知らせてくる。
+   */
+  onMaximizeHoverChanged(handler: (hovered: boolean) => void): () => void;
   /** 描画準備完了。ウィンドウを表示させる。 */
   ready(): Promise<void>;
   reportTrace(marks: TraceMark[]): Promise<void>;

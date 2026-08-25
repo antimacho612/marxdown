@@ -16,10 +16,30 @@
  * 3. 要素セレクタ（`kbd`）。特定のコンポーネントの持ち物ではない
  */
 
+/*
+ * # 行番号ではなく名前で置く
+ *
+ * 領域を `grid-area: 2 / 1` ではなく**名前**で指すようにしてある。
+ * 03.ux-spec.md §2.2 の展開状態では左右にペインが増える（Phase 6）ので、
+ * 番号で書いてあると、列が増えた瞬間にすべてのコンポーネントを直して回ることになる。
+ * 名前なら grid の定義だけを差し替えればよい。
+ *
+ * `leftpane` / `rightpane` の列は `auto` にしてある。**要素を置かなければ 0 幅に潰れる**
+ * ので、既定でペインが存在しない（§2.1）ことを表現するために変数もフラグも要らない。
+ * Phase 6 は `grid-area: rightpane` を持つコンポーネントを 1 つ足すだけで済む。
+ *
+ * **タブバーの行は無い。** §2.2 の図のとおり、タブはタイトルバーと同じ 1 段に入る
+ * （それが OQ-02 = B を選んだ理由そのもの）。差し込み口はタイトルバーの中にあり、
+ * `App.svelte` から `TitleBar` の `center` へ渡す形になっている。
+ */
 body {
   display: grid;
+  grid-template-columns: auto 1fr auto;
   grid-template-rows: var(--mx-titlebar-height) 1fr var(--mx-statusbar-height);
-  grid-template-columns: 100%;
+  grid-template-areas:
+    'titlebar titlebar titlebar'
+    'leftpane main rightpane'
+    'statusbar statusbar statusbar';
 }
 
 #root {
@@ -27,7 +47,7 @@ body {
 }
 
 .mx-preview {
-  grid-area: 2 / 1;
+  grid-area: main;
   min-height: 0;
 }
 
