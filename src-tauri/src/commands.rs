@@ -15,11 +15,18 @@ use crate::store::{self, RecentEntry};
 use crate::trace::Mark;
 
 #[tauri::command]
-pub fn read_document(state: State<'_, AppState>, path: String) -> CoreResult<DocumentPayload> {
+pub fn read_document(
+    app: tauri::AppHandle,
+    state: State<'_, AppState>,
+    path: String,
+) -> CoreResult<DocumentPayload> {
     let payload = document::read(Path::new(&path))?;
-    // 開いたファイルの親ディレクトリをアセットの許可スコープに加える
+    // 開いたファイルの親ディレクトリをアセットの許可スコープに加える。
+    // 自前の検証（scope.rs）だけでなく、Tauri 本体の asset プロトコルスコープにも
+    // 反映しないと、resolve_asset の検証を通っても実際の asset:// 配信が 403 になる。
     if let Some(parent) = Path::new(&payload.meta.path).parent() {
         state.allow_asset_root(parent.to_path_buf());
+        let _ = app.asset_protocol_scope().allow_directory(parent, true);
     }
     Ok(payload)
 }
@@ -34,6 +41,7 @@ pub fn write_document(req: WriteRequest) -> CoreResult<SaveResult> {
 /// 返すのは絶対パス。フロントは `convertFileSrc` で asset URL に変換する。
 #[tauri::command]
 pub fn resolve_asset(
+    app: tauri::AppHandle,
     state: State<'_, AppState>,
     href: String,
     base_dir: String,
@@ -57,6 +65,11 @@ pub fn resolve_asset(
     }
 
     let resolved = scope::resolve_within(&roots, &candidate)?;
+    // 自前の検証を通っただけでは asset:// は配信されない。Tauri 本体の
+    // asset プロトコルスコープにも解決先のディレクトリを許可しておく。
+    if let Some(parent) = resolved.parent() {
+        let _ = app.asset_protocol_scope().allow_directory(parent, true);
+    }
     Ok(resolved.display().to_string())
 }
 
