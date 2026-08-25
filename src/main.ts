@@ -28,7 +28,7 @@ function renderShell(): void {
 }
 
 /**
- * S4 / S5 のスパイク画面への分岐（`?spike=editor`）。
+ * CodeMirror の参照実装画面への分岐（`?spike=editor`）。
  *
  * 動的 import なので `editor` チャンクは通常の起動では一切ロードされない。
  * これ自体が「既定モードが Preview であることがバンドル分割の境界になる」

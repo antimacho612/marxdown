@@ -1,5 +1,5 @@
 /**
- * ドキュメントの派生状態（02.architecture.md §8.1 / ADR-0005 / ADR-0007）。
+ * ドキュメントの派生状態（02.architecture.md §8.1 / ADR-0005）。
  *
  * # ここに本文を置いてはいけない
  *
@@ -17,7 +17,7 @@
  * ルーン（`$state`）はコンパイラが変換する構文であり、拡張子で対象を判別する。
  * ストアを `.svelte.ts` に置くことで、**UI の外**（`open.ts` / `bootstrap.ts` /
  * リンクハンドラ）からも同じオブジェクトを素の代入で読み書きできる。
- * これは ADR-0005 が Zustand に求めていた性質そのもので、Svelte では依存なしで満たせる。
+ * ADR-0005 D2 が状態管理に求めている性質であり、ルーンはこれを依存ゼロで満たす。
  */
 import type { OutlineItem } from '@/markdown/plugins/line-map';
 import type { TextStats } from '@/markdown/text-stats';

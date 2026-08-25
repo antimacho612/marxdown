@@ -3,7 +3,7 @@
  *
  * Design Brief Principle 2「Markdown Is the Product」と
  * Principle 9「Professional, But Not Boring」を最も直接的に体現する場所。
- * **既定値の完成度に投資する**。M1 の品質の勝負どころ（06.roadmap.md §4.1）。
+ * **既定値の完成度に投資する**。ここが製品の品質の勝負どころ。
  *
  * 方針:
  * - 本文幅を制限する（可読性）
@@ -36,7 +36,7 @@
  * 本文幅の基準はここ 1 箇所だけ。`.mx-content` は `.mx-preview` の
  * font-size をそのまま継承するので、`ch` は子要素ごとの font-size
  * （h1: 1.9em など）に左右されない。子要素側は上下マージンだけを持ち、
- * 自分の max-width / margin-inline は持たない（Issue #4 — 列幅のがたつき）。
+ * 自分の max-width / margin-inline は持たない。分散させると列幅ががたつく。
  */
 .mx-content {
   max-width: var(--mx-content-width);
@@ -143,7 +143,7 @@
  *
  * `.mx-content` 配下にあるため、この +8ch は `.mx-content` 自体の
  * max-width を超えて広がりはしない（フォントサイズ由来のがたつきを消すための
- * トレードオフとして許容 — Issue #4）。ウィンドウ幅が本文幅より狭いときの
+ * トレードオフとして許容する）。ウィンドウ幅が本文幅より狭いときの
  * 「はみ出さない」動作は維持される。
  */
 .mx-content pre {

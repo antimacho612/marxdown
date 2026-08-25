@@ -183,7 +183,7 @@ function reportStartupProblems(bootstrap: Bootstrap | null): void {
 }
 
 /**
- * M1 のグローバルキーバインド（03.ux-spec.md §5.3）。
+ * グローバルキーバインド（03.ux-spec.md §5.3）。
  *
  * ここに並ぶのは**アプリ全体で効くもの**だけ。プレビュー内検索のように
  * 遅延ロードされる機能は、自分のモジュールの中で `bindKeys` する。
@@ -192,7 +192,7 @@ function installShortcuts(): void {
   bindKeys([
     { key: 'Ctrl+O', run: () => void openViaDialogSafely() },
 
-    // F5 は**必ず飲み込む**（Issue #8）。
+    // F5 は**必ず飲み込む**。
     //
     // 素通しすると WebView がページごと再読み込みし、`initialization_script` に
     // 載っている**起動時の** bootstrap が再適用される。コマンドラインで指定した
@@ -242,13 +242,12 @@ async function openViaDialogSafely(): Promise<void> {
 }
 
 /**
- * 別インスタンスからの起動要求（ウォーム起動 / S6）。
+ * 別インスタンスからの起動要求（ウォーム起動）。
  *
  * ここには WebView の初期化も、バンドルの評価も、Svelte のマウントも存在しない。
  * **Worker が既に温まっており、パースだけが仕事になる**（02.architecture.md §5.2）。
  *
- * M1 では「タブを増やす」のではなく現在の本文を置き換える。
- * タブは M3 の担当であり、S6 が測りたいのは転送 → 描画の時間だから。
+ * タブが実装される（M3）までは「タブを増やす」のではなく現在の本文を置き換える。
  */
 function installOpenRequestHandler(): void {
   const platform = getPlatform();
@@ -261,7 +260,7 @@ function installOpenRequestHandler(): void {
     void openPath(path, { startedAt: warmStart }).then(async (outcome) => {
       if (!outcome) return outcome;
 
-      // ウォーム起動の実測値（S6）。
+      // ウォーム起動の実測値。
       // Rust 側は argv 転送を受けた瞬間から測っており、こちらはイベント受信から
       // 測っている。両方を記録して差分も見えるようにする。
       const fromEvent = performance.now() - warmStart;

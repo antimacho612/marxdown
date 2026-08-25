@@ -29,7 +29,7 @@ Marxdown はこのループのためだけに作る。
 
 ## 開発
 
-Node 24 / pnpm 10 / Rust stable 1.80+ が要る。パッケージマネージャは **pnpm**（npm / yarn ではない）。
+Node 24 / pnpm 11 / Rust stable 1.80+ が要る。パッケージマネージャは **pnpm**（npm / yarn ではない）。
 
 ```bash
 pnpm install
@@ -52,7 +52,7 @@ URL パラメータで挙動を切り替えられる。
 | --- | --- |
 | `?welcome` | 引数なし起動（Welcome 画面）を再現する |
 | `?file=<path>` | 仮想 FS 上のファイルを開く |
-| `?spike=editor` | CodeMirror のスパイク画面（S4 / S5） |
+| `?spike=editor` | CodeMirror の参照実装画面（編集体験の確認用） |
 | `?parse=main` | Worker を使わずメインスレッドでパース |
 
 ### コンポーネントの状態を並べて見る
@@ -86,7 +86,7 @@ pnpm fixtures                                  # bench/fixtures/ の基準ファ
 pnpm bench                                     # Markdown パイプライン単体
 pnpm build:app                                 # release ビルド（計測には必須）
 pnpm bench:boot                                # Cold Start（T0〜T9 の中央値）
-node scripts/bench-startup.mjs --sweep         # S3 の A/B（Worker / メインスレッド）
+node scripts/bench-startup.mjs --sweep         # A/B（Worker / メインスレッド、描画方法）
 node scripts/bench-startup.mjs --warm          # Warm Start（単一インスタンス）
 pnpm analyze && node scripts/analyze-chunks.mjs  # バンドルの内訳
 ```

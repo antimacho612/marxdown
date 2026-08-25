@@ -2,8 +2,8 @@
  * Markdown Worker のクライアント側。
  *
  * `--spike-parse=main` のときは Worker を作らず、同じパイプラインを
- * メインスレッドで直接呼ぶ。S3 の A/B 比較のため、**呼び出し側から見た
- * インタフェースを同一に保つ**ことが重要。
+ * メインスレッドで直接呼ぶ。A/B 比較のため、**呼び出し側から見た
+ * インタフェースを同一に保つ**ことが重要（OQ-15）。
  */
 import {
   DEFAULT_CHUNK_BLOCKS,
@@ -72,7 +72,7 @@ function createWorkerParser(): MarkdownParser {
 }
 
 /**
- * メインスレッドで直接パースする実装（S3 の比較対象）。
+ * メインスレッドで直接パースする実装（Worker の比較対象 / OQ-15）。
  *
  * # `pipeline` を動的 import にしている理由
  *
@@ -80,8 +80,7 @@ function createWorkerParser(): MarkdownParser {
  * punycode + uc.micro で gzip 約 66KB 相当）が `main` チャンクにも入り、
  * `md-worker` と**二重に**クリティカルパスの予算を食う。
  *
- * M0 の実測でこれが 150KB 超過の主因だと分かった。
- * S3 の比較のためだけに存在する経路が本命経路の予算を壊してはいけないので、
+ * **比較のためだけに存在する経路が、本命経路の予算を壊してはいけない。**
  * ここは必ず遅延させる。計測上は、この import の解決時間が
  * `parseMs` の外側に出る点に注意（初回のみ）。
  */

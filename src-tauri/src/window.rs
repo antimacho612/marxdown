@@ -43,8 +43,8 @@ pub fn create(
         .decorations(true)
         // ドラッグ＆ドロップは**ネイティブのハンドラに任せる**（F-OPEN-08）。
         //
-        // M0 では `disable_drag_drop_handler()` を呼んで HTML5 のドロップイベントを
-        // 使う想定だったが、WebView の `DataTransfer` はファイルの**絶対パスを渡さない**。
+        // `disable_drag_drop_handler()` を呼んで HTML5 のドロップイベントで扱うと、
+        // WebView の `DataTransfer` がファイルの**絶対パスを渡さない**。
         // パスが無いと最近開いたファイルにも積めず、相対パスの画像も解決できない
         // （F-VIEW-08 / N-SEC-05）。Tauri のドラッグ＆ドロップイベントは実パスを渡す。
         .initialization_script(&script)

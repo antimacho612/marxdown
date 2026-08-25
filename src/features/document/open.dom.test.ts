@@ -265,7 +265,7 @@ function trackScrollTop(element: HTMLElement): number[] {
   return writes;
 }
 
-describe('再読み込み (F5 / Issue #8)', () => {
+describe('再読み込み (F5)', () => {
   it('いま開いているファイルをディスクから読み直す', async () => {
     const spies = install();
     await openPath('C:/work/b.md');

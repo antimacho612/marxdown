@@ -1,7 +1,7 @@
 <!--
   アプリシェルのクローム部分。
 
-  **本文はここに無い**（ADR-0005 / ADR-0007 / 02.architecture.md §8.1）。
+  **本文はここに無い**（ADR-0005 / 02.architecture.md §8.1）。
   Svelte が描くのはタイトルバー・ステータスバー・通知バー・Welcome だけで、
   `.mx-preview` の中身は `paint.ts` が直接 DOM に入れる。
 

@@ -1,10 +1,12 @@
 /**
- * S4 / S5 のスパイク画面。
+ * CodeMirror 6 の参照実装画面。
  *
- * - S4: `@replit/codemirror-vscode-keymap` の VS Code 互換キーマップの実力
- * - S5: `livePreview()` の装飾で WYSIWYG がどこまで書けるか
+ * ここで確認するのは 2 つ。
  *
- * **この 2 つは手で触らないと判断できない。** 数値ではなく感触が判定基準なので、
+ * - `@replit/codemirror-vscode-keymap` の VS Code 互換キーマップがどこまで通用するか
+ * - `livePreview()` の装飾で WYSIWYG がどこまで書けるか（ADR-0002）
+ *
+ * **どちらも手で触らないと判断できない。** 数値ではなく感触が判定基準なので、
  * 触れる状態を作るところまでがこのファイルの責務。
  *
  * `?spike=editor` で開く。動的 import なので `main` チャンクには載らない。
@@ -28,12 +30,12 @@ import { vscodeKeymap } from '@replit/codemirror-vscode-keymap';
 
 import { livePreview } from '@/features/editor/live-preview/decorations';
 
-const SAMPLE = `# S4 / S5 スパイク
+const SAMPLE = `# CodeMirror 参照実装
 
 カーソルをこの行に置くと、**記法が表示される**はず。
 別の行に移すと \`**\` が消えて太字だけが残る。
 
-## VS Code 互換キーマップの確認項目 (S4)
+## VS Code 互換キーマップの確認項目
 
 - Ctrl+D で次の同じ語を選択（マルチカーソル）
 - Alt+Click でカーソル追加
@@ -45,17 +47,17 @@ const SAMPLE = `# S4 / S5 スパイク
 - Home / End、Ctrl+Home / Ctrl+End
 - Ctrl+] / Ctrl+[ でインデント
 
-### 日本語入力の確認 (S5 の最大リスク)
+### 日本語入力の確認（WYSIWYG の最大リスク）
 
 ここで日本語をタイプして、変換中に装飾がちらつかないか見る。
 **強調**や*斜体*を含む行で変換したときが本番。
 
 \`\`\`ts
-// コードブロックは装飾しない（M0 のスコープ外）
+// コードブロックは装飾しない（この参照実装のスコープ外）
 const x: number = 1
 \`\`\`
 
-> 引用も M0 では装飾しない。見出しと強調だけ。
+> 引用もここでは装飾しない。見出しと強調だけ。
 
 | 表は | 装飾しない |
 | --- | --- |
@@ -109,7 +111,7 @@ export function mountEditorSpike(container: HTMLElement): () => void {
   const toggle = document.createElement('input');
   toggle.type = 'checkbox';
   toggle.checked = true;
-  label.append(toggle, document.createTextNode('Live Preview の装飾 (S5)'));
+  label.append(toggle, document.createTextNode('Live Preview の装飾'));
 
   const note = document.createElement('span');
   note.style.color = 'var(--mx-color-fg-muted)';
@@ -126,8 +128,8 @@ export function mountEditorSpike(container: HTMLElement): () => void {
 
   toggle.addEventListener('change', () => {
     // ドキュメントを引き継いで作り直す。
-    // M2 以降は同一インスタンスの Compartment 差し替えにする（02.architecture.md §7.1）が、
-    // スパイクの目的は「装飾の有無で挙動がどう変わるか」の比較なので、ここは作り直しでよい。
+    // 製品側は同一インスタンスの Compartment 差し替えにする（02.architecture.md §7.1）が、
+    // ここの目的は「装飾の有無で挙動がどう変わるか」の比較なので、作り直しでよい。
     const doc = view.state.doc.toString();
     const selection = view.state.selection;
     view.destroy();

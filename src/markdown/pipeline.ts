@@ -7,9 +7,9 @@
  * # プラグイン構成の方針
  *
  * 04.tech-stack.md §4.2 が「既定で有効」とするもののうち、
- * M1 のスコープ（CommonMark + GFM）に必要なものだけを入れている。
+ * CommonMark + GFM に必要なものだけを入れている。
  * 脚注 / タスクリスト / GitHub Alerts は M4 の担当（06.roadmap.md §7.1）で、
- * 先に入れるとクリティカルパスの予算を M1 の実測から見えなくしてしまう。
+ * 先に入れると、クリティカルパスの予算にどの機能がいくら乗っているかが見えなくなる。
  */
 import MarkdownItCallable, { type MarkdownIt, type Token } from 'markdown-it';
 import anchor from 'markdown-it-anchor';

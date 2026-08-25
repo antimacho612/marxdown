@@ -9,8 +9,8 @@
  * pnpm build:app                       # release ビルドが必要
  * node scripts/bench-startup.mjs                       # 既定（cold, readme.md）
  * node scripts/bench-startup.mjs --runs 10 --file spec.md
- * node scripts/bench-startup.mjs --sweep               # S2/S3/S7/S8 の A/B を総当たり
- * node scripts/bench-startup.mjs --warm --runs 10      # S6 のウォーム起動
+ * node scripts/bench-startup.mjs --sweep               # 比較経路との A/B
+ * node scripts/bench-startup.mjs --warm --runs 10      # ウォーム起動
  * node scripts/bench-startup.mjs --json out.json       # 結果を JSON で保存
  * ```
  */
@@ -175,7 +175,7 @@ function summarize(results) {
       byMark.set(m.id, list);
     }
   }
-  // T2b / T2c は T2→T3 の内訳（M1 で追加）。ここが伸びたときに
+  // T2b / T2c は T2→T3 の内訳。ここが伸びたときに
   // 「WebView2 が重いのか、自分たちが足したものが重いのか」を切り分ける。
   const order = ['T0', 'T1', 'T2', 'T2b', 'T2c', 'T3', 'T4', 'T5', 'T6', 'T7', 'T8', 'T8-all', 'T9'];
   const marks = [];
@@ -230,7 +230,7 @@ function printSummary(title, summary, firstRun) {
 }
 
 /* ------------------------------------------------------------------ */
-/* ウォーム起動 (S6)                                                   */
+/* ウォーム起動                                                        */
 /* ------------------------------------------------------------------ */
 
 async function benchWarm(exe, files, opts) {
@@ -278,7 +278,7 @@ async function benchWarm(exe, files, opts) {
     : [];
 
   console.log(`\n${'='.repeat(72)}`);
-  console.log('S6 — ウォーム起動（単一インスタンス + argv 転送）');
+  console.log('ウォーム起動（単一インスタンス + argv 転送）');
   console.log('='.repeat(72));
   if (records.length === 0) {
     console.log('  記録が取れなかった。単一インスタンスが機能していない可能性がある。');
@@ -341,12 +341,11 @@ if (opts.warm) {
   report.results.warm = warm.summary;
   report.results.warmRecords = warm.records;
 } else {
-  // A/B は S3（パース場所）だけが残っている。
-  // S2 / S7 / S8 は結論が出たので M1 の終わりに撤去した（OQ-20）。
+  // 残っている A/B はパース場所だけ。結論の出た比較経路は撤去してある。
   const configs = opts.sweep
     ? [
         { name: '本命（Worker でパース）', spike: {} },
-        { name: 'S3: メインスレッドでパース（OQ-18）', spike: { parse: 'main' } },
+        { name: 'メインスレッドでパース（OQ-15）', spike: { parse: 'main' } },
       ]
     : [{ name: `既定（${opts.file}）`, spike: opts.spike }];
 
