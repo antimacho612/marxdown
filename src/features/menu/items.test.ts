@@ -38,7 +38,8 @@ describe('ハンバーガーメニューの項目 (03.ux-spec.md §2.3)', () => 
   it('ファイルを開いていないときは、押しても何も起きない項目を並べない', () => {
     const groups = buildMenu();
 
-    expect(ids(groups)).toEqual(['open']);
+    // 「設定」は文書に依存しないので、ここでも押せる（F-CONF-05）。
+    expect(ids(groups)).toEqual(['open', 'settings']);
     expect(group(groups, 'document')).toBeUndefined();
     expect(group(groups, 'zoom')).toBeUndefined();
   });
@@ -46,7 +47,7 @@ describe('ハンバーガーメニューの項目 (03.ux-spec.md §2.3)', () => 
   it('ファイルを開くと、その文書に対する操作が増える', () => {
     documentStore.meta = META;
 
-    expect(ids(buildMenu())).toEqual(['open', 'reload', 'search', 'zoom-in', 'zoom-out', 'zoom-reset']);
+    expect(ids(buildMenu())).toEqual(['open', 'reload', 'search', 'zoom-in', 'zoom-out', 'zoom-reset', 'settings']);
   });
 
   /** 履歴が空でも見出しは出す。**項目ではなく 1 行の文**で埋める。 */
@@ -79,7 +80,7 @@ describe('ハンバーガーメニューの項目 (03.ux-spec.md §2.3)', () => 
   });
 
   /**
-   * 後続の Phase（4 で「設定」、7 で「終了」）が項目を足す。
+   * 後続の Phase（7 で「終了」）が項目を足す。
    * `{#each}` のキーに使うので、重複すると描画が壊れる。
    */
   it('項目の id が重複しない', () => {

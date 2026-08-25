@@ -1,0 +1,131 @@
+/**
+ * 設定を見た目に当てる（F-CONF-01 / F-CONF-04 / 02.architecture.md §10.1）。
+ *
+ * # クリティカルパスに載るのはここだけ
+ *
+ * 設定 UI（`panel.ts` 以降）は遅延チャンクにあり、押されるまでロードされない。
+ * `main` に載るのは**この 1 ファイルと設定ストア**だけで、やることは
+ * `:root` のカスタムプロパティを数個書き換えることに尽きる
+ * （06.roadmap.md §5.3 の完了条件）。
+ *
+ * # 描画より前に当てる
+ *
+ * 呼び出しは `bootstrap.ts` の `initSettings`（`applyZoom` の直後）。
+ * 設定は bootstrap に丸ごと載っていて IPC 往復が無いので、ここで同期的に当たる。
+ * 後から当てると**一度出た絵が描き変わる**（02.architecture.md §5.1 の判断基準）。
+ *
+ * # 既定値のときは 1 バイトも書かない
+ *
+ * 既定値を明示的にカスタムプロパティへ書き込む実装にすると、`tokens.css` の
+ * トークンと二重管理になる。**既定値と同じなら `removeProperty` する**ことで、
+ * 設定を一度も触っていない状態の見た目は M1 と完全に同一になる
+ * （F-CONF-02 / 06.roadmap.md §5.3「設定を一度も開かない状態の見た目が
+ * M1 から劣化していない」）。
+ *
+ * # JS で個別要素にスタイルを書かない
+ *
+ * 当てる先はすべてトークン層。`zoom.ts` が `--mx-zoom` 1 つで本文全体を
+ * 拡縮しているのと同じ作法で、ユーザーのカスタム CSS（Phase 5）からも
+ * 同じ変数として見える（§10.1）。
+ */
+import { DEFAULT_SETTINGS, type Settings } from '@/platform';
+
+/**
+ * 数値の許容範囲。**`src-tauri/src/settings.rs` の `*_RANGE` と揃える**
+ * （`zoom.ts` の `ZOOM_MIN` / `ZOOM_MAX` と同じ約束）。
+ *
+ * Rust 側は読んだ時点で潰しているので、ここが効くのは設定 UI から
+ * 直接入力された値に対してだけ。**入力欄の `min` / `max` もここから引く。**
+ */
+export const LIMITS = {
+  'preview.fontSize': { min: 8, max: 72, step: 1 },
+  'preview.lineHeight': { min: 1, max: 3, step: 0.05 },
+  'preview.maxWidth': { min: 20, max: 200, step: 1 },
+} as const;
+
+export type NumericKey = keyof typeof LIMITS;
+
+export function clampSetting(key: NumericKey, value: number): number {
+  const { min, max } = LIMITS[key];
+  if (!Number.isFinite(value)) return DEFAULT_SETTINGS[key];
+  return Math.min(max, Math.max(min, value));
+}
+
+/**
+ * 設定の全体を見た目に当てる。**差分は取らない。**
+ *
+ * 当てる対象は 5 つしかなく、差分を計算するほうが高くつく。
+ * 外部エディタでの編集も設定 UI の操作も、同じこの 1 本を通る。
+ */
+export function applyAppearance(values: Settings): void {
+  const root = document.documentElement;
+
+  applyTheme(root, values.theme);
+
+  // フォント名は**既定スタックの前に足す**（F-CONF-04）。置き換えてしまうと、
+  // そのフォントに無い字（日本語 / 記号）の落とし先が消える。
+  const family = formatFontFamily(values['preview.fontFamily']);
+  setVar(root, '--mx-font-content', family === null ? null : `${family}, var(--mx-font-content-stack)`);
+
+  setVar(root, '--mx-font-size-content', numeric(values, 'preview.fontSize', 'px'));
+  setVar(root, '--mx-line-height', numeric(values, 'preview.lineHeight', ''));
+  // 単位は `ch`。px にすると、文字サイズを変えたときに列幅が揺れる（§10.2）。
+  setVar(root, '--mx-content-width', numeric(values, 'preview.maxWidth', 'ch'));
+}
+
+/**
+ * テーマ（F-CONF-01）。
+ *
+ * **`system` は属性ごと外す。** `tokens.css` の
+ * `@media (prefers-color-scheme: dark)` が OS の設定を拾い、
+ * OS 側で切り替えられた瞬間に CSS だけで追従する。
+ * JS のリスナーも `setInterval` も要らない（N-PERF-05）。
+ */
+function applyTheme(root: HTMLElement, theme: Settings['theme']): void {
+  if (theme === 'system') delete root.dataset['theme'];
+  else root.dataset['theme'] = theme;
+}
+
+/**
+ * 既定値と同じなら `null`（＝トークン層の値をそのまま使う）。
+ *
+ * 「既定値を書き込まない」ことが F-CONF-02 の担保になっている。
+ */
+function numeric(values: Settings, key: NumericKey, unit: string): string | null {
+  const value = clampSetting(key, values[key]);
+  if (value === DEFAULT_SETTINGS[key]) return null;
+  return `${String(value)}${unit}`;
+}
+
+function setVar(root: HTMLElement, name: string, value: string | null): void {
+  if (value === null) root.style.removeProperty(name);
+  else root.style.setProperty(name, value);
+}
+
+/**
+ * フォント名を CSS の `font-family` に入れられる形にする。
+ *
+ * **ウェブフォントは読み込めない**（CSP の `font-src 'self'` / §10.3）。
+ * ここに書けるのは OS に入っているフォントのファミリ名だけで、
+ * 見つからなければ後ろのスタックに落ちる。
+ *
+ * すべて引用符で囲うのは、`Meiryo UI` のような空白入りの名前と
+ * `MS UI Gothic` のような数字始まりを一様に扱うため。囲えない文字
+ * （引用符・バックスラッシュ・`;` `{` `}` `(` `)`）を含むものは**捨てる**。
+ * 設定ファイルは手で書ける以上、ここに来る文字列は検証されていない。
+ * 宣言 1 つを壊すだけとはいえ、通す理由が無い。
+ */
+export function formatFontFamily(input: string): string | null {
+  const families = input
+    .split(',')
+    .map((name) =>
+      name
+        .trim()
+        .replace(/^["'](.*)["']$/u, '$1')
+        .trim(),
+    )
+    .filter((name) => name.length > 0 && !/["'\\;{}()]/u.test(name));
+
+  if (families.length === 0) return null;
+  return families.map((name) => JSON.stringify(name)).join(', ');
+}

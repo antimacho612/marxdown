@@ -6,7 +6,7 @@
  *
  * # 見た目と切り離す理由
  *
- * 項目を足すのは後続の Phase の仕事である（Phase 4 で「設定」、Phase 7 で「終了」、
+ * 項目を足すのは後続の Phase の仕事である（Phase 7 で「終了」、
  * M3 でコマンドパレットへの登録）。**足す作業が `buildMenu` に 1 行加えるだけで
  * 終わる**ようにしてある。`AppMenu.svelte` はこの配列を描くだけで、
  * どんな項目があるかを知らない。
@@ -21,6 +21,7 @@ import { openPath, openViaDialog, reloadCurrent } from '@/features/document/open
 import { documentStore } from '@/features/document/store.svelte';
 import { openSearchLazily } from '@/features/preview/open-search';
 import { zoomIn, zoomOut, zoomReset } from '@/features/preview/zoom';
+import { openSettingsLazily } from '@/features/settings/open-settings';
 import { recentStore } from '@/features/workspace/recent.svelte';
 import { ja } from '@/i18n/ja';
 import { splitPath } from '@/lib/path';
@@ -94,28 +95,36 @@ export function buildMenu(): MenuGroup[] {
     },
   ];
 
-  if (!hasDocument) return groups;
+  if (hasDocument) {
+    groups.push(
+      {
+        // 「いま開いている文書に対する操作」。再読み込みと検索は同じ対象を指すので隣に置く。
+        id: 'document',
+        items: [
+          { id: 'reload', label: ja.menu.reload, shortcut: 'F5', run: () => void reloadCurrent() },
+          { id: 'search', label: ja.menu.search, shortcut: 'Ctrl+F', run: () => void openSearchLazily() },
+        ],
+      },
+      {
+        // 倍率は 3 つで 1 組。見出しを付けないと「拡大」が単独の機能に見える。
+        id: 'zoom',
+        label: ja.menu.zoom,
+        items: [
+          { id: 'zoom-in', label: ja.menu.zoomIn, shortcut: 'Ctrl+=', run: () => void zoomIn() },
+          { id: 'zoom-out', label: ja.menu.zoomOut, shortcut: 'Ctrl+-', run: () => void zoomOut() },
+          { id: 'zoom-reset', label: ja.menu.zoomReset, shortcut: 'Ctrl+0', run: () => void zoomReset() },
+        ],
+      },
+    );
+  }
 
-  groups.push(
-    {
-      // 「いま開いている文書に対する操作」。再読み込みと検索は同じ対象を指すので隣に置く。
-      id: 'document',
-      items: [
-        { id: 'reload', label: ja.menu.reload, shortcut: 'F5', run: () => void reloadCurrent() },
-        { id: 'search', label: ja.menu.search, shortcut: 'Ctrl+F', run: () => void openSearchLazily() },
-      ],
-    },
-    {
-      // 倍率は 3 つで 1 組。見出しを付けないと「拡大」が単独の機能に見える。
-      id: 'zoom',
-      label: ja.menu.zoom,
-      items: [
-        { id: 'zoom-in', label: ja.menu.zoomIn, shortcut: 'Ctrl+=', run: () => void zoomIn() },
-        { id: 'zoom-out', label: ja.menu.zoomOut, shortcut: 'Ctrl+-', run: () => void zoomOut() },
-        { id: 'zoom-reset', label: ja.menu.zoomReset, shortcut: 'Ctrl+0', run: () => void zoomReset() },
-      ],
-    },
-  );
+  // 「アプリに対する操作」。**ファイルを開いていなくても押せる**ので、
+  // 文書に対する操作の早期 return より後ろではなく、両方の経路に載せる。
+  // Phase 7 の「終了」もここに並ぶ。
+  groups.push({
+    id: 'app',
+    items: [{ id: 'settings', label: ja.menu.settings, shortcut: 'Ctrl+,', run: () => void openSettingsLazily() }],
+  });
 
   return groups;
 }

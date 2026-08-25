@@ -160,8 +160,9 @@ function initialBootstrap(): Bootstrap {
     zoom: state.zoom,
     settings: state.settings,
     // `?brokenSettings` で「settings.json が壊れている」起動を再現する。
-    // 通知バー（03.ux-spec.md §8.2）をブラウザだけで確認できるようにするため。
-    settingsError: params.has('brokenSettings') ? BROKEN_SETTINGS_SAMPLE : null,
+    // 通知バー（03.ux-spec.md §8.2）と設定 UI の読み取り専用状態を
+    // ブラウザだけで確認できるようにするため。
+    settingsError: brokenSettings(),
   };
 }
 
@@ -169,6 +170,12 @@ const BROKEN_SETTINGS_SAMPLE: SettingsProblem = {
   path: '/virtual/settings.json',
   message: 'expected `,` or `}` at line 3 column 1',
 };
+
+/** `?brokenSettings` で「壊れた settings.json」を再現しているか。 */
+function brokenSettings(): SettingsProblem | null {
+  const params = new URLSearchParams(globalThis.location?.search ?? '');
+  return params.has('brokenSettings') ? BROKEN_SETTINGS_SAMPLE : null;
+}
 
 let bootstrap: Bootstrap | null = null;
 
@@ -232,11 +239,23 @@ export const webPlatform: Platform = {
     saveState(state);
   },
 
+  /**
+   * `?brokenSettings` の間は「壊れている」と答え続ける。
+   *
+   * 実装では**壊れた事実が保存を止める**（02.architecture.md §4.5）。
+   * ブラウザには壊しようがないので、設定 UI の読み取り専用状態を
+   * dev:web で確認する手段がここしかない。
+   */
   async readSettings() {
-    return { values: loadState().settings, broken: null };
+    return { values: loadState().settings, broken: brokenSettings() };
   },
 
   async writeSettings(patch) {
+    // 壊れているときは Rust 側（`AppState::patch_settings`）が拒否する。
+    // UI が「保存できたように見せる」ことのほうが害が大きいので、口も合わせておく。
+    const broken = brokenSettings();
+    if (broken) throw { kind: 'settings-broken', message: broken.message };
+
     const state = loadState();
     const merged: Settings = { ...state.settings };
     for (const [key, value] of Object.entries(patch)) {
