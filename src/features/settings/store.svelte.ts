@@ -38,6 +38,47 @@ export function initSettings(bootstrap: Bootstrap | null): void {
 }
 
 /**
+ * 外部エディタでの編集を即反映する（02.architecture.md §4.5）。起動時に 1 回だけ呼ぶ。
+ *
+ * IPC を伴う購読なので **`ready()` の後**に呼ぶこと（§5.1）。
+ * 監視の登録は Rust 側が起動時に済ませている（パスを知っているのはあちらだけ）。
+ */
+export function installSettingsWatch(): void {
+  getPlatform().onSettingsChanged(() => void refreshSettings());
+}
+
+/**
+ * `settings.json` を読み直して全体を当て直す（§4.5）。
+ *
+ * **差分適用にしない。** 設定は 1KB 未満で、部分更新の一貫性を気にするより
+ * 読み直すほうが確実に安い。
+ *
+ * **読めない内容に変わっても既定値に戻さない。** 直前に読めていた値を保つのは
+ * Rust 側（`AppState::reload_settings`）の担当で、ここはその結果を映すだけ。
+ * 保存の途中で一瞬 JSON として壊れた状態を経由するのは普通のことであり、
+ * そのたびにテーマが飛んでは設定を試行錯誤できない。
+ */
+export async function refreshSettings(): Promise<void> {
+  let loaded;
+  try {
+    loaded = await getPlatform().readSettings();
+  } catch {
+    // 読み直せなかったこと自体は伝えない。直前の値のまま動き続ける
+    return;
+  }
+
+  settingsStore.values = loaded.values;
+
+  if (loaded.broken) {
+    reportSettingsProblem(loaded.broken);
+    return;
+  }
+  // 直っていたら、消えない通知を自分で下げる。壊れている間だけ出るべきものなので、
+  // ユーザーが直したのに残り続けると「まだ直っていない」と読めてしまう。
+  if (documentStore.notice?.message === ja.settings.broken) documentStore.notice = null;
+}
+
+/**
  * 壊れた `settings.json` を知らせる（03.ux-spec.md §8.2）。
  *
  * **消えない**エラー通知にする。既定値で動いてしまう以上、

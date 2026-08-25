@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { documentStore } from '@/features/document/store.svelte';
 import { DEFAULT_SETTINGS, getPlatform, setPlatform, type Bootstrap, type Platform } from '@/platform';
 
-import { initSettings, reportSettingsProblem, settingsStore } from './store.svelte';
+import { initSettings, refreshSettings, reportSettingsProblem, settingsStore } from './store.svelte';
 
 /**
  * `src/features/document/store.test.ts` と同じ見張り。
@@ -99,5 +99,62 @@ describe('壊れた settings.json の通知', () => {
   it('壊れていなければ何も出さない', () => {
     reportSettingsProblem(null);
     expect(documentStore.notice).toBeNull();
+  });
+});
+
+/** 外部エディタでの編集を即反映する（02.architecture.md §4.5）。 */
+describe('settings.json の読み直し', () => {
+  function withSettings(readSettings: ReturnType<typeof vi.fn>): () => void {
+    const platform = getPlatform();
+    setPlatform({ ...platform, readSettings } as Platform);
+    return () => setPlatform(platform);
+  }
+
+  it('読み直した値を丸ごと当て直す', async () => {
+    const restore = withSettings(
+      vi.fn().mockResolvedValue({ values: { ...DEFAULT_SETTINGS, theme: 'dark' }, broken: null }),
+    );
+
+    await refreshSettings();
+
+    expect(settingsStore.values.theme).toBe('dark');
+    restore();
+  });
+
+  /**
+   * §4.5 の肝。編集の途中で JSON として壊れた状態を経由するのは普通のことで、
+   * そのたびにテーマが飛んでは設定を試行錯誤できない。
+   */
+  it('読めない内容に変わっても既定値に戻さない', async () => {
+    const kept = { ...DEFAULT_SETTINGS, theme: 'dark' as const };
+    const restore = withSettings(
+      vi.fn().mockResolvedValue({ values: kept, broken: { path: 'C:/conf/settings.json', message: 'expected `,`' } }),
+    );
+
+    await refreshSettings();
+
+    expect(settingsStore.values.theme).toBe('dark');
+    expect(documentStore.notice?.level).toBe('error');
+    restore();
+  });
+
+  it('直ったら壊れている通知を下げる', async () => {
+    reportSettingsProblem({ path: 'C:/conf/settings.json', message: 'expected `,`' });
+    const restore = withSettings(vi.fn().mockResolvedValue({ values: DEFAULT_SETTINGS, broken: null }));
+
+    await refreshSettings();
+
+    expect(documentStore.notice).toBeNull();
+    restore();
+  });
+
+  it('読み直せなくても直前の値のまま動き続ける', async () => {
+    settingsStore.values = { ...DEFAULT_SETTINGS, theme: 'dark' };
+    const restore = withSettings(vi.fn().mockRejectedValue(new Error('IPC が落ちた')));
+
+    await refreshSettings();
+
+    expect(settingsStore.values.theme).toBe('dark');
+    restore();
   });
 });

@@ -14,6 +14,7 @@ use crate::settings;
 use crate::state::AppState;
 use crate::store::{self, RecentEntry};
 use crate::trace::Mark;
+use crate::watch::FileWatcher;
 
 #[tauri::command]
 pub fn read_document(
@@ -33,8 +34,18 @@ pub fn read_document(
 }
 
 #[tauri::command]
-pub fn write_document(req: WriteRequest) -> CoreResult<SaveResult> {
-    document::write(&req)
+pub fn write_document(
+    watcher: State<'_, FileWatcher>,
+    req: WriteRequest,
+) -> CoreResult<SaveResult> {
+    let result = document::write(&req)?;
+    // 保存した直後のイベントは自分のもの（02.architecture.md §4.4）。
+    // **M1.5 にはまだ編集機能が無いのでここは通らない**が、監視を入れた時点で
+    // 対にしておかないと、M2 で保存するたびに再読み込みが走る。
+    if matches!(result, SaveResult::Saved { .. }) {
+        watcher.note_self_write(Path::new(&req.path));
+    }
+    Ok(result)
 }
 
 /// 相対パスの画像を、許可ディレクトリ配下であることを検証してから解決する（N-SEC-05）。
@@ -175,9 +186,16 @@ pub fn read_settings(state: State<'_, AppState>) -> settings::SettingsLoad {
 #[tauri::command]
 pub fn write_settings(
     state: State<'_, AppState>,
+    watcher: State<'_, FileWatcher>,
     patch: serde_json::Map<String, serde_json::Value>,
 ) -> CoreResult<settings::Settings> {
-    state.patch_settings(patch)
+    let next = state.patch_settings(patch)?;
+    // 自分で書いた直後のイベントを弾く（02.architecture.md §4.4）。
+    // これが無いと、設定 UI から保存するたびに「外部で変更された」が跳ね返ってくる。
+    if let Some(path) = state.settings_path() {
+        watcher.note_self_write(path);
+    }
+    Ok(next)
 }
 
 /// `settings.json` を OS の既定アプリで開く（F-CONF-06 / 03.ux-spec.md §8.2）。
@@ -193,6 +211,32 @@ pub fn open_settings_file(app: tauri::AppHandle, state: State<'_, AppState>) -> 
     tauri_plugin_opener::OpenerExt::opener(&app)
         .open_path(path.display().to_string(), None::<&str>)
         .map_err(|e| CoreError::Io(e.to_string()))
+}
+
+/* ------------------------------------------------------------------ */
+/* ファイル監視（F-EDIT-16 / 02.architecture.md §4.4）                    */
+/* ------------------------------------------------------------------ */
+
+/// 開いているファイルの監視を始める。
+///
+/// **監視の対象を決めるのはフロント側**（どのファイルを「開いている」と見なすかは
+/// UI の状態であり、Rust 側は知らない）。M3 でタブが入ったら、
+/// 開いた枚数だけここが呼ばれる形になる。
+///
+/// いまは開いているドキュメントが 1 つしかないので、**呼ぶたびに前のファイルの
+/// 監視が外れる**。解除を忘れても積算しないのは、この Phase の間だけの性質。
+///
+/// `settings.json` はここを通らない。パスを知っているのは Rust 側であり、
+/// 起動時に自分で登録する（§4.5）。
+#[tauri::command]
+pub fn watch_path(watcher: State<'_, FileWatcher>, path: String) {
+    watcher.watch_document(Path::new(&path));
+}
+
+/// 監視をやめる。タブを閉じたとき（M3）に呼ぶ。
+#[tauri::command]
+pub fn unwatch_path(watcher: State<'_, FileWatcher>, path: String) {
+    watcher.unwatch(Path::new(&path));
 }
 
 /// フロント側の performance.mark を受け取ってトレースに合流させる。

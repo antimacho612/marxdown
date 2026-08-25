@@ -119,6 +119,27 @@ export interface SettingsLoad {
 }
 
 /* ------------------------------------------------------------------ */
+/* ファイル監視（02.architecture.md §4.4）                               */
+/* ------------------------------------------------------------------ */
+
+/**
+ * 外部で何が起きたか。
+ *
+ * `removed` を分けているのは、**消えたファイルを読みに行かせない**ため。
+ * 読みに行くと「開けません」が出て、作り直された瞬間にもう一度出る。
+ */
+export type FileChangeKind = 'modified' | 'removed';
+
+/** `marxdown://file-changed` の中身（`src-tauri/src/watch.rs` の `FileChange`）。 */
+export interface FileChange {
+  /** 正規化済み絶対パス。開いているファイルかどうかはこれで照合する。 */
+  path: string;
+  /** 消えている場合は 0。 */
+  mtimeMs: number;
+  kind: FileChangeKind;
+}
+
+/* ------------------------------------------------------------------ */
 /* 比較経路の切り替え                                                    */
 /* ------------------------------------------------------------------ */
 
@@ -260,6 +281,24 @@ export interface Platform {
    * 壊れた設定を通知バーから直せるようにするための逃げ道。
    */
   openSettingsFile(): Promise<void>;
+  /**
+   * 開いているファイルの監視を始める（F-EDIT-16 / 02.architecture.md §4.4）。
+   *
+   * **開いているファイルだけを見る**（N-PERF-05）。呼ぶたびに前のファイルの監視は
+   * 外れる（タブが入る M3 までは対象が 1 つしかない）。
+   */
+  watchPath(path: string): Promise<void>;
+  /** 監視をやめる。タブを閉じたとき（M3）に呼ぶ。 */
+  unwatchPath(path: string): Promise<void>;
+  /** 監視しているファイルの外部変更を購読する。 */
+  onFileChanged(handler: (change: FileChange) => void): () => void;
+  /**
+   * `settings.json` の外部変更を購読する（§4.5）。
+   *
+   * 中身は渡さない。**受け取ったら `readSettings` で読み直して全体を当て直す**のが
+   * 唯一の使い方で、差分を運ぶ意味がない（設定は小さい）。
+   */
+  onSettingsChanged(handler: () => void): () => void;
   /** ウィンドウへのドラッグ＆ドロップを購読する（F-OPEN-08）。 */
   onDragDrop(handler: (event: DragDropEvent) => void): () => void;
   /** 描画準備完了。ウィンドウを表示させる。 */
