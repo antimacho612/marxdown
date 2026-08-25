@@ -25,6 +25,37 @@ export const ja = {
     dropHint: 'ここに Markdown ファイルをドロップ',
     cliHint: 'ターミナルからは marxdown <file.md>',
   },
+  /**
+   * カスタムタイトルバー（03.ux-spec.md §2.1 / OQ-02 = B）。
+   *
+   * ウィンドウ操作ボタンには**文字を出さない**（絵だけ）。ここにあるのは
+   * すべてスクリーンリーダー向けの名前とツールチップで、Windows の
+   * 標準タイトルバーが読み上げる文言に合わせてある。
+   */
+  titlebar: {
+    menu: 'メニュー',
+    minimize: '最小化',
+    maximize: '最大化',
+    restore: '元のサイズに戻す',
+    close: '閉じる',
+  },
+  /**
+   * ハンバーガーメニュー（03.ux-spec.md §2.3「初学者の逃げ道」）。
+   *
+   * **メニューバーは置かない**という決定の代わりに、タイトルバー左端に 1 つだけ置く。
+   * 並べるのは**いま押せるものだけ**。「設定」は Phase 4、「終了」は Phase 7 で増える。
+   */
+  menu: {
+    open: 'ファイルを開く',
+    recent: '最近開いたファイル',
+    noRecent: 'まだ何も開いていません',
+    reload: '再読み込み',
+    zoom: '表示倍率',
+    zoomIn: '拡大',
+    zoomOut: '縮小',
+    zoomReset: '等倍',
+    search: 'プレビュー内を検索',
+  },
   open: {
     droppedExtra: (n: number) => `${n} 件は開いていません（複数タブは M3 で対応）`,
     reloaded: '再読み込みしました',

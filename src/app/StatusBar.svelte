@@ -59,7 +59,7 @@
 
 <style>
   .mx-statusbar {
-    grid-area: 3 / 1;
+    grid-area: statusbar;
     display: flex;
     align-items: center;
     gap: var(--mx-space-4);

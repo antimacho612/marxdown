@@ -121,6 +121,56 @@ pub async fn pick_file(window: Window) -> CoreResult<Option<String>> {
 }
 
 /* ------------------------------------------------------------------ */
+/* ウィンドウ操作（カスタムタイトルバー / 03.ux-spec.md §2.1）             */
+/* ------------------------------------------------------------------ */
+
+// `decorations(false)` にしたので、`─ □ ✕` はフロントが描いた `<button>` である。
+// 押されたときの実体をここに置く。
+//
+// **JS の `@tauri-apps/api/window` は使わない。** `pick_file` / `open_external` と
+// 同じ判断で（04.tech-stack.md §6.2）、フロントの依存とクリティカルパスの重さを
+// 増やさないため。capabilities に window プラグインの権限を足さずに済むのも利点で、
+// 「タイトルバーのために任意のウィンドウ操作を JS へ開放する」ことにならない。
+//
+// ドラッグとダブルクリックだけは例外で、Tauri 本体が注入する
+// `data-tauri-drag-region` の処理に任せている（`capabilities/default.json`）。
+// マウスの押し下げからネイティブのドラッグへ引き継ぐ部分は、
+// 自前で書くと二重クリックの取りこぼしまで作り直すことになる。
+
+#[tauri::command]
+pub fn window_minimize(window: Window) {
+    let _ = window.minimize();
+}
+
+#[tauri::command]
+pub fn window_toggle_maximize(window: Window) {
+    let _ = if window.is_maximized().unwrap_or(false) {
+        window.unmaximize()
+    } else {
+        window.maximize()
+    };
+}
+
+/// 閉じる。
+///
+/// `close()` は `CloseRequested` を経由するので、ウィンドウ位置の保存（F-CONF-10）は
+/// ネイティブの `✕` と同じ経路を通る。**Phase 7 でトレイ格納に化けるのもここ**
+/// （`window.closeBehavior`）なので、フロントから直接 `exit` を呼ばせない。
+#[tauri::command]
+pub fn window_close(window: Window) {
+    let _ = window.close();
+}
+
+/// 最大化中か。ウィンドウ操作ボタンの絵柄（□ / ❐）を決めるためだけに使う。
+///
+/// 以降の変化は `marxdown://window-maximized` が push するので、
+/// フロントがこれを呼ぶのは購読を始める 1 回だけ。
+#[tauri::command]
+pub fn window_is_maximized(window: Window) -> bool {
+    window.is_maximized().unwrap_or(false)
+}
+
+/* ------------------------------------------------------------------ */
 /* 永続化ストア（F-OPEN-09 / F-VIEW-11 / F-CONF-10）                     */
 /* ------------------------------------------------------------------ */
 

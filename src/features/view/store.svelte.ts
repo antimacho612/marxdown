@@ -10,6 +10,15 @@
 class ViewStore {
   /** 表示倍率（F-VIEW-11）。実際の適用は `zoom.ts` が CSS 変数で行う。 */
   zoom = $state(1);
+
+  /**
+   * ウィンドウが最大化されているか（03.ux-spec.md §2.1）。
+   *
+   * 自前のタイトルバーになったので、`□` と `❐` の描き分けは自分たちの仕事になった。
+   * **これは OS の状態の写しであって、真実ではない。** 更新するのは
+   * `app/window.ts` の購読だけで、ボタン側から反転させない。
+   */
+  maximized = $state(false);
 }
 
 export const viewStore = new ViewStore();

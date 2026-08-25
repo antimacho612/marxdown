@@ -36,6 +36,7 @@ import {
 import { documentStore } from '@/features/document/store.svelte';
 import { installFileWatch } from '@/features/document/watch';
 import { installLinkHandler } from '@/features/preview/links';
+import { openSearchLazily } from '@/features/preview/open-search';
 import { applyZoom, zoomIn, zoomOut, zoomReset } from '@/features/preview/zoom';
 import { initSettings, installSettingsWatch, reportSettingsProblem } from '@/features/settings/store.svelte';
 import { recentStore } from '@/features/workspace/recent.svelte';
@@ -45,6 +46,7 @@ import { getPlatform, type Bootstrap, type DocumentPayload, type SpikeFlags } fr
 
 import { bindKeys } from './shortcuts';
 import { adoptT4, drain, initTrace, isTracing, mark } from './trace';
+import { installWindowState } from './window';
 
 const PREVIEW_SELECTOR = '#mx-preview';
 
@@ -131,10 +133,14 @@ export async function startup(renderShell: () => void): Promise<void> {
   //
   // ファイル監視の購読が遅れたときの最悪は「起動直後の数十 ms に起きた外部変更を
   // 取りこぼす」ことで、`F5` で回復できる（02.architecture.md §5.1 の判断基準）。
+  //
+  // 最大化状態の追従も同じ扱い。遅れたときの最悪は「最大化して起動した直後の
+  // 数十 ms だけ、ボタンの絵柄が `□` のまま」で、次に状態が変われば必ず直る。
   installOpenRequestHandler();
   installDragAndDrop();
   installFileWatch();
   installSettingsWatch();
+  installWindowState();
 }
 
 /**
@@ -242,19 +248,6 @@ function installShortcuts(): void {
     // グローバルに居座らないようにするため。
     { key: 'Ctrl+F', run: () => void openSearchLazily(), whenEditing: true },
   ]);
-}
-
-/**
- * 検索を開く（F-VIEW-10）。
- *
- * `Ctrl+F` を押すまで `search` チャンクはロードされない。
- * 2 回目以降の動的 import は解決済みの Promise を返すので、遅れるのは初回だけ。
- */
-async function openSearchLazily(): Promise<void> {
-  const container = document.querySelector<HTMLElement>(PREVIEW_SELECTOR);
-  if (!container) return;
-  const { openSearch } = await import('@/features/preview/search');
-  openSearch(container);
 }
 
 /**

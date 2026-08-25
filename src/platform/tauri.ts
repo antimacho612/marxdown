@@ -25,6 +25,7 @@ import type {
 const EVENT_OPEN_REQUEST = 'marxdown://open-request';
 const EVENT_FILE_CHANGED = 'marxdown://file-changed';
 const EVENT_SETTINGS_CHANGED = 'marxdown://settings-changed';
+const EVENT_WINDOW_MAXIMIZED = 'marxdown://window-maximized';
 
 /**
  * Tauri の購読 API を「同期的に解除関数を返す」形に均す。
@@ -129,6 +130,26 @@ export const tauriPlatform: Platform = {
         else handler({ type: 'leave' });
       }),
     );
+  },
+
+  minimizeWindow() {
+    return invoke<void>('window_minimize');
+  },
+
+  toggleMaximizeWindow() {
+    return invoke<void>('window_toggle_maximize');
+  },
+
+  closeWindow() {
+    return invoke<void>('window_close');
+  },
+
+  isWindowMaximized() {
+    return invoke<boolean>('window_is_maximized');
+  },
+
+  onWindowMaximizedChanged(handler) {
+    return subscribe(() => listen<boolean>(EVENT_WINDOW_MAXIMIZED, (event) => handler(event.payload)));
   },
 
   ready() {
