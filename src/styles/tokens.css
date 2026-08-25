@@ -30,8 +30,8 @@
   --mx-line-height: 1.75;
   --mx-line-height-tight: 1.35;
 
-  /* 本文幅を制限する（§10.2 可読性）。74ch 程度を既定にする。 */
-  --mx-content-width: 74ch;
+  /* 本文幅を制限する（§10.2 可読性）。100ch 程度を既定にする。 */
+  --mx-content-width: 100ch;
 
   /*
    * 表示倍率（F-VIEW-11）。本文だけに掛かり、クロームには掛からない。
