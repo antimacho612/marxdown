@@ -57,6 +57,38 @@ export const ja = {
     zoomReset: '等倍',
     search: 'プレビュー内を検索',
   },
+  /**
+   * ペイン（03.ux-spec.md §7）。
+   *
+   * ペインそのものに見出しは出さない（中身が自分の見出しを持つ）。
+   * ここにあるのは、掴む場所とメニュー項目の名前だけ。
+   */
+  pane: {
+    resizeRight: 'ライトペインの幅を変更',
+    showOutline: 'アウトラインを表示',
+    hideOutline: 'アウトラインを隠す',
+  },
+  /**
+   * アウトライン（F-VIEW-02 / 03.ux-spec.md §7.2）。
+   *
+   * **空であることを明示する**のが §7.2 の要求。「まだ読み込んでいる」と
+   * 読めないよう、何が無いのかを言い切って、書けば出ることを添える。
+   */
+  outline: {
+    title: 'アウトライン',
+    empty: '見出しがありません',
+    emptyHint: '# で始まる行が見出しになります',
+    collapse: 'アウトラインを折りたたむ',
+    expand: 'アウトラインを展開する',
+    jump: '見出しへジャンプ',
+    jumpPlaceholder: '見出しを検索',
+    jumpNoMatch: '一致する見出しがありません',
+  },
+  /** 戻る / 進む（F-NAV-07）。 */
+  history: {
+    back: '戻る',
+    forward: '進む',
+  },
   open: {
     droppedExtra: (n: number) => `${n} 件は開いていません（複数タブは M3 で対応）`,
     reloaded: '再読み込みしました',

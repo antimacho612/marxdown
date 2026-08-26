@@ -37,6 +37,13 @@ pub const ZOOM_MIN: f64 = 0.5;
 pub const ZOOM_MAX: f64 = 3.0;
 pub const ZOOM_DEFAULT: f64 = 1.0;
 
+/// ペインの幅（03.ux-spec.md §7.3）。既定 240px、最小 180px。
+pub const PANE_WIDTH_DEFAULT: f64 = 240.0;
+pub const PANE_WIDTH_MIN: f64 = 180.0;
+/// 上限は §7.3 に無い。**本文が主役である**（Principle 2）ことを守るための歯止めで、
+/// 手で書いた `state.json` や解像度の違う環境から巨大な幅が来ても本文が潰れないようにする。
+pub const PANE_WIDTH_MAX: f64 = 640.0;
+
 const FILE_NAME: &str = "state.json";
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -61,6 +68,60 @@ pub struct WindowState {
     pub maximized: bool,
 }
 
+/// ペイン 1 枚の状態（03.ux-spec.md §7.3 / 02.architecture.md §4.5）。
+///
+/// **記録が無いときは閉じている。** F-NAV-04 の「既定は非表示」は初回起動の話であり、
+/// 一度開いた人がそれを維持できることと両立する（§7.3 の引用ブロック）。
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PaneState {
+    pub open: bool,
+    pub width: f64,
+}
+
+impl Default for PaneState {
+    fn default() -> Self {
+        Self {
+            open: false,
+            width: PANE_WIDTH_DEFAULT,
+        }
+    }
+}
+
+impl PaneState {
+    fn sanitized(mut self) -> Self {
+        if !self.width.is_finite() {
+            self.width = PANE_WIDTH_DEFAULT;
+        }
+        self.width = self.width.clamp(PANE_WIDTH_MIN, PANE_WIDTH_MAX);
+        self
+    }
+}
+
+/// 左右のペイン（03.ux-spec.md §7.3）。
+///
+/// **幅は左右で別々に記憶する。** 左（Explorer）は M3 だが、後から足すと
+/// 「どちらの幅か」が曖昧な 1 つの値が先に永続化されてしまうので、器は今作る。
+#[derive(Debug, Clone, Copy, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Panes {
+    /// Explorer（M3）。M1.5 では誰も書き換えない。
+    #[serde(default)]
+    pub left: PaneState,
+    /// Outline（M1.5）。
+    #[serde(default)]
+    pub right: PaneState,
+}
+
+impl Panes {
+    pub fn sanitized(self) -> Self {
+        Self {
+            left: self.left.sanitized(),
+            right: self.right.sanitized(),
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct StoreData {
@@ -68,6 +129,13 @@ pub struct StoreData {
     pub recent: Vec<RecentEntry>,
     pub zoom: f64,
     pub window: Option<WindowState>,
+    /// ペインの開閉と幅（§4.5 の表）。
+    ///
+    /// `#[serde(default)]` にしてあるので、**Phase 5 までに書かれた `state.json`
+    /// （`panes` が無い）もそのまま読める**。版を上げると最近開いたファイルと倍率まで
+    /// 一緒に捨てることになり、キー 1 つの追加に対して代償が大き過ぎる。
+    #[serde(default)]
+    pub panes: Panes,
 }
 
 impl Default for StoreData {
@@ -77,6 +145,7 @@ impl Default for StoreData {
             recent: Vec::new(),
             zoom: ZOOM_DEFAULT,
             window: None,
+            panes: Panes::default(),
         }
     }
 }
@@ -92,6 +161,7 @@ impl StoreData {
             self.zoom = ZOOM_DEFAULT;
         }
         self.zoom = self.zoom.clamp(ZOOM_MIN, ZOOM_MAX);
+        self.panes = self.panes.sanitized();
         self.recent.truncate(RECENT_LIMIT);
         if let Some(w) = self.window {
             let finite =
@@ -253,6 +323,74 @@ mod tests {
         let p = d.join(FILE_NAME);
         std::fs::write(&p, r#"{"version":1,"recent":[],"zoom":99.0,"window":null}"#).unwrap();
         assert_eq!(load(Some(&p)).zoom, ZOOM_MAX);
+        std::fs::remove_dir_all(&d).ok();
+    }
+
+    /// 03.ux-spec.md §7.3 の引用ブロック。
+    /// **記録が無いときは左右とも閉じた状態で出る**（F-NAV-04 は初回起動の話）。
+    #[test]
+    fn panes_start_closed_when_nothing_was_recorded() {
+        let data = StoreData::default();
+        assert!(!data.panes.right.open);
+        assert!(!data.panes.left.open);
+        assert_eq!(data.panes.right.width, PANE_WIDTH_DEFAULT);
+    }
+
+    /// Phase 5 までに書かれた `state.json` には `panes` が無い。
+    /// **版を上げずに読めること**が、最近開いたファイルと倍率を守る条件になっている。
+    #[test]
+    fn a_store_written_before_panes_existed_is_still_readable() {
+        let d = temp_dir("panes-missing");
+        let p = d.join(FILE_NAME);
+        let json =
+            r#"{"version":1,"recent":[{"path":"a.md","openedAtMs":1}],"zoom":1.25,"window":null}"#;
+        std::fs::write(&p, json).unwrap();
+
+        let data = load(Some(&p));
+
+        assert_eq!(data.recent.len(), 1, "履歴を捨てない");
+        assert_eq!(data.zoom, 1.25);
+        assert!(!data.panes.right.open);
+        std::fs::remove_dir_all(&d).ok();
+    }
+
+    #[test]
+    fn out_of_range_pane_widths_are_clamped() {
+        let d = temp_dir("panes-width");
+        let p = d.join(FILE_NAME);
+        let json = r#"{"version":1,"recent":[],"zoom":1.0,"window":null,
+            "panes":{"left":{"open":false,"width":10.0},"right":{"open":true,"width":99999.0}}}"#;
+        std::fs::write(&p, json).unwrap();
+
+        let panes = load(Some(&p)).panes;
+
+        assert_eq!(panes.left.width, PANE_WIDTH_MIN);
+        assert_eq!(panes.right.width, PANE_WIDTH_MAX);
+        assert!(panes.right.open, "開閉は幅と独立に保つ");
+        std::fs::remove_dir_all(&d).ok();
+    }
+
+    /// §7.3「幅は左右で別々に記憶する」。
+    #[test]
+    fn pane_widths_are_remembered_per_side() {
+        let d = temp_dir("panes-roundtrip");
+        let p = d.join(FILE_NAME);
+        let mut data = StoreData::default();
+        data.panes.left = PaneState {
+            open: false,
+            width: 300.0,
+        };
+        data.panes.right = PaneState {
+            open: true,
+            width: 200.0,
+        };
+        save(Some(&p), &data);
+
+        let back = load(Some(&p)).panes;
+
+        assert_eq!(back.left.width, 300.0);
+        assert_eq!(back.right.width, 200.0);
+        assert!(back.right.open);
         std::fs::remove_dir_all(&d).ok();
     }
 

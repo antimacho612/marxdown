@@ -231,6 +231,19 @@ pub fn store_set_zoom(state: State<'_, AppState>, zoom: f64) {
     state.update_store(|s| s.zoom = clamped);
 }
 
+/// ペインの開閉と幅を保存する（03.ux-spec.md §7.3 / 02.architecture.md §4.5）。
+///
+/// **倍率と同じ扱い。** 反映はフロントが即座に行い、ここは永続化だけを担当する。
+/// ドラッグ中に毎フレーム呼ばないよう、フロント側でデバウンスしてから呼ぶこと。
+///
+/// 左右をまとめて受け取るのは、`state.json` に載る形（`Panes`）と
+/// 呼び出しの単位を一致させるため。左（Explorer / M3）が入っても口は増えない。
+#[tauri::command]
+pub fn store_set_panes(state: State<'_, AppState>, panes: store::Panes) {
+    let sane = panes.sanitized();
+    state.update_store(|s| s.panes = sane);
+}
+
 /* ------------------------------------------------------------------ */
 /* ユーザー設定（F-CONF-03 / 02.architecture.md §4.5）                    */
 /* ------------------------------------------------------------------ */

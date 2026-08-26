@@ -82,7 +82,42 @@ export default defineConfig(({ mode }) => ({
            * `manualChunks` で寄せると、その境界が壊れる（menu で実測済み）。
            */
           const isSettings = /[\\/]src[\\/]features[\\/]settings[\\/]/.test(chunk.facadeModuleId ?? '');
-          return isSettings ? 'assets/settings-[hash].js' : 'assets/[name]-[hash].js';
+          if (isSettings) return 'assets/settings-[hash].js';
+
+          /*
+           * 見出しへジャンプするパレット（M1.5 Phase 6）。menu / settings と同じく
+           * **名前付けだけ**。`src/features/outline/` にはアウトライン本体
+           * （`Outline.svelte` / `follow.ts` / `jump.ts`）も同居していて、そちらは
+           * ペインの中身＝クロームなので `main` に残る。ここで名前が付くのは
+           * 動的 import の入口（`jump-palette.ts`）から始まるチャンクだけ。
+           */
+          const isOutlineJump = /[\\/]src[\\/]features[\\/]outline[\\/]/.test(chunk.facadeModuleId ?? '');
+          if (isOutlineJump) return 'assets/outline-[hash].js';
+
+          /*
+           * 共有チャンク（**facade を持たない** = 動的 import の入口ではない）。
+           *
+           * 遅延チャンクの枚数がある数を超えると、rolldown は `main` と遅延チャンクの
+           * 両方から参照されるモジュール（Svelte ランタイム / `i18n/ja.ts` / ストア）を
+           * 別のチャンクへ切り出す。Phase 6 で `outline` が増えて、その閾値を越えた。
+           *
+           * **切り出されても `main` が静的に import するので、起動時に必ず読まれる。**
+           * つまりこれはクリティカルパスの一部であり、予算の外に出してはいけない。
+           * 名前は切り出し元のモジュール（`ja` など）から付くのでリファクタのたびに変わる。
+           * size-limit から名指しできるよう、ここで固定する。
+           *
+           * 遅延チャンク同士だけが共有するチャンクもここに落ちる。そちらは起動時に
+           * 読まれないので予算に対して**過大評価**になるが、取りこぼすより安全な側に倒す。
+           */
+          //
+          // `manualChunks` で名前を付けたもの（`editor`）は facade を持たないが、
+          // **意図して分けた遅延チャンク**なのでここに落としてはいけない。
+          const hasFacade = chunk.facadeModuleId !== null && chunk.facadeModuleId !== undefined;
+          if (!hasFacade && chunk.name !== 'editor') {
+            return 'assets/shared-[hash].js';
+          }
+
+          return 'assets/[name]-[hash].js';
         },
         assetFileNames: 'assets/[name]-[hash][extname]',
         manualChunks(id) {

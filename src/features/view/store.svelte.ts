@@ -5,11 +5,27 @@
  * ファイルを開き直しても保たれる状態だから。倍率は「今このファイル」の性質ではなく
  * 「この人の見え方の好み」であり、ライフサイクルが違う。
  *
- * 表示モード（M2）・サイドバーの開閉（M3）もここに増える。
+ * 表示モード（M2）もここに増える。
  */
+import { DEFAULT_PANES, type Panes } from '@/platform';
+
 class ViewStore {
   /** 表示倍率（F-VIEW-11）。実際の適用は `zoom.ts` が CSS 変数で行う。 */
   zoom = $state(1);
+
+  /**
+   * ペインの開閉と幅（F-NAV-04 / 03.ux-spec.md §7.3）。
+   *
+   * **`state.json` に載る形（`Panes`）をそのまま持つ。** 平たい 4 つの
+   * フィールドに割ると、永続化のたびに組み直す関数が要る。
+   *
+   * 初期値は `panes.ts` が bootstrap から**同期的に**入れる。ここが既定値のまま
+   * 1 フレーム描かれることは無い（`zoom` と同じ理由 / 02.architecture.md §4.5）。
+   *
+   * `left`（Explorer）は M3。M1.5 では誰も書き換えないが、器が無いと
+   * 「どちらの幅か」が曖昧な値を先に永続化してしまう。
+   */
+  panes = $state<Panes>({ left: { ...DEFAULT_PANES.left }, right: { ...DEFAULT_PANES.right } });
 
   /**
    * ウィンドウが最大化されているか（03.ux-spec.md §2.1）。

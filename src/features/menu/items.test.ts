@@ -47,7 +47,17 @@ describe('ハンバーガーメニューの項目 (03.ux-spec.md §2.3)', () => 
   it('ファイルを開くと、その文書に対する操作が増える', () => {
     documentStore.meta = META;
 
-    expect(ids(buildMenu())).toEqual(['open', 'reload', 'search', 'zoom-in', 'zoom-out', 'zoom-reset', 'settings']);
+    expect(ids(buildMenu())).toEqual([
+      'open',
+      'reload',
+      'search',
+      'outline',
+      'jump',
+      'zoom-in',
+      'zoom-out',
+      'zoom-reset',
+      'settings',
+    ]);
   });
 
   /** 履歴が空でも見出しは出す。**項目ではなく 1 行の文**で埋める。 */

@@ -19,9 +19,12 @@
  */
 import { openPath, openViaDialog, reloadCurrent } from '@/features/document/open';
 import { documentStore } from '@/features/document/store.svelte';
+import { openJumpLazily } from '@/features/outline/open-jump';
+import { toggleRightPane } from '@/features/panes/panes';
 import { openSearchLazily } from '@/features/preview/open-search';
 import { zoomIn, zoomOut, zoomReset } from '@/features/preview/zoom';
 import { openSettingsLazily } from '@/features/settings/open-settings';
+import { viewStore } from '@/features/view/store.svelte';
 import { recentStore } from '@/features/workspace/recent.svelte';
 import { ja } from '@/i18n/ja';
 import { splitPath } from '@/lib/path';
@@ -103,6 +106,15 @@ export function buildMenu(): MenuGroup[] {
         items: [
           { id: 'reload', label: ja.menu.reload, shortcut: 'F5', run: () => void reloadCurrent() },
           { id: 'search', label: ja.menu.search, shortcut: 'Ctrl+F', run: () => void openSearchLazily() },
+          // ペインの開閉（03.ux-spec.md §7.4 の「ペイン」系）。
+          // ラベルが状態で変わるのは、押した結果を先に言うため。
+          {
+            id: 'outline',
+            label: viewStore.panes.right.open ? ja.pane.hideOutline : ja.pane.showOutline,
+            shortcut: 'Ctrl+Alt+B',
+            run: () => toggleRightPane(),
+          },
+          { id: 'jump', label: ja.outline.jump, shortcut: 'Ctrl+Shift+O', run: () => void openJumpLazily() },
         ],
       },
       {

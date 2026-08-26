@@ -93,6 +93,10 @@ export const tauriPlatform: Platform = {
     return invoke<void>('store_set_zoom', { zoom });
   },
 
+  setPanes(panes) {
+    return invoke<void>('store_set_panes', { panes });
+  },
+
   pickFile() {
     return invoke<string | null>('pick_file');
   },

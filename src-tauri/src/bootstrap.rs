@@ -19,7 +19,7 @@ use crate::cli::{CliArgs, SpikeFlags, ViewMode};
 use crate::custom_css::CustomCss;
 use crate::document::{self, DocumentMeta, INLINE_CONTENT_LIMIT};
 use crate::settings::{Settings, SettingsLoad, SettingsProblem};
-use crate::store::{RecentEntry, StoreData};
+use crate::store::{Panes, RecentEntry, StoreData};
 
 /// フロントエンドが `window.__MARXDOWN_BOOTSTRAP__` として同期的に読む値。
 /// 対応するフロント側の型は `src/platform/types.ts` の `Bootstrap`。
@@ -43,6 +43,11 @@ pub struct Bootstrap {
     /// 表示倍率（F-VIEW-11）。最初のフレームから正しい倍率で描くために必要。
     /// 後から当てると、本文が一度既定倍率で描かれてから跳ねる。
     pub zoom: f64,
+    /// ペインの開閉と幅（F-NAV-04 / 03.ux-spec.md §7.3）。
+    ///
+    /// **倍率と同じ理由でここに載る。** 後から当てると、本文が一度全幅で描かれてから
+    /// 横に詰まる（02.architecture.md §4.5「`panes` と `zoom` は bootstrap に載せる」）。
+    pub panes: Panes,
     /// ユーザー設定の**全体**（F-CONF-03 / 02.architecture.md §4.5）。
     ///
     /// 「どの設定が初回フレームに間に合う必要があるか」を毎回考えなくて済むよう、
@@ -143,6 +148,7 @@ pub fn build(
         unknown_args: args.unknown.clone(),
         recent: store.recent.clone(),
         zoom: store.zoom,
+        panes: store.panes,
         settings: settings.values.clone(),
         settings_error: settings.broken.clone(),
         custom_css,
@@ -357,6 +363,40 @@ mod tests {
 
         let script = to_init_script(&b);
         assert!(script.contains("--mx-content-width: 90ch"), "{script}");
+    }
+
+    /// 03.ux-spec.md §7.3 /02.architecture.md §4.5「`panes` と `zoom` は bootstrap に載せる」。
+    ///
+    /// **ここが空だと本文が一度全幅で描かれてから横に詰まる。**
+    /// フロントが `ready()` の後に IPC で聞きに行く経路は作らない。
+    #[test]
+    fn the_script_carries_the_pane_state() {
+        let trace = crate::trace::Trace::start(Instant::now());
+        let store = StoreData {
+            panes: crate::store::Panes {
+                right: crate::store::PaneState {
+                    open: true,
+                    width: 320.0,
+                },
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+
+        let b = build(
+            &CliArgs::default(),
+            &trace,
+            &store,
+            &SettingsLoad::default(),
+            CustomCss::default(),
+        );
+
+        let script = to_init_script(&b);
+        assert!(script.contains(r#""panes":{"#), "{script}");
+        assert!(
+            script.contains(r#""right":{"open":true,"width":320.0}"#),
+            "{script}"
+        );
     }
 
     #[test]

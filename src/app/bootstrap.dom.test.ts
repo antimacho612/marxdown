@@ -4,7 +4,15 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { documentStore } from '@/features/document/store.svelte';
 import { settingsStore } from '@/features/settings/store.svelte';
 import { ja } from '@/i18n/ja';
-import { DEFAULT_SETTINGS, getPlatform, NO_CUSTOM_CSS, setPlatform, type Bootstrap, type Platform } from '@/platform';
+import {
+  DEFAULT_PANES,
+  DEFAULT_SETTINGS,
+  getPlatform,
+  NO_CUSTOM_CSS,
+  setPlatform,
+  type Bootstrap,
+  type Platform,
+} from '@/platform';
 
 import { startup } from './bootstrap';
 import { resetShortcuts } from './shortcuts';
@@ -42,6 +50,7 @@ function bootstrapWith(patch: Partial<Bootstrap>): Bootstrap {
     unknownArgs: [],
     recent: [],
     zoom: 1,
+    panes: DEFAULT_PANES,
     settings: DEFAULT_SETTINGS,
     settingsError: null,
     customCss: NO_CUSTOM_CSS,

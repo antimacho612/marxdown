@@ -124,7 +124,6 @@ export async function openDocument(payload: DocumentPayload, options: OpenOption
     if (options.resetScroll === true) container.scrollTop = 0;
     else if (options.restoreScroll !== undefined) container.scrollTop = options.restoreScroll;
 
-    documentStore.outline = parsed.outline;
     documentStore.frontMatter = parsed.frontMatter;
     documentStore.textStats = parsed.textStats;
     documentStore.notice = null;
@@ -133,6 +132,18 @@ export async function openDocument(payload: DocumentPayload, options: OpenOption
     // DOM に入れただけでは、まだ一度も描かれていない（05.performance-budget.md §5.2）。
     await nextFrame();
     traceMark(options, 'T8');
+
+    // アウトラインの差し替えは **T8 の後**（F-VIEW-02）。
+    //
+    // ライトペインが開いていると、この代入が 1 見出し 1 要素の再描画を起こす。
+    // `huge.md`（2MB / 見出し 1249 個）で実測 70〜110ms かかり、**手前に置くと
+    // それが丸ごと T3→T8 に乗る**（Svelte の更新はマイクロタスクで走るので、
+    // 上の `nextFrame()` を待つあいだに終わってしまう）。
+    //
+    // 本文を読み始めるのにアウトラインは要らない。1 フレーム遅れて出て構わない。
+    // ステータスバーの派生値（文字数 / Front Matter）を手前に残しているのは、
+    // あちらが数個のテキストノードで済み、遅れると数字が一瞬変わって見えるため。
+    documentStore.outline = parsed.outline;
 
     const outcome: OpenOutcome = {
       parseMs: parsed.parseMs,
@@ -157,6 +168,9 @@ export async function openDocument(payload: DocumentPayload, options: OpenOption
     // 残りのチャンクは idle で入る。ここでは待たない。
     void result.done.then((at) => {
       enhance(container, enhanceOptions);
+      // 後から入ったチャンクの見出しを、アウトラインの追従に拾わせる
+      // （`IntersectionObserver` の観測対象を足す / `features/outline/follow.ts`）。
+      outlineRefresher?.();
       // 段階的描画では、まだ入っていないチャンクのぶん scrollHeight が足りず、
       // 復元位置が頭打ちになる。全部入ったところでもう一度当てる。
       if (options.restoreScroll !== undefined && container.scrollTop < options.restoreScroll) {
@@ -292,6 +306,21 @@ let searchRefresher: (() => void) | null = null;
 
 export function registerSearchRefresher(refresh: () => void): void {
   searchRefresher = refresh;
+}
+
+/**
+ * アウトラインが自分を登録する口（F-VIEW-02 / 03.ux-spec.md §7.2）。
+ *
+ * 段階的描画（02.architecture.md §6.4）では、本文は idle 時に後から増える。
+ * 増え終わったことを知っているのはここだけなので、**知らせる側**になる。
+ *
+ * ペインを閉じると `null` が渡り、以降は誰も呼ばれない。
+ * 開いていないアウトラインのために本文の描画経路が働くことは無い（N-PERF-05）。
+ */
+let outlineRefresher: (() => void) | null = null;
+
+export function registerOutlineRefresher(refresh: (() => void) | null): void {
+  outlineRefresher = refresh;
 }
 
 function traceMark(options: OpenOptions, id: string, note?: string): void {

@@ -9,12 +9,14 @@
  * そこは Rust 側のユニットテストの担当。
  */
 import {
+  DEFAULT_PANES,
   DEFAULT_SETTINGS,
   NO_CUSTOM_CSS,
   type Bootstrap,
   type CustomCss,
   type DocumentPayload,
   type OpenRequest,
+  type Panes,
   type Platform,
   type RecentEntry,
   type SaveResult,
@@ -58,6 +60,8 @@ function saveFs(fs: Record<string, VirtualFile>): void {
 interface WebState {
   recent: RecentEntry[];
   zoom: number;
+  /** ペインの開閉と幅（03.ux-spec.md §7.3）。実装では `state.json` の `panes`。 */
+  panes: Panes;
   settings: Settings;
   /** `custom.css` の中身（02.architecture.md §10.3）。空文字は「ファイルが無い」。 */
   customCss: string;
@@ -69,12 +73,14 @@ function loadState(): WebState {
     return {
       recent: raw.recent ?? [],
       zoom: raw.zoom ?? 1,
+      // 実装（Rust）と同じく、欠けていれば「閉じている」。§7.3 の引用ブロック
+      panes: { ...DEFAULT_PANES, ...raw.panes },
       // 欠けたキーは既定値。実装（Rust）と同じく、読んだ時点で埋める
       settings: { ...DEFAULT_SETTINGS, ...raw.settings },
       customCss: raw.customCss ?? '',
     };
   } catch {
-    return { recent: [], zoom: 1, settings: DEFAULT_SETTINGS, customCss: '' };
+    return { recent: [], zoom: 1, panes: DEFAULT_PANES, settings: DEFAULT_SETTINGS, customCss: '' };
   }
 }
 
@@ -163,6 +169,10 @@ function initialBootstrap(): Bootstrap {
     unknownArgs: [],
     recent: state.recent,
     zoom: state.zoom,
+    // `?rightPane` でライトペインを開いた状態の起動を再現する。
+    // **実装と同じく bootstrap に載って届く**ので、dev:web でも
+    // 「本文が全幅で描かれてから横に詰まる」瞬間が無いことを確認できる。
+    panes: params.has('rightPane') ? { ...state.panes, right: { ...state.panes.right, open: true } } : state.panes,
     settings: state.settings,
     // `?brokenSettings` で「settings.json が壊れている」起動を再現する。
     // 通知バー（03.ux-spec.md §8.2）と設定 UI の読み取り専用状態を
@@ -294,6 +304,12 @@ export const webPlatform: Platform = {
   async setZoom(zoom) {
     const state = loadState();
     state.zoom = zoom;
+    saveState(state);
+  },
+
+  async setPanes(panes) {
+    const state = loadState();
+    state.panes = panes;
     saveState(state);
   },
 
