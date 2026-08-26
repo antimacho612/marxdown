@@ -10,6 +10,7 @@ import { getCurrentWebview } from '@tauri-apps/api/webview';
 
 import type {
   Bootstrap,
+  CustomCss,
   DocumentPayload,
   FileChange,
   OpenRequest,
@@ -25,6 +26,7 @@ import type {
 const EVENT_OPEN_REQUEST = 'marxdown://open-request';
 const EVENT_FILE_CHANGED = 'marxdown://file-changed';
 const EVENT_SETTINGS_CHANGED = 'marxdown://settings-changed';
+const EVENT_CUSTOM_CSS_CHANGED = 'marxdown://custom-css-changed';
 const EVENT_WINDOW_MAXIMIZED = 'marxdown://window-maximized';
 const EVENT_MAXIMIZE_HOVER = 'marxdown://maximize-hover';
 
@@ -105,6 +107,18 @@ export const tauriPlatform: Platform = {
 
   openSettingsFile() {
     return invoke<void>('open_settings_file');
+  },
+
+  readCustomCss() {
+    return invoke<CustomCss>('read_custom_css');
+  },
+
+  openCustomCssFile() {
+    return invoke<void>('open_custom_css_file');
+  },
+
+  onCustomCssChanged(handler) {
+    return subscribe(() => listen(EVENT_CUSTOM_CSS_CHANGED, () => handler()));
   },
 
   watchPath(path) {

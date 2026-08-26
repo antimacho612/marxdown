@@ -10,7 +10,9 @@
  */
 import {
   DEFAULT_SETTINGS,
+  NO_CUSTOM_CSS,
   type Bootstrap,
+  type CustomCss,
   type DocumentPayload,
   type OpenRequest,
   type Platform,
@@ -57,6 +59,8 @@ interface WebState {
   recent: RecentEntry[];
   zoom: number;
   settings: Settings;
+  /** `custom.css` の中身（02.architecture.md §10.3）。空文字は「ファイルが無い」。 */
+  customCss: string;
 }
 
 function loadState(): WebState {
@@ -67,9 +71,10 @@ function loadState(): WebState {
       zoom: raw.zoom ?? 1,
       // 欠けたキーは既定値。実装（Rust）と同じく、読んだ時点で埋める
       settings: { ...DEFAULT_SETTINGS, ...raw.settings },
+      customCss: raw.customCss ?? '',
     };
   } catch {
-    return { recent: [], zoom: 1, settings: DEFAULT_SETTINGS };
+    return { recent: [], zoom: 1, settings: DEFAULT_SETTINGS, customCss: '' };
   }
 }
 
@@ -163,8 +168,61 @@ function initialBootstrap(): Bootstrap {
     // 通知バー（03.ux-spec.md §8.2）と設定 UI の読み取り専用状態を
     // ブラウザだけで確認できるようにするため。
     settingsError: brokenSettings(),
+    // 実装と同じく**同梱して届く**（02.architecture.md §10.3）。
+    // 後から当てる形にすると、dev:web でだけ FOUC が見えない。
+    customCss: customCssNow(),
   };
 }
+
+/**
+ * dev:web のカスタム CSS（02.architecture.md §10.3）。
+ *
+ * ブラウザに `%APPDATA%` は無いので、中身は `localStorage` に置く。
+ * `?customCss` を付けると見本が入り、`@scope` の効き方
+ * （**本文には効き、クロームには効かない**）をブラウザだけで確認できる。
+ * `?customCss=escape` は**閉じ過ぎた CSS** で、適用を拒否する経路の再現。
+ */
+function customCssNow(): CustomCss {
+  const params = new URLSearchParams(globalThis.location?.search ?? '');
+  const variant = params.get('customCss');
+
+  if (variant === 'escape') return { ...NO_CUSTOM_CSS, css: ESCAPING_CUSTOM_CSS };
+  if (variant === 'too-large') {
+    return {
+      ...NO_CUSTOM_CSS,
+      problem: { kind: 'too-large', path: '/virtual/custom.css', message: '2097152 bytes > 1048576 bytes' },
+    };
+  }
+
+  const css = params.has('customCss') ? SAMPLE_CUSTOM_CSS : loadState().customCss;
+  return { ...NO_CUSTOM_CSS, css: css === '' ? null : css };
+}
+
+/** 見本。**本文にしか当たらない**ことが分かるよう、見出しと本文幅の両方を触る。 */
+const SAMPLE_CUSTOM_CSS = `:scope {
+  --mx-content-width: 70ch;
+}
+
+h1 {
+  color: rebeccapurple;
+  border-bottom: 2px dashed currentColor;
+}
+
+blockquote {
+  border-inline-start-width: 6px;
+}
+`;
+
+/**
+ * **クロームを消そうとする CSS**（`}` でブロックを閉じて外へ出る）。
+ *
+ * `applyCustomCss` がこれを拒否することが Phase 5 の要点で、
+ * 実アプリでも `?customCss=escape` と同じものを `custom.css` に書けば同じ結果になる。
+ */
+const ESCAPING_CUSTOM_CSS = `h1 { color: red }
+}
+.mx-titlebar { display: none }
+`;
 
 const BROKEN_SETTINGS_SAMPLE: SettingsProblem = {
   path: '/virtual/settings.json',
@@ -271,6 +329,26 @@ export const webPlatform: Platform = {
   async openSettingsFile() {
     // ブラウザには既定アプリの概念が無い。呼ばれたことだけ分かるようにしておく
     console.info('[marxdown] openSettingsFile');
+  },
+
+  async readCustomCss() {
+    return customCssNow();
+  },
+
+  async openCustomCssFile() {
+    // 実装では「無ければ雛形を作ってから開く」。ブラウザには開く先が無いので、
+    // 見本を仮想の `custom.css` に置いて、次の読み直しから効くようにする。
+    const state = loadState();
+    if (state.customCss === '') {
+      state.customCss = SAMPLE_CUSTOM_CSS;
+      saveState(state);
+    }
+    console.info('[marxdown] openCustomCssFile');
+  },
+
+  onCustomCssChanged() {
+    // 仮想の `custom.css` を外から書き換える経路が無い（`onSettingsChanged` と同じ）
+    return () => {};
   },
 
   async pickFile() {

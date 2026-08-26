@@ -38,6 +38,7 @@ import { installFileWatch } from '@/features/document/watch';
 import { installLinkHandler } from '@/features/preview/links';
 import { openSearchLazily } from '@/features/preview/open-search';
 import { applyZoom, zoomIn, zoomOut, zoomReset } from '@/features/preview/zoom';
+import { applyCustomCss } from '@/features/settings/custom-css';
 import { openSettingsLazily } from '@/features/settings/open-settings';
 import { initSettings, installSettingsWatch, reportSettingsProblem } from '@/features/settings/store.svelte';
 import { recentStore } from '@/features/workspace/recent.svelte';
@@ -84,6 +85,15 @@ export async function startup(renderShell: () => void): Promise<void> {
   // `initSettings` の中で**同期的に** CSS 変数へ当たる。後から当てると、
   // 一度出た絵が描き変わる（§5.1 の「後回しにしてよいもの」の表）。
   initSettings(bootstrap);
+
+  // カスタム CSS も**本文を描くより前**（F-CONF-07 / §10.3）。
+  //
+  // 64KB 以下なら bootstrap に同梱されて届いている。ここで当てないと、
+  // ダークな背景を指定している人の画面で**白い初期画面が一瞬見える**。
+  // 当てるのは `@scope (#mx-preview)` で包んだ後の 1 枚だけで、
+  // 包めなかった場合は当てずに結果だけ返る（通知は `ready()` の後）。
+  const customCss = bootstrap?.customCss ?? null;
+  const customCssResult = applyCustomCss(customCss?.css ?? null);
 
   configureOpener({ parser: createParser(spike.parse), site: spike.parse });
 
@@ -145,6 +155,14 @@ export async function startup(renderShell: () => void): Promise<void> {
   installFileWatch();
   installSettingsWatch();
   installWindowState();
+
+  // カスタム CSS の残り（遅延取得・監視・通知）は**遅延チャンク**に置いてある
+  // （06.roadmap.md §5.3）。`main` に残っているのは適用そのものだけ。
+  // ここで待たないのは、いずれも本文の表示に関与しないため。
+  void import('@/features/settings/custom-css-late').then(({ installCustomCss }) => {
+    installCustomCss(customCss, customCssResult);
+    return null;
+  });
 }
 
 /**

@@ -11,6 +11,7 @@
 pub mod bootstrap;
 pub mod cli;
 pub mod commands;
+pub mod custom_css;
 pub mod document;
 pub mod error;
 pub mod scope;
@@ -86,8 +87,15 @@ pub fn run() {
     let settings_path = settings::settings_path(&context.config().identifier);
     let settings_data = settings::load(settings_path.as_deref());
 
+    // カスタム CSS も同じ理由でここ（02.architecture.md §10.3）。
+    // **64KB 以下なら bootstrap に同梱する。** 後から当てると、ダークな背景を
+    // 当てているときに白い初期画面が一瞬見える。読み取りは WebView 初期化と
+    // 並行するので、クリティカルパスの時間は実質増えない（§5.1）。
+    let custom_css_path = custom_css::custom_css_path(&context.config().identifier);
+    let custom_css_data = custom_css::load(custom_css_path.as_deref(), custom_css::INLINE_LIMIT);
+
     // T2: ファイル読み込み。ウィンドウ生成の前に行い、WebView 初期化と重ねる。
-    let payload = bootstrap::build(&args, &trace, &store_data, &settings_data);
+    let payload = bootstrap::build(&args, &trace, &store_data, &settings_data, custom_css_data);
     trace.mark(
         "T2",
         payload
@@ -101,9 +109,12 @@ pub fn run() {
         trace,
         &payload,
         store_data,
-        store_path,
         settings_data,
-        settings_path,
+        state::ConfigPaths {
+            store: store_path,
+            settings: settings_path,
+            custom_css: custom_css_path,
+        },
     );
 
     let mut builder = tauri::Builder::default();
@@ -157,6 +168,8 @@ pub fn run() {
             commands::read_settings,
             commands::write_settings,
             commands::open_settings_file,
+            commands::read_custom_css,
+            commands::open_custom_css_file,
             commands::watch_path,
             commands::unwatch_path,
             commands::window_minimize,
@@ -207,6 +220,13 @@ pub fn run() {
             if let Some(path) = state.settings_path() {
                 app.state::<watch::FileWatcher>()
                     .watch(path, watch::Role::Settings);
+            }
+            // `custom.css` も同じ扱い（§10.3「外部エディタで編集されたら即反映」）。
+            // **まだ存在しなくても登録する。** 親ディレクトリを見る形になるので、
+            // 後から手で置かれた瞬間に拾える（`settings.json` と監視元を共有する）。
+            if let Some(path) = state.custom_css_path() {
+                app.state::<watch::FileWatcher>()
+                    .watch(path, watch::Role::CustomCss);
             }
 
             Ok(())

@@ -17,18 +17,36 @@ use crate::settings::{Settings, SettingsLoad};
 use crate::store::{RecentEntry, StoreData};
 use crate::trace::Trace;
 
+/// アプリデータ領域に置く 3 ファイルの場所（02.architecture.md §4.5 / §10.3）。
+///
+/// ```text
+/// %APPDATA%\com.antimacho612.marxdown\
+///   ├─ state.json    ← アプリが自動的に書く
+///   ├─ settings.json ← 人が書く
+///   └─ custom.css    ← 人が書く（F-CONF-07）
+/// ```
+///
+/// **1 つの構造体にまとめてある。** どれも `identifier` から同じ規則で決まり、
+/// `AppState::new` に個別の `Option<PathBuf>` を並べると引数が際限なく増える。
+/// `None` は「置き場所が決まらなかった」で、その機能を諦める合図。
+#[derive(Debug, Clone, Default)]
+pub struct ConfigPaths {
+    pub store: Option<PathBuf>,
+    pub settings: Option<PathBuf>,
+    pub custom_css: Option<PathBuf>,
+}
+
 pub struct AppState {
     pub args: CliArgs,
     pub trace: Trace,
     /// 永続化ストア（最近開いたファイル / 表示倍率 / ウィンドウ状態）。
     /// 起動時に 1 回読み、変更のたびに書き戻す。
     store: Mutex<StoreData>,
-    /// ストアの置き場所。`None` は保存先が決まらなかった場合（保存は諦める）。
-    store_path: Option<PathBuf>,
+    /// 設定ファイルたちの置き場所。
+    paths: ConfigPaths,
     /// ユーザー設定（02.architecture.md §4.5）。
     /// **「壊れている」という事実も一緒に保持する。** 書き戻しの可否がこれで決まる。
     settings: Mutex<SettingsLoad>,
-    settings_path: Option<PathBuf>,
     /// アセット参照を許可するディレクトリ（N-SEC-05）。
     /// 開いたドキュメントの親ディレクトリを追加していく。
     asset_roots: Mutex<Vec<PathBuf>>,
@@ -48,9 +66,8 @@ impl AppState {
         trace: Trace,
         bootstrap: &Bootstrap,
         store: StoreData,
-        store_path: Option<PathBuf>,
         settings: SettingsLoad,
-        settings_path: Option<PathBuf>,
+        paths: ConfigPaths,
     ) -> Self {
         let mut roots = Vec::new();
         if let Some(doc) = bootstrap.document.as_ref() {
@@ -62,9 +79,8 @@ impl AppState {
             args,
             trace,
             store: Mutex::new(store),
-            store_path,
+            paths,
             settings: Mutex::new(settings),
-            settings_path,
             asset_roots: Mutex::new(roots),
             warm: Mutex::new(HashMap::new()),
             warm_counter: AtomicU64::new(1),
@@ -86,7 +102,7 @@ impl AppState {
             let result = f(&mut store);
             (result, store.clone())
         };
-        crate::store::save(self.store_path.as_deref(), &snapshot);
+        crate::store::save(self.paths.store.as_deref(), &snapshot);
         result
     }
 
@@ -103,7 +119,7 @@ impl AppState {
     /// 壊れている事実だけを添えて返す。外部エディタで編集している最中の中間状態で
     /// テーマが飛ぶのを防ぐため（Phase 2 のファイル監視も、この経路を通す）。
     pub fn reload_settings(&self) -> SettingsLoad {
-        let fresh = crate::settings::load(self.settings_path.as_deref());
+        let fresh = crate::settings::load(self.paths.settings.as_deref());
 
         let Ok(mut current) = self.settings.lock() else {
             return fresh;
@@ -124,7 +140,7 @@ impl AppState {
         &self,
         patch: serde_json::Map<String, serde_json::Value>,
     ) -> CoreResult<Settings> {
-        let Some(path) = self.settings_path.as_deref() else {
+        let Some(path) = self.paths.settings.as_deref() else {
             return Err(CoreError::Io("設定の保存先が決まらない".into()));
         };
 
@@ -147,7 +163,15 @@ impl AppState {
 
     /// 設定ファイルの場所。壊れたファイルを開いてもらうために UI から使う。
     pub fn settings_path(&self) -> Option<&std::path::Path> {
-        self.settings_path.as_deref()
+        self.paths.settings.as_deref()
+    }
+
+    /// カスタム CSS の場所（02.architecture.md §10.3）。
+    ///
+    /// **パスをフロントに渡さない。** 開くのも読むのも Rust 側の 1 か所に閉じており、
+    /// `open_settings_file` と同じ理由で、任意のパスを受け取る口を作らずに済む。
+    pub fn custom_css_path(&self) -> Option<&std::path::Path> {
+        self.paths.custom_css.as_deref()
     }
 
     /// argv 転送を受けた瞬間に呼ぶ。返した ID をフロントへ渡す。
@@ -207,16 +231,23 @@ mod tests {
     fn state_with_settings(path: &std::path::Path) -> AppState {
         let trace = Trace::start(Instant::now());
         let loaded = crate::settings::load(Some(path));
-        let bootstrap =
-            crate::bootstrap::build(&CliArgs::default(), &trace, &StoreData::default(), &loaded);
+        let bootstrap = crate::bootstrap::build(
+            &CliArgs::default(),
+            &trace,
+            &StoreData::default(),
+            &loaded,
+            crate::custom_css::CustomCss::default(),
+        );
         AppState::new(
             CliArgs::default(),
             trace,
             &bootstrap,
             StoreData::default(),
-            None,
             loaded,
-            Some(path.to_path_buf()),
+            ConfigPaths {
+                settings: Some(path.to_path_buf()),
+                ..ConfigPaths::default()
+            },
         )
     }
 

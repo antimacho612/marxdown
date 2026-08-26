@@ -119,6 +119,37 @@ export interface SettingsLoad {
 }
 
 /* ------------------------------------------------------------------ */
+/* カスタム CSS（F-CONF-07 / 02.architecture.md §10.3）                   */
+/* ------------------------------------------------------------------ */
+
+/**
+ * カスタム CSS を適用できなかった理由（`src-tauri/src/custom_css.rs`）。
+ *
+ * **「無い」はここに現れない。** ファイルが無いのは正常な状態であり
+ * （設定項目を置かない以上、初回起動が常にそれ）、通知の材料にしない。
+ */
+export interface CustomCssProblem {
+  kind: 'too-large' | 'unreadable';
+  path: string;
+  message: string;
+}
+
+/** `custom.css` の読み込み結果（`src-tauri/src/custom_css.rs` の `CustomCss`）。 */
+export interface CustomCss {
+  /** 読み込んだ CSS。`null` は「無い」か「読まなかった」。 */
+  css: string | null;
+  /**
+   * 64KB を超えたため bootstrap に載らなかった。
+   * `ready()` の後に `readCustomCss` で取りに行く（02.architecture.md §10.3）。
+   */
+  deferred: boolean;
+  problem: CustomCssProblem | null;
+}
+
+/** カスタム CSS が無い状態。bootstrap を持たない経路（テスト / dev:web）の既定値。 */
+export const NO_CUSTOM_CSS: CustomCss = { css: null, deferred: false, problem: null };
+
+/* ------------------------------------------------------------------ */
 /* ファイル監視（02.architecture.md §4.4）                               */
 /* ------------------------------------------------------------------ */
 
@@ -201,6 +232,14 @@ export interface Bootstrap {
   settings: Settings;
   /** `settings.json` を読めなかった事実。通知バーに出す（03.ux-spec.md §8.2）。 */
   settingsError: SettingsProblem | null;
+  /**
+   * カスタム CSS（F-CONF-07 / 02.architecture.md §10.3）。
+   *
+   * **64KB 以下のときだけ `css` が入っている。** ここに載せるのは、
+   * ダークな背景を当てているときに白い初期画面が一瞬見えるのを防ぐため。
+   * 超えていれば `deferred` が立ち、`readCustomCss` で取りに行く。
+   */
+  customCss: CustomCss;
 }
 
 /** 別インスタンスから転送された起動要求（ウォーム起動）。 */
@@ -281,6 +320,28 @@ export interface Platform {
    * 壊れた設定を通知バーから直せるようにするための逃げ道。
    */
   openSettingsFile(): Promise<void>;
+  /**
+   * カスタム CSS を読み直す（F-CONF-07 / 02.architecture.md §10.3）。
+   *
+   * **起動時の 64KB 以下はこれを呼ばない。** bootstrap に同梱されている。
+   * ここが要るのは「64KB を超えていて載らなかった」場合と、
+   * 外部エディタで編集された後の読み直しだけ。
+   */
+  readCustomCss(): Promise<CustomCss>;
+  /**
+   * `custom.css` を OS の既定アプリで開く（F-CONF-07）。
+   *
+   * **無ければ雛形を作ってから開く。** 設定項目もパスの設定も置かない以上、
+   * 「どこに書けばよいか」を知る手段がこのボタンしかない。
+   */
+  openCustomCssFile(): Promise<void>;
+  /**
+   * `custom.css` の外部変更を購読する（§10.3）。
+   *
+   * `onSettingsChanged` と同じく中身は渡さない。受け取ったら
+   * `readCustomCss` で読み直して当て直すのが唯一の使い方。
+   */
+  onCustomCssChanged(handler: () => void): () => void;
   /**
    * 開いているファイルの監視を始める（F-EDIT-16 / 02.architecture.md §4.4）。
    *
