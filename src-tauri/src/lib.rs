@@ -10,6 +10,7 @@
 
 pub mod bootstrap;
 pub mod cli;
+pub mod close;
 pub mod commands;
 pub mod custom_css;
 pub mod document;
@@ -21,7 +22,9 @@ pub mod snap_layouts;
 pub mod state;
 pub mod store;
 pub mod trace;
+pub mod tray;
 pub mod watch;
+pub mod webview;
 pub mod window;
 
 use std::time::Instant;
@@ -46,12 +49,46 @@ pub struct OpenRequest {
 
 pub const EVENT_OPEN_REQUEST: &str = "marxdown://open-request";
 
+/// 「外から 1 枚開かせる」を 1 か所に集める。
+///
+/// argv 転送（ADR-0004）とトレイの「最近開いたファイル」（ADR-0007 論点 6）は、
+/// **意味がまったく同じ**である。別の入口を作ると、ウォーム起動の計測・履歴・
+/// 通知のどれかが片方だけ抜ける。フロント側で `open.ts` が 5 つの入口を
+/// 集約しているのと同じ判断を、Rust 側でもする。
+pub fn forward_open<R: tauri::Runtime>(app: &tauri::AppHandle<R>, paths: Vec<String>) {
+    let Some(state) = app.try_state::<state::AppState>() else {
+        return;
+    };
+    let request = OpenRequest {
+        request_id: state.begin_warm(),
+        paths,
+        new_window: false,
+        mode: None,
+        trace: false,
+    };
+    let _ = app.emit_to(window::MAIN_LABEL, EVENT_OPEN_REQUEST, &request);
+}
+
 /// 最大化状態が変わったことをフロントへ知らせる（ペイロードは `bool`）。
 ///
 /// カスタムタイトルバー（OQ-02 = B）にしたので、`□` と `❐` の描き分けは
 /// フロントの仕事になった。**変化したときだけ**流す。`Resized` はドラッグ中に
 /// 毎フレーム飛んでくるので、素通しすると意味のない IPC が積み上がる。
 pub const EVENT_WINDOW_MAXIMIZED: &str = "marxdown://window-maximized";
+
+/// トレイメニューの「Marxdown を開く」。フロントの `openViaDialog` に載せる。
+///
+/// **Rust 側でダイアログを出さない。** `pick_file` は既にあるが、
+/// 「開いた結果をどう扱うか」（履歴・通知・相対パス解決）はフロントの
+/// `open.ts` に集めてある。トレイから別経路で開くと、そこだけ抜ける。
+pub const EVENT_TRAY_OPEN: &str = "marxdown://tray-open";
+
+/// トレイから復帰した瞬間（ADR-0007「計測項目」の Tray Resume）。
+///
+/// **Warm Start（20.0ms）とは別の経路である。** あちらは「ウィンドウが可視のまま
+/// argv 転送を受けた」値で、こちらは「サスペンドされた WebView が起こされて
+/// 画面に出る」までを測る。同じ数字だと思って比べると判断を誤る。
+pub const EVENT_TRAY_RESUME: &str = "marxdown://tray-resume";
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -142,14 +179,14 @@ pub fn run() {
                 mode: forwarded.mode,
                 trace: forwarded.trace_startup.is_some(),
             };
-            if let Some(w) = app.get_webview_window(window::MAIN_LABEL) {
-                // 先に前面化する。ユーザーが見ている画面が切り替わるほうが、
-                // タブの追加より体感に効く。
-                let _ = w.unminimize();
-                let _ = w.show();
-                let _ = w.set_focus();
-                let _ = w.emit(EVENT_OPEN_REQUEST, &request);
-            }
+            // 先に前面化する。ユーザーが見ている画面が切り替わるほうが、
+            // タブの追加より体感に効く。
+            //
+            // **トレイに格納されている場合もここを通る**（ADR-0007 論点 10）。
+            // `restore` がサスペンドの解除まで面倒を見るので、
+            // 「格納中に `marxdown foo.md`」が特別扱いにならない。
+            close::restore(app);
+            let _ = app.emit_to(window::MAIN_LABEL, EVENT_OPEN_REQUEST, &request);
         }));
     }
 
@@ -185,6 +222,7 @@ pub fn run() {
             commands::reveal_in_file_manager,
             commands::startup_trace,
             commands::warm_done,
+            commands::app_quit,
         ])
         .setup(move |app| {
             // T2b: Tauri のブートとプラグイン初期化が終わった時点。
@@ -254,18 +292,17 @@ pub fn run() {
                 return;
             }
 
-            if !matches!(event, tauri::WindowEvent::CloseRequested { .. }) {
-                return;
+            // `✕` / `Alt+F4`（ADR-0007 論点 2）。
+            //
+            // 何が起きるかの判断は `close.rs` に集約してある。ここは
+            // 「止めるかどうか」だけを扱う。ウィンドウ位置の保存（F-CONF-10）も
+            // 向こう側に移した。**格納でも終了でも保存が要る**（論点 11）ため、
+            // このイベントだけに置いておけなくなった。
+            if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                if close::on_close_requested(window.app_handle()) {
+                    api.prevent_close();
+                }
             }
-            let Some(webview) = window.get_webview_window(window::MAIN_LABEL) else {
-                return;
-            };
-            let Some(captured) = window::capture(&webview) else {
-                return;
-            };
-            window
-                .state::<state::AppState>()
-                .update_store(|s| s.window = Some(captured));
         })
         .run(context)
         .expect("error while running tauri application");

@@ -161,6 +161,30 @@ impl AppState {
         Ok(next)
     }
 
+    /// `✕` の意味（ADR-0007 論点 1）。**メモリ上の設定を見る。**
+    ///
+    /// ディスクを読み直さないのは、外部エディタでの編集を Phase 2 の監視が
+    /// 既に取り込んでいるため。`✕` を押すたびにファイル I/O をするのは、
+    /// 得られるものに対して高い。
+    pub fn close_behavior(&self) -> crate::settings::CloseBehavior {
+        self.settings
+            .lock()
+            .map(|s| s.values.window_close_behavior)
+            .unwrap_or_default()
+    }
+
+    /// トレイ常駐の説明を出したことがあるか（ADR-0007 論点 4）。
+    pub fn tray_intro_shown(&self) -> bool {
+        self.store
+            .lock()
+            .map(|s| s.tray_intro_shown)
+            .unwrap_or(true) // 読めないなら「出した」側に倒す。二重に出すより害が小さい
+    }
+
+    pub fn mark_tray_intro_shown(&self) {
+        self.update_store(|s| s.tray_intro_shown = true);
+    }
+
     /// 設定ファイルの場所。壊れたファイルを開いてもらうために UI から使う。
     pub fn settings_path(&self) -> Option<&std::path::Path> {
         self.paths.settings.as_deref()

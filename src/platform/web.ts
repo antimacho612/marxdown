@@ -442,6 +442,20 @@ export const webPlatform: Platform = {
 
   async closeWindow() {},
 
+  // ブラウザにはトレイもプロセスも無い。**握り潰さずログに出す**のは、
+  // `dev:web` で「終了」を押したときに何も起きない理由が分かるようにするため。
+  async quitApp() {
+    console.info('[marxdown] quitApp（ブラウザでは何も起きない）');
+  },
+
+  onTrayOpen() {
+    return () => {};
+  },
+
+  onTrayResume() {
+    return () => {};
+  },
+
   async isWindowMaximized() {
     return false;
   },

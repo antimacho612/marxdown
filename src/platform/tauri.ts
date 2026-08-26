@@ -26,6 +26,8 @@ import type {
 const EVENT_OPEN_REQUEST = 'marxdown://open-request';
 const EVENT_FILE_CHANGED = 'marxdown://file-changed';
 const EVENT_SETTINGS_CHANGED = 'marxdown://settings-changed';
+const EVENT_TRAY_OPEN = 'marxdown://tray-open';
+const EVENT_TRAY_RESUME = 'marxdown://tray-resume';
 const EVENT_CUSTOM_CSS_CHANGED = 'marxdown://custom-css-changed';
 const EVENT_WINDOW_MAXIMIZED = 'marxdown://window-maximized';
 const EVENT_MAXIMIZE_HOVER = 'marxdown://maximize-hover';
@@ -163,6 +165,18 @@ export const tauriPlatform: Platform = {
     return invoke<void>('window_close');
   },
 
+  quitApp() {
+    return invoke<void>('app_quit');
+  },
+
+  onTrayOpen(handler) {
+    return subscribe(() => listen(EVENT_TRAY_OPEN, () => handler()));
+  },
+
+  onTrayResume(handler) {
+    return subscribe(() => listen<number>(EVENT_TRAY_RESUME, (event) => handler(event.payload)));
+  },
+
   isWindowMaximized() {
     return invoke<boolean>('window_is_maximized');
   },
@@ -187,8 +201,8 @@ export const tauriPlatform: Platform = {
     return invoke<void>('report_trace', { marks });
   },
 
-  warmDone(requestId, path, detail) {
-    return invoke<number | null>('warm_done', { requestId, path, detail });
+  warmDone(requestId, path, detail, kind) {
+    return invoke<number | null>('warm_done', { requestId, path, detail, kind });
   },
 
   openExternal(url) {

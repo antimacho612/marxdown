@@ -196,13 +196,22 @@ pub fn set_snap_layouts_target(app: tauri::AppHandle, x: f64, y: f64, width: f64
 /// 積むのは**正規化済みの絶対パス**に限る。相対パスのまま貯めると、
 /// cwd の違う 2 回目の起動で同じファイルが別エントリとして増える。
 #[tauri::command]
-pub fn store_push_recent(state: State<'_, AppState>, path: String) -> CoreResult<Vec<RecentEntry>> {
+pub fn store_push_recent(
+    app: tauri::AppHandle,
+    state: State<'_, AppState>,
+    path: String,
+) -> CoreResult<Vec<RecentEntry>> {
     let resolved = document::canonicalize(Path::new(&path))?;
     let now = store::now_ms();
-    Ok(state.update_store(|s| {
+    let recent = state.update_store(|s| {
         s.push_recent(resolved.display().to_string(), now);
         s.recent.clone()
-    }))
+    });
+    // トレイメニューは作った時点の内容で固まる。開くたびに作り直すフックが
+    // 無いので、ストアを更新した側から組み直す（`tray.rs` の `refresh`）。
+    // 頻度は「ファイルを開いたとき」だけで、アイドル時のコストはゼロ。
+    crate::tray::refresh(&app);
+    Ok(recent)
 }
 
 /// 最近開いたファイルから 1 件外す。
@@ -210,11 +219,17 @@ pub fn store_push_recent(state: State<'_, AppState>, path: String) -> CoreResult
 /// Welcome 画面から開こうとしたファイルが消えていた場合に、UI が呼ぶ。
 /// 存在しないファイルを一覧に残し続けると、次の起動でも同じ失敗を踏む。
 #[tauri::command]
-pub fn store_remove_recent(state: State<'_, AppState>, path: String) -> Vec<RecentEntry> {
-    state.update_store(|s| {
+pub fn store_remove_recent(
+    app: tauri::AppHandle,
+    state: State<'_, AppState>,
+    path: String,
+) -> Vec<RecentEntry> {
+    let recent = state.update_store(|s| {
         s.remove_recent(&path);
         s.recent.clone()
-    })
+    });
+    crate::tray::refresh(&app);
+    recent
 }
 
 /// 表示倍率を保存する（F-VIEW-11）。
@@ -391,6 +406,15 @@ pub fn ready(window: Window, state: State<'_, AppState>) {
         crate::snap_layouts::install(window.app_handle(), &main);
     }
 
+    // トレイアイコン（F-OS-08 / ADR-0007）。
+    //
+    // **`ready()` の後で作る**（02.architecture.md §5.1 の表）。OS 側の UI であり、
+    // 本文表示に一切関与しない。ここでアイコンを焼くぶん T3→T8 が伸びるのは
+    // 何の得にもならない。失敗しても常駐しないだけで、アプリは普通に使える。
+    if let Err(e) = crate::tray::install(window.app_handle()) {
+        eprintln!("[marxdown] トレイアイコンを作れなかった: {e}");
+    }
+
     state.trace.flush("cold", state.args.spike);
     if state.trace.exit_after() {
         let app = window.app_handle().clone();
@@ -461,18 +485,36 @@ pub fn startup_trace(state: State<'_, AppState>) -> crate::trace::TraceReport {
 /// 02.architecture.md §5.2 の経路を、argv 転送を受けた瞬間から測る。
 ///
 /// 1 プロセスで何度も起きるので、1 レコード 1 行の JSONL に追記する。
+///
+/// `kind` は `"warm"`（argv 転送）か `"tray-resume"`（トレイからの復帰）。
+/// **中央値を別々に取るために要る。** 経路が違えば分布も違い、混ぜると
+/// 「どちらも速い / どちらも遅い」しか分からなくなる
+/// （ADR-0007「Warm Start の計測経路が 2 本になる」）。省略時は `"warm"`。
+/// Marxdown を終了する（ADR-0007 論点 3）。
+///
+/// **`✕` とは別に必要**である。トレイ常駐では `✕` が「格納」の意味になるため、
+/// 「本当に終わらせたい」を表す経路が無くなる。フロント側の `Ctrl+Q` と
+/// ハンバーガーメニューの「終了」がここへ来る（3 経路のうちの 2 つ）。
+///
+/// ウィンドウ位置の保存は `close::quit` が行う（論点 11）。
+#[tauri::command]
+pub fn app_quit(app: tauri::AppHandle) {
+    crate::close::quit(&app);
+}
+
 #[tauri::command]
 pub fn warm_done(
     state: State<'_, AppState>,
     request_id: u64,
     path: String,
     detail: String,
+    kind: Option<String>,
 ) -> Option<f64> {
     let elapsed = state.end_warm(request_id)?;
 
     if let Some(log) = state.trace.warm_log_path() {
         let record = serde_json::json!({
-            "kind": "warm",
+            "kind": kind.as_deref().unwrap_or("warm"),
             "requestId": request_id,
             "elapsedMs": elapsed,
             "path": path,

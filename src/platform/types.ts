@@ -316,6 +316,13 @@ export type DragDropEvent =
  * Domain 層はこれだけを見る。Tauri の存在を知らないことで、
  * Vitest 上でも `dev:web` のブラウザ上でも同じコードが動く（02.architecture.md §3.1）。
  */
+/**
+ * ウォーム経路の種別（ADR-0007「Warm Start の計測経路が 2 本になる」）。
+ *
+ * 記録を分けるためだけに存在する。**混ぜてはいけない。**
+ */
+export type WarmKind = 'warm' | 'tray-resume';
+
 export interface Platform {
   readonly kind: 'tauri' | 'web';
   /** 同期的に読める初期ペイロード。IPC 往復を挟まないことが最重要。 */
@@ -419,8 +426,30 @@ export interface Platform {
    */
   minimizeWindow(): Promise<void>;
   toggleMaximizeWindow(): Promise<void>;
-  /** 閉じる。**Phase 7 でトレイ格納に化けるのはこの先**（`window.closeBehavior`）。 */
+  /**
+   * 閉じる。
+   *
+   * **既定ではトレイに格納され、プロセスは終わらない**（ADR-0007 論点 2 /
+   * 設定 `window.closeBehavior`）。判断は Rust 側の `close.rs` にあり、
+   * フロントは「閉じてくれ」としか言わない。ここで分岐を持つと、
+   * `Alt+F4` と OS 由来の閉じる要求だけ別の挙動になる。
+   */
   closeWindow(): Promise<void>;
+  /**
+   * Marxdown を終了する（ADR-0007 論点 3）。
+   *
+   * **`closeWindow` とは別物。** トレイ常駐では `✕` が「格納」の意味になるため、
+   * 「本当に終わらせたい」を表す経路が別に要る。`Ctrl+Q` とハンバーガーメニューの
+   * 「終了」がここへ来る（3 経路のうちの 2 つ。残り 1 つはトレイメニュー）。
+   */
+  quitApp(): Promise<void>;
+  /**
+   * トレイメニューの「Marxdown を開く」を購読する。
+   *
+   * **Rust 側でダイアログを出さない。** 開いた結果の扱い（履歴・通知・
+   * 相対パスの解決）は `open.ts` に集めてあり、別経路で開くとそこだけ抜ける。
+   */
+  onTrayOpen(handler: () => void): () => void;
   /** 最大化中か。購読を始めるときに 1 回だけ聞く。 */
   isWindowMaximized(): Promise<boolean>;
   /**
@@ -454,7 +483,17 @@ export interface Platform {
    * ウォーム起動の完了報告（S6）。argv 転送を受けてから
    * 「本文が読める」までの経過ミリ秒を返す。
    */
-  warmDone(requestId: number, path: string, detail: string): Promise<number | null>;
+  warmDone(requestId: number, path: string, detail: string, kind?: WarmKind): Promise<number | null>;
+  /**
+   * トレイから復帰した瞬間を購読する（ADR-0007「計測項目」）。
+   *
+   * **Warm Start とは別の経路である。** あちらは「ウィンドウが可視のまま argv 転送を
+   * 受けた」値（実測 20.0ms）で、こちらは「サスペンドされた WebView が起こされて
+   * 画面に出る」まで。同じ数字だと思って比べると判断を誤る。
+   *
+   * 受け取ったら次の rAF で `warmDone(id, ..., 'tray-resume')` を呼ぶ。
+   */
+  onTrayResume(handler: (requestId: number) => void): () => void;
   openExternal(url: string): Promise<void>;
   /**
    * Markdown 以外のローカルファイルを OS の既定アプリで開く（F-VIEW-06）。
