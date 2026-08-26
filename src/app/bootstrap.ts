@@ -164,6 +164,8 @@ export async function startup(renderShell: () => void): Promise<void> {
   // 最大化状態の追従も同じ扱い。遅れたときの最悪は「最大化して起動した直後の
   // 数十 ms だけ、ボタンの絵柄が `□` のまま」で、次に状態が変われば必ず直る。
   installOpenRequestHandler();
+  installTrayOpen();
+  installTrayResume();
   installDragAndDrop();
   installFileWatch();
   installSettingsWatch();
@@ -309,6 +311,17 @@ function installShortcuts(): void {
     // 検索モジュール自身が登録して自分で外す。押されてもいない機能のキーが
     // グローバルに居座らないようにするため。
     { key: 'Ctrl+F', run: () => void openSearchLazily(), whenEditing: true },
+
+    // Marxdown を終了する（ADR-0007 論点 3 / 03.ux-spec.md §5.3）。
+    //
+    // **トレイ常駐では `✕` が「格納」の意味になる**ため、「本当に終わらせたい」を
+    // 表すキーが別に要る。確実に終了できる導線を 3 つ用意するという決定の 1 つ
+    // （残りはトレイメニューとハンバーガーメニュー）。
+    //
+    // `whenEditing: true` なのは、検索欄や設定パネルにフォーカスがあるときに
+    // **終了できないほうが困る**ため。編集機能が入る M2 以降は、ここに
+    // ダーティ状態の確認（§8.1）が挟まる。
+    { key: 'Ctrl+Q', run: () => void getPlatform().quitApp(), whenEditing: true },
   ]);
 }
 
@@ -334,6 +347,43 @@ async function openViaDialogSafely(): Promise<void> {
  *
  * タブが実装される（M3）までは「タブを増やす」のではなく現在の本文を置き換える。
  */
+/**
+ * トレイメニューの「Marxdown を開く」（ADR-0007 論点 6）。
+ *
+ * **ダイアログを Rust 側で出さない。** `pick_file` は既にあるが、開いた結果の扱い
+ * （履歴に積む / 通知を出す / 相対パスの基準を差し替える）は `open.ts` に
+ * 集約してある。トレイから別経路で開くと、そこだけ抜け落ちる。
+ *
+ * 「最近開いたファイル」のほうは argv 転送（`onOpenRequest`）に載せてあるので、
+ * ここには来ない。
+ */
+function installTrayOpen(): void {
+  getPlatform().onTrayOpen(() => void openViaDialogSafely());
+}
+
+/**
+ * トレイからの復帰を計測する（ADR-0007「計測項目」/ 目標 120ms）。
+ *
+ * **Warm Start（20.0ms）とは別の経路である。** あちらはウィンドウが可視のまま
+ * argv 転送を受けた値で、こちらはサスペンドされた WebView が起こされて
+ * 画面に出るまで。ロードマップ §5.3 の完了条件は**この経路のほう**を見る。
+ *
+ * 本文は既に描かれている（ウィンドウを破棄していないので再描画が要らない）ため、
+ * 「読める」の判定は **1 フレーム描かれたこと**でよい。開き直す経路と違って
+ * パースも paint も挟まらない。
+ */
+function installTrayResume(): void {
+  const platform = getPlatform();
+
+  platform.onTrayResume((requestId) => {
+    const seen = performance.now();
+    requestAnimationFrame(() => {
+      const fromEvent = performance.now() - seen;
+      void platform.warmDone(requestId, '', `fromEvent=${fromEvent.toFixed(1)}ms`, 'tray-resume');
+    });
+  });
+}
+
 function installOpenRequestHandler(): void {
   const platform = getPlatform();
 

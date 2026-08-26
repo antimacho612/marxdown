@@ -136,6 +136,14 @@ pub struct StoreData {
     /// 一緒に捨てることになり、キー 1 つの追加に対して代償が大き過ぎる。
     #[serde(default)]
     pub panes: Panes,
+    /// トレイ常駐の説明を一度でも出したか（ADR-0007 論点 4）。
+    ///
+    /// **`✕` の意味が OS の慣習と変わる瞬間**にだけモーダルを出す。
+    /// 03.ux-spec.md §8.2 の「モーダルはデータ消失の可能性がある場面だけ」に対する
+    /// 意図的な例外であり、**生涯 1 回**であることがその許容条件そのものなので、
+    /// フラグを永続化する。`state.json` に置くのは、アプリが自動的に書く値だから（§4.5）。
+    #[serde(default)]
+    pub tray_intro_shown: bool,
 }
 
 impl Default for StoreData {
@@ -146,6 +154,7 @@ impl Default for StoreData {
             zoom: ZOOM_DEFAULT,
             window: None,
             panes: Panes::default(),
+            tray_intro_shown: false,
         }
     }
 }
@@ -391,6 +400,51 @@ mod tests {
         assert_eq!(back.left.width, 300.0);
         assert_eq!(back.right.width, 200.0);
         assert!(back.right.open);
+        std::fs::remove_dir_all(&d).ok();
+    }
+
+    /// ADR-0007 論点 4。**生涯 1 回**であることがモーダルを許容する条件そのものなので、
+    /// フラグが往復で保たれることを機械的に見張る。
+    #[test]
+    fn the_tray_intro_is_only_shown_once() {
+        let d = temp_dir("tray-intro");
+        let p = d.join(FILE_NAME);
+
+        assert!(
+            !StoreData::default().tray_intro_shown,
+            "初回起動では、まだ説明していない"
+        );
+
+        let data = StoreData {
+            tray_intro_shown: true,
+            ..StoreData::default()
+        };
+        save(Some(&p), &data);
+
+        assert!(load(Some(&p)).tray_intro_shown);
+        std::fs::remove_dir_all(&d).ok();
+    }
+
+    /// Phase 6 までに書かれた `state.json`（`trayIntroShown` が無い）を読んでも、
+    /// 最近開いたファイルと倍率を捨てないこと。
+    ///
+    /// **版を上げるとここが壊れる。** キー 1 つの追加に対して代償が大き過ぎるので、
+    /// `#[serde(default)]` で受ける判断が正しいままであることを固定する。
+    #[test]
+    fn a_store_written_before_the_tray_existed_still_loads() {
+        let d = temp_dir("tray-compat");
+        let p = d.join(FILE_NAME);
+        std::fs::write(
+            &p,
+            r#"{"version":1,"recent":[{"path":"a.md","openedAtMs":1}],"zoom":1.5,"window":null}"#,
+        )
+        .unwrap();
+
+        let back = load(Some(&p));
+
+        assert_eq!(back.recent.len(), 1, "最近開いたファイルを捨てない");
+        assert_eq!(back.zoom, 1.5, "倍率を捨てない");
+        assert!(!back.tray_intro_shown, "無いキーは既定値になる");
         std::fs::remove_dir_all(&d).ok();
     }
 

@@ -29,6 +29,7 @@ import { viewStore } from '@/features/view/store.svelte';
 import { recentStore } from '@/features/workspace/recent.svelte';
 import { ja } from '@/i18n/ja';
 import { splitPath } from '@/lib/path';
+import { getPlatform } from '@/platform';
 
 /**
  * 一覧に出す最近開いたファイルの件数。
@@ -144,10 +145,19 @@ export function buildMenu(): MenuGroup[] {
 
   // 「アプリに対する操作」。**ファイルを開いていなくても押せる**ので、
   // 文書に対する操作の早期 return より後ろではなく、両方の経路に載せる。
-  // Phase 7 の「終了」もここに並ぶ。
   groups.push({
     id: 'app',
-    items: [{ id: 'settings', label: ja.menu.settings, shortcut: 'Ctrl+,', run: () => void openSettingsLazily() }],
+    items: [
+      { id: 'settings', label: ja.menu.settings, shortcut: 'Ctrl+,', run: () => void openSettingsLazily() },
+      // 終了（ADR-0007 論点 3 の 3 経路のうちの 1 つ）。
+      //
+      // **`✕` がトレイ格納の意味になったので、ここが必要になった。**
+      // ウィンドウの中から確実に終われる場所が 1 つも無いと、
+      // 「閉じたのに終わっていない」に気づいた人の逃げ場が
+      // トレイアイコンだけになる。ハンバーガーメニューは §2.3 が言う
+      // 「初学者の逃げ道」であり、まさにその役割。
+      { id: 'quit', label: ja.menu.quit, shortcut: 'Ctrl+Q', run: () => void getPlatform().quitApp() },
+    ],
   });
 
   return groups;

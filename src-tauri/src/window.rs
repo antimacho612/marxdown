@@ -149,7 +149,7 @@ fn is_on_some_monitor(app: &tauri::AppHandle, state: &WindowState) -> bool {
 /// 最大化中は最大化後の矩形が返る。Tauri は「最大化する前の矩形」を公開していないため、
 /// 復元時も最大化状態ごと再現する形になる。最大化を解いたときの大きさが
 /// 前回セッションと変わりうるが、位置を見失うよりは害が小さい。
-pub fn capture(window: &WebviewWindow) -> Option<WindowState> {
+pub fn capture<R: tauri::Runtime>(window: &WebviewWindow<R>) -> Option<WindowState> {
     let scale = window.scale_factor().ok()?;
     let position = window.outer_position().ok()?.to_logical::<f64>(scale);
     let size = window.inner_size().ok()?.to_logical::<f64>(scale);

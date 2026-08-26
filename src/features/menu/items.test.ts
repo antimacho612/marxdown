@@ -38,8 +38,8 @@ describe('ハンバーガーメニューの項目 (03.ux-spec.md §2.3)', () => 
   it('ファイルを開いていないときは、押しても何も起きない項目を並べない', () => {
     const groups = buildMenu();
 
-    // 「設定」は文書に依存しないので、ここでも押せる（F-CONF-05）。
-    expect(ids(groups)).toEqual(['open', 'settings']);
+    // 「設定」と「終了」は文書に依存しないので、ここでも押せる。
+    expect(ids(groups)).toEqual(['open', 'settings', 'quit']);
     expect(group(groups, 'document')).toBeUndefined();
     expect(group(groups, 'zoom')).toBeUndefined();
   });
@@ -57,6 +57,7 @@ describe('ハンバーガーメニューの項目 (03.ux-spec.md §2.3)', () => 
       'zoom-out',
       'zoom-reset',
       'settings',
+      'quit',
     ]);
   });
 
@@ -90,7 +91,19 @@ describe('ハンバーガーメニューの項目 (03.ux-spec.md §2.3)', () => 
   });
 
   /**
-   * 後続の Phase（7 で「終了」）が項目を足す。
+   * ADR-0007 論点 3。**確実に終了できる導線を 3 つ用意する**という決定のうち、
+   * ウィンドウの中にある 1 つ。`✕` がトレイ格納の意味になったので、
+   * ここが消えると逃げ場がトレイアイコンだけになる。
+   */
+  it('ファイルを開いていてもいなくても、終了できる', () => {
+    expect(ids(buildMenu())).toContain('quit');
+
+    documentStore.meta = META;
+    expect(ids(buildMenu())).toContain('quit');
+  });
+
+  /**
+   * 後続の Phase（M3 でコマンドパレットへの登録）が項目を足す。
    * `{#each}` のキーに使うので、重複すると描画が壊れる。
    */
   it('項目の id が重複しない', () => {

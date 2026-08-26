@@ -18,7 +18,9 @@ tauri-build = { version = "2", features = [] }
 
 [dependencies]
 # protocol-asset: ローカル画像を asset URL 経由で表示する（F-VIEW-08 / N-SEC-05）
-tauri = { version = "2", features = ["protocol-asset"] }
+# tray-icon: タスクトレイ常駐（F-OS-08 / ADR-0007）。
+#   `tauri-plugin-autostart` は入れない（04.tech-stack.md §6.1 / M6 で再検討）。
+tauri = { version = "2", features = ["protocol-asset", "tray-icon"] }
 tauri-plugin-opener = "2"
 # 04.tech-stack.md §6.1 — ファイル選択ダイアログ（F-OPEN-07）。
 # JS 側の `@tauri-apps/plugin-dialog` は入れない。`opener` と同じく Rust から呼び、
@@ -35,6 +37,12 @@ notify-debouncer-full = "0.6"
 # 04.tech-stack.md §6.1 — 単一インスタンス化と argv 転送（ADR-0004 / F-OPEN-05）
 [target.'cfg(any(target_os = "windows", target_os = "macos", all(unix, not(target_os = "macos"))))'.dependencies]
 tauri-plugin-single-instance = "2"
+
+# トレイ格納中の WebView2 サスペンド（`src/webview.rs` / ADR-0007 論点 7）。
+# **wry が使っているバージョンに合わせる**（04.tech-stack.md §6.8）。
+# ずれると別の COM 型として扱われ、`ICoreWebView2_3` へのキャストが実行時に失敗する。
+[target.'cfg(windows)'.dependencies.webview2-com]
+version = "0.38.2"
 
 # Snap Layouts（`src/snap_layouts.rs`）。カスタムタイトルバーにしたぶん、
 # 最大化ボタンの位置を Windows へ自分で答える必要がある（06.roadmap.md §5.2）。
