@@ -68,6 +68,16 @@ async function enhanceCodeBlocks(container: HTMLElement): Promise<void> {
   const targets = blocks.filter((code) => languageOf(code) !== null);
 
   await processInIdle(targets, (code) => {
+    // **切り離された要素は飛ばす**（OQ-18）。
+    //
+    // `enhance` はアイドルで少しずつ進むので、この途中で次のファイルが開かれると
+    // 対象は `paint()` の `replaceChildren()` によって DOM から外れている。
+    // ハイライトは 1 ブロックあたり数百 µs かかる仕事で、それを
+    // **もう誰も見ていない要素に対して**最後までやり切る理由がない。
+    //
+    // `paint` 側の打ち切り（`cancelPaint`）と役割が違う。あちらは
+    // 「作り続けるのを止める」、こちらは「作り終えたものを整えるのを止める」。
+    if (!code.isConnected) return;
     void highlightElement(code);
   });
 }

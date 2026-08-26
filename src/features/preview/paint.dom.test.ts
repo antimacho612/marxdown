@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { paint } from './paint';
+import { cancelPaint, paint } from './paint';
 
 function container(): HTMLElement {
   const el = document.createElement('div');
@@ -35,6 +35,66 @@ describe('段階的描画 (02.architecture.md §6.4)', () => {
     const el = container();
     const result = paint(el, ['<p>only</p>']);
     await expect(result.done).resolves.toBeTypeOf('number');
+  });
+
+  /**
+   * OQ-18。**ここが止まらないと、誰も見ていない DOM を裏で作り続ける。**
+   *
+   * 段階的描画の途中で次のファイルを開くと、古いループの投入先は
+   * `replaceChildren()` によって既に切り離されている。それでも追記を続けると、
+   * 未投入のチャンク文字列（`huge.md` では数 MB）と、作りかけの
+   * ツリーの両方が握られたままになる。
+   */
+  it('次の描画が始まったら、前の描画は続きを入れない', async () => {
+    const el = container();
+    const many = Array.from({ length: 50 }, (_, i) => `<p>old-${String(i)}</p>`);
+
+    paint(el, many);
+    // 最初のチャンクだけが入った状態で、次のファイルを開く。
+    paint(el, ['<p>new</p>']);
+
+    // 古いループが息をしていれば、ここで old-* が生えてくる。
+    await new Promise((r) => setTimeout(r, 20));
+
+    expect(el.textContent).toBe('new');
+    expect(document.body.textContent).not.toContain('old-');
+  });
+
+  it('打ち切られた描画の done は解決しない', async () => {
+    const el = container();
+    const first = paint(el, ['<p>a</p>', '<p>b</p>', '<p>c</p>']);
+
+    let settled = false;
+    void first.done.then(() => (settled = true));
+
+    paint(el, ['<p>next</p>']);
+    await new Promise((r) => setTimeout(r, 20));
+
+    // 解決させると、呼び出し側が切り離されたコンテナに対して
+    // `enhance` とアンカー復元をやり直してしまう（`open.ts`）。
+    expect(settled).toBe(false);
+  });
+
+  /** タブを閉じる（M3 / N-PERF-06）ときのために、描き直さない打ち切りも要る。 */
+  it('cancelPaint だけでも、続きが入らなくなる', async () => {
+    const el = container();
+    const many = Array.from({ length: 50 }, (_, i) => `<p>x-${String(i)}</p>`);
+
+    paint(el, many);
+    cancelPaint();
+    await new Promise((r) => setTimeout(r, 20));
+
+    expect(el.textContent).toBe('x-0');
+  });
+
+  it('最後まで入り切った描画は、次の描画を巻き添えにしない', async () => {
+    const el = container();
+    const first = paint(el, ['<p>a</p>', '<p>b</p>']);
+    await first.done;
+
+    const second = paint(el, ['<p>c</p>', '<p>d</p>']);
+    await expect(second.done).resolves.toBeTypeOf('number');
+    expect(el.textContent).toBe('cd');
   });
 
   it('描画のたびに前の内容を捨てる', async () => {
