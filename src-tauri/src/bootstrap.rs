@@ -16,6 +16,7 @@
 use serde::Serialize;
 
 use crate::cli::{CliArgs, SpikeFlags, ViewMode};
+use crate::custom_css::CustomCss;
 use crate::document::{self, DocumentMeta, INLINE_CONTENT_LIMIT};
 use crate::settings::{Settings, SettingsLoad, SettingsProblem};
 use crate::store::{RecentEntry, StoreData};
@@ -51,6 +52,12 @@ pub struct Bootstrap {
     /// `settings.json` を読めなかった事実。UI が通知バーに出す（03.ux-spec.md §8.2）。
     /// これが `Some` の間、`write_settings` は書き戻しを拒否する。
     pub settings_error: Option<SettingsProblem>,
+    /// カスタム CSS（F-CONF-07 / 02.architecture.md §10.3）。
+    ///
+    /// **64KB 以下のときだけ中身が入る。** 小さいうちにここへ載せるのは、
+    /// ダークな背景を当てているときに白い初期画面が一瞬見えるのを防ぐため。
+    /// 超える場合は `deferred` が立ち、フロントが `read_custom_css` で取りに行く。
+    pub custom_css: CustomCss,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -88,6 +95,7 @@ pub fn build(
     trace: &crate::trace::Trace,
     store: &StoreData,
     settings: &SettingsLoad,
+    custom_css: CustomCss,
 ) -> Bootstrap {
     let mut document = None;
     let mut document_error = None;
@@ -137,6 +145,7 @@ pub fn build(
         zoom: store.zoom,
         settings: settings.values.clone(),
         settings_error: settings.broken.clone(),
+        custom_css,
     }
 }
 
@@ -187,6 +196,7 @@ mod tests {
             &trace,
             &StoreData::default(),
             &SettingsLoad::default(),
+            CustomCss::default(),
         );
         let doc = b.document.expect("document");
         assert_eq!(doc.content.as_deref(), Some("# hello\n"));
@@ -204,6 +214,7 @@ mod tests {
             &trace,
             &StoreData::default(),
             &SettingsLoad::default(),
+            CustomCss::default(),
         );
         let doc = b.document.expect("document");
         assert!(doc.content.is_none(), "256KB 超は埋め込まない");
@@ -220,6 +231,7 @@ mod tests {
             &trace,
             &StoreData::default(),
             &SettingsLoad::default(),
+            CustomCss::default(),
         );
         assert!(b.document.is_none());
         assert_eq!(
@@ -244,6 +256,7 @@ mod tests {
             &trace,
             &StoreData::default(),
             &SettingsLoad::default(),
+            CustomCss::default(),
         );
         assert_eq!(b.pending_paths.len(), 2);
         std::fs::remove_dir_all(&dir).ok();
@@ -265,6 +278,7 @@ mod tests {
             &trace,
             &StoreData::default(),
             &SettingsLoad::default(),
+            CustomCss::default(),
         );
 
         // 本文は初期化スクリプトに載る。ここが IPC 往復を 1 回省いている（§5.1）
@@ -290,6 +304,7 @@ mod tests {
             &trace,
             &StoreData::default(),
             &settings,
+            CustomCss::default(),
         );
 
         let script = to_init_script(&b);
@@ -314,11 +329,34 @@ mod tests {
             &trace,
             &StoreData::default(),
             &crate::settings::load(Some(&p)),
+            CustomCss::default(),
         );
 
         assert!(b.settings_error.is_some());
         assert_eq!(b.settings, crate::settings::Settings::default());
         std::fs::remove_dir_all(&dir).ok();
+    }
+
+    /// §10.3「64KB 以下は bootstrap に同梱する」。
+    ///
+    /// **ここが空だと FOUC になる。** ダークな背景を当てているカスタム CSS を
+    /// `ready()` の後に適用すると、白い初期画面が一瞬見える。
+    #[test]
+    fn the_script_carries_the_custom_css() {
+        let trace = crate::trace::Trace::start(Instant::now());
+        let b = build(
+            &CliArgs::default(),
+            &trace,
+            &StoreData::default(),
+            &SettingsLoad::default(),
+            CustomCss {
+                css: Some(":scope { --mx-content-width: 90ch }".into()),
+                ..CustomCss::default()
+            },
+        );
+
+        let script = to_init_script(&b);
+        assert!(script.contains("--mx-content-width: 90ch"), "{script}");
     }
 
     #[test]
@@ -329,6 +367,7 @@ mod tests {
             &trace,
             &StoreData::default(),
             &SettingsLoad::default(),
+            CustomCss::default(),
         );
         let script = to_init_script(&b);
         assert!(script.starts_with("globalThis.__MARXDOWN_BOOTSTRAP__ = Object.freeze({"));

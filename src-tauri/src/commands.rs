@@ -7,6 +7,7 @@ use std::path::{Path, PathBuf};
 
 use tauri::{Manager, State, Window};
 
+use crate::custom_css;
 use crate::document::{self, DocumentPayload, SaveResult, WriteRequest};
 use crate::error::{CoreError, CoreResult};
 use crate::scope;
@@ -273,6 +274,52 @@ pub fn open_settings_file(app: tauri::AppHandle, state: State<'_, AppState>) -> 
     let path = state
         .settings_path()
         .ok_or_else(|| CoreError::Io("設定の保存先が決まらない".into()))?;
+    tauri_plugin_opener::OpenerExt::opener(&app)
+        .open_path(path.display().to_string(), None::<&str>)
+        .map_err(|e| CoreError::Io(e.to_string()))
+}
+
+/* ------------------------------------------------------------------ */
+/* カスタム CSS（F-CONF-07 / 02.architecture.md §10.3）                   */
+/* ------------------------------------------------------------------ */
+
+/// カスタム CSS を読む。
+///
+/// **起動時の 64KB 以下はここを通らない。** bootstrap に同梱されており
+/// （§10.3 / FOUC を防ぐため）、ここが要るのは 2 つの場合だけ。
+///
+/// 1. 64KB を超えていて bootstrap に載らなかった（`deferred`）
+/// 2. 外部エディタで編集された後の読み直し（`marxdown://custom-css-changed`）
+///
+/// **パスを引数に取らない。** `open_settings_file` と同じ理由で、
+/// 読む先は Rust 側が知っている 1 か所しかない。
+#[tauri::command]
+pub fn read_custom_css(state: State<'_, AppState>) -> custom_css::CustomCss {
+    // 取りに来た経路なので、読める上限（1MB）まで読む。
+    custom_css::load(state.custom_css_path(), custom_css::MAX_BYTES)
+}
+
+/// `custom.css` を OS の既定アプリで開く（F-CONF-07 / 設定 UI のボタン）。
+///
+/// **無ければ雛形を作ってから開く。** 仕様（§10.3）は「ファイルが存在すれば効く」
+/// としか書いておらず、存在しないときの挙動は決まっていない。
+/// ここで「ファイルがありません」と答えると、ユーザーは
+/// **どこに何という名前で作ればよいか**を自分で調べることになる。
+/// 設定項目を置かない（Principle 3）以上、その導線はこのボタンしかない。
+#[tauri::command]
+pub fn open_custom_css_file(
+    app: tauri::AppHandle,
+    state: State<'_, AppState>,
+    watcher: State<'_, FileWatcher>,
+) -> CoreResult<()> {
+    let path = state
+        .custom_css_path()
+        .ok_or_else(|| CoreError::Io("カスタム CSS の置き場所が決まらない".into()))?;
+
+    custom_css::ensure_exists(path)?;
+    // 雛形を作ったのは自分なので、続くイベントは外部変更ではない（§4.4）。
+    watcher.note_self_write(path);
+
     tauri_plugin_opener::OpenerExt::opener(&app)
         .open_path(path.display().to_string(), None::<&str>)
         .map_err(|e| CoreError::Io(e.to_string()))

@@ -3,7 +3,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { documentStore } from '@/features/document/store.svelte';
-import { DEFAULT_SETTINGS, getPlatform, setPlatform, type Bootstrap, type Platform } from '@/platform';
+import { DEFAULT_SETTINGS, getPlatform, NO_CUSTOM_CSS, setPlatform, type Bootstrap, type Platform } from '@/platform';
 
 import { initSettings, refreshSettings, reportSettingsProblem, settingsStore } from './store.svelte';
 
@@ -35,6 +35,7 @@ function bootstrapWith(settings: Partial<Bootstrap>): Bootstrap {
     zoom: 1,
     settings: DEFAULT_SETTINGS,
     settingsError: null,
+    customCss: NO_CUSTOM_CSS,
     ...settings,
   };
 }

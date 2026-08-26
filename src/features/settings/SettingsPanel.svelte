@@ -20,6 +20,7 @@
   │  [ 90 ] ch                   │
   ├──────────────────────────────┤
   │ settings.json を開く          │
+  │ custom.css を開く             │
   └──────────────────────────────┘
   ```
 
@@ -240,11 +241,25 @@
     {@render numberField('preview.maxWidth', ja.settings.maxWidth, ja.settings.unitCh, ja.settings.maxWidthHint)}
   </fieldset>
 
+  <!--
+    ファイルへの導線。**壊れていても押せる**（直す場所はファイルにしかない）。
+
+    カスタム CSS（F-CONF-07 / 02.architecture.md §10.3）に置くのも
+    **このボタン 1 つだけ**。有効化のスイッチもパスの設定も無く、
+    `custom.css` が存在すれば効く。設定項目を増やさないことがそのまま仕様なので、
+    ここに ON/OFF を足さないこと。
+  -->
   <footer class="mx-settings__footer">
-    <button type="button" class="mx-settings__file" onclick={() => void getPlatform().openSettingsFile()}>
-      {ja.settings.edit}
-    </button>
+    <div class="mx-settings__files">
+      <button type="button" class="mx-settings__file" onclick={() => void getPlatform().openSettingsFile()}>
+        {ja.settings.edit}
+      </button>
+      <button type="button" class="mx-settings__file" onclick={() => void getPlatform().openCustomCssFile()}>
+        {ja.customCss.open}
+      </button>
+    </div>
     <p class="mx-settings__hint">{ja.settings.editHint}</p>
+    <p class="mx-settings__hint">{ja.customCss.hint}</p>
   </footer>
 </div>
 
@@ -420,9 +435,16 @@
     border-top: 1px solid var(--mx-color-border-subtle);
   }
 
+  /* 2 つ並ぶ（`settings.json` と `custom.css`）。狭い幅では折り返す。 */
+  .mx-settings__files {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--mx-space-2);
+    margin-bottom: var(--mx-space-1);
+  }
+
   /* 壊れているときも押せる。**直す場所はファイルにしかない**（F-CONF-06）。 */
   .mx-settings__file {
-    align-self: start;
     padding: var(--mx-space-1) var(--mx-space-3);
     border: 1px solid var(--mx-color-border);
     border-radius: var(--mx-radius-sm);

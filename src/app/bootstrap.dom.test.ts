@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { documentStore } from '@/features/document/store.svelte';
 import { settingsStore } from '@/features/settings/store.svelte';
 import { ja } from '@/i18n/ja';
-import { DEFAULT_SETTINGS, getPlatform, setPlatform, type Bootstrap, type Platform } from '@/platform';
+import { DEFAULT_SETTINGS, getPlatform, NO_CUSTOM_CSS, setPlatform, type Bootstrap, type Platform } from '@/platform';
 
 import { startup } from './bootstrap';
 import { resetShortcuts } from './shortcuts';
@@ -44,6 +44,7 @@ function bootstrapWith(patch: Partial<Bootstrap>): Bootstrap {
     zoom: 1,
     settings: DEFAULT_SETTINGS,
     settingsError: null,
+    customCss: NO_CUSTOM_CSS,
     ...patch,
   };
 }
@@ -117,5 +118,24 @@ describe('起動シーケンス (02.architecture.md §5.1)', () => {
     });
 
     expect(seen).toEqual(['dark', '80ch']);
+  });
+
+  /**
+   * 02.architecture.md §10.3。**同じ理由でカスタム CSS も描画より前**に当てる。
+   *
+   * 遅らせてよいのは「取りに行く」ほうだけで、bootstrap に載って届いたものを
+   * `ready()` の後に当てると、ダークな背景を指定している人の画面で
+   * 白い初期画面が一瞬見える。
+   */
+  it('本文を描くより前に、bootstrap のカスタム CSS が当たっている', async () => {
+    const seen: string[] = [];
+    stubPlatform(bootstrapWith({ customCss: { ...NO_CUSTOM_CSS, css: 'h1 { color: red }' } }));
+
+    await startup(() => {
+      seen.push(document.querySelector<HTMLStyleElement>('style#mx-custom-css')?.textContent ?? '');
+    });
+
+    expect(seen[0]).toContain('@scope (#mx-preview)');
+    expect(seen[0]).toContain('color: red');
   });
 });
