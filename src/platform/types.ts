@@ -56,6 +56,37 @@ export interface CoreError {
 }
 
 /* ------------------------------------------------------------------ */
+/* ペイン（03.ux-spec.md §7.3 / 02.architecture.md §4.5）                 */
+/* ------------------------------------------------------------------ */
+
+/** ペイン 1 枚の状態（`src-tauri/src/store.rs` の `PaneState`）。 */
+export interface PaneState {
+  open: boolean;
+  /** 幅（CSS ピクセル）。**左右で別々に記憶する**（§7.3）。 */
+  width: number;
+}
+
+/**
+ * 左右のペイン（`src-tauri/src/store.rs` の `Panes`）。
+ *
+ * `left`（Explorer）は M3 だが、器だけ先にある。後から足すと
+ * 「どちらの幅か」が曖昧な 1 つの値が先に永続化されてしまう。
+ */
+export interface Panes {
+  left: PaneState;
+  right: PaneState;
+}
+
+/**
+ * 記録が無いときの姿。**左右とも閉じている**（03.ux-spec.md §7.3 の引用ブロック）。
+ * `src-tauri/src/store.rs` の `PaneState::default()` と 1:1 で対応する。
+ */
+export const DEFAULT_PANES: Panes = {
+  left: { open: false, width: 240 },
+  right: { open: false, width: 240 },
+};
+
+/* ------------------------------------------------------------------ */
 /* ユーザー設定（02.architecture.md §4.5）                               */
 /* ------------------------------------------------------------------ */
 
@@ -224,6 +255,13 @@ export interface Bootstrap {
   /** 表示倍率（F-VIEW-11）。最初のフレームから正しい倍率で描くために要る。 */
   zoom: number;
   /**
+   * ペインの開閉と幅（F-NAV-04 / 03.ux-spec.md §7.3）。
+   *
+   * **倍率と同じ理由でここに載っている。** 後から当てると、本文が一度全幅で
+   * 描かれてから横に詰まる（02.architecture.md §4.5）。
+   */
+  panes: Panes;
+  /**
    * ユーザー設定の**全体**（02.architecture.md §4.5）。
    *
    * 「どの設定が初回フレームに間に合う必要があるか」を毎回考えなくて済むよう、
@@ -298,6 +336,13 @@ export interface Platform {
    * 反映は呼び出し側が即座に行う。ここは保存だけなので、デバウンスして呼ぶこと。
    */
   setZoom(zoom: number): Promise<void>;
+  /**
+   * ペインの開閉と幅を永続化する（03.ux-spec.md §7.3）。
+   *
+   * 倍率と同じく、反映は呼び出し側が即座に行う。ここは保存だけなので、
+   * **ドラッグ中に毎フレーム呼ばない**（デバウンスしてから呼ぶこと）。
+   */
+  setPanes(panes: Panes): Promise<void>;
   /**
    * ファイル選択ダイアログを開く（F-OPEN-07）。
    * 選ばれなければ `null`。返るのは正規化済み絶対パス。

@@ -19,9 +19,13 @@
  */
 import { openPath, openViaDialog, reloadCurrent } from '@/features/document/open';
 import { documentStore } from '@/features/document/store.svelte';
+import { canGoBack, canGoForward, goBack, goForward } from '@/features/history/navigate';
+import { openJumpLazily } from '@/features/outline/open-jump';
+import { toggleRightPane } from '@/features/panes/panes';
 import { openSearchLazily } from '@/features/preview/open-search';
 import { zoomIn, zoomOut, zoomReset } from '@/features/preview/zoom';
 import { openSettingsLazily } from '@/features/settings/open-settings';
+import { viewStore } from '@/features/view/store.svelte';
 import { recentStore } from '@/features/workspace/recent.svelte';
 import { ja } from '@/i18n/ja';
 import { splitPath } from '@/lib/path';
@@ -95,6 +99,17 @@ export function buildMenu(): MenuGroup[] {
     },
   ];
 
+  // 戻る / 進む（F-NAV-07）。**辿れるときにしか出さない。**
+  // 押しても何も起きない項目を並べないのは、再読み込みや倍率と同じ判断。
+  // ここに置くのは、`Alt+←` というキーの存在を知る場所が他に無いため
+  // （コマンドパレットは M3 / 06.roadmap.md §5.5）。
+  const history: MenuAction[] = [];
+  if (canGoBack()) history.push({ id: 'back', label: ja.history.back, shortcut: 'Alt+←', run: () => void goBack() });
+  if (canGoForward()) {
+    history.push({ id: 'forward', label: ja.history.forward, shortcut: 'Alt+→', run: () => void goForward() });
+  }
+  if (history.length > 0) groups.push({ id: 'history', items: history });
+
   if (hasDocument) {
     groups.push(
       {
@@ -103,6 +118,15 @@ export function buildMenu(): MenuGroup[] {
         items: [
           { id: 'reload', label: ja.menu.reload, shortcut: 'F5', run: () => void reloadCurrent() },
           { id: 'search', label: ja.menu.search, shortcut: 'Ctrl+F', run: () => void openSearchLazily() },
+          // ペインの開閉（03.ux-spec.md §7.4 の「ペイン」系）。
+          // ラベルが状態で変わるのは、押した結果を先に言うため。
+          {
+            id: 'outline',
+            label: viewStore.panes.right.open ? ja.pane.hideOutline : ja.pane.showOutline,
+            shortcut: 'Ctrl+Alt+B',
+            run: () => toggleRightPane(),
+          },
+          { id: 'jump', label: ja.outline.jump, shortcut: 'Ctrl+Shift+O', run: () => void openJumpLazily() },
         ],
       },
       {

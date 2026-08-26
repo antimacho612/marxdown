@@ -35,6 +35,10 @@ import {
 } from '@/features/document/open';
 import { documentStore } from '@/features/document/store.svelte';
 import { installFileWatch } from '@/features/document/watch';
+import { goBack, goForward } from '@/features/history/navigate';
+import { openJumpLazily } from '@/features/outline/open-jump';
+import { showOutline } from '@/features/outline/show';
+import { initPanes, toggleRightPane } from '@/features/panes/panes';
 import { installLinkHandler } from '@/features/preview/links';
 import { openSearchLazily } from '@/features/preview/open-search';
 import { applyZoom, zoomIn, zoomOut, zoomReset } from '@/features/preview/zoom';
@@ -79,6 +83,15 @@ export async function startup(renderShell: () => void): Promise<void> {
   // 後から当てると、既定倍率で 1 フレーム描かれてから跳ねる。
   applyZoom(bootstrap?.zoom ?? 1, false);
   recentStore.entries = bootstrap?.recent ?? [];
+
+  // ペインの開閉と幅も**本文を描くより前**（F-NAV-04 / 03.ux-spec.md §7.3）。
+  // 後から当てると、本文が一度全幅で描かれてから横に詰まる。倍率と同じ理由で
+  // bootstrap に載せてある（02.architecture.md §4.5）。
+  //
+  // ここで入れた値は、この下の `renderShell()` が描く最初のシェルに既に効いている。
+  // シェルの描画は本文の paint より前（`betweenParseAndPaint`）なので、
+  // **全幅の本文が 1 フレームでも画面に出ることは無い。**
+  initPanes(bootstrap);
 
   // 設定も同じ理由でここ。bootstrap に丸ごと載っているので IPC 往復は無い
   // （02.architecture.md §4.5 / §5.1）。テーマ・フォント・本文幅は
@@ -267,6 +280,26 @@ function installShortcuts(): void {
     // もう一度押したときも「設定を開く」であってほしいため（開いていれば
     // フォーカスが戻るだけで、2 枚目は出ない）。
     { key: 'Ctrl+,', run: () => void openSettingsLazily(), whenEditing: true },
+
+    // --- ペインとビュー（03.ux-spec.md §7.4） ---------------------------
+    //
+    // **キーの意味を 2 系統に分けてある。**
+    //   ペイン: `Ctrl+Alt+B` は「ライトペインを開閉する」。中身が何であれ。
+    //   ビュー: `Ctrl+Shift+U` は「Outline を出してフォーカスする」。**閉じない。**
+    //
+    // 後者がトグルでないのは、「アウトラインを見たい」という意図に対して
+    // 常に同じ結果を返すため。アウトラインを左ペインへ移しても意味が変わらない。
+    { key: 'Ctrl+Alt+B', run: () => toggleRightPane() },
+    { key: 'Ctrl+Shift+U', run: () => void showOutline() },
+
+    // 見出しへジャンプ（§5.3「移動」）。中身は遅延チャンク。
+    // **コマンドパレット（`Ctrl+Shift+P` / M3）ではない。** 見出し専用。
+    { key: 'Ctrl+Shift+O', run: () => void openJumpLazily() },
+
+    // 戻る / 進む（F-NAV-07）。相対リンクで辿った先から帰ってくるための経路で、
+    // **スクロール位置も一緒に戻る**（`features/history/navigate.ts`）。
+    { key: 'Alt+ArrowLeft', run: () => void goBack() },
+    { key: 'Alt+ArrowRight', run: () => void goForward() },
 
     { key: 'Ctrl+=', run: () => void zoomIn() },
     { key: 'Ctrl+-', run: () => void zoomOut() },

@@ -1,7 +1,7 @@
 [
   {
-    "name": "critical path (main + md-worker)",
-    "path": ["dist/assets/main-*.js", "dist/assets/md-worker-*.js"],
+    "name": "critical path (main + shared + md-worker)",
+    "path": ["dist/assets/main-*.js", "dist/assets/shared-*.js", "dist/assets/md-worker-*.js"],
     "limit": "150 KB",
     "gzip": true
   },
@@ -20,6 +20,12 @@
   {
     "name": "settings (設定 UI。Ctrl+, を押すまでロードしない)",
     "path": ["dist/assets/settings-*.js"],
+    "limit": "6 KB",
+    "gzip": true
+  },
+  {
+    "name": "outline jump (見出しジャンプのパレット。Ctrl+Shift+O を押すまでロードしない)",
+    "path": ["dist/assets/outline-*.js"],
     "limit": "6 KB",
     "gzip": true
   },
