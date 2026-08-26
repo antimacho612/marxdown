@@ -106,6 +106,24 @@ pub fn run() {
         return;
     }
 
+    // OQ-18 の切り分け用（`--gc-probe`）。
+    //
+    // 「`huge.md` を閉じてもメモリが戻らない」の候補 1 は
+    // 「**Blink / V8 がまだ回収していないだけ**」である。これを潰すには
+    // 強制 GC の後で測る必要があるが、既定の WebView2 に `gc()` は無い。
+    //
+    // **既定では渡さない。** `--expose-gc` は本番で持たせる理由が無く、
+    // 実行中のスクリプトから GC を叩ける口を常設することになる。
+    //
+    // ウィンドウ生成より前に置くこと。WebView2 は環境変数を初期化時に読む。
+    if args.gc_probe {
+        std::env::set_var(
+            "WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS",
+            "--js-flags=--expose-gc",
+        );
+        eprintln!("[marxdown] --gc-probe: DevTools のコンソールで gc() を呼べます（OQ-18）");
+    }
+
     let mut trace = trace::Trace::start(t0);
     trace.configure(args.trace_startup.clone(), args.exit_after_trace);
     trace.mark("T1", Some(format!("{} path(s)", args.paths.len())));

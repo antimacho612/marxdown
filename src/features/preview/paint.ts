@@ -16,8 +16,46 @@ import { sanitize } from '@/markdown/sanitize';
 export interface PaintResult {
   /** 最初のチャンクが入った時刻（performance.now()）。 */
   firstChunkAt: number;
-  /** すべてのチャンクが入ったら解決する。 */
+  /**
+   * すべてのチャンクが入ったら解決する。
+   *
+   * **打ち切られた場合は解決しない。** 次の `paint()` が始まった時点で
+   * 前の描画は意味を失っており、そこに続きを繋げる呼び出し側は居ない。
+   */
   done: Promise<number>;
+}
+
+/**
+ * 実行中の段階的描画（OQ-18）。
+ *
+ * # なぜこれが要るのか
+ *
+ * `paint()` は残りのチャンクを `requestIdle` で少しずつ入れる。
+ * **この途中で次のファイルを開くと、古いループが止まらない。**
+ *
+ * 止まらないループが握り続けるものは 2 つある。
+ *
+ * 1. `rest`（未投入のチャンク文字列）。`huge.md`（2MB）では**これ自体が数 MB**
+ * 2. `content`（投入先の要素）。次の `paint()` が `replaceChildren()` を
+ *    呼んだ時点で **DOM から切り離されている**が、ループはそこへ追記し続ける
+ *
+ * つまり「もう誰も見ていない DOM ツリーを、裏で作り続ける」ことになる。
+ * 作り終えるまで解放されず、作っている間は CPU も食う。
+ *
+ * **M3 でタブが入ると、これがタブの枚数だけ並ぶ。** N-PERF-06
+ * 「タブを閉じたときのリソース解放」は、まずここが止まることが前提になる。
+ */
+let running: { cancelled: boolean } | null = null;
+
+/**
+ * 実行中の段階的描画を打ち切る。
+ *
+ * `paint()` の冒頭が呼ぶので、通常は呼び出し側が意識しなくてよい。
+ * **本文を捨てるだけで描き直さない**場面（タブを閉じる / M3）のために公開する。
+ */
+export function cancelPaint(): void {
+  if (running) running.cancelled = true;
+  running = null;
 }
 
 /**
@@ -27,6 +65,9 @@ export interface PaintResult {
  * 「読める最初のフレーム」が 1 フレーム遅れる。
  */
 export function paint(container: HTMLElement, chunks: string[], frontMatter: string | null = null): PaintResult {
+  // **前の描画を先に止める。** ここを忘れると、古いループが切り離された
+  // ツリーへ追記し続ける（`running` のコメント参照 / OQ-18）。
+  cancelPaint();
   container.replaceChildren();
 
   // Front Matter は本文と一緒にスクロールするため、プレビューの中に入れる（F-VIEW-09）。
@@ -57,9 +98,19 @@ export function paint(container: HTMLElement, chunks: string[], frontMatter: str
     return { firstChunkAt, done: Promise.resolve(firstChunkAt) };
   }
 
+  const token = { cancelled: false };
+  running = token;
+
   const done = new Promise<number>((resolve) => {
     let index = 0;
     const step = (deadline: IdleDeadline) => {
+      // 打ち切られたら、その場で手を離す。**解決もしない。**
+      //
+      // ここで `resolve` すると、呼び出し側（`open.ts`）の `.then` が走り、
+      // 切り離されたコンテナに対して `enhance` とアンカー復元をやり直す。
+      // 「もう誰も見ていない DOM を整える」ぶんだけ仕事が増える。
+      if (token.cancelled) return;
+
       // 1 回のアイドルで入れられるだけ入れる。1 チャンクずつだと
       // huge.md で idle コールバックの往復回数が支配的になる。
       do {
@@ -69,8 +120,14 @@ export function paint(container: HTMLElement, chunks: string[], frontMatter: str
         index++;
       } while (index < rest.length && (deadline.timeRemaining() > 4 || deadline.didTimeout));
 
-      if (index < rest.length) requestIdle(step);
-      else resolve(performance.now());
+      if (index < rest.length) {
+        requestIdle(step);
+        return;
+      }
+      // 最後まで入った。**自分が現役のときだけ**現役の座を空ける
+      // （既に次の `paint()` が始まっていたら、そちらを消してはいけない）。
+      if (running === token) running = null;
+      resolve(performance.now());
     };
     requestIdle(step);
   });

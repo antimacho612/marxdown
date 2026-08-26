@@ -66,6 +66,12 @@ pub struct CliArgs {
     /// トレース計測後にプロセスを終了する（`bench-startup.mjs` 用）。
     pub exit_after_trace: bool,
     pub spike: SpikeFlags,
+    /// `--gc-probe`。WebView2 に `--js-flags=--expose-gc` を渡す（OQ-18）。
+    ///
+    /// **計測専用。** 「メモリが戻らない」のが本当に到達可能な参照のせいなのか、
+    /// 単に Blink / V8 がまだ回収していないだけなのかを切り分けるために要る。
+    /// これが無いと、DevTools から `gc()` を呼べず候補 1 を潰せない。
+    pub gc_probe: bool,
     pub show_help: bool,
     pub show_version: bool,
     /// 解析できなかった引数。警告として通知バーに出す。
@@ -89,6 +95,7 @@ OPTIONS:
 
 COMPARISON OPTIONS (計測用。開発ビルドでのみ意味を持つ):
         --spike-parse <worker|main>             Markdown のパース場所 (OQ-15)
+        --gc-probe                              DevTools から gc() を呼べるようにする (OQ-18)
 ";
 
 /// `argv`（実行ファイル名を含まない）と `cwd` から引数を解析する。
@@ -139,6 +146,7 @@ pub fn parse(argv: &[String], cwd: &Path) -> CliArgs {
             "-V" | "--version" => args.show_version = true,
             "-n" | "--new-window" => args.new_window = true,
             "--exit-after-trace" => args.exit_after_trace = true,
+            "--gc-probe" => args.gc_probe = true,
             "-m" | "--mode" => {
                 if let Some(v) = take_value!("--mode") {
                     match v.as_str() {
@@ -213,6 +221,14 @@ mod tests {
     fn args(list: &[&str]) -> CliArgs {
         let v: Vec<String> = list.iter().map(|s| (*s).to_string()).collect();
         parse(&v, &cwd())
+    }
+
+    /// OQ-18 の切り分け用。**既定では渡らない**ことが要件の半分なので、
+    /// 付けたときだけ true になることを固定する。
+    #[test]
+    fn the_gc_probe_is_opt_in() {
+        assert!(!args(&["a.md"]).gc_probe, "既定では expose-gc を渡さない");
+        assert!(args(&["--gc-probe", "a.md"]).gc_probe);
     }
 
     #[test]
