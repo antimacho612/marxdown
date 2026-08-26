@@ -73,20 +73,24 @@ describe('リンククリックの分岐 (02.architecture.md §9.2)', () => {
   it('相対パスの Markdown はアプリ内で開く (F-VIEW-05)', () => {
     click('<a href="./other.md">other</a>');
 
-    expect(openPathSpy).toHaveBeenCalledWith('C:\\work\\docs\\./other.md');
+    expect(openPathSpy).toHaveBeenCalledWith('C:\\work\\docs\\./other.md', {});
     expect(spies.openExternal).not.toHaveBeenCalled();
   });
 
   it('親をたどる相対パスも、畳まずに Rust へ渡す（正規化は Rust の仕事）', () => {
     click('<a href="../README.md">up</a>');
 
-    expect(openPathSpy).toHaveBeenCalledWith('C:\\work\\docs\\../README.md');
+    expect(openPathSpy).toHaveBeenCalledWith('C:\\work\\docs\\../README.md', {});
   });
 
-  it('アンカー付きの Markdown リンクも Markdown として扱う', () => {
+  /**
+   * `#` 以降はパスの一部ではない。付けたまま Rust へ渡すと not-found になる。
+   * **開いた後の着地点**として分けて渡す（F-VIEW-05 / F-VIEW-07）。
+   */
+  it('アンカー付きの Markdown リンクは、パスと着地点に分けて渡す', () => {
     click('<a href="./other.md#section">other</a>');
 
-    expect(openPathSpy).toHaveBeenCalledOnce();
+    expect(openPathSpy).toHaveBeenCalledWith('C:\\work\\docs\\./other.md', { anchor: 'section' });
   });
 
   it('Markdown 以外のローカルファイルは、確認してからでないと開かない (F-VIEW-06)', () => {

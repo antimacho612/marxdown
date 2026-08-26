@@ -19,6 +19,7 @@
  */
 import { openPath, openViaDialog, reloadCurrent } from '@/features/document/open';
 import { documentStore } from '@/features/document/store.svelte';
+import { canGoBack, canGoForward, goBack, goForward } from '@/features/history/navigate';
 import { openJumpLazily } from '@/features/outline/open-jump';
 import { toggleRightPane } from '@/features/panes/panes';
 import { openSearchLazily } from '@/features/preview/open-search';
@@ -97,6 +98,17 @@ export function buildMenu(): MenuGroup[] {
       }),
     },
   ];
+
+  // 戻る / 進む（F-NAV-07）。**辿れるときにしか出さない。**
+  // 押しても何も起きない項目を並べないのは、再読み込みや倍率と同じ判断。
+  // ここに置くのは、`Alt+←` というキーの存在を知る場所が他に無いため
+  // （コマンドパレットは M3 / 06.roadmap.md §5.5）。
+  const history: MenuAction[] = [];
+  if (canGoBack()) history.push({ id: 'back', label: ja.history.back, shortcut: 'Alt+←', run: () => void goBack() });
+  if (canGoForward()) {
+    history.push({ id: 'forward', label: ja.history.forward, shortcut: 'Alt+→', run: () => void goForward() });
+  }
+  if (history.length > 0) groups.push({ id: 'history', items: history });
 
   if (hasDocument) {
     groups.push(

@@ -35,6 +35,7 @@ import {
 } from '@/features/document/open';
 import { documentStore } from '@/features/document/store.svelte';
 import { installFileWatch } from '@/features/document/watch';
+import { goBack, goForward } from '@/features/history/navigate';
 import { openJumpLazily } from '@/features/outline/open-jump';
 import { showOutline } from '@/features/outline/show';
 import { initPanes, toggleRightPane } from '@/features/panes/panes';
@@ -294,6 +295,11 @@ function installShortcuts(): void {
     // 見出しへジャンプ（§5.3「移動」）。中身は遅延チャンク。
     // **コマンドパレット（`Ctrl+Shift+P` / M3）ではない。** 見出し専用。
     { key: 'Ctrl+Shift+O', run: () => void openJumpLazily() },
+
+    // 戻る / 進む（F-NAV-07）。相対リンクで辿った先から帰ってくるための経路で、
+    // **スクロール位置も一緒に戻る**（`features/history/navigate.ts`）。
+    { key: 'Alt+ArrowLeft', run: () => void goBack() },
+    { key: 'Alt+ArrowRight', run: () => void goForward() },
 
     { key: 'Ctrl+=', run: () => void zoomIn() },
     { key: 'Ctrl+-', run: () => void zoomOut() },

@@ -23,6 +23,8 @@
  * ストアへ渡すのはメタ情報・アウトライン・計測値といった派生値だけ。
  */
 import { mark } from '@/app/trace';
+import { pushHistory } from '@/features/history/history';
+import { scrollToAnchor } from '@/features/preview/anchor';
 import { enhance } from '@/features/preview/enhance';
 import { paint } from '@/features/preview/paint';
 import { forgetRecent, rememberRecent } from '@/features/workspace/recent.svelte';
@@ -67,6 +69,20 @@ export interface OpenOptions {
   restoreScroll?: number;
   /** 最近開いたファイルに積むか。既定 true。 */
   remember?: boolean;
+  /**
+   * 描画後に飛ぶページ内アンカー（`./other.md#section` の `#` 以降）。
+   *
+   * `restoreScroll` と同時に指定しない。位置を「復元する」のと
+   * 「指定の見出しへ飛ぶ」のは、どちらか一方しか意味を持たない。
+   */
+  anchor?: string;
+  /**
+   * 戻る / 進むの履歴に積むか。既定 true（F-NAV-07）。
+   *
+   * false にするのは、**同じ場所に居続ける操作**だけ。再読み込み（`F5` /
+   * 外部変更）と、履歴そのものを辿る移動（`Alt+←` / `Alt+→`）がそれにあたる。
+   */
+  history?: boolean;
   /** 起動計測の T6 / T7 / T8 を打つか。コールド起動だけが true。 */
   trace?: boolean;
   /**
@@ -109,6 +125,11 @@ export async function openDocument(payload: DocumentPayload, options: OpenOption
   // パースを先に投げる。待つのは後。
   traceMark(options, 'T6', `${payload.content.length} chars`);
   const parsing = config.parser.parse(payload.content);
+
+  // 履歴（F-NAV-07）。**本文を差し替える前**に、いま読んでいた位置を控える。
+  // ここを過ぎると `documentStore.meta` は新しいファイルのものになり、
+  // 「どのファイルのどこを読んでいたか」が失われる。
+  if (options.history !== false) pushHistory(payload.path, previewScrollTop());
 
   documentStore.meta = payload;
   options.betweenParseAndPaint?.();
@@ -165,12 +186,21 @@ export async function openDocument(payload: DocumentPayload, options: OpenOption
     // 検索が開いていれば、新しい本文で引き直す（閉じない理由は `search.ts`）。
     searchRefresher?.();
 
+    // `./other.md#section` で開かれた場合の着地点（F-VIEW-05 / F-VIEW-07）。
+    // 段階的描画では、飛び先がまだ DOM に入っていないことがある。
+    // **見つからなかったときだけ**、全部入り終わってからもう一度試す
+    // （見つかっているのに繰り返すと、その後のスクロールを奪い返してしまう）。
+    let anchorPending = options.anchor !== undefined && !scrollToAnchor(container, options.anchor);
+
     // 残りのチャンクは idle で入る。ここでは待たない。
     void result.done.then((at) => {
       enhance(container, enhanceOptions);
       // 後から入ったチャンクの見出しを、アウトラインの追従に拾わせる
       // （`IntersectionObserver` の観測対象を足す / `features/outline/follow.ts`）。
       outlineRefresher?.();
+      if (anchorPending && options.anchor !== undefined) {
+        anchorPending = !scrollToAnchor(container, options.anchor);
+      }
       // 段階的描画では、まだ入っていないチャンクのぶん scrollHeight が足りず、
       // 復元位置が頭打ちになる。全部入ったところでもう一度当てる。
       if (options.restoreScroll !== undefined && container.scrollTop < options.restoreScroll) {
@@ -278,6 +308,9 @@ export async function reloadCurrent(options: ReloadOptions = {}): Promise<OpenOu
     restoreScroll: container?.scrollTop ?? 0,
     // 既に一覧の先頭にあるファイルを開き直すだけ。順序は変わらないので IPC を省く。
     remember: false,
+    // **同じ場所に居続ける操作**なので履歴に積まない（F-NAV-07）。
+    // 積むと、外部変更が来るたびに `Alt+←` が 1 段ずつ効かなくなる。
+    history: false,
   });
 
   // 内容が変わっていないと画面は 1 ピクセルも動かない。押した操作が
@@ -321,6 +354,11 @@ let outlineRefresher: (() => void) | null = null;
 
 export function registerOutlineRefresher(refresh: (() => void) | null): void {
   outlineRefresher = refresh;
+}
+
+/** いま本文がどこまでスクロールされているか。履歴（F-NAV-07）が控える値。 */
+export function previewScrollTop(): number {
+  return document.querySelector<HTMLElement>(PREVIEW_SELECTOR)?.scrollTop ?? 0;
 }
 
 function traceMark(options: OpenOptions, id: string, note?: string): void {

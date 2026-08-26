@@ -27,6 +27,8 @@ import { ja } from '@/i18n/ja';
 import { dirOf, isMarkdownPath, joinPath } from '@/lib/path';
 import { getPlatform } from '@/platform';
 
+import { safeDecode, scrollToAnchor } from './anchor';
+
 /** 既定ブラウザ / メールクライアントに渡してよいスキーム。 */
 const EXTERNAL = /^(?:https?|mailto):/i;
 
@@ -85,8 +87,12 @@ function handle(href: string, container: HTMLElement): void {
   const resolved = joinPath(baseDir, localPath);
 
   if (isMarkdownPath(resolved)) {
+    // `./other.md#section` の `#` 以降はパスの一部ではない。付けたまま渡すと
+    // Rust 側で「そんなファイルは無い」になる。**開いた後の着地点**として渡す
+    // （相互リンクされた文書群では、節を名指しするリンクが普通に出てくる）。
+    const [path, anchor] = splitFragment(resolved);
     // 相対パスの正規化は Rust 側（`read_document` の canonicalize）に任せる。
-    void openPath(resolved);
+    void openPath(path, anchor === undefined ? {} : { anchor });
     return;
   }
 
@@ -126,20 +132,11 @@ function confirmOpenExternally(path: string): void {
   };
 }
 
-/**
- * 見出しへスクロールする（F-VIEW-07）。
- *
- * `getElementById` ではなく container 内を探すのは、シェル側の要素に
- * 同じ id があった場合に本文の外へ飛ばないようにするため。
- */
-function scrollToAnchor(container: HTMLElement, rawId: string): void {
-  const id = safeDecode(rawId);
-  if (id === '') return;
-
-  const target =
-    container.querySelector(`[id="${cssEscape(id)}"]`) ?? container.querySelector(`[name="${cssEscape(id)}"]`);
-
-  target?.scrollIntoView({ block: 'start', behavior: 'auto' });
+/** `path#fragment` を割る。フラグメントが無ければ `undefined`。 */
+function splitFragment(path: string): [string, string | undefined] {
+  const index = path.indexOf('#');
+  if (index < 0) return [path, undefined];
+  return [path.slice(0, index), path.slice(index + 1)];
 }
 
 /**
@@ -161,19 +158,4 @@ function toLocalPath(href: string, scheme: string | undefined): string | null {
   }
 
   return null;
-}
-
-function safeDecode(value: string): string {
-  try {
-    return decodeURIComponent(value);
-  } catch {
-    return value;
-  }
-}
-
-/** `CSS.escape` は WebView2 にあるが、テスト環境（jsdom）に無い場合がある。 */
-function cssEscape(value: string): string {
-  return typeof CSS !== 'undefined' && typeof CSS.escape === 'function'
-    ? CSS.escape(value)
-    : value.replace(/["\\]/g, '\\$&');
 }
