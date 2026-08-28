@@ -1,5 +1,5 @@
 /**
- * 起動シーケンス（02.architecture.md §5.1）。
+ * 起動シーケンス（02.architecture/05-startup-sequence.md §1）。
  *
  * Marxdown で最も重要な経路。ここを 1 本の細い線に保つことが
  * Principle 1「Open Fast」の実装そのもの。
@@ -84,9 +84,9 @@ export async function startup(renderShell: () => void): Promise<void> {
   applyZoom(bootstrap?.zoom ?? 1, false);
   recentStore.entries = bootstrap?.recent ?? [];
 
-  // ペインの開閉と幅も**本文を描くより前**（F-NAV-04 / 03.ux-spec.md §7.3）。
+  // ペインの開閉と幅も**本文を描くより前**（F-NAV-04 / 03.ux-spec/06-panes.md §3）。
   // 後から当てると、本文が一度全幅で描かれてから横に詰まる。倍率と同じ理由で
-  // bootstrap に載せてある（02.architecture.md §4.5）。
+  // bootstrap に載せてある（02.architecture/04-rust-responsibilities.md §5）。
   //
   // ここで入れた値は、この下の `renderShell()` が描く最初のシェルに既に効いている。
   // シェルの描画は本文の paint より前（`betweenParseAndPaint`）なので、
@@ -94,7 +94,7 @@ export async function startup(renderShell: () => void): Promise<void> {
   initPanes(bootstrap);
 
   // 設定も同じ理由でここ。bootstrap に丸ごと載っているので IPC 往復は無い
-  // （02.architecture.md §4.5 / §5.1）。テーマ・フォント・本文幅は
+  // （02.architecture/04-rust-responsibilities.md §5 / §5.1）。テーマ・フォント・本文幅は
   // `initSettings` の中で**同期的に** CSS 変数へ当たる。後から当てると、
   // 一度出た絵が描き変わる（§5.1 の「後回しにしてよいもの」の表）。
   initSettings(bootstrap);
@@ -150,7 +150,7 @@ export async function startup(renderShell: () => void): Promise<void> {
   reportStartupProblems(bootstrap);
 
   // --- ウィンドウを見せる -------------------------------------------------
-  // 04.tech-stack.md §9.1: 最初に見えるフレームが既に本文である状態を作る。
+  // 04.tech-stack/09-tauri-config.md §1: 最初に見えるフレームが既に本文である状態を作る。
   if (isTracing()) await platform.reportTrace(drain());
   await platform.ready();
 
@@ -159,7 +159,7 @@ export async function startup(renderShell: () => void): Promise<void> {
   // 「本文が読める」瞬間に間に合っている必要がない。
   //
   // ファイル監視の購読が遅れたときの最悪は「起動直後の数十 ms に起きた外部変更を
-  // 取りこぼす」ことで、`F5` で回復できる（02.architecture.md §5.1 の判断基準）。
+  // 取りこぼす」ことで、`F5` で回復できる（02.architecture/05-startup-sequence.md §1 の判断基準）。
   //
   // 最大化状態の追従も同じ扱い。遅れたときの最悪は「最大化して起動した直後の
   // 数十 ms だけ、ボタンの絵柄が `□` のまま」で、次に状態が変われば必ず直る。
@@ -172,7 +172,7 @@ export async function startup(renderShell: () => void): Promise<void> {
   installWindowState();
 
   // カスタム CSS の残り（遅延取得・監視・通知）は**遅延チャンク**に置いてある
-  // （06.roadmap.md §5.3）。`main` に残っているのは適用そのものだけ。
+  // （06.roadmap/m1.5-shell-and-settings.md §3）。`main` に残っているのは適用そのものだけ。
   // ここで待たないのは、いずれも本文の表示に関与しないため。
   void import('@/features/settings/custom-css-late').then(({ installCustomCss }) => {
     installCustomCss(customCss, customCssResult);
@@ -242,7 +242,7 @@ function reportStartupProblems(bootstrap: Bootstrap | null): void {
 }
 
 /**
- * アプリの再読み込みに置き換えるキー（03.ux-spec.md §5.3 / OQ-19）。
+ * アプリの再読み込みに置き換えるキー（03.ux-spec/04-keybindings.md §3 / OQ-19）。
  *
  * **WebView の再読み込みは 1 つのキーに割り当たっているのではない。**
  * `F5` / `Ctrl+R` が通常の再読み込み、`Ctrl+Shift+R` / `Ctrl+F5` / `Shift+F5` が
@@ -256,7 +256,7 @@ function reportStartupProblems(bootstrap: Bootstrap | null): void {
 const RELOAD_KEYS = ['F5', 'Ctrl+R', 'Ctrl+Shift+R', 'Ctrl+F5', 'Shift+F5'];
 
 /**
- * グローバルキーバインド（03.ux-spec.md §5.3）。
+ * グローバルキーバインド（03.ux-spec/04-keybindings.md §3）。
  *
  * ここに並ぶのは**アプリ全体で効くもの**だけ。プレビュー内検索のように
  * 遅延ロードされる機能は、自分のモジュールの中で `bindKeys` する。
@@ -276,14 +276,14 @@ function installShortcuts(): void {
     // 起きるため。「このキーは WebView に渡さない」が要件そのものになっている。
     ...RELOAD_KEYS.map((key) => ({ key, run: () => void reloadCurrent(), whenEditing: true })),
 
-    // VS Code と同じ `Ctrl+,`（Familiar）。03.ux-spec.md §5.3 の一覧に
+    // VS Code と同じ `Ctrl+,`（Familiar）。03.ux-spec/04-keybindings.md §3 の一覧に
     // このキーは無く、**Phase 4 での仕様追加**にあたる。
     // `whenEditing: true` なのは、設定パネルの入力欄にフォーカスがあるまま
     // もう一度押したときも「設定を開く」であってほしいため（開いていれば
     // フォーカスが戻るだけで、2 枚目は出ない）。
     { key: 'Ctrl+,', run: () => void openSettingsLazily(), whenEditing: true },
 
-    // --- ペインとビュー（03.ux-spec.md §7.4） ---------------------------
+    // --- ペインとビュー（03.ux-spec/06-panes.md §4） ---------------------------
     //
     // **キーの意味を 2 系統に分けてある。**
     //   ペイン: `Ctrl+Alt+B` は「ライトペインを開閉する」。中身が何であれ。
@@ -312,7 +312,7 @@ function installShortcuts(): void {
     // グローバルに居座らないようにするため。
     { key: 'Ctrl+F', run: () => void openSearchLazily(), whenEditing: true },
 
-    // Marxdown を終了する（ADR-0007 論点 3 / 03.ux-spec.md §5.3）。
+    // Marxdown を終了する（ADR-0007 論点 3 / 03.ux-spec/04-keybindings.md §3）。
     //
     // **トレイ常駐では `✕` が「格納」の意味になる**ため、「本当に終わらせたい」を
     // 表すキーが別に要る。確実に終了できる導線を 3 つ用意するという決定の 1 つ
@@ -343,7 +343,7 @@ async function openViaDialogSafely(): Promise<void> {
  * 別インスタンスからの起動要求（ウォーム起動）。
  *
  * ここには WebView の初期化も、バンドルの評価も、Svelte のマウントも存在しない。
- * **Worker が既に温まっており、パースだけが仕事になる**（02.architecture.md §5.2）。
+ * **Worker が既に温まっており、パースだけが仕事になる**（02.architecture/05-startup-sequence.md §2）。
  *
  * タブが実装される（M3）までは「タブを増やす」のではなく現在の本文を置き換える。
  */

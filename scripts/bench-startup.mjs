@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * 起動計測ハーネス（05.performance-budget.md §5.2）。
+ * 起動計測ハーネス（05.performance-budget/05-operations.md §2）。
  *
  * `--trace-startup` を付けた実行ファイルを繰り返し起動し、T0〜T9 の中央値を出す。
  * 初回はファイルキャッシュの影響が大きいため、**別枠で記録する**（§2）。
@@ -30,7 +30,7 @@ const EXE_CANDIDATES = [
   join(ROOT, 'src-tauri', 'target', 'debug', 'marxdown'),
 ];
 
-/** T0 起点のマーカーの意味（05.performance-budget.md §5.2）。 */
+/** T0 起点のマーカーの意味（05.performance-budget/05-operations.md §2）。 */
 const MARK_LABELS = {
   T0: 'プロセス起動',
   T1: 'CLI 引数解析完了',
@@ -110,7 +110,7 @@ function findExe() {
     process.exit(1);
   }
   if (exe.includes('debug')) {
-    console.warn('⚠ debug ビルドを計測している。05.performance-budget.md §2 は release を要求する。');
+    console.warn('⚠ debug ビルドを計測している。05.performance-budget/02-environment.md は release を要求する。');
   }
   return exe;
 }
@@ -219,7 +219,7 @@ function printSummary(title, summary, firstRun) {
   if (firstRun !== undefined) {
     console.log(`  初回（キャッシュ未温）   : ${firstRun.toFixed(1)}ms  ※ §2 により別枠`);
   }
-  // 05.performance-budget.md §4.1
+  // 05.performance-budget/04-targets.md §1
   const verdict =
     summary.readableMs <= 600
       ? '✓ 目標 600ms 以内'

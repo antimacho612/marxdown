@@ -1,7 +1,7 @@
 /**
  * Markdown Worker のプロトコル。
  *
- * 02.architecture.md §6.2 の制約: **受け渡すのは文字列のみ**。
+ * 02.architecture/06-markdown-rendering-pipeline.md §2 の制約: **受け渡すのは文字列のみ**。
  * DOM を触る処理（Mermaid / KaTeX / DOMPurify）はメインスレッド側に残す。
  */
 import type { OutlineItem } from '../plugins/line-map';
@@ -27,7 +27,7 @@ export interface ParseResponse {
   frontMatter: string | null;
   /** Worker 内部のパース所要時間（ms）。起動計測とベンチに使う。 */
   parseMs: number;
-  /** 文字数と読了時間（03.ux-spec.md §8.3）。本文を持っている側で数える。 */
+  /** 文字数と読了時間（03.ux-spec/07-status-and-notifications.md §3）。本文を持っている側で数える。 */
   textStats: TextStats;
 }
 

@@ -2,14 +2,14 @@
 //!
 //! # なぜ `tauri-plugin-window-state` を使わないか
 //!
-//! 04.tech-stack.md §6.5。`tauri-plugin-fs` を自作コマンドに倒したのと同じ構図である。
+//! 04.tech-stack/06-rust.md §5。`tauri-plugin-fs` を自作コマンドに倒したのと同じ構図である。
 //!
 //! 1. **ウィンドウをコードで生成している**（`window.rs`）。位置とサイズを
 //!    `WebviewWindowBuilder` に直接渡せるため、生成後に復元するプラグイン方式と違って
 //!    「既定位置に出てから動く」ちらつきが原理的に起きない。
-//!    `visible: false` から本文ごと見せる設計（04.tech-stack.md §9.1）と噛み合う。
+//!    `visible: false` から本文ごと見せる設計（04.tech-stack/09-tauri-config.md §1）と噛み合う。
 //! 2. **最近開いたファイルと表示倍率で、どのみち JSON ストアが要る。**
-//!    Welcome 画面（F-OPEN-09 / 03.ux-spec.md §9.1）は起動直後に最近使ったファイルを
+//!    Welcome 画面（F-OPEN-09 / 03.ux-spec/08-empty-states.md §1）は起動直後に最近使ったファイルを
 //!    出すため、bootstrap に同梱できないと IPC 往復が 1 回増える。
 //!    同じ用途のストアが 2 つある状態のほうが、依存 1 つより高くつく。
 //!
@@ -28,7 +28,7 @@ use crate::document::atomic;
 /// 版が違うストアは読み捨てて既定値に戻す。
 pub const STORE_VERSION: u32 = 1;
 
-/// 最近開いたファイルの保持数。03.ux-spec.md §9.1 が並べるのは数件だが、
+/// 最近開いたファイルの保持数。03.ux-spec/08-empty-states.md §1 が並べるのは数件だが、
 /// 存在しなくなったファイルを間引いた後でも埋まるように多めに持つ。
 pub const RECENT_LIMIT: usize = 20;
 
@@ -37,7 +37,7 @@ pub const ZOOM_MIN: f64 = 0.5;
 pub const ZOOM_MAX: f64 = 3.0;
 pub const ZOOM_DEFAULT: f64 = 1.0;
 
-/// ペインの幅（03.ux-spec.md §7.3）。既定 240px、最小 180px。
+/// ペインの幅（03.ux-spec/06-panes.md §3）。既定 240px、最小 180px。
 pub const PANE_WIDTH_DEFAULT: f64 = 240.0;
 pub const PANE_WIDTH_MIN: f64 = 180.0;
 /// 上限は §7.3 に無い。**本文が主役である**（Principle 2）ことを守るための歯止めで、
@@ -68,7 +68,7 @@ pub struct WindowState {
     pub maximized: bool,
 }
 
-/// ペイン 1 枚の状態（03.ux-spec.md §7.3 / 02.architecture.md §4.5）。
+/// ペイン 1 枚の状態（03.ux-spec/06-panes.md §3 / 02.architecture/04-rust-responsibilities.md §5）。
 ///
 /// **記録が無いときは閉じている。** F-NAV-04 の「既定は非表示」は初回起動の話であり、
 /// 一度開いた人がそれを維持できることと両立する（§7.3 の引用ブロック）。
@@ -98,7 +98,7 @@ impl PaneState {
     }
 }
 
-/// 左右のペイン（03.ux-spec.md §7.3）。
+/// 左右のペイン（03.ux-spec/06-panes.md §3）。
 ///
 /// **幅は左右で別々に記憶する。** 左（Explorer）は M3 だが、後から足すと
 /// 「どちらの幅か」が曖昧な 1 つの値が先に永続化されてしまうので、器は今作る。
@@ -139,7 +139,7 @@ pub struct StoreData {
     /// トレイ常駐の説明を一度でも出したか（ADR-0007 論点 4）。
     ///
     /// **`✕` の意味が OS の慣習と変わる瞬間**にだけモーダルを出す。
-    /// 03.ux-spec.md §8.2 の「モーダルはデータ消失の可能性がある場面だけ」に対する
+    /// 03.ux-spec/07-status-and-notifications.md §2 の「モーダルはデータ消失の可能性がある場面だけ」に対する
     /// 意図的な例外であり、**生涯 1 回**であることがその許容条件そのものなので、
     /// フラグを永続化する。`state.json` に置くのは、アプリが自動的に書く値だから（§4.5）。
     #[serde(default)]
@@ -219,7 +219,7 @@ pub fn store_path(identifier: &str) -> Option<PathBuf> {
     Some(config_dir(identifier)?.join(FILE_NAME))
 }
 
-/// アプリのデータ置き場。`settings.rs` も同じディレクトリを使う（02.architecture.md §4.5）。
+/// アプリのデータ置き場。`settings.rs` も同じディレクトリを使う（02.architecture/04-rust-responsibilities.md §5）。
 /// 2 か所で辿ると、片方だけ規則が変わったときに設定と状態が別の場所に散る。
 pub fn config_dir(identifier: &str) -> Option<PathBuf> {
     #[cfg(windows)]
@@ -335,7 +335,7 @@ mod tests {
         std::fs::remove_dir_all(&d).ok();
     }
 
-    /// 03.ux-spec.md §7.3 の引用ブロック。
+    /// 03.ux-spec/06-panes.md §3 の引用ブロック。
     /// **記録が無いときは左右とも閉じた状態で出る**（F-NAV-04 は初回起動の話）。
     #[test]
     fn panes_start_closed_when_nothing_was_recorded() {

@@ -24,9 +24,9 @@ beforeEach(() => {
   delete root().dataset['theme'];
 });
 
-describe('設定を見た目に当てる (02.architecture.md §10.1)', () => {
+describe('設定を見た目に当てる (02.architecture/10-theming.md §1)', () => {
   /**
-   * 06.roadmap.md §5.3 の完了条件「設定を一度も開かない状態の見た目が M1 から
+   * 06.roadmap/m1.5-shell-and-settings.md §3 の完了条件「設定を一度も開かない状態の見た目が M1 から
    * 劣化していない」。**既定値を書き込む実装にすると、ここが黙って壊れる。**
    * トークン層（`tokens.css`）と二重管理になり、片方だけ直した瞬間にずれる。
    */
@@ -59,7 +59,7 @@ describe('設定を見た目に当てる (02.architecture.md §10.1)', () => {
     expect(root().dataset['theme']).toBeUndefined();
   });
 
-  it('本文幅の単位は ch（02.architecture.md §10.2）', () => {
+  it('本文幅の単位は ch（02.architecture/10-theming.md §2）', () => {
     applyAppearance(withSettings({ 'preview.maxWidth': 72 }));
 
     expect(root().style.getPropertyValue('--mx-content-width')).toBe('72ch');

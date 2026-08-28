@@ -3,7 +3,7 @@
  *
  * # なぜ自動で読み直すのか
  *
- * 03.ux-spec.md §8.2 は外部変更に 2 つの出方を用意している。
+ * 03.ux-spec/07-status-and-notifications.md §2 は外部変更に 2 つの出方を用意している。
  *
  * ```text
  * 情報: 「外部の変更を読み込みました」                    → 3 秒で自動消滅
@@ -22,7 +22,7 @@
  *
  * デバウンス（300ms）と自己イベントの排除は `src-tauri/src/watch.rs` が済ませてある。
  * ここに届くのは「実体が変わった」ことが確定したイベントだけなので、
- * タイマーもポーリングも要らない（05.performance-budget.md §4.5）。
+ * タイマーもポーリングも要らない（05.performance-budget/04-targets.md §5）。
  */
 import { ja } from '@/i18n/ja';
 import { getPlatform } from '@/platform';
@@ -49,7 +49,7 @@ let missedChange = false;
 /**
  * 外部変更の購読を始める。起動時に 1 回だけ呼ぶ。
  *
- * IPC を伴う購読なので、**`ready()` の後**に呼ぶこと（02.architecture.md §5.1）。
+ * IPC を伴う購読なので、**`ready()` の後**に呼ぶこと（02.architecture/05-startup-sequence.md §1）。
  * 監視の登録そのものは `open.ts` が開くたびに行う。
  */
 export function installFileWatch(): void {

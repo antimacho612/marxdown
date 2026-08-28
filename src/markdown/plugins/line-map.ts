@@ -1,7 +1,7 @@
 /**
  * すべてのブロックレベル要素に `data-line="開始行"` を付ける markdown-it プラグイン。
  *
- * 02.architecture.md §6.3。VS Code の Markdown プレビューと同じ手法で、
+ * 02.architecture/06-markdown-rendering-pipeline.md §3。VS Code の Markdown プレビューと同じ手法で、
  * 以下がすべてこの 1 つの仕組みの上に乗る。
  *
  * - Split モードのスクロール同期（双方向）

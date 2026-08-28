@@ -1,11 +1,11 @@
 /**
- * カスタム CSS の適用（F-CONF-07 / 02.architecture.md §10.3 / ADR-0006）。
+ * カスタム CSS の適用（F-CONF-07 / 02.architecture/10-theming.md §3 / ADR-0006）。
  *
  * # このファイルだけが `main` に載る
  *
  * カスタム CSS の残り（遅延取得・監視・通知）は `custom-css-late.ts` にあり、
  * `ready()` の後に動的 import される遅延チャンクである
- * （06.roadmap.md §5.3「カスタム CSS が遅延チャンクに載っている」）。
+ * （06.roadmap/m1.5-shell-and-settings.md §3「カスタム CSS が遅延チャンクに載っている」）。
  *
  * **ここだけが例外で `main` に残る。** 64KB 以下のカスタム CSS は bootstrap に
  * 同梱されて届き（§10.3）、**本文を描くより前に**当てなければならない。

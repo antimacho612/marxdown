@@ -88,7 +88,7 @@ beforeEach(() => {
   configureOpener({ parser: fakeParser(), site: 'worker' });
 });
 
-/** F-EDIT-16 / 03.ux-spec.md §8.2 の 1 行目。 */
+/** F-EDIT-16 / 03.ux-spec/07-status-and-notifications.md §2 の 1 行目。 */
 describe('外部変更の自動反映', () => {
   it('開いているファイルを読み直し、情報通知で伝える', async () => {
     const h = install();

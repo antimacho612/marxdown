@@ -39,7 +39,7 @@ describe('リンク遷移の履歴 (F-NAV-07)', () => {
     expect(stepHistory(1, 0)?.path).toBe('b.md');
   });
 
-  /** 06.roadmap.md §5.2「スクロール位置も一緒に戻す」。 */
+  /** 06.roadmap/m1.5-shell-and-settings.md §2「スクロール位置も一緒に戻す」。 */
   it('離れる直前のスクロール位置を憶えていて、戻ると返す', () => {
     pushHistory('a.md', 0);
     // a.md を 1200px スクロールしたところで b.md へ飛んだ

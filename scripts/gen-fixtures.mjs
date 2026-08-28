@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * 05.performance-budget.md §3 の基準ファイルセットを生成する。
+ * 05.performance-budget/03-fixtures.md の基準ファイルセットを生成する。
  *
  * 生成物は Git に入れない（huge.md 2MB / extreme.md 10MB のため）。
  * 代わりに本スクリプトを唯一の真実とし、シードを固定して再現性を担保する。

@@ -1,5 +1,5 @@
 /**
- * ユーザー設定（F-CONF-03 / 02.architecture.md §4.5 / §8.1）。
+ * ユーザー設定（F-CONF-03 / 02.architecture/04-rust-responsibilities.md §5 / §8.1）。
  *
  * # 真実はファイルの側にある
  *
@@ -45,7 +45,7 @@ export function initSettings(bootstrap: Bootstrap | null): void {
 }
 
 /**
- * 外部エディタでの編集を即反映する（02.architecture.md §4.5）。起動時に 1 回だけ呼ぶ。
+ * 外部エディタでの編集を即反映する（02.architecture/04-rust-responsibilities.md §5）。起動時に 1 回だけ呼ぶ。
  *
  * IPC を伴う購読なので **`ready()` の後**に呼ぶこと（§5.1）。
  * 監視の登録は Rust 側が起動時に済ませている（パスを知っているのはあちらだけ）。
@@ -75,7 +75,7 @@ export async function refreshSettings(): Promise<void> {
   }
 
   // 外部エディタでの編集も、設定 UI からの変更と同じ 1 本を通って見た目に届く。
-  // **ここが「設定を試行錯誤しながら使える」の実体**（02.architecture.md §4.5）。
+  // **ここが「設定を試行錯誤しながら使える」の実体**（02.architecture/04-rust-responsibilities.md §5）。
   settingsStore.values = loaded.values;
   applyAppearance(loaded.values);
 
@@ -89,7 +89,7 @@ export async function refreshSettings(): Promise<void> {
 }
 
 /**
- * 壊れた `settings.json` を知らせる（03.ux-spec.md §8.2）。
+ * 壊れた `settings.json` を知らせる（03.ux-spec/07-status-and-notifications.md §2）。
  *
  * **消えない**エラー通知にする。既定値で動いてしまう以上、
  * 黙っていると「設定が効かない」としか見えない。

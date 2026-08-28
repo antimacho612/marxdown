@@ -85,7 +85,7 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-describe('アウトラインのスクロール追従 (03.ux-spec.md §7.2 / N-PERF-05)', () => {
+describe('アウトラインのスクロール追従 (03.ux-spec/06-panes.md §2 / N-PERF-05)', () => {
   it('ポーリングではなく IntersectionObserver で見る', () => {
     seed(3);
     vi.useFakeTimers();
@@ -153,7 +153,7 @@ describe('アウトラインのスクロール追従 (03.ux-spec.md §7.2 / N-PE
   });
 
   /**
-   * 段階的描画（02.architecture.md §6.4）。
+   * 段階的描画（02.architecture/06-markdown-rendering-pipeline.md §4）。
    * 後から入ったチャンクの見出しを観測しないと、後半で追従が止まる。
    */
   it('後から増えた見出しを refresh で拾い、現在位置を先頭へ跳ね返さない', () => {

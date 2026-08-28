@@ -6,7 +6,7 @@ import { applyCustomCss } from './custom-css';
 
 /**
  * クロームとして見張る要素。実物と同じクラス名にしてあるのは、
- * **カスタム CSS がこれを消せないこと**が 06.roadmap.md §5.3 の完了条件だから。
+ * **カスタム CSS がこれを消せないこと**が 06.roadmap/m1.5-shell-and-settings.md §3 の完了条件だから。
  */
 const CHROME = 'mx-titlebar';
 
@@ -35,7 +35,7 @@ beforeEach(() => {
   document.body.append(titlebar, preview);
 });
 
-describe('カスタム CSS の適用 (02.architecture.md §10.3)', () => {
+describe('カスタム CSS の適用 (02.architecture/10-theming.md §3)', () => {
   it('ファイルが無いのは正常。何も注入しない', () => {
     expect(applyCustomCss(null)).toBe('empty');
     expect(rulesOf(injected())).toHaveLength(0);
@@ -81,13 +81,13 @@ describe('カスタム CSS の適用 (02.architecture.md §10.3)', () => {
 });
 
 /**
- * **Phase 5 の要。06.roadmap.md §5.3「カスタム CSS でクロームの要素を消せないこと」。**
+ * **Phase 5 の要。06.roadmap/m1.5-shell-and-settings.md §3「カスタム CSS でクロームの要素を消せないこと」。**
  *
  * 素朴に `@scope (…) { ユーザーの CSS }` と連結すると、ユーザーが `}` で
  * ブロックを閉じた時点で以降がスコープの外に出る。ここではその CSS を実際に食わせ、
  * **クロームが消えないこと**を計算済みスタイルで確かめる。
  */
-describe('クロームの隠蔽を防ぐ (06.roadmap.md §5.3)', () => {
+describe('クロームの隠蔽を防ぐ (06.roadmap/m1.5-shell-and-settings.md §3)', () => {
   /** ブロックを閉じて外へ出ようとする CSS。`custom.css` にこれを書ける。 */
   const ESCAPING = `h1 { color: red }
 }

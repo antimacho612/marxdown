@@ -1,5 +1,5 @@
 <!--
-  ステータスバー（03.ux-spec.md §8.3）。
+  ステータスバー（03.ux-spec/07-status-and-notifications.md §3）。
 
   ```text
   Preview   UTF-8  LF   12,345 文字   約 4 分            100%
@@ -78,7 +78,7 @@
   }
 
   /*
-   * 押せる項目（03.ux-spec.md §8.3）。
+   * 押せる項目（03.ux-spec/07-status-and-notifications.md §3）。
    *
    * 押せるものだけがこの見た目になる。いま押せるのは倍率だけ。
    * 押しても何も起きない項目をボタンに見せない。

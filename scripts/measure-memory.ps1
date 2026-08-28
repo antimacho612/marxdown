@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-  Marxdown のメモリ使用量を測る（05.performance-budget.md §5.3）。
+  Marxdown のメモリ使用量を測る（05.performance-budget/05-operations.md §3）。
 
 .DESCRIPTION
   Tauri アプリは複数プロセス（メイン + WebView2 のブローカ/レンダラ）に分かれるため、
@@ -84,7 +84,7 @@ if (-not $measurement) {
 
 $measurement | Format-List
 
-# 05.performance-budget.md §4.4 の目標値
+# 05.performance-budget/04-targets.md §4 の目標値
 Write-Host ''
 Write-Host '目標（§4.4）:'
 Write-Host '  起動直後 / readme.md 1 タブ            <= 120MB（許容上限 180MB）'

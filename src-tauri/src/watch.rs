@@ -1,4 +1,4 @@
-//! ファイル監視（02.architecture.md §4.4 / §4.5 / F-EDIT-16）。
+//! ファイル監視（02.architecture/04-rust-responsibilities.md §4 / §4.5 / F-EDIT-16）。
 //!
 //! # 何を見るか
 //!
@@ -22,7 +22,7 @@
 //!
 //! # アイドル時のコスト
 //!
-//! ここに**タイマーもポーリングも置かない**（05.performance-budget.md §4.5）。
+//! ここに**タイマーもポーリングも置かない**（05.performance-budget/04-targets.md §5）。
 //! OS の変更通知で起きるスレッドが 1 本あるだけで、待っている間の CPU は 0 になる。
 //! ただしデバウンス自体は `notify-debouncer-full` の内部スレッドが
 //! `TICK` ごとに溜まったイベントを掃き出す作りになっている。**この起床は
@@ -40,7 +40,7 @@ use tauri::{AppHandle, Emitter};
 
 use crate::document;
 
-/// 外部変更の通知（02.architecture.md §4.1）。
+/// 外部変更の通知（02.architecture/04-rust-responsibilities.md §1）。
 pub const EVENT_FILE_CHANGED: &str = "marxdown://file-changed";
 /// `settings.json` の外部変更（§4.5）。フロントは受け取ったら `read_settings` で読み直す。
 pub const EVENT_SETTINGS_CHANGED: &str = "marxdown://settings-changed";

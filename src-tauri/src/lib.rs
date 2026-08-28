@@ -1,6 +1,6 @@
 //! Marxdown Core (Rust)
 //!
-//! 責務は 02.architecture.md 原則 C の 3 つに限定する。
+//! 責務は 02.architecture/README.md 原則 C の 3 つに限定する。
 //!
 //! - ファイル I/O（速く、安全に、原子的に）
 //! - OS 統合（CLI 引数、関連付け、単一インスタンス、ウィンドウ）
@@ -33,7 +33,7 @@ use tauri::{Emitter, Manager};
 
 /// 別インスタンスから転送された起動要求（ADR-0004）。
 ///
-/// 02.architecture.md §5.2 のウォーム起動。ここには WebView の初期化も、
+/// 02.architecture/05-startup-sequence.md §2 のウォーム起動。ここには WebView の初期化も、
 /// バンドルの評価も、Svelte のマウントも存在しない。
 #[derive(Debug, Clone, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -138,11 +138,11 @@ pub fn run() {
 
     // 設定も同じ理由でここで読む。見た目に効く値（テーマ / 本文幅 / フォント）は
     // **本文を描くより前**に当たっている必要があり、後から当てると FOUC になる
-    // （02.architecture.md §5.1 の判断基準）。1KB 未満のファイル 1 枚。
+    // （02.architecture/05-startup-sequence.md §1 の判断基準）。1KB 未満のファイル 1 枚。
     let settings_path = settings::settings_path(&context.config().identifier);
     let settings_data = settings::load(settings_path.as_deref());
 
-    // カスタム CSS も同じ理由でここ（02.architecture.md §10.3）。
+    // カスタム CSS も同じ理由でここ（02.architecture/10-theming.md §3）。
     // **64KB 以下なら bootstrap に同梱する。** 後から当てると、ダークな背景を
     // 当てているときに白い初期画面が一瞬見える。読み取りは WebView 初期化と
     // 並行するので、クリティカルパスの時間は実質増えない（§5.1）。
@@ -245,7 +245,7 @@ pub fn run() {
         .setup(move |app| {
             // T2b: Tauri のブートとプラグイン初期化が終わった時点。
             // T2→T3 が伸びたときに「WebView2 が重いのか、自分たちが足したものが重いのか」を
-            // 切り分けられるようにする（05.performance-budget.md §5.2）。
+            // 切り分けられるようにする（05.performance-budget/05-operations.md §2）。
             let state = app.state::<state::AppState>();
             state.trace.mark("T2b", None);
 

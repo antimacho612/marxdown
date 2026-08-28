@@ -1,5 +1,5 @@
 <!--
-  引数なしで起動したときの画面（F-OPEN-03 / F-OPEN-09 / 03.ux-spec.md §9.1）。
+  引数なしで起動したときの画面（F-OPEN-03 / F-OPEN-09 / 03.ux-spec/08-empty-states.md §1）。
 
   ```text
   Marxdown

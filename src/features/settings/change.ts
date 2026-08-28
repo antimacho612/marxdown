@@ -1,9 +1,9 @@
 /**
- * 設定 UI からの変更（F-CONF-05 / 02.architecture.md §4.5）。
+ * 設定 UI からの変更（F-CONF-05 / 02.architecture/04-rust-responsibilities.md §5）。
  *
  * **このモジュールは遅延チャンク側にある。** 設定を開くまでロードされない。
  * `main` に残るのは「値を見た目に当てる」`appearance.ts` とストアだけで、
- * 書き戻しの経路はここに寄せてある（06.roadmap.md §5.3 の完了条件）。
+ * 書き戻しの経路はここに寄せてある（06.roadmap/m1.5-shell-and-settings.md §3 の完了条件）。
  *
  * # 見た目は即座に、ファイルは遅れて
  *
@@ -77,7 +77,7 @@ function resolve<K extends keyof Settings>(key: K, value: Settings[K] | null): S
 function schedulePersist(): void {
   if (timer !== null) clearTimeout(timer);
   // **1 回きりの `setTimeout` であって、ポーリングではない**
-  // （05.performance-budget.md §4.5）。
+  // （05.performance-budget/04-targets.md §5）。
   timer = setTimeout(() => {
     timer = null;
     void persist();

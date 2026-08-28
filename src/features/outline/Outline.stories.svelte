@@ -1,5 +1,5 @@
 <!--
-  アウトライン（F-VIEW-02 / 03.ux-spec.md §7.2）。
+  アウトライン（F-VIEW-02 / 03.ux-spec/06-panes.md §2）。
 
   中身の状態は**開いているファイルで決まる**ので、実アプリで並べて見ることができない。
   ここに並べておくと、見出しが無い / 少ない / 深い / 長大の 4 つを 1 画面で比べられる。
@@ -23,7 +23,7 @@
   });
 
   const META: DocumentMeta = {
-    path: 'C:\\Users\\me\\repos\\marxdown\\docs\\02.architecture.md',
+    path: 'C:\\Users\\me\\repos\\marxdown\\docs\\02.architecture/README.md',
     eol: 'lf',
     bom: false,
     encoding: 'utf8',

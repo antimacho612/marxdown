@@ -1,5 +1,5 @@
 /**
- * ウィンドウ操作（03.ux-spec.md §2.1 / OQ-02 = B）。
+ * ウィンドウ操作（03.ux-spec/01-screen-layout.md §1 / OQ-02 = B）。
  *
  * `decorations: false` にしたので、`─ □ ✕` は自分たちの `<button>` である。
  * ここはその押し下げを Platform 層へ渡すだけの薄い層で、
@@ -28,7 +28,7 @@ export function closeWindow(): void {
 }
 
 /**
- * 最大化状態の追従を始める。**`ready()` の後に呼ぶ**（02.architecture.md §5.1）。
+ * 最大化状態の追従を始める。**`ready()` の後に呼ぶ**（02.architecture/05-startup-sequence.md §1）。
  *
  * IPC を伴う購読であり、本文が読める瞬間に間に合っている必要がない。
  * 遅れたときの最悪は「最大化して復元した直後の数十 ms だけ、ボタンの絵柄が
@@ -52,14 +52,14 @@ export function installWindowState(): void {
 }
 
 /* ------------------------------------------------------------------ */
-/* Snap Layouts（Windows / 06.roadmap.md §5.2）                          */
+/* Snap Layouts（Windows / 06.roadmap/m1.5-shell-and-settings.md §2）                          */
 /* ------------------------------------------------------------------ */
 
 /**
  * 測り直しを待つ時間。ウィンドウのリサイズ中に毎フレーム IPC を投げないため。
  *
  * **1 回きりの `setTimeout` であって、ポーリングではない**
- * （05.performance-budget.md §4.5）。ドラッグ中に矩形が古いことは害にならない。
+ * （05.performance-budget/04-targets.md §5）。ドラッグ中に矩形が古いことは害にならない。
  * その間にユーザーが最大化ボタンへホバーすることはできない。
  */
 const SNAP_REPORT_DEBOUNCE_MS = 120;
@@ -71,7 +71,7 @@ const SNAP_REPORT_DEBOUNCE_MS = 120;
  * `ResizeObserver` では位置の変化を拾えないので、`resize` を見る。
  *
  * Windows 以外では Rust 側が受け取って捨てる。分岐をここに持ち込まないのは、
- * Domain 層がプラットフォームを知らない状態を保つため（02.architecture.md §3.1）。
+ * Domain 層がプラットフォームを知らない状態を保つため（02.architecture/03-layers.md §1）。
  */
 export function trackSnapLayoutsTarget(element: HTMLElement): () => void {
   let timer: ReturnType<typeof setTimeout> | null = null;

@@ -54,7 +54,7 @@ beforeEach(() => {
   documentStore.notice = null;
 });
 
-describe('設定ストア (02.architecture.md §4.5)', () => {
+describe('設定ストア (02.architecture/04-rust-responsibilities.md §5)', () => {
   it('設定の値だけを持つ', () => {
     // ここに「壊れているか」や本文が生えたら設計違反。
     // 壊れている事実は通知バーに流して終わりにする（2 か所に持たない）。
@@ -80,7 +80,7 @@ describe('設定ストア (02.architecture.md §4.5)', () => {
   });
 
   /**
-   * 02.architecture.md §5.1「テーマ / 本文幅 / フォントは描画より前」。
+   * 02.architecture/05-startup-sequence.md §1「テーマ / 本文幅 / フォントは描画より前」。
    *
    * `initSettings` は `bootstrap.ts` が本文を描くより前に呼ぶ。**その場で
    * 当たっている**ことをここで見張る。`$effect` で購読する形に変えると
@@ -101,7 +101,7 @@ describe('設定ストア (02.architecture.md §4.5)', () => {
   });
 });
 
-/** 03.ux-spec.md §8.2 の 5 行目。 */
+/** 03.ux-spec/07-status-and-notifications.md §2 の 5 行目。 */
 describe('壊れた settings.json の通知', () => {
   it('消えないエラー通知と「ファイルを開く」を出す', () => {
     reportSettingsProblem({ path: 'C:/conf/settings.json', message: 'expected `,`' });
@@ -130,7 +130,7 @@ describe('壊れた settings.json の通知', () => {
   });
 });
 
-/** 外部エディタでの編集を即反映する（02.architecture.md §4.5）。 */
+/** 外部エディタでの編集を即反映する（02.architecture/04-rust-responsibilities.md §5）。 */
 describe('settings.json の読み直し', () => {
   function withSettings(readSettings: ReturnType<typeof vi.fn>): () => void {
     const platform = getPlatform();

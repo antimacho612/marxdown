@@ -1,5 +1,5 @@
 /**
- * カスタム CSS の、**起動が終わってからやること**（02.architecture.md §10.3 / §5.1）。
+ * カスタム CSS の、**起動が終わってからやること**（02.architecture/10-theming.md §3 / §5.1）。
  *
  * # なぜ分かれているか
  *
@@ -7,7 +7,7 @@
  * 本文より前に当てないと FOUC になるため、そこだけは遅延できない。
  *
  * **残りはすべてここ。** このモジュールは `ready()` の後に動的 import され、
- * `settings` チャンクに入る（06.roadmap.md §5.3 の完了条件）。
+ * `settings` チャンクに入る（06.roadmap/m1.5-shell-and-settings.md §3 の完了条件）。
  * ここでやることは 3 つで、どれも IPC を伴い、数十 ms 遅れても実害がない。
  *
  * 1. 64KB を超えて bootstrap に載らなかった CSS を取りに行く
@@ -85,7 +85,7 @@ function isOwnNotice(message: string | undefined): boolean {
 }
 
 /**
- * 通知バーに出す（03.ux-spec.md §8.2）。
+ * 通知バーに出す（03.ux-spec/07-status-and-notifications.md §2）。
  *
  * **level は warning。** 本文は読めているし、設定も効いている。
  * 失敗したのは「見た目の好み」の適用だけで、`settings.json` が読めない

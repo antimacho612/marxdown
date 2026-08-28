@@ -81,7 +81,7 @@
 />
 
 <!--
-  壊れた `settings.json`（02.architecture.md §4.5）。
+  壊れた `settings.json`（02.architecture/04-rust-responsibilities.md §5）。
   **入力欄がまとめて止まり、「settings.json を開く」だけが押せる。**
   ここで保存できてしまうと、ユーザーが直している最中のファイルを吹き飛ばす。
 -->

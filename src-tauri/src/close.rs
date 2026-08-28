@@ -123,7 +123,7 @@ pub fn on_close_requested<R: Runtime>(app: &AppHandle<R>) -> bool {
 
     // 初回だけ、`✕` の意味が変わることを説明する（論点 4）。
     //
-    // 03.ux-spec.md §8.2 は「モーダルはデータ消失の可能性がある場面だけ」としており、
+    // 03.ux-spec/07-status-and-notifications.md §2 は「モーダルはデータ消失の可能性がある場面だけ」としており、
     // これはその例外。**生涯 1 回であること**が許容の条件そのものなので、
     // フラグは `state.json` に永続化する。
     let first_time = app
@@ -139,7 +139,7 @@ pub fn on_close_requested<R: Runtime>(app: &AppHandle<R>) -> bool {
     true
 }
 
-/// 初回の確認ダイアログ（03.ux-spec.md §8.4 の文面）。
+/// 初回の確認ダイアログ（03.ux-spec/07-status-and-notifications.md §4 の文面）。
 ///
 /// **非同期で出す。** `CloseRequested` のハンドラの中で同期的にダイアログを回すと、
 /// イベントループを塞いだまま入力を待つことになる。

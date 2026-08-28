@@ -5,12 +5,15 @@
 
 速く開く Markdown ビューア / エディタ。
 
-`marxdown README.md` と打ってから本文が読めるまでの時間を、他の何よりも優先して設計している。
+`marxdown README.md` と打ってから本文が読めるまでの時間を、**常に満たす前提条件** として設計している。
 常駐した 2 回目以降は WebView の初期化を払わずに開く。
 
-> **状態: M1（Reader）実装完了**
-> 「読む」体験は揃っている。開く・描く・探す・拡大するまで。
-> 編集・タブ・設定 UI は M2 以降。
+速さは目標ではなく予算である。その内側で、読む・書く体験の質に投資する（[ADR-0008](docs/adr/0008-value-priority.md)）。
+
+> **状態: M1.5（Shell & Settings）実装完了 / 動作検証中**
+> 「読む」体験と、それを調整する手段は揃っている。
+> 開く・描く・探す・拡大する・アウトラインで辿る・テーマとタイポグラフィを変える・トレイに常駐する。
+> 編集・タブ・コマンドパレット・Mermaid は M2 以降。
 
 ## 何を解こうとしているか
 
@@ -21,8 +24,9 @@ VS Code は 2〜4 秒かかる。
 1 ファイルを読むためだけに、ワークスペースと拡張機能が立ち上がる。
 Marxdown はこのループのためだけに作る。
 
-- **速く開く** — Cold Start ≤ 600ms、常駐中の Warm Start ≤ 120ms を目標にする
+- **速く開く** — Cold Start ≤ 600ms、常駐中の Warm Start ≤ 120ms。**目標ではなく予算** として守る
 - **Markdown が主役** — 見た目の既定値に投資する。読めることが機能である
+- **調整できる** — 既定のまま完成しているが、テーマ・フォント・本文幅・カスタム CSS で自分に合わせられる
 - **信頼できない入力を前提にする** — 自分が書いていないファイルを開くのが中心ユースケース
 
 ## 開発
@@ -77,7 +81,7 @@ Rust 側は `src-tauri/` で `cargo fmt` / `cargo clippy --all-targets -- -D war
 
 ### 計測
 
-性能目標は [`docs.local/05.performance-budget.md`](docs.local/05.performance-budget.md) にある（Git 管理外）。
+性能目標は [`docs/05.performance-budget/`](docs/05.performance-budget/README.md) にある。
 
 ```bash
 pnpm fixtures                                  # bench/fixtures/ の基準ファイルを生成
@@ -158,9 +162,7 @@ src-tauri/src/
 3. **ドキュメント本体をリアクティブな状態に置かない。** 本文の DOM はコンポーネントツリーの外にある。
 4. **Rust は速いことだけを担当する。** UI ロジックと Markdown の意味解釈は TypeScript 側。
 
-設計の全体は `docs.local/` にある（`.gitignore` により Git 管理外）。
-
----
+設計の全体は [`docs/`](docs/README.md) にある（Git Submodule）。
 
 ## ライセンス
 

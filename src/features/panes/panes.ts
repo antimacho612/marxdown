@@ -1,5 +1,5 @@
 /**
- * ペインの開閉と幅（03.ux-spec.md §7 / §7.3）。
+ * ペインの開閉と幅（03.ux-spec/06-panes.md / §7.3）。
  *
  * # キーの 2 系統のうち「ペイン」側
  *
@@ -14,7 +14,7 @@
  * # 開閉は bootstrap から同期的に当てる
  *
  * 倍率（`zoom.ts`）と同じ。後から当てると、本文が一度全幅で描かれてから
- * 横に詰まる（02.architecture.md §4.5 / §5.1）。`initPanes` は
+ * 横に詰まる（02.architecture/04-rust-responsibilities.md §5 / §5.1）。`initPanes` は
  * **シェルを描くより前**に呼ぶこと。
  *
  * # Svelte に幅を持たせてよい理由
@@ -26,7 +26,7 @@
 import { viewStore } from '@/features/view/store.svelte';
 import { getPlatform, type Bootstrap, type Panes } from '@/platform';
 
-/** `src-tauri/src/store.rs` の `PANE_WIDTH_*` と揃える（03.ux-spec.md §7.3）。 */
+/** `src-tauri/src/store.rs` の `PANE_WIDTH_*` と揃える（03.ux-spec/06-panes.md §3）。 */
 export const PANE_WIDTH_DEFAULT = 240;
 export const PANE_WIDTH_MIN = 180;
 /**
@@ -92,7 +92,7 @@ export function clampPaneWidth(width: number): number {
 
 /**
  * 保存を遅らせる。**1 回きりの `setTimeout` であって、ポーリングではない**
- * （05.performance-budget.md §4.5）。
+ * （05.performance-budget/04-targets.md §5）。
  *
  * 左右をまとめて送るのは、`state.json` に載る形と単位を合わせるため。
  * 左（M3）の値は誰も書き換えないので、送り返しても内容は変わらない。

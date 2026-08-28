@@ -1,5 +1,5 @@
 <!--
-  カスタム CSS（F-CONF-07 / 02.architecture.md §10.3）。
+  カスタム CSS（F-CONF-07 / 02.architecture/10-theming.md §3）。
 
   実アプリでこれを確かめるには `%APPDATA%` に `custom.css` を置いて再起動する必要があり、
   **とくに「効かないこと」の確認**（クロームを消そうとする CSS）が手間になる。
@@ -12,7 +12,7 @@
   - `h1 { … }` のような**素のセレクタ**が、既定の `.mx-preview h1 { … }` に勝つ
     （スコープ近接が詳細度より先に効く / CSS Cascade 6）
   - `}` でブロックを閉じて外へ出ようとする CSS は**丸ごと拒否**され、
-    タイトルバーは消えない（06.roadmap.md §5.3 の完了条件）
+    タイトルバーは消えない（06.roadmap/m1.5-shell-and-settings.md §3 の完了条件）
 -->
 <script module lang="ts">
   import { defineMeta } from '@storybook/addon-svelte-csf';

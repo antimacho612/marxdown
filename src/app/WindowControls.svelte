@@ -1,5 +1,5 @@
 <!--
-  ウィンドウ操作ボタン（03.ux-spec.md §2.1 / OQ-02 = B）。
+  ウィンドウ操作ボタン（03.ux-spec/01-screen-layout.md §1 / OQ-02 = B）。
 
   ```text
                                               ─  □  ✕

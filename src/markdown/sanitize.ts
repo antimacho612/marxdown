@@ -1,11 +1,11 @@
 /**
- * DOMPurify の設定（02.architecture.md §9.1 Layer 3 / ADR-0006）。
+ * DOMPurify の設定（02.architecture/09-security.md §1 Layer 3 / ADR-0006）。
  *
  * 中心ユースケースは「LLM が生成した、自分が書いていないファイルを開く」こと。
  * 開いた瞬間に何かが実行される経路を全部塞ぐ。
  *
  * このモジュールは **DOM を必要とする**ため Worker では動かない。
- * メインスレッド固定（04.tech-stack.md §11 の未決事項はここで一旦こう決める）。
+ * メインスレッド固定（04.tech-stack/README.md §11 の未決事項はここで一旦こう決める）。
  */
 import DOMPurify, { type Config } from 'dompurify';
 

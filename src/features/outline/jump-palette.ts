@@ -3,7 +3,7 @@
  *
  * **このモジュールから先が遅延チャンク**（`assets/outline-*.js`）。
  * 起動時には存在せず、`Ctrl+Shift+O` を押して初めてロードされる
- * （06.roadmap.md §5.3 の完了条件と同じ扱い）。
+ * （06.roadmap/m1.5-shell-and-settings.md §3 の完了条件と同じ扱い）。
  *
  * 形は `features/settings/panel.ts` と同じで、理由も同じ。`App.svelte` に
  * `{#if open}` で埋め込むと、開閉のフラグとロード済みのコンポーネントを

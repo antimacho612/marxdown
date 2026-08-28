@@ -1,5 +1,5 @@
 <!--
-  ハンバーガーメニューの中身（03.ux-spec.md §2.3）。
+  ハンバーガーメニューの中身（03.ux-spec/01-screen-layout.md §3）。
 
   実アプリでは押さないと出てこない（遅延チャンク）ので、状態を並べて見るには
   ここが要る。**ファイルを開いているかどうかで項目の数が変わる**のが要点で、
@@ -38,7 +38,7 @@
   const SAMPLE = [
     'C:\\Users\\me\\repos\\marxdown\\README.md',
     'C:\\Users\\me\\repos\\marxdown\\docs.local\\00.design-brief.md',
-    'C:\\Users\\me\\repos\\marxdown\\docs.local\\02.architecture.md',
+    'C:\\Users\\me\\repos\\marxdown\\docs.local\\02.architecture/README.md',
   ];
 
   function seed(meta: DocumentMeta | null, paths: string[]) {

@@ -1,6 +1,6 @@
 //! 原子的な書き込み（N-REL-01）。
 //!
-//! 02.architecture.md §4.3 の手順をそのまま実装する。
+//! 02.architecture/04-rust-responsibilities.md §3 の手順をそのまま実装する。
 //!
 //! ```text
 //! 1. 同一ディレクトリに一時ファイルを作成して書き込み + fsync

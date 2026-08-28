@@ -1,6 +1,6 @@
 //! コマンド境界のエラー型。
 //!
-//! 02.architecture.md 原則 C に従い、Rust 側は「速いこと」だけを担当する。
+//! 02.architecture/README.md 原則 C に従い、Rust 側は「速いこと」だけを担当する。
 //! したがってエラーもフロントエンドが分岐できる最小限の種別に留め、
 //! ユーザー向けの文言生成は TypeScript 側（`src/i18n/ja.ts`）に置く。
 
@@ -27,7 +27,7 @@ pub enum CoreError {
     #[error("不正な引数: {0}")]
     InvalidArgument(String),
 
-    /// `settings.json` を読めていない状態での書き戻しを拒む（02.architecture.md §4.5）。
+    /// `settings.json` を読めていない状態での書き戻しを拒む（02.architecture/04-rust-responsibilities.md §5）。
     ///
     /// これを「保存できなかった」一般の I/O エラーと混ぜてはいけない。
     /// ユーザーが手で直している最中であり、UI が出すべき文言も対処も違う。

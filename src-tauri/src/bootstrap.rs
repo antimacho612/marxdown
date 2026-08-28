@@ -1,4 +1,4 @@
-//! 起動時の先読みと初期ペイロード生成（02.architecture.md §5.1）。
+//! 起動時の先読みと初期ペイロード生成（02.architecture/05-startup-sequence.md §1）。
 //!
 //! # 設計の要点
 //!
@@ -38,26 +38,26 @@ pub struct Bootstrap {
     pub pending_paths: Vec<String>,
     pub unknown_args: Vec<String>,
     /// 最近開いたファイル（F-OPEN-09）。Welcome 画面が起動直後に描くため、
-    /// IPC 往復ではなくここに載せる（03.ux-spec.md §9.1）。
+    /// IPC 往復ではなくここに載せる（03.ux-spec/08-empty-states.md §1）。
     pub recent: Vec<RecentEntry>,
     /// 表示倍率（F-VIEW-11）。最初のフレームから正しい倍率で描くために必要。
     /// 後から当てると、本文が一度既定倍率で描かれてから跳ねる。
     pub zoom: f64,
-    /// ペインの開閉と幅（F-NAV-04 / 03.ux-spec.md §7.3）。
+    /// ペインの開閉と幅（F-NAV-04 / 03.ux-spec/06-panes.md §3）。
     ///
     /// **倍率と同じ理由でここに載る。** 後から当てると、本文が一度全幅で描かれてから
-    /// 横に詰まる（02.architecture.md §4.5「`panes` と `zoom` は bootstrap に載せる」）。
+    /// 横に詰まる（02.architecture/04-rust-responsibilities.md §5「`panes` と `zoom` は bootstrap に載せる」）。
     pub panes: Panes,
-    /// ユーザー設定の**全体**（F-CONF-03 / 02.architecture.md §4.5）。
+    /// ユーザー設定の**全体**（F-CONF-03 / 02.architecture/04-rust-responsibilities.md §5）。
     ///
     /// 「どの設定が初回フレームに間に合う必要があるか」を毎回考えなくて済むよう、
     /// 選ばずに丸ごと載せる。想定サイズは 1KB 未満で、本文の 256KB 閾値に比べれば
     /// 無視できる。**フロントから取りに行く経路は作らない。**
     pub settings: Settings,
-    /// `settings.json` を読めなかった事実。UI が通知バーに出す（03.ux-spec.md §8.2）。
+    /// `settings.json` を読めなかった事実。UI が通知バーに出す（03.ux-spec/07-status-and-notifications.md §2）。
     /// これが `Some` の間、`write_settings` は書き戻しを拒否する。
     pub settings_error: Option<SettingsProblem>,
-    /// カスタム CSS（F-CONF-07 / 02.architecture.md §10.3）。
+    /// カスタム CSS（F-CONF-07 / 02.architecture/10-theming.md §3）。
     ///
     /// **64KB 以下のときだけ中身が入る。** 小さいうちにここへ載せるのは、
     /// ダークな背景を当てているときに白い初期画面が一瞬見えるのを防ぐため。
@@ -161,7 +161,7 @@ pub fn build(
 /// `initialization_script` は WebView のフックとして注入されるため CSP の対象外。
 ///
 /// 本文をここで注入するのは、IPC 往復（実測 約 17ms）をクリティカルパスから
-/// 外すため（02.architecture.md §5.1）。**フロントから取りに行く経路は無い。**
+/// 外すため（02.architecture/05-startup-sequence.md §1）。**フロントから取りに行く経路は無い。**
 pub fn to_init_script(bootstrap: &Bootstrap) -> String {
     let json = serde_json::to_string(bootstrap).unwrap_or_else(|_| "null".to_string());
 
@@ -365,7 +365,7 @@ mod tests {
         assert!(script.contains("--mx-content-width: 90ch"), "{script}");
     }
 
-    /// 03.ux-spec.md §7.3 /02.architecture.md §4.5「`panes` と `zoom` は bootstrap に載せる」。
+    /// 03.ux-spec/06-panes.md §3 /02.architecture/04-rust-responsibilities.md §5「`panes` と `zoom` は bootstrap に載せる」。
     ///
     /// **ここが空だと本文が一度全幅で描かれてから横に詰まる。**
     /// フロントが `ready()` の後に IPC で聞きに行く経路は作らない。
