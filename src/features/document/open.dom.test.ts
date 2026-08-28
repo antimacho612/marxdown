@@ -157,7 +157,7 @@ describe('開く経路の集約 (F-OPEN-01, 05, 07, 08)', () => {
   });
 });
 
-describe('起動シーケンスとの重ね合わせ (02.architecture.md §5.1)', () => {
+describe('起動シーケンスとの重ね合わせ (02.architecture/05-startup-sequence.md §1)', () => {
   it('シェル描画はパース送信の後、描画結果を待つ前に呼ばれる', async () => {
     install();
     const order: string[] = [];

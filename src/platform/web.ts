@@ -1,7 +1,7 @@
 /**
  * ブラウザ用のモック実装（`pnpm dev:web`）。
  *
- * 04.tech-stack.md §7.1: UI の反復を Tauri のビルドサイクルから切り離す。
+ * 04.tech-stack/07-dev-tools.md §1: UI の反復を Tauri のビルドサイクルから切り離す。
  * Platform 層があることで、UI の 8 割はブラウザだけで開発できる。
  *
  * ファイルは `localStorage` 上の仮想 FS に置く。EOL/BOM/mtime のセマンティクスは
@@ -60,10 +60,10 @@ function saveFs(fs: Record<string, VirtualFile>): void {
 interface WebState {
   recent: RecentEntry[];
   zoom: number;
-  /** ペインの開閉と幅（03.ux-spec.md §7.3）。実装では `state.json` の `panes`。 */
+  /** ペインの開閉と幅（03.ux-spec/06-panes.md §3）。実装では `state.json` の `panes`。 */
   panes: Panes;
   settings: Settings;
-  /** `custom.css` の中身（02.architecture.md §10.3）。空文字は「ファイルが無い」。 */
+  /** `custom.css` の中身（02.architecture/10-theming.md §3）。空文字は「ファイルが無い」。 */
   customCss: string;
 }
 
@@ -143,7 +143,7 @@ function initialBootstrap(): Bootstrap {
   const content = existing?.content ?? SAMPLE;
   const state = loadState();
 
-  // `?welcome` で「引数なし起動」を再現する。Welcome 画面（03.ux-spec.md §9.1）を
+  // `?welcome` で「引数なし起動」を再現する。Welcome 画面（03.ux-spec/08-empty-states.md §1）を
   // ブラウザだけで作り込めるようにするため。
   const empty = params.has('welcome');
 
@@ -175,17 +175,17 @@ function initialBootstrap(): Bootstrap {
     panes: params.has('rightPane') ? { ...state.panes, right: { ...state.panes.right, open: true } } : state.panes,
     settings: state.settings,
     // `?brokenSettings` で「settings.json が壊れている」起動を再現する。
-    // 通知バー（03.ux-spec.md §8.2）と設定 UI の読み取り専用状態を
+    // 通知バー（03.ux-spec/07-status-and-notifications.md §2）と設定 UI の読み取り専用状態を
     // ブラウザだけで確認できるようにするため。
     settingsError: brokenSettings(),
-    // 実装と同じく**同梱して届く**（02.architecture.md §10.3）。
+    // 実装と同じく**同梱して届く**（02.architecture/10-theming.md §3）。
     // 後から当てる形にすると、dev:web でだけ FOUC が見えない。
     customCss: customCssNow(),
   };
 }
 
 /**
- * dev:web のカスタム CSS（02.architecture.md §10.3）。
+ * dev:web のカスタム CSS（02.architecture/10-theming.md §3）。
  *
  * ブラウザに `%APPDATA%` は無いので、中身は `localStorage` に置く。
  * `?customCss` を付けると見本が入り、`@scope` の効き方
@@ -316,7 +316,7 @@ export const webPlatform: Platform = {
   /**
    * `?brokenSettings` の間は「壊れている」と答え続ける。
    *
-   * 実装では**壊れた事実が保存を止める**（02.architecture.md §4.5）。
+   * 実装では**壊れた事実が保存を止める**（02.architecture/04-rust-responsibilities.md §5）。
    * ブラウザには壊しようがないので、設定 UI の読み取り専用状態を
    * dev:web で確認する手段がここしかない。
    */

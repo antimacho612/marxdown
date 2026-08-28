@@ -1,25 +1,25 @@
 /**
- * 設定を見た目に当てる（F-CONF-01 / F-CONF-04 / 02.architecture.md §10.1）。
+ * 設定を見た目に当てる（F-CONF-01 / F-CONF-04 / 02.architecture/10-theming.md §1）。
  *
  * # クリティカルパスに載るのはここだけ
  *
  * 設定 UI（`panel.ts` 以降）は遅延チャンクにあり、押されるまでロードされない。
  * `main` に載るのは**この 1 ファイルと設定ストア**だけで、やることは
  * `:root` のカスタムプロパティを数個書き換えることに尽きる
- * （06.roadmap.md §5.3 の完了条件）。
+ * （06.roadmap/m1.5-shell-and-settings.md §3 の完了条件）。
  *
  * # 描画より前に当てる
  *
  * 呼び出しは `bootstrap.ts` の `initSettings`（`applyZoom` の直後）。
  * 設定は bootstrap に丸ごと載っていて IPC 往復が無いので、ここで同期的に当たる。
- * 後から当てると**一度出た絵が描き変わる**（02.architecture.md §5.1 の判断基準）。
+ * 後から当てると**一度出た絵が描き変わる**（02.architecture/05-startup-sequence.md §1 の判断基準）。
  *
  * # 既定値のときは 1 バイトも書かない
  *
  * 既定値を明示的にカスタムプロパティへ書き込む実装にすると、`tokens.css` の
  * トークンと二重管理になる。**既定値と同じなら `removeProperty` する**ことで、
  * 設定を一度も触っていない状態の見た目は M1 と完全に同一になる
- * （F-CONF-02 / 06.roadmap.md §5.3「設定を一度も開かない状態の見た目が
+ * （F-CONF-02 / 06.roadmap/m1.5-shell-and-settings.md §3「設定を一度も開かない状態の見た目が
  * M1 から劣化していない」）。
  *
  * # JS で個別要素にスタイルを書かない

@@ -88,7 +88,7 @@ export interface OpenOptions {
   /**
    * パースを投げた**直後**、結果を待つ前に呼ばれる。
    *
-   * 起動シーケンス（02.architecture.md §5.1）がシェルを描くための穴。
+   * 起動シーケンス（02.architecture/05-startup-sequence.md §1）がシェルを描くための穴。
    * Worker への postMessage はほぼ即座に返るので、ここでの仕事はまるごと
    * パース時間に重なる。この 1 点のためだけに存在する引数。
    */
@@ -150,7 +150,7 @@ export async function openDocument(payload: DocumentPayload, options: OpenOption
     documentStore.notice = null;
 
     // 「読める」瞬間は DOM 挿入の完了ではなく**次のフレーム**。
-    // DOM に入れただけでは、まだ一度も描かれていない（05.performance-budget.md §5.2）。
+    // DOM に入れただけでは、まだ一度も描かれていない（05.performance-budget/05-operations.md §2）。
     await nextFrame();
     traceMark(options, 'T8');
 
@@ -229,7 +229,7 @@ export async function openDocument(payload: DocumentPayload, options: OpenOption
  * パスから開く。読み込みの失敗もここで面倒を見る。
  *
  * 開けなかったファイルは履歴から外す。消えたファイルを一覧に残し続けると、
- * 次の起動でも同じ失敗を踏むことになる（03.ux-spec.md §9.1 の一覧は道具であって記録ではない）。
+ * 次の起動でも同じ失敗を踏むことになる（03.ux-spec/08-empty-states.md §1 の一覧は道具であって記録ではない）。
  */
 export async function openPath(path: string, options: OpenOptions = {}): Promise<OpenOutcome | null> {
   const startedAt = options.startedAt ?? performance.now();
@@ -314,7 +314,7 @@ export async function reloadCurrent(options: ReloadOptions = {}): Promise<OpenOu
   });
 
   // 内容が変わっていないと画面は 1 ピクセルも動かない。押した操作が
-  // 届いたことは伝える（03.ux-spec.md §8.2 の情報通知。3 秒で消える）。
+  // 届いたことは伝える（03.ux-spec/07-status-and-notifications.md §2 の情報通知。3 秒で消える）。
   if (outcome) notifyInfo(options.notice ?? ja.open.reloaded);
   return outcome;
 }
@@ -342,9 +342,9 @@ export function registerSearchRefresher(refresh: () => void): void {
 }
 
 /**
- * アウトラインが自分を登録する口（F-VIEW-02 / 03.ux-spec.md §7.2）。
+ * アウトラインが自分を登録する口（F-VIEW-02 / 03.ux-spec/06-panes.md §2）。
  *
- * 段階的描画（02.architecture.md §6.4）では、本文は idle 時に後から増える。
+ * 段階的描画（02.architecture/06-markdown-rendering-pipeline.md §4）では、本文は idle 時に後から増える。
  * 増え終わったことを知っているのはここだけなので、**知らせる側**になる。
  *
  * ペインを閉じると `null` が渡り、以降は誰も呼ばれない。

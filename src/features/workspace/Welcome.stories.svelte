@@ -1,5 +1,5 @@
 <!--
-  Welcome 画面（F-OPEN-03 / F-OPEN-09 / 03.ux-spec.md §9.1）。
+  Welcome 画面（F-OPEN-03 / F-OPEN-09 / 03.ux-spec/08-empty-states.md §1）。
 
   履歴は Rust 側の永続化ストアから来るので、実アプリで「空の状態」を見るには
   `store.json` を消すしかない。ここでは `loaders` でストアに直接入れる。
@@ -31,7 +31,7 @@
   const SAMPLE = [
     'C:\\Users\\me\\repos\\marxdown\\README.md',
     'C:\\Users\\me\\repos\\marxdown\\docs.local\\00.design-brief.md',
-    'C:\\Users\\me\\repos\\marxdown\\docs.local\\02.architecture.md',
+    'C:\\Users\\me\\repos\\marxdown\\docs.local\\02.architecture/README.md',
   ];
 </script>
 

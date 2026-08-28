@@ -1,11 +1,11 @@
 /**
  * Markdown Worker 本体。
  *
- * これが `md-worker` チャンクのエントリになる（02.architecture.md §5.3）。
+ * これが `md-worker` チャンクのエントリになる（02.architecture/05-startup-sequence.md §3）。
  * `main` と合わせて 150KB (gzip) の予算に収める対象。
  *
  * このファイルから DOM API を参照してはいけない。参照した瞬間にビルドは通るが
- * 実行時に落ちる。DOMPurify がここに来られないのもこれが理由（04.tech-stack.md §10）。
+ * 実行時に落ちる。DOMPurify がここに来られないのもこれが理由（04.tech-stack/10-dependency-map.md）。
  */
 import { renderChunks } from '../pipeline';
 import { measure } from '../text-stats';

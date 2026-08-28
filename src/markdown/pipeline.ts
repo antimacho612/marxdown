@@ -1,14 +1,14 @@
 /**
- * markdown-it の構築（02.architecture.md §6.1 / ADR-0003）。
+ * markdown-it の構築（02.architecture/06-markdown-rendering-pipeline.md §1 / ADR-0003）。
  *
  * このモジュールは **Worker 側で評価される**ことを前提にしている。
  * DOM に触れてはいけない（DOMPurify はメインスレッド側の担当）。
  *
  * # プラグイン構成の方針
  *
- * 04.tech-stack.md §4.2 が「既定で有効」とするもののうち、
+ * 04.tech-stack/04-markdown.md §2 が「既定で有効」とするもののうち、
  * CommonMark + GFM に必要なものだけを入れている。
- * 脚注 / タスクリスト / GitHub Alerts は M4 の担当（06.roadmap.md §7.1）で、
+ * 脚注 / タスクリスト / GitHub Alerts は M4 の担当（06.roadmap/m3-workspace.md §1）で、
  * 先に入れると、クリティカルパスの予算にどの機能がいくら乗っているかが見えなくなる。
  */
 import MarkdownItCallable, { type MarkdownIt, type Token } from 'markdown-it';
@@ -29,7 +29,7 @@ let cached: MarkdownIt | null = null;
 
 export function createMarkdownIt(): MarkdownIt {
   const md = new MarkdownItCallable({
-    // 02.architecture.md §9.1 Layer 2: html は通すが、出力は必ず Layer 3 (DOMPurify) を通す。
+    // 02.architecture/09-security.md §1 Layer 2: html は通すが、出力は必ず Layer 3 (DOMPurify) を通す。
     // ここで false にすると、生 HTML を書いた正当なドキュメントが壊れる。
     html: true,
     linkify: true, // GFM の自動リンク
@@ -99,7 +99,7 @@ function shiftTokenLines(tokens: Token[], offset: number): void {
 }
 
 /**
- * 段階的描画（N-PERF-04 / 02.architecture.md §6.4）のためにチャンク分割する。
+ * 段階的描画（N-PERF-04 / 02.architecture/06-markdown-rendering-pipeline.md §4）のためにチャンク分割する。
  *
  * トップレベルのブロック境界でのみ切る。要素の途中で切ると HTML が壊れる。
  * 最初のチャンクだけを同期的に DOM へ入れ、残りは `requestIdleCallback` で足す。

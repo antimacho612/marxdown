@@ -1,4 +1,4 @@
-//! IPC コマンド境界（02.architecture.md §4.1）。
+//! IPC コマンド境界（02.architecture/04-rust-responsibilities.md §1）。
 //!
 //! ここに置くのは**薄いアダプタだけ**。実際の処理は `document` / `scope` にある。
 //! フロントからの呼び出しは Platform 層（`src/platform/`）に閉じ込められている。
@@ -40,7 +40,7 @@ pub fn write_document(
     req: WriteRequest,
 ) -> CoreResult<SaveResult> {
     let result = document::write(&req)?;
-    // 保存した直後のイベントは自分のもの（02.architecture.md §4.4）。
+    // 保存した直後のイベントは自分のもの（02.architecture/04-rust-responsibilities.md §4）。
     // **M1.5 にはまだ編集機能が無いのでここは通らない**が、監視を入れた時点で
     // 対にしておかないと、M2 で保存するたびに再読み込みが走る。
     if matches!(result, SaveResult::Saved { .. }) {
@@ -89,7 +89,7 @@ pub fn resolve_asset(
 /// ファイル選択ダイアログを開く（F-OPEN-07）。選ばれなければ `None`。
 ///
 /// `@tauri-apps/plugin-dialog` を入れず Rust 側で包んでいるのは、`open_external` と同じ理由。
-/// フロントの依存が増えず、クリティカルパスの重さにも響かない（04.tech-stack.md §6.1）。
+/// フロントの依存が増えず、クリティカルパスの重さにも響かない（04.tech-stack/06-rust.md §1）。
 ///
 /// 返すのは**正規化済み絶対パス**。ここで揃えておかないと、
 /// 最近開いたファイル（F-OPEN-09）に表記の違う同じファイルが二重に積もる。
@@ -122,14 +122,14 @@ pub async fn pick_file(window: Window) -> CoreResult<Option<String>> {
 }
 
 /* ------------------------------------------------------------------ */
-/* ウィンドウ操作（カスタムタイトルバー / 03.ux-spec.md §2.1）             */
+/* ウィンドウ操作（カスタムタイトルバー / 03.ux-spec/01-screen-layout.md §1）             */
 /* ------------------------------------------------------------------ */
 
 // `decorations(false)` にしたので、`─ □ ✕` はフロントが描いた `<button>` である。
 // 押されたときの実体をここに置く。
 //
 // **JS の `@tauri-apps/api/window` は使わない。** `pick_file` / `open_external` と
-// 同じ判断で（04.tech-stack.md §6.2）、フロントの依存とクリティカルパスの重さを
+// 同じ判断で（04.tech-stack/06-rust.md §2）、フロントの依存とクリティカルパスの重さを
 // 増やさないため。capabilities に window プラグインの権限を足さずに済むのも利点で、
 // 「タイトルバーのために任意のウィンドウ操作を JS へ開放する」ことにならない。
 //
@@ -246,7 +246,7 @@ pub fn store_set_zoom(state: State<'_, AppState>, zoom: f64) {
     state.update_store(|s| s.zoom = clamped);
 }
 
-/// ペインの開閉と幅を保存する（03.ux-spec.md §7.3 / 02.architecture.md §4.5）。
+/// ペインの開閉と幅を保存する（03.ux-spec/06-panes.md §3 / 02.architecture/04-rust-responsibilities.md §5）。
 ///
 /// **倍率と同じ扱い。** 反映はフロントが即座に行い、ここは永続化だけを担当する。
 /// ドラッグ中に毎フレーム呼ばないよう、フロント側でデバウンスしてから呼ぶこと。
@@ -260,7 +260,7 @@ pub fn store_set_panes(state: State<'_, AppState>, panes: store::Panes) {
 }
 
 /* ------------------------------------------------------------------ */
-/* ユーザー設定（F-CONF-03 / 02.architecture.md §4.5）                    */
+/* ユーザー設定（F-CONF-03 / 02.architecture/04-rust-responsibilities.md §5）                    */
 /* ------------------------------------------------------------------ */
 
 /// 設定を読み直す。
@@ -284,7 +284,7 @@ pub fn write_settings(
     patch: serde_json::Map<String, serde_json::Value>,
 ) -> CoreResult<settings::Settings> {
     let next = state.patch_settings(patch)?;
-    // 自分で書いた直後のイベントを弾く（02.architecture.md §4.4）。
+    // 自分で書いた直後のイベントを弾く（02.architecture/04-rust-responsibilities.md §4）。
     // これが無いと、設定 UI から保存するたびに「外部で変更された」が跳ね返ってくる。
     if let Some(path) = state.settings_path() {
         watcher.note_self_write(path);
@@ -292,7 +292,7 @@ pub fn write_settings(
     Ok(next)
 }
 
-/// `settings.json` を OS の既定アプリで開く（F-CONF-06 / 03.ux-spec.md §8.2）。
+/// `settings.json` を OS の既定アプリで開く（F-CONF-06 / 03.ux-spec/07-status-and-notifications.md §2）。
 ///
 /// **パスを引数に取らない。** 開く先は Rust 側が知っている 1 か所だけであり、
 /// 任意のパスを受け取る `open_local_file` と違って許可範囲の判断が要らない。
@@ -308,7 +308,7 @@ pub fn open_settings_file(app: tauri::AppHandle, state: State<'_, AppState>) -> 
 }
 
 /* ------------------------------------------------------------------ */
-/* カスタム CSS（F-CONF-07 / 02.architecture.md §10.3）                   */
+/* カスタム CSS（F-CONF-07 / 02.architecture/10-theming.md §3）                   */
 /* ------------------------------------------------------------------ */
 
 /// カスタム CSS を読む。
@@ -354,7 +354,7 @@ pub fn open_custom_css_file(
 }
 
 /* ------------------------------------------------------------------ */
-/* ファイル監視（F-EDIT-16 / 02.architecture.md §4.4）                    */
+/* ファイル監視（F-EDIT-16 / 02.architecture/04-rust-responsibilities.md §4）                    */
 /* ------------------------------------------------------------------ */
 
 /// 開いているファイルの監視を始める。
@@ -387,7 +387,7 @@ pub fn report_trace(state: State<'_, AppState>, marks: Vec<Mark>) {
 
 /// 描画準備が整ったことをフロントが知らせる。
 ///
-/// 04.tech-stack.md §9.1 の `visible: false` からの表示制御。
+/// 04.tech-stack/09-tauri-config.md §1 の `visible: false` からの表示制御。
 /// **最初に見えるフレームが既に本文である**状態を作るための唯一の入口。
 #[tauri::command]
 pub fn ready(window: Window, state: State<'_, AppState>) {
@@ -408,7 +408,7 @@ pub fn ready(window: Window, state: State<'_, AppState>) {
 
     // トレイアイコン（F-OS-08 / ADR-0007）。
     //
-    // **`ready()` の後で作る**（02.architecture.md §5.1 の表）。OS 側の UI であり、
+    // **`ready()` の後で作る**（02.architecture/05-startup-sequence.md §1 の表）。OS 側の UI であり、
     // 本文表示に一切関与しない。ここでアイコンを焼くぶん T3→T8 が伸びるのは
     // 何の得にもならない。失敗しても常駐しないだけで、アプリは普通に使える。
     if let Err(e) = crate::tray::install(window.app_handle()) {
@@ -428,7 +428,7 @@ pub fn ready(window: Window, state: State<'_, AppState>) {
 
 #[tauri::command]
 pub fn open_external(app: tauri::AppHandle, url: String) -> CoreResult<()> {
-    // 許可リスト方式。未知のスキームは何もしない（02.architecture.md §9.2）。
+    // 許可リスト方式。未知のスキームは何もしない（02.architecture/09-security.md §2）。
     let allowed =
         url.starts_with("https://") || url.starts_with("http://") || url.starts_with("mailto:");
     if !allowed {
@@ -442,7 +442,7 @@ pub fn open_external(app: tauri::AppHandle, url: String) -> CoreResult<()> {
 }
 
 /// 本文中のリンクから、Markdown 以外のローカルファイルを既定アプリで開く
-/// （F-VIEW-06 / 02.architecture.md §9.2）。
+/// （F-VIEW-06 / 02.architecture/09-security.md §2）。
 ///
 /// # 確認だけでは足りない
 ///
@@ -482,7 +482,7 @@ pub fn startup_trace(state: State<'_, AppState>) -> crate::trace::TraceReport {
 /// ウォーム起動（S6）の完了報告。
 ///
 /// フロントが「本文が読める」状態（paint + 次の rAF）に到達したら呼ぶ。
-/// 02.architecture.md §5.2 の経路を、argv 転送を受けた瞬間から測る。
+/// 02.architecture/05-startup-sequence.md §2 の経路を、argv 転送を受けた瞬間から測る。
 ///
 /// 1 プロセスで何度も起きるので、1 レコード 1 行の JSONL に追記する。
 ///

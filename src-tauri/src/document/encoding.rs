@@ -1,6 +1,6 @@
 //! エンコーディングの検出とデコード / エンコード。
 //!
-//! 02.architecture.md §4.2 の `DocumentPayload` が要求する `bom` / `encoding` を扱う。
+//! 02.architecture/04-rust-responsibilities.md §2 の `DocumentPayload` が要求する `bom` / `encoding` を扱う。
 //! 保存時に読み込み時と同じバイト列へ戻せることが要件（N-CMP-03）。
 
 use serde::{Deserialize, Serialize};

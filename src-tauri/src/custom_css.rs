@@ -1,4 +1,4 @@
-//! カスタム CSS の読み込み（F-CONF-07 / 02.architecture.md §10.3）。
+//! カスタム CSS の読み込み（F-CONF-07 / 02.architecture/10-theming.md §3）。
 //!
 //! ```text
 //! %APPDATA%\com.antimacho612.marxdown\custom.css

@@ -22,7 +22,7 @@ export function goForward(): Promise<void> {
 /**
  * 履歴を 1 段辿る。
  *
- * **スクロール位置も一緒に戻す**（06.roadmap.md §5.2）。戻った先が先頭から
+ * **スクロール位置も一緒に戻す**（06.roadmap/m1.5-shell-and-settings.md §2）。戻った先が先頭から
  * 始まると、長い文書では「どこを読んでいたか」を探し直すことになる。
  * 仕組みは `F5`（`reloadCurrent`）と同じ `restoreScroll` で、
  * 段階的描画で高さが足りないぶんも `open.ts` が面倒を見る。

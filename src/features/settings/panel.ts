@@ -3,7 +3,7 @@
  *
  * **このモジュールから先が遅延チャンク**（`assets/settings-*.js`）。
  * 起動時には存在せず、`Ctrl+,` かハンバーガーメニューの「設定」で初めてロードされる
- * （06.roadmap.md §5.3 の完了条件）。
+ * （06.roadmap/m1.5-shell-and-settings.md §3 の完了条件）。
  *
  * # App.svelte に置かない
  *

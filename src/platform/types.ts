@@ -11,7 +11,7 @@ export type Encoding = 'utf8' | 'utf16-le' | 'utf16-be' | 'shift-jis' | 'euc-jp'
 
 export type ViewMode = 'preview' | 'edit' | 'split';
 
-/** 02.architecture.md §4.2 `DocumentPayload` のメタ部分。 */
+/** 02.architecture/04-rust-responsibilities.md §2 `DocumentPayload` のメタ部分。 */
 export interface DocumentMeta {
   /** 正規化済み絶対パス */
   path: string;
@@ -56,7 +56,7 @@ export interface CoreError {
 }
 
 /* ------------------------------------------------------------------ */
-/* ペイン（03.ux-spec.md §7.3 / 02.architecture.md §4.5）                 */
+/* ペイン（03.ux-spec/06-panes.md §3 / 02.architecture/04-rust-responsibilities.md §5）                 */
 /* ------------------------------------------------------------------ */
 
 /** ペイン 1 枚の状態（`src-tauri/src/store.rs` の `PaneState`）。 */
@@ -78,7 +78,7 @@ export interface Panes {
 }
 
 /**
- * 記録が無いときの姿。**左右とも閉じている**（03.ux-spec.md §7.3 の引用ブロック）。
+ * 記録が無いときの姿。**左右とも閉じている**（03.ux-spec/06-panes.md §3 の引用ブロック）。
  * `src-tauri/src/store.rs` の `PaneState::default()` と 1:1 で対応する。
  */
 export const DEFAULT_PANES: Panes = {
@@ -87,7 +87,7 @@ export const DEFAULT_PANES: Panes = {
 };
 
 /* ------------------------------------------------------------------ */
-/* ユーザー設定（02.architecture.md §4.5）                               */
+/* ユーザー設定（02.architecture/04-rust-responsibilities.md §5）                               */
 /* ------------------------------------------------------------------ */
 
 export type Theme = 'system' | 'light' | 'dark';
@@ -110,7 +110,7 @@ export interface Settings {
   'preview.fontFamily': string;
   'preview.fontSize': number;
   'preview.lineHeight': number;
-  /** 本文幅。単位は `ch`（02.architecture.md §10.2）。 */
+  /** 本文幅。単位は `ch`（02.architecture/10-theming.md §2）。 */
   'preview.maxWidth': number;
   'window.closeBehavior': WindowCloseBehavior;
 }
@@ -134,10 +134,10 @@ export const DEFAULT_SETTINGS: Settings = {
 export type SettingsPatch = { [K in keyof Settings]?: Settings[K] | null };
 
 /**
- * `settings.json` を読めなかった事実（03.ux-spec.md §8.2）。
+ * `settings.json` を読めなかった事実（03.ux-spec/07-status-and-notifications.md §2）。
  *
  * これがある間、**アプリは既定値で動くがファイルを上書きしない**。
- * ユーザーが手で書いたものだから（02.architecture.md §4.5）。
+ * ユーザーが手で書いたものだから（02.architecture/04-rust-responsibilities.md §5）。
  */
 export interface SettingsProblem {
   path: string;
@@ -150,7 +150,7 @@ export interface SettingsLoad {
 }
 
 /* ------------------------------------------------------------------ */
-/* カスタム CSS（F-CONF-07 / 02.architecture.md §10.3）                   */
+/* カスタム CSS（F-CONF-07 / 02.architecture/10-theming.md §3）                   */
 /* ------------------------------------------------------------------ */
 
 /**
@@ -171,7 +171,7 @@ export interface CustomCss {
   css: string | null;
   /**
    * 64KB を超えたため bootstrap に載らなかった。
-   * `ready()` の後に `readCustomCss` で取りに行く（02.architecture.md §10.3）。
+   * `ready()` の後に `readCustomCss` で取りに行く（02.architecture/10-theming.md §3）。
    */
   deferred: boolean;
   problem: CustomCssProblem | null;
@@ -181,7 +181,7 @@ export interface CustomCss {
 export const NO_CUSTOM_CSS: CustomCss = { css: null, deferred: false, problem: null };
 
 /* ------------------------------------------------------------------ */
-/* ファイル監視（02.architecture.md §4.4）                               */
+/* ファイル監視（02.architecture/04-rust-responsibilities.md §4）                               */
 /* ------------------------------------------------------------------ */
 
 /**
@@ -255,23 +255,23 @@ export interface Bootstrap {
   /** 表示倍率（F-VIEW-11）。最初のフレームから正しい倍率で描くために要る。 */
   zoom: number;
   /**
-   * ペインの開閉と幅（F-NAV-04 / 03.ux-spec.md §7.3）。
+   * ペインの開閉と幅（F-NAV-04 / 03.ux-spec/06-panes.md §3）。
    *
    * **倍率と同じ理由でここに載っている。** 後から当てると、本文が一度全幅で
-   * 描かれてから横に詰まる（02.architecture.md §4.5）。
+   * 描かれてから横に詰まる（02.architecture/04-rust-responsibilities.md §5）。
    */
   panes: Panes;
   /**
-   * ユーザー設定の**全体**（02.architecture.md §4.5）。
+   * ユーザー設定の**全体**（02.architecture/04-rust-responsibilities.md §5）。
    *
    * 「どの設定が初回フレームに間に合う必要があるか」を毎回考えなくて済むよう、
    * 選ばずに丸ごと載っている。**取りに行く経路（IPC 往復）は作らない。**
    */
   settings: Settings;
-  /** `settings.json` を読めなかった事実。通知バーに出す（03.ux-spec.md §8.2）。 */
+  /** `settings.json` を読めなかった事実。通知バーに出す（03.ux-spec/07-status-and-notifications.md §2）。 */
   settingsError: SettingsProblem | null;
   /**
-   * カスタム CSS（F-CONF-07 / 02.architecture.md §10.3）。
+   * カスタム CSS（F-CONF-07 / 02.architecture/10-theming.md §3）。
    *
    * **64KB 以下のときだけ `css` が入っている。** ここに載せるのは、
    * ダークな背景を当てているときに白い初期画面が一瞬見えるのを防ぐため。
@@ -314,7 +314,7 @@ export type DragDropEvent =
  * Platform 層のインタフェース。
  *
  * Domain 層はこれだけを見る。Tauri の存在を知らないことで、
- * Vitest 上でも `dev:web` のブラウザ上でも同じコードが動く（02.architecture.md §3.1）。
+ * Vitest 上でも `dev:web` のブラウザ上でも同じコードが動く（02.architecture/03-layers.md §1）。
  */
 /**
  * ウォーム経路の種別（ADR-0007「Warm Start の計測経路が 2 本になる」）。
@@ -344,7 +344,7 @@ export interface Platform {
    */
   setZoom(zoom: number): Promise<void>;
   /**
-   * ペインの開閉と幅を永続化する（03.ux-spec.md §7.3）。
+   * ペインの開閉と幅を永続化する（03.ux-spec/06-panes.md §3）。
    *
    * 倍率と同じく、反映は呼び出し側が即座に行う。ここは保存だけなので、
    * **ドラッグ中に毎フレーム呼ばない**（デバウンスしてから呼ぶこと）。
@@ -364,7 +364,7 @@ export interface Platform {
   readSettings(): Promise<SettingsLoad>;
   /**
    * 変更したキーだけを書き戻す。更新後の設定全体を返す。
-   * `settings.json` が読めない状態では拒否される（02.architecture.md §4.5）。
+   * `settings.json` が読めない状態では拒否される（02.architecture/04-rust-responsibilities.md §5）。
    */
   writeSettings(patch: SettingsPatch): Promise<Settings>;
   /**
@@ -373,7 +373,7 @@ export interface Platform {
    */
   openSettingsFile(): Promise<void>;
   /**
-   * カスタム CSS を読み直す（F-CONF-07 / 02.architecture.md §10.3）。
+   * カスタム CSS を読み直す（F-CONF-07 / 02.architecture/10-theming.md §3）。
    *
    * **起動時の 64KB 以下はこれを呼ばない。** bootstrap に同梱されている。
    * ここが要るのは「64KB を超えていて載らなかった」場合と、
@@ -395,7 +395,7 @@ export interface Platform {
    */
   onCustomCssChanged(handler: () => void): () => void;
   /**
-   * 開いているファイルの監視を始める（F-EDIT-16 / 02.architecture.md §4.4）。
+   * 開いているファイルの監視を始める（F-EDIT-16 / 02.architecture/04-rust-responsibilities.md §4）。
    *
    * **開いているファイルだけを見る**（N-PERF-05）。呼ぶたびに前のファイルの監視は
    * 外れる（タブが入る M3 までは対象が 1 つしかない）。
@@ -415,11 +415,11 @@ export interface Platform {
   /** ウィンドウへのドラッグ＆ドロップを購読する（F-OPEN-08）。 */
   onDragDrop(handler: (event: DragDropEvent) => void): () => void;
   /**
-   * ウィンドウ操作（カスタムタイトルバー / 03.ux-spec.md §2.1 / OQ-02 = B）。
+   * ウィンドウ操作（カスタムタイトルバー / 03.ux-spec/01-screen-layout.md §1 / OQ-02 = B）。
    *
    * `decorations: false` にしたぶん、`─ □ ✕` は自分たちの `<button>` になった。
    * 実体は Rust 側の自作コマンドで、JS の `@tauri-apps/api/window` は入れていない
-   * （04.tech-stack.md §6.2 と同じ判断）。
+   * （04.tech-stack/06-rust.md §2 と同じ判断）。
    *
    * ドラッグとダブルクリックによる最大化はここに無い。Tauri 本体が注入する
    * `data-tauri-drag-region` の処理が担当していて、フロントは属性を書くだけ。

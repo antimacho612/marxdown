@@ -2,7 +2,7 @@
  * エントリポイント。`main` チャンクのルート。
  *
  * ここに import を足すと、そのままクリティカルパスに載る。
- * 追加の前に 05.performance-budget.md §6 の判定手順を通すこと。
+ * 追加の前に 05.performance-budget/06-decision-flow.md の判定手順を通すこと。
  *
  * # なぜ Svelte を動的 import しないか
  *
@@ -32,7 +32,7 @@ function renderShell(): void {
  *
  * 動的 import なので `editor` チャンクは通常の起動では一切ロードされない。
  * これ自体が「既定モードが Preview であることがバンドル分割の境界になる」
- * （02.architecture.md §5.1 の要点 3）の実証になっている。
+ * （02.architecture/05-startup-sequence.md §1 の要点 3）の実証になっている。
  */
 function spikeRoute(): string | null {
   return new URLSearchParams(globalThis.location.search).get('spike');

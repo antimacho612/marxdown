@@ -72,8 +72,8 @@ describe('ドキュメントストア (ADR-0005)', () => {
   });
 });
 
-/** 03.ux-spec.md §8.2「情報は 3 秒で自動消滅、警告とエラーは消えない」。 */
-describe('通知の自動消滅 (03.ux-spec.md §8.2)', () => {
+/** 03.ux-spec/07-status-and-notifications.md §2「情報は 3 秒で自動消滅、警告とエラーは消えない」。 */
+describe('通知の自動消滅 (03.ux-spec/07-status-and-notifications.md §2)', () => {
   beforeEach(() => {
     vi.useFakeTimers();
   });

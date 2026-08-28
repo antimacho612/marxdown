@@ -20,7 +20,7 @@
 //!
 //! # メニューに何を置かないか
 //!
-//! 03.ux-spec.md §8.4 は 3 項目だけに保つと定めている。
+//! 03.ux-spec/07-status-and-notifications.md §4 は 3 項目だけに保つと定めている。
 //! 「設定」「新規ウィンドウ」は置かない。**ウィンドウを開けば届くものを
 //! トレイに複製しない。** 複製すると、片方だけ増えて片方が腐る。
 //!
@@ -40,7 +40,7 @@ const ID_QUIT: &str = "tray:quit";
 /// 最近開いたファイルは `tray:recent:<path>` の形。パスをそのまま後ろに付ける。
 const PREFIX_RECENT: &str = "tray:recent:";
 
-/// トレイメニューに並べる「最近開いたファイル」の件数（03.ux-spec.md §8.4 は 5 件）。
+/// トレイメニューに並べる「最近開いたファイル」の件数（03.ux-spec/07-status-and-notifications.md §4 は 5 件）。
 ///
 /// Welcome とハンバーガーメニューは 6 件だが、**トレイは 5 件のまま**にする。
 /// ここはマウスで開く小さなメニューであり、縦に伸びると OS のメニューが
@@ -49,7 +49,7 @@ const TRAY_RECENT_SHOWN: usize = 5;
 
 /// トレイアイコンを作る。
 ///
-/// **`ready()` の後に呼ぶ**（02.architecture.md §5.1）。OS 側の UI であり、
+/// **`ready()` の後に呼ぶ**（02.architecture/05-startup-sequence.md §1）。OS 側の UI であり、
 /// 本文表示に一切関与しない。ここでアイコンを焼くぶんだけ T3→T8 が伸びるのは
 /// 何の得にもならない。
 pub fn install<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {

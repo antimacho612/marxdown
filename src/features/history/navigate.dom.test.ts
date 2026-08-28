@@ -102,7 +102,7 @@ describe('戻る / 進む (F-NAV-07 / Alt+← / Alt+→)', () => {
     expect(documentStore.meta?.path).toBe('b.md');
   });
 
-  /** 06.roadmap.md §5.2「スクロール位置も一緒に戻すこと」。 */
+  /** 06.roadmap/m1.5-shell-and-settings.md §2「スクロール位置も一緒に戻すこと」。 */
   it('読んでいた位置ごと戻る', async () => {
     await openPath('a.md');
     setScroll(1400);

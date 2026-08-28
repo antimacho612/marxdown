@@ -1,4 +1,4 @@
-//! 起動計測ハーネス（05.performance-budget.md §5.2）。
+//! 起動計測ハーネス（05.performance-budget/05-operations.md §2）。
 //!
 //! Rust 側の T0〜T3 とフロント側の T4〜T9 を、**同一の時間軸**に載せて JSON へ出す。
 //!
@@ -51,7 +51,7 @@ pub struct TraceReport {
 pub struct TraceDocument {
     pub path: String,
     pub size: u64,
-    /// bootstrap に本文ごと埋め込んだか（02.architecture.md §5.1 の 256KB 閾値）
+    /// bootstrap に本文ごと埋め込んだか（02.architecture/05-startup-sequence.md §1 の 256KB 閾値）
     pub inlined: bool,
 }
 

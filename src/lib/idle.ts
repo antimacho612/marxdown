@@ -5,7 +5,7 @@
  *
  * ここにあるのは**仕事があるときだけ次を予約する**仕組みで、
  * 何もないときはコールバックが一切残らない。
- * 05.performance-budget.md §4.5「アイドル時 CPU ≒ 0」に抵触しない。
+ * 05.performance-budget/04-targets.md §5「アイドル時 CPU ≒ 0」に抵触しない。
  * `setInterval` を使わないこと。
  */
 

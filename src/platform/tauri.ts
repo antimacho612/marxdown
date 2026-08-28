@@ -1,7 +1,7 @@
 /**
  * Tauri 実装。**`invoke()` を呼んでよいのはこのファイルだけ**。
  *
- * 02.architecture.md §3.1: 「どこからでも `invoke()` が呼ばれる」状態を防ぐ。
+ * 02.architecture/03-layers.md §1: 「どこからでも `invoke()` が呼ばれる」状態を防ぐ。
  * IPC 呼び出し回数は性能に直結する。
  */
 import { convertFileSrc, invoke } from '@tauri-apps/api/core';

@@ -1,7 +1,7 @@
 <!--
   アプリシェルのクローム部分。
 
-  **本文はここに無い**（ADR-0005 / 02.architecture.md §8.1）。
+  **本文はここに無い**（ADR-0005 / 02.architecture/08-state-management.md §1）。
   Svelte が描くのはタイトルバー・ステータスバー・通知バー・Welcome だけで、
   `.mx-preview` の中身は `paint.ts` が直接 DOM に入れる。
 
@@ -10,7 +10,7 @@
 
   行の並びは DOM 順ではなく `shell.css` の `grid-template-areas` が決める。
   M3 でタブが入るときは `TitleBar` の `center` にタブストリップを渡す
-  （タブはタイトルバーと同じ 1 段に入る / 03.ux-spec.md §2.2）。
+  （タブはタイトルバーと同じ 1 段に入る / 03.ux-spec/01-screen-layout.md §2）。
   ライトペインは `grid-area: rightpane` を持つコンポーネント 1 つで、
   grid の定義は作り直していない（Phase 3 がその形にしてある）。
   レフトペイン（Explorer / M3）も、同じように 1 つ足すだけで入る。
@@ -39,7 +39,7 @@
 {/if}
 
 <!--
-  ライトペイン（03.ux-spec.md §7）。**開いていなければ要素ごと存在しない。**
+  ライトペイン（03.ux-spec/06-panes.md）。**開いていなければ要素ごと存在しない。**
   `rightpane` の列は `auto` なので、置かなければ 0 幅に潰れる（`shell.css`）。
   フラグで幅を 0 にするのではなく本当に消すので、閉じている間は
   アウトラインの `IntersectionObserver` も動かない（N-PERF-05）。

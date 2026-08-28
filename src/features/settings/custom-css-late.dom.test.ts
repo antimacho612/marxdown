@@ -32,7 +32,7 @@ afterEach(() => {
   setPlatform(original);
 });
 
-describe('起動後のカスタム CSS (02.architecture.md §10.3)', () => {
+describe('起動後のカスタム CSS (02.architecture/10-theming.md §3)', () => {
   /** 表の 1 行目。**初回起動が常にこれ**なので、ここで IPC も通知も出してはいけない。 */
   it('ファイルが無ければ、読みにも行かないし通知も出さない', () => {
     const readCustomCss = vi.fn();

@@ -1,8 +1,8 @@
 /**
- * 基準ファイルセット（05.performance-budget.md §3）を、パイプラインに通す。
+ * 基準ファイルセット（05.performance-budget/03-fixtures.md）を、パイプラインに通す。
  *
  * M1 の完了条件のひとつが「`bench/fixtures/` の全ファイルでクラッシュしない」
- * （06.roadmap.md §4.2）。**壊れる入力があることを、実測ではなくテストで先に知る。**
+ * （06.roadmap/m1-reader.md §2）。**壊れる入力があることを、実測ではなくテストで先に知る。**
  *
  * ここで見るのはパイプライン（パース → チャンク分割 → 文字数）だけで、
  * サニタイズと描画は DOM が要るため別のテストが持つ。起動全体の確認は
@@ -37,7 +37,7 @@ function load(name: string): string | null {
 
 const available = NAMES.filter((name) => existsSync(join(FIXTURES, name)));
 
-describe.skipIf(available.length === 0)('基準ファイルセット (05.performance-budget.md §3)', () => {
+describe.skipIf(available.length === 0)('基準ファイルセット (05.performance-budget/03-fixtures.md)', () => {
   it('すべて生成されている（`pnpm fixtures`）', () => {
     expect(available).toEqual([...NAMES]);
   });
@@ -82,7 +82,7 @@ describe.skipIf(available.length === 0)('基準ファイルセット (05.perform
    * `extreme.md` は 10MB 丸ごとが 1 つのコードフェンスなので、
    * トップレベルのトークンが 1 つしかなく、チャンクに割れない。
    * 要素の途中で切ると HTML が壊れるため、割らないのは正しい判断
-   * （02.architecture.md §6.4）。
+   * （02.architecture/06-markdown-rendering-pipeline.md §4）。
    *
    * つまりこの入力では N-PERF-04 の「段階的に表示される」は成立せず、
    * §4.2 の「クラッシュしない」だけが保証になる。

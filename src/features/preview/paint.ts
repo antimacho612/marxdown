@@ -1,5 +1,5 @@
 /**
- * 本文を DOM に入れる（02.architecture.md §6.4）。
+ * 本文を DOM に入れる（02.architecture/06-markdown-rendering-pipeline.md §4）。
  *
  * 仮想スクロールは採用しない。理由は §6.4:
  * ブラウザ内検索 / アンカーリンク / 印刷が壊れ、高さ推定の精度も出ない。

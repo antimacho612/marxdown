@@ -11,7 +11,7 @@
  *
  * どれも**読み始めるのに要らない**。画像の解決は IPC を伴い、ハイライトは
  * 別チャンクのロードを伴う。これらを T8 の手前に置くと、
- * 「本文が読める」までの時間がそのぶん伸びる（05.performance-budget.md §4.1）。
+ * 「本文が読める」までの時間がそのぶん伸びる（05.performance-budget/04-targets.md §1）。
  *
  * # 段階的描画との噛み合わせ
  *
@@ -63,7 +63,7 @@ async function enhanceCodeBlocks(container: HTMLElement): Promise<void> {
 
   // ハイライトは**遅延チャンク**。コードブロックが 1 つも無いドキュメントでは
   // ここに到達しないので、`highlight` チャンクはロードすらされない
-  // （02.architecture.md §5.3 の分割境界）。
+  // （02.architecture/05-startup-sequence.md §3 の分割境界）。
   const { highlightElement, languageOf } = await import('./highlight');
   const targets = blocks.filter((code) => languageOf(code) !== null);
 
@@ -86,7 +86,7 @@ async function enhanceCodeBlocks(container: HTMLElement): Promise<void> {
  * コードブロックのコピーボタン（F-VIEW-04）。
  *
  * `pre` の中に置くので、本文の流れに余計な要素が挟まらない。
- * 見えるのはホバー時とフォーカス時だけ（03.ux-spec.md §2.1 の「静けさ」）。
+ * 見えるのはホバー時とフォーカス時だけ（03.ux-spec/01-screen-layout.md §1 の「静けさ」）。
  */
 function addCopyButton(pre: HTMLElement, code: HTMLElement): void {
   const button = document.createElement('button');

@@ -1,5 +1,5 @@
 /**
- * フロント側の起動計測（05.performance-budget.md §5.2）。
+ * フロント側の起動計測（05.performance-budget/05-operations.md §2）。
  *
  * ```text
  * T4  初期スクリプト評価開始   (bootstrap.rs が initialization_script で打つ)

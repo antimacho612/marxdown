@@ -1,6 +1,6 @@
 //! アプリケーション全体で共有する状態。
 //!
-//! 02.architecture.md 原則 C に従い、ここに置くのは
+//! 02.architecture/README.md 原則 C に従い、ここに置くのは
 //! 「Rust 側が速くやる仕事のために必要なもの」だけ。
 //! タブ・カーソル・設定などの UI 状態は TypeScript 側にある。
 
@@ -17,7 +17,7 @@ use crate::settings::{Settings, SettingsLoad};
 use crate::store::{RecentEntry, StoreData};
 use crate::trace::Trace;
 
-/// アプリデータ領域に置く 3 ファイルの場所（02.architecture.md §4.5 / §10.3）。
+/// アプリデータ領域に置く 3 ファイルの場所（02.architecture/04-rust-responsibilities.md §5 / §10.3）。
 ///
 /// ```text
 /// %APPDATA%\com.antimacho612.marxdown\
@@ -44,7 +44,7 @@ pub struct AppState {
     store: Mutex<StoreData>,
     /// 設定ファイルたちの置き場所。
     paths: ConfigPaths,
-    /// ユーザー設定（02.architecture.md §4.5）。
+    /// ユーザー設定（02.architecture/04-rust-responsibilities.md §5）。
     /// **「壊れている」という事実も一緒に保持する。** 書き戻しの可否がこれで決まる。
     settings: Mutex<SettingsLoad>,
     /// アセット参照を許可するディレクトリ（N-SEC-05）。
@@ -113,7 +113,7 @@ impl AppState {
             .unwrap_or_default()
     }
 
-    /// 設定を読み直す（02.architecture.md §4.5）。
+    /// 設定を読み直す（02.architecture/04-rust-responsibilities.md §5）。
     ///
     /// **読めない内容に変わったときは既定値に戻さない。** 直前に読めていた値を保持し、
     /// 壊れている事実だけを添えて返す。外部エディタで編集している最中の中間状態で
@@ -190,7 +190,7 @@ impl AppState {
         self.paths.settings.as_deref()
     }
 
-    /// カスタム CSS の場所（02.architecture.md §10.3）。
+    /// カスタム CSS の場所（02.architecture/10-theming.md §3）。
     ///
     /// **パスをフロントに渡さない。** 開くのも読むのも Rust 側の 1 か所に閉じており、
     /// `open_settings_file` と同じ理由で、任意のパスを受け取る口を作らずに済む。
@@ -200,7 +200,7 @@ impl AppState {
 
     /// argv 転送を受けた瞬間に呼ぶ。返した ID をフロントへ渡す。
     ///
-    /// これが 02.architecture.md §5.2 のウォーム起動の起点（W0）。
+    /// これが 02.architecture/05-startup-sequence.md §2 のウォーム起動の起点（W0）。
     pub fn begin_warm(&self) -> u64 {
         let id = self.warm_counter.fetch_add(1, Ordering::Relaxed);
         if let Ok(mut w) = self.warm.lock() {

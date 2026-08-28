@@ -15,7 +15,7 @@ beforeEach(() => {
   vi.stubGlobal('requestIdleCallback', undefined);
 });
 
-describe('段階的描画 (02.architecture.md §6.4)', () => {
+describe('段階的描画 (02.architecture/06-markdown-rendering-pipeline.md §4)', () => {
   it('最初のチャンクは同期的に入る', () => {
     const el = container();
     paint(el, ['<p>first</p>', '<p>second</p>']);

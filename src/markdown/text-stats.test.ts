@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { measure } from './text-stats';
 
-describe('文字数と読了時間 (03.ux-spec.md §8.3)', () => {
+describe('文字数と読了時間 (03.ux-spec/07-status-and-notifications.md §3)', () => {
   it('空白を数に入れない', () => {
     expect(measure('a b\tc\nd').chars).toBe(4);
   });

@@ -78,9 +78,9 @@ afterEach(() => {
   setPlatform(original);
 });
 
-describe('起動シーケンス (02.architecture.md §5.1)', () => {
+describe('起動シーケンス (02.architecture/05-startup-sequence.md §1)', () => {
   /**
-   * 03.ux-spec.md §8.2 の 5 行目は「消えない」通知である。
+   * 03.ux-spec/07-status-and-notifications.md §2 の 5 行目は「消えない」通知である。
    *
    * **`openDocument` は描画に成功した時点で通知バーを下げる**（開けなかったことを
    * 知らせる通知を、開けたあとも残さないため）。起動時の通知をその手前で出すと、
@@ -109,7 +109,7 @@ describe('起動シーケンス (02.architecture.md §5.1)', () => {
   });
 
   /**
-   * 02.architecture.md §5.1「テーマ / 本文幅 / フォントは**描画より前**」。
+   * 02.architecture/05-startup-sequence.md §1「テーマ / 本文幅 / フォントは**描画より前**」。
    * 後から当てると FOUC になる（一度出た絵が描き変わる）。
    */
   it('本文を描くより前に、設定が見た目へ当たっている', async () => {
@@ -130,7 +130,7 @@ describe('起動シーケンス (02.architecture.md §5.1)', () => {
   });
 
   /**
-   * 02.architecture.md §10.3。**同じ理由でカスタム CSS も描画より前**に当てる。
+   * 02.architecture/10-theming.md §3。**同じ理由でカスタム CSS も描画より前**に当てる。
    *
    * 遅らせてよいのは「取りに行く」ほうだけで、bootstrap に載って届いたものを
    * `ready()` の後に当てると、ダークな背景を指定している人の画面で

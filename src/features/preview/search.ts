@@ -1,5 +1,5 @@
 /**
- * プレビュー内の全文検索（F-VIEW-10 / 03.ux-spec.md §5.3）。
+ * プレビュー内の全文検索（F-VIEW-10 / 03.ux-spec/04-keybindings.md §3）。
  *
  * **このモジュールは遅延チャンク。** `Ctrl+F` を押すまでロードされない。
  *
@@ -13,7 +13,7 @@
  *
  * 代わりに **CSS Custom Highlight API** を使う。`Range` を登録するだけで、
  * DOM には一切触らない。WebView2 Evergreen / WKWebView のみを対象とする
- * 設計（04.tech-stack.md §8）なので、この API を前提にしてよい。
+ * 設計（04.tech-stack/08-typescript.md）なので、この API を前提にしてよい。
  */
 import { bindKeys } from '@/app/shortcuts';
 import { registerSearchRefresher } from '@/features/document/open';
@@ -118,7 +118,7 @@ function mount(container: HTMLElement): SearchState {
   panel.append(input, counter, prev, next, close);
   document.body.append(panel);
 
-  // 開いている間だけ効くキー（03.ux-spec.md §5.3「F3 / Shift+F3 で次 / 前」）。
+  // 開いている間だけ効くキー（03.ux-spec/04-keybindings.md §3「F3 / Shift+F3 で次 / 前」）。
   // 閉じたら外す。使っていない機能のキーをグローバルに残さない。
   const unbind = bindKeys([
     { key: 'F3', run: () => step(1), whenEditing: true },

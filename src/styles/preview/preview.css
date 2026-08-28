@@ -1,5 +1,5 @@
 /**
- * プレビュー本文のタイポグラフィ（02.architecture.md §10.2）。
+ * プレビュー本文のタイポグラフィ（02.architecture/10-theming.md §2）。
  *
  * Design Brief Principle 2「Markdown Is the Product」と
  * Principle 9「Professional, But Not Boring」を最も直接的に体現する場所。
@@ -168,7 +168,7 @@
  *
  * ホバーとフォーカスのときだけ現れる。常に見えていると、コードブロックが
  * 並ぶドキュメントで「操作可能な部品」が画面いっぱいに増えて、
- * 本文の静けさ（03.ux-spec.md §2.1）が失われる。
+ * 本文の静けさ（03.ux-spec/01-screen-layout.md §1）が失われる。
  */
 .mx-preview pre {
   position: relative;
@@ -209,7 +209,7 @@
   border-color: currentColor;
 }
 
-/* 動きを減らす設定を尊重する（03.ux-spec.md §10 / §11） */
+/* 動きを減らす設定を尊重する（03.ux-spec/09-motion.md / §11） */
 @media (prefers-reduced-motion: reduce) {
   .mx-copy {
     transition: none;
@@ -220,7 +220,7 @@
  * シンタックスハイライト（F-VIEW-03）。
  *
  * highlight.js のテーマ CSS は読み込まない。あちらは自前の色を持ち込むので、
- * ライト / ダークの切り替えとカスタムテーマ（02.architecture.md §10.1）が
+ * ライト / ダークの切り替えとカスタムテーマ（02.architecture/10-theming.md §1）が
  * トークン層と二重になる。**必要な 8 クラスだけをトークンで塗る。**
  */
 .hljs-comment,

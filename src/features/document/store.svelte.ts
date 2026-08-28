@@ -1,5 +1,5 @@
 /**
- * ドキュメントの派生状態（02.architecture.md §8.1 / ADR-0005）。
+ * ドキュメントの派生状態（02.architecture/08-state-management.md §1 / ADR-0005）。
  *
  * # ここに本文を置いてはいけない
  *
@@ -23,14 +23,14 @@ import type { OutlineItem } from '@/markdown/plugins/line-map';
 import type { TextStats } from '@/markdown/text-stats';
 import type { DocumentMeta } from '@/platform';
 
-/** 通知バーの選択肢（03.ux-spec.md §8.2 の「再読み込み / 無視」など）。 */
+/** 通知バーの選択肢（03.ux-spec/07-status-and-notifications.md §2 の「再読み込み / 無視」など）。 */
 export interface NoticeAction {
   label: string;
   run: () => void;
 }
 
 /**
- * 通知バー（03.ux-spec.md §8.2）。本文の上に薄く重ねる。
+ * 通知バー（03.ux-spec/07-status-and-notifications.md §2）。本文の上に薄く重ねる。
  *
  * **モーダルダイアログはデータ消失の可能性がある場面だけに限定する**という
  * 方針の受け皿。読み込み失敗も外部変更もここに出る。
@@ -48,7 +48,7 @@ export interface Notice {
   autoDismissMs?: number;
 }
 
-/** 情報通知の既定寿命（03.ux-spec.md §8.2「3 秒で自動消滅」）。 */
+/** 情報通知の既定寿命（03.ux-spec/07-status-and-notifications.md §2「3 秒で自動消滅」）。 */
 export const INFO_NOTICE_MS = 3000;
 
 /** 描画の計測結果。開発ビルドのステータスバーに出す。 */
@@ -65,7 +65,7 @@ class DocumentStore {
   outline = $state<OutlineItem[]>([]);
   frontMatter = $state<string | null>(null);
   stats = $state<RenderStats | null>(null);
-  /** 文字数と読了時間（03.ux-spec.md §8.3）。Worker が数えた派生値。 */
+  /** 文字数と読了時間（03.ux-spec/07-status-and-notifications.md §3）。Worker が数えた派生値。 */
   textStats = $state<TextStats | null>(null);
 
   #notice = $state<Notice | null>(null);
@@ -75,7 +75,7 @@ class DocumentStore {
    *
    * 通知を出す側（`open.ts` など）は UI の外にいるため、タイマーはストアが持つ。
    * **1 回きりの `setTimeout` であって、ポーリングではない**
-   * （05.performance-budget.md §4.5「アイドル時のタイマーを増やさない」）。
+   * （05.performance-budget/04-targets.md §5「アイドル時のタイマーを増やさない」）。
    */
   #dismissTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -112,7 +112,7 @@ class DocumentStore {
 
 export const documentStore = new DocumentStore();
 
-/** 情報通知を出す。3 秒で自動的に消える（03.ux-spec.md §8.2）。 */
+/** 情報通知を出す。3 秒で自動的に消える（03.ux-spec/07-status-and-notifications.md §2）。 */
 export function notifyInfo(message: string): void {
   documentStore.notice = {
     level: 'info',

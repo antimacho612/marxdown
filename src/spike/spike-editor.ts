@@ -128,7 +128,7 @@ export function mountEditorSpike(container: HTMLElement): () => void {
 
   toggle.addEventListener('change', () => {
     // ドキュメントを引き継いで作り直す。
-    // 製品側は同一インスタンスの Compartment 差し替えにする（02.architecture.md §7.1）が、
+    // 製品側は同一インスタンスの Compartment 差し替えにする（02.architecture/07-editor-wysiwyg.md §1）が、
     // ここの目的は「装飾の有無で挙動がどう変わるか」の比較なので、作り直しでよい。
     const doc = view.state.doc.toString();
     const selection = view.state.selection;

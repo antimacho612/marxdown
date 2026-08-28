@@ -1,12 +1,12 @@
 /**
- * アウトラインから本文の見出しへ飛ぶ（F-VIEW-02 / 03.ux-spec.md §7.2）。
+ * アウトラインから本文の見出しへ飛ぶ（F-VIEW-02 / 03.ux-spec/06-panes.md §2）。
  *
  * # `data-line` で引く
  *
  * 見出しには `markdown-it-anchor` が付けた `id` もあるが、**空になりうる**
  * （記号だけの見出し）うえ、重複時の連番は Markdown 側の都合で変わる。
  * `data-line`（`line-map.ts`）は 1 行に 1 ブロックしか始まらないので一意で、
- * 02.architecture.md §6.3 が「アウトラインからのジャンプ」を載せている土台そのもの。
+ * 02.architecture/06-markdown-rendering-pipeline.md §3 が「アウトラインからのジャンプ」を載せている土台そのもの。
  * `id` は保険として後ろに置く。
  */
 import type { OutlineItem } from '@/markdown/plugins/line-map';

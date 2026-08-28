@@ -1,5 +1,5 @@
 /**
- * グローバルキーバインド（03.ux-spec.md §5）。
+ * グローバルキーバインド（03.ux-spec/04-keybindings.md）。
  *
  * # 和音を持たない
  *
@@ -102,7 +102,7 @@ function comboOf(event: KeyboardEvent): string {
   const parts: string[] = [];
   if (event.ctrlKey || event.metaKey) parts.push('Ctrl');
   // `=` は Shift の有無で `+` になる。倍率の拡大は両方で効いてほしいので
-  // Shift を修飾子として数えない（03.ux-spec.md §5.3 の `Ctrl+=`）。
+  // Shift を修飾子として数えない（03.ux-spec/04-keybindings.md §3 の `Ctrl+=`）。
   if (event.shiftKey && key !== '=') parts.push('Shift');
   if (event.altKey) parts.push('Alt');
   parts.push(key);

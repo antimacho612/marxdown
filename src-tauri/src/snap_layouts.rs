@@ -16,7 +16,7 @@
 //! 失敗したら何もしないで戻る（`install` の返り値は無視してよい）。
 //! そのときに起きるのは「最大化ボタンにホバーしてもフライアウトが出ない」ことだけで、
 //! ボタンそのものはフロントの `<button>` として今までどおり押せる。
-//! 06.roadmap.md §5.2 が残している C（Windows のオーバーレイ API）への
+//! 06.roadmap/m1.5-shell-and-settings.md §2 が残している C（Windows のオーバーレイ API）への
 //! 逃げ道も、このモジュールを消すだけで開く。
 //!
 //! # 実装の要点
@@ -160,7 +160,7 @@ fn track_leave(hwnd: HWND) {
 /// ゲッターで、ループが回り出す前は答えが返らない（実測で失敗した）。
 /// `ready` コマンドの中、`show()` の後に呼ぶこと。ここでやるのは Win32 の
 /// 呼び出し 1 回だけで、本文が読める瞬間に間に合う必要も無い
-/// （02.architecture.md §5.1 の判断基準）。
+/// （02.architecture/05-startup-sequence.md §1 の判断基準）。
 pub fn install(app: &tauri::AppHandle, window: &WebviewWindow) {
     // 二重に付けない。付け直すと、前の参照が誰にも落とされずに残る。
     if tauri::Manager::try_state::<Arc<SnapTarget>>(app).is_some() {

@@ -1,5 +1,5 @@
 /**
- * 表示倍率（F-VIEW-11 / 03.ux-spec.md §5.3）。
+ * 表示倍率（F-VIEW-11 / 03.ux-spec/04-keybindings.md §3）。
  *
  * # 本文だけを拡縮する
  *
@@ -86,7 +86,7 @@ function clamp(zoom: number): number {
 
 /**
  * 保存を遅らせる。**1 回きりの `setTimeout` であって、ポーリングではない**
- * （05.performance-budget.md §4.5）。
+ * （05.performance-budget/04-targets.md §5）。
  */
 function schedulePersist(zoom: number): void {
   if (persistTimer !== null) clearTimeout(persistTimer);

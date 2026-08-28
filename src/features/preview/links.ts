@@ -1,5 +1,5 @@
 /**
- * 本文中のリンククリックの分岐（F-VIEW-05, 06, 07 / N-SEC-04 / 02.architecture.md §9.2）。
+ * 本文中のリンククリックの分岐（F-VIEW-05, 06, 07 / N-SEC-04 / 02.architecture/09-security.md §2）。
  *
  * | href | 挙動 |
  * | --- | --- |
@@ -104,7 +104,7 @@ function handle(href: string, container: HTMLElement): void {
  *
  * **確認してから開く。** OS の既定アプリに渡す行為は取り消せないので、
  * 本文に書かれていただけのパスを黙って起動しない。
- * モーダルにしないのは、データ消失の可能性が無いから（03.ux-spec.md §8.2）。
+ * モーダルにしないのは、データ消失の可能性が無いから（03.ux-spec/07-status-and-notifications.md §2）。
  */
 function confirmOpenExternally(path: string): void {
   documentStore.notice = {

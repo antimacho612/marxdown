@@ -1,7 +1,7 @@
 /**
  * UI 文言。
  *
- * i18n ライブラリは導入しない（04.tech-stack.md §5.1 / OQ-11）。
+ * i18n ライブラリは導入しない（04.tech-stack/05-frontend.md §1 / OQ-11）。
  * 当面は日本語のみだが、**文言を定数に集約しておく**ことで
  * 将来の抽出をコード変更なしに行えるようにしておく。
  */
@@ -11,7 +11,7 @@ export const ja = {
     name: 'Marxdown',
   },
   /**
-   * Welcome 画面（03.ux-spec.md §9.1）。
+   * Welcome 画面（03.ux-spec/08-empty-states.md §1）。
    *
    * チュートリアルもツアーも出さない。**ショートカットを併記することが唯一の教育**。
    * 「フォルダを開く」（M3）「新規ファイル」（M2）は、まだ動かないので並べない。
@@ -26,7 +26,7 @@ export const ja = {
     cliHint: 'ターミナルからは marxdown <file.md>',
   },
   /**
-   * カスタムタイトルバー（03.ux-spec.md §2.1 / OQ-02 = B）。
+   * カスタムタイトルバー（03.ux-spec/01-screen-layout.md §1 / OQ-02 = B）。
    *
    * ウィンドウ操作ボタンには**文字を出さない**（絵だけ）。ここにあるのは
    * すべてスクリーンリーダー向けの名前とツールチップで、Windows の
@@ -40,7 +40,7 @@ export const ja = {
     close: '閉じる',
   },
   /**
-   * ハンバーガーメニュー（03.ux-spec.md §2.3「初学者の逃げ道」）。
+   * ハンバーガーメニュー（03.ux-spec/01-screen-layout.md §3「初学者の逃げ道」）。
    *
    * **メニューバーは置かない**という決定の代わりに、タイトルバー左端に 1 つだけ置く。
    * 並べるのは**いま押せるものだけ**。「終了」は Phase 7 で増える。
@@ -66,7 +66,7 @@ export const ja = {
     quit: '終了',
   },
   /**
-   * ペイン（03.ux-spec.md §7）。
+   * ペイン（03.ux-spec/06-panes.md）。
    *
    * ペインそのものに見出しは出さない（中身が自分の見出しを持つ）。
    * ここにあるのは、掴む場所とメニュー項目の名前だけ。
@@ -77,7 +77,7 @@ export const ja = {
     hideOutline: 'アウトラインを隠す',
   },
   /**
-   * アウトライン（F-VIEW-02 / 03.ux-spec.md §7.2）。
+   * アウトライン（F-VIEW-02 / 03.ux-spec/06-panes.md §2）。
    *
    * **空であることを明示する**のが §7.2 の要求。「まだ読み込んでいる」と
    * 読めないよう、何が無いのかを言い切って、書けば出ることを添える。
@@ -101,7 +101,7 @@ export const ja = {
     droppedExtra: (n: number) => `${n} 件は開いていません（複数タブは M3 で対応）`,
     reloaded: '再読み込みしました',
     /**
-     * 外部変更を自動で読み込んだとき（03.ux-spec.md §8.2 の 1 行目）。
+     * 外部変更を自動で読み込んだとき（03.ux-spec/07-status-and-notifications.md §2 の 1 行目）。
      * 自分では何もしていないので、**何が起きたか**を先に言う。
      */
     reloadedExternal: '外部の変更を読み込みました',
@@ -126,7 +126,7 @@ export const ja = {
     position: (index: number, total: number, truncated: boolean) =>
       `${index} / ${total.toLocaleString('ja-JP')}${truncated ? '+' : ''}`,
   },
-  /** リンククリックの分岐（02.architecture.md §9.2）。 */
+  /** リンククリックの分岐（02.architecture/09-security.md §2）。 */
   link: {
     confirmOpen: (path: string) => `既定のアプリで開きますか: ${path}`,
     open: '開く',
@@ -137,7 +137,7 @@ export const ja = {
     dismiss: '通知を閉じる',
   },
   /**
-   * ユーザー設定（02.architecture.md §4.5 / 03.ux-spec.md §8.2）。
+   * ユーザー設定（02.architecture/04-rust-responsibilities.md §5 / 03.ux-spec/07-status-and-notifications.md §2）。
    *
    * 「読めませんでした」で止めるのは、**既定値で動いていること**と
    * **ファイルは上書きしていないこと**の両方を、短い 1 行に収めるため。
@@ -150,7 +150,7 @@ export const ja = {
     /*
      * 設定 UI（F-CONF-05）。
      *
-     * **「セットアップ」ではなく「調整」の画面**（03.ux-spec.md §1「Defaults Matter」）。
+     * **「セットアップ」ではなく「調整」の画面**（03.ux-spec/README.md §1「Defaults Matter」）。
      * 説明文を項目ごとに付けず、既定値のままで完成していることを前提に、
      * 触ったときだけ意味が要る 2 か所（フォントと本文幅）にだけ補足を置く。
      */
@@ -163,7 +163,7 @@ export const ja = {
     themeLight: 'ライト',
     themeDark: 'ダーク',
     fontFamily: '本文のフォント',
-    /** ウェブフォントは CSP（`font-src 'self'`）で読み込めない（02.architecture.md §10.3）。 */
+    /** ウェブフォントは CSP（`font-src 'self'`）で読み込めない（02.architecture/10-theming.md §3）。 */
     fontFamilyHint: 'OS に入っているフォント名。無いフォントを書いても既定のフォントに落ちる',
     fontFamilyPlaceholder: '既定のフォント',
     fontSize: '文字サイズ',
@@ -178,7 +178,7 @@ export const ja = {
     editHint: 'ここに無い項目は settings.json に直接書ける',
   },
   /**
-   * カスタム CSS（F-CONF-07 / 02.architecture.md §10.3）。
+   * カスタム CSS（F-CONF-07 / 02.architecture/10-theming.md §3）。
    *
    * **設定 UI に置くのはボタン 1 つだけ。** 有効化のスイッチもパスの設定も無い
    * （ファイルが存在すれば効く）ので、説明すべきことは
@@ -194,7 +194,7 @@ export const ja = {
     unreadable: 'カスタム CSS を読み込めなかったため適用していません',
     rejected: 'カスタム CSS を本文の中に収められないため適用していません。} の対応を確認してください',
   },
-  /** ステータスバー（03.ux-spec.md §8.3）。 */
+  /** ステータスバー（03.ux-spec/07-status-and-notifications.md §3）。 */
   status: {
     /** モード切り替え（M2）が入るまでは Preview 固定。 */
     mode: 'Preview',

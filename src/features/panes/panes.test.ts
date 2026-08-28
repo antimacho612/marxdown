@@ -57,7 +57,7 @@ afterEach(() => {
   setPlatform(original);
 });
 
-describe('ペインの開閉と幅 (03.ux-spec.md §7.3)', () => {
+describe('ペインの開閉と幅 (03.ux-spec/06-panes.md §3)', () => {
   /**
    * §7.3 の引用ブロック。F-NAV-04 の「既定は非表示」は**初回起動の話**であり、
    * 一度開いた人がそれを維持できることと両立する。
@@ -111,7 +111,7 @@ describe('ライトペインのトグル (Ctrl+Alt+B / OQ-24)', () => {
     });
   });
 
-  it('保存はデバウンスされ、タイマーは 1 本しか走らない (05.performance-budget.md §4.5)', () => {
+  it('保存はデバウンスされ、タイマーは 1 本しか走らない (05.performance-budget/04-targets.md §5)', () => {
     setRightPaneWidth(300);
     setRightPaneWidth(320);
     setRightPaneWidth(340);

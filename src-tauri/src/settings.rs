@@ -1,4 +1,4 @@
-//! ユーザー設定の永続化（02.architecture.md §4.5 / F-CONF-03）。
+//! ユーザー設定の永続化（02.architecture/04-rust-responsibilities.md §5 / F-CONF-03）。
 //!
 //! # `state.json` と分ける理由
 //!
@@ -94,7 +94,7 @@ pub struct Settings {
     pub preview_font_size: f64,
     #[serde(rename = "preview.lineHeight")]
     pub preview_line_height: f64,
-    /// 本文幅。単位は `ch`（02.architecture.md §10.2）。
+    /// 本文幅。単位は `ch`（02.architecture/10-theming.md §2）。
     /// px ではないのは、フォントサイズを変えても列幅が揺れないようにするため。
     #[serde(rename = "preview.maxWidth")]
     pub preview_max_width: f64,
@@ -192,7 +192,7 @@ pub struct SettingsLoad {
     pub broken: Option<SettingsProblem>,
 }
 
-/// 通知バーに出す内容（03.ux-spec.md §8.2）。
+/// 通知バーに出す内容（03.ux-spec/07-status-and-notifications.md §2）。
 ///
 /// パスを `String` にしているのは、`PathBuf` の Serialize が非 UTF-8 で失敗するため。
 /// bootstrap のシリアライズが落ちると初期ペイロードごと消えるので、

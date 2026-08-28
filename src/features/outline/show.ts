@@ -1,5 +1,5 @@
 /**
- * Outline を**出してフォーカスする**（`Ctrl+Shift+U` / 03.ux-spec.md §7.4）。
+ * Outline を**出してフォーカスする**（`Ctrl+Shift+U` / 03.ux-spec/06-panes.md §4）。
  *
  * # なぜトグルではないのか
  *

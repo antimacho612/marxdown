@@ -1,5 +1,5 @@
 <!--
-  ライトペイン（03.ux-spec.md §7 / §7.3）。
+  ライトペイン（03.ux-spec/06-panes.md / §7.3）。
 
   実アプリと同じ grid（`shell.css` の `grid-template-areas`）の中に置いて、
   **本文とペインの取り合い**を見るための story。ここで確認できるのは 3 つ。
@@ -28,7 +28,7 @@
   });
 
   const META: DocumentMeta = {
-    path: 'C:\\Users\\me\\repos\\marxdown\\docs\\02.architecture.md',
+    path: 'C:\\Users\\me\\repos\\marxdown\\docs\\02.architecture/README.md',
     eol: 'lf',
     bom: false,
     encoding: 'utf8',

@@ -14,7 +14,7 @@ function press(init: KeyboardEventInit & { key: string }, target: EventTarget = 
   return event;
 }
 
-describe('グローバルキーバインド (03.ux-spec.md §5)', () => {
+describe('グローバルキーバインド (03.ux-spec/04-keybindings.md)', () => {
   it('修飾子つきのキーで発火し、既定動作を止める', () => {
     const run = vi.fn();
     bindKeys([{ key: 'Ctrl+O', run }]);
