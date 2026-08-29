@@ -1,9 +1,9 @@
 /**
- * ペインの開閉と幅（03.ux-spec/06-panes.md / §7.3）。
+ * ペインの開閉と幅（03.ux-spec/06-panes.md §3）。
  *
  * # キーの 2 系統のうち「ペイン」側
  *
- * §7.4 は、キーの意味を **ペイン（開閉する）** と **ビュー（出してフォーカスする）**
+ * §4 は、キーの意味を **ペイン（開閉する）** と **ビュー（出してフォーカスする）**
  * の 2 系統に分けることを求めている。このモジュールが持つのは前者だけで、
  * **中身が何であるかを知らない**。アウトラインを左ペインへ移す日が来ても、
  * ここは 1 行も変わらない。
@@ -14,7 +14,7 @@
  * # 開閉は bootstrap から同期的に当てる
  *
  * 倍率（`zoom.ts`）と同じ。後から当てると、本文が一度全幅で描かれてから
- * 横に詰まる（02.architecture/04-rust-responsibilities.md §5 / §5.1）。`initPanes` は
+ * 横に詰まる（02.architecture/04-rust-responsibilities.md §5 / 02.architecture/05-startup-sequence.md §1）。`initPanes` は
  * **シェルを描くより前**に呼ぶこと。
  *
  * # Svelte に幅を持たせてよい理由
@@ -30,7 +30,7 @@ import { getPlatform, type Bootstrap, type Panes } from '@/platform';
 export const PANE_WIDTH_DEFAULT = 240;
 export const PANE_WIDTH_MIN = 180;
 /**
- * 上限は §7.3 に無い。**本文が主役である**（Principle 2）ことを守るための歯止め。
+ * 上限は §3 に無い。**本文が主役である**（Principle 2）ことを守るための歯止め。
  * Rust 側にも同じ値があり、手で書いた `state.json` はそちらで丸められる。
  */
 export const PANE_WIDTH_MAX = 640;
@@ -43,7 +43,7 @@ let persistTimer: ReturnType<typeof setTimeout> | null = null;
 /**
  * bootstrap から**同期的に**初期化する。シェルを描くより前に呼ぶこと。
  *
- * **記録が無いときは閉じた状態で出る**（F-NAV-04 / §7.3 の引用ブロック）。
+ * **記録が無いときは閉じた状態で出る**（F-NAV-04 / §3 の引用ブロック）。
  * 既定値は Rust 側で埋まっているので、ここに来る `panes` は常に完全な形をしている。
  */
 export function initPanes(bootstrap: Bootstrap | null): void {
@@ -56,12 +56,12 @@ export function initPanes(bootstrap: Bootstrap | null): void {
   };
 }
 
-/** ライトペインを開閉する（`Ctrl+Alt+B` / OQ-24）。中身が何であれ、開閉だけを行う。 */
+/** ライトペインを開閉する（`Ctrl+Alt+B` / 03.ux-spec/06-panes.md §4）。中身が何であれ、開閉だけを行う。 */
 export function toggleRightPane(): void {
   setRightPaneOpen(!viewStore.panes.right.open);
 }
 
-/** ライトペインを開く。既に開いていれば何もしない（**閉じない**。§7.4）。 */
+/** ライトペインを開く。既に開いていれば何もしない（**閉じない**。§4）。 */
 export function openRightPane(): void {
   setRightPaneOpen(true);
 }

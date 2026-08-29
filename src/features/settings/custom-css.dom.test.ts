@@ -46,7 +46,7 @@ describe('カスタム CSS の適用 (02.architecture/10-theming.md §3)', () =>
     expect(rulesOf(injected())).toHaveLength(0);
   });
 
-  /** §10.3「ユーザーはプレーンなセレクタのまま書ける」。 */
+  /** 02.architecture/10-theming.md §3「ユーザーはプレーンなセレクタのまま書ける」。 */
   it('@scope (#mx-preview) で包んで注入する', () => {
     expect(applyCustomCss('h1 { color: red }')).toBe('applied');
 
@@ -81,7 +81,7 @@ describe('カスタム CSS の適用 (02.architecture/10-theming.md §3)', () =>
 });
 
 /**
- * **Phase 5 の要。06.roadmap/m1.5-shell-and-settings.md §3「カスタム CSS でクロームの要素を消せないこと」。**
+ * **ここがカスタム CSS の要。06.roadmap/m1.5-shell-and-settings.md §3「カスタム CSS でクロームの要素を消せないこと」。**
  *
  * 素朴に `@scope (…) { ユーザーの CSS }` と連結すると、ユーザーが `}` で
  * ブロックを閉じた時点で以降がスコープの外に出る。ここではその CSS を実際に食わせ、

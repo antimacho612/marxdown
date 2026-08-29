@@ -42,7 +42,7 @@ export interface Notice {
   actions?: NoticeAction[];
   /**
    * この ms 後に自動で消える。`undefined` は消えない。
-   * §8.2 が自動消滅を認めているのは情報通知だけなので、
+   * 03.ux-spec/07-status-and-notifications.md §2 が自動消滅を認めているのは情報通知だけなので、
    * 警告・エラーには付けないこと。
    */
   autoDismissMs?: number;

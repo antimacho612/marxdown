@@ -85,11 +85,11 @@ describe.skipIf(available.length === 0)('基準ファイルセット (05.perform
    * （02.architecture/06-markdown-rendering-pipeline.md §4）。
    *
    * つまりこの入力では N-PERF-04 の「段階的に表示される」は成立せず、
-   * §4.2 の「クラッシュしない」だけが保証になる。
+   * 05.performance-budget/04-targets.md §2 の「クラッシュしない」だけが保証になる。
    * この線引きをテストとして残しておく。同じ性質の入力（巨大な表、巨大な 1 段落）でも
    * 同じことが起きる。
    */
-  it('10MB の単一コードフェンスは割れない。それでも落ちない（§4.2）', () => {
+  it('10MB の単一コードフェンスは割れない。それでも落ちない', () => {
     const text = load('extreme.md');
     if (text === null) return;
 

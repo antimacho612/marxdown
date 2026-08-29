@@ -37,7 +37,7 @@
 
 <Story name="履歴あり" loaders={[withRecent(SAMPLE)]} />
 
-<!-- 初回起動。ここに何を出すかが §9.1 のいちばんの争点だった。 -->
+<!-- 初回起動。ここに何を出すかが 03.ux-spec/08-empty-states.md §1 の中心的な論点。 -->
 <Story name="履歴なし" loaders={[withRecent([])]} />
 
 <!--

@@ -1,11 +1,11 @@
 /**
- * ユーザー設定（F-CONF-03 / 02.architecture/04-rust-responsibilities.md §5 / §8.1）。
+ * ユーザー設定（F-CONF-03 / 02.architecture/04-rust-responsibilities.md §5）。
  *
  * # 真実はファイルの側にある
  *
  * このストアは `settings.json` の写しであり、初期値は bootstrap に同梱されて届く。
  * **IPC で取りに行く経路を作らない。** 見た目に効く値（テーマ / 本文幅 / フォント）は
- * 本文を描くより前に当たっている必要があり、往復を挟むと FOUC になる（§5.1）。
+ * 本文を描くより前に当たっている必要があり、往復を挟むと FOUC になる（02.architecture/05-startup-sequence.md §1）。
  *
  * # ここに置くのは設定の値だけ
  *
@@ -47,7 +47,7 @@ export function initSettings(bootstrap: Bootstrap | null): void {
 /**
  * 外部エディタでの編集を即反映する（02.architecture/04-rust-responsibilities.md §5）。起動時に 1 回だけ呼ぶ。
  *
- * IPC を伴う購読なので **`ready()` の後**に呼ぶこと（§5.1）。
+ * IPC を伴う購読なので **`ready()` の後**に呼ぶこと（02.architecture/05-startup-sequence.md §1）。
  * 監視の登録は Rust 側が起動時に済ませている（パスを知っているのはあちらだけ）。
  */
 export function installSettingsWatch(): void {
@@ -55,7 +55,7 @@ export function installSettingsWatch(): void {
 }
 
 /**
- * `settings.json` を読み直して全体を当て直す（§4.5）。
+ * `settings.json` を読み直して全体を当て直す（§5）。
  *
  * **差分適用にしない。** 設定は 1KB 未満で、部分更新の一貫性を気にするより
  * 読み直すほうが確実に安い。

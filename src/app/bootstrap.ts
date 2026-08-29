@@ -60,7 +60,7 @@ const PREVIEW_SELECTOR = '#mx-preview';
 const FALLBACK_SPIKE: SpikeFlags = { parse: 'worker' };
 
 /**
- * bootstrap を読む。**同期的に読めることが最重要**（§5.1 の要点 2）。
+ * bootstrap を読む。**同期的に読めることが最重要**（02.architecture/05-startup-sequence.md §1 の要点 2）。
  *
  * `invoke()` の往復を待つと、WebView 準備完了 → リクエスト → レスポンスという
  * 最低 1 ラウンドトリップが本文表示前に挟まる。
@@ -94,12 +94,12 @@ export async function startup(renderShell: () => void): Promise<void> {
   initPanes(bootstrap);
 
   // 設定も同じ理由でここ。bootstrap に丸ごと載っているので IPC 往復は無い
-  // （02.architecture/04-rust-responsibilities.md §5 / §5.1）。テーマ・フォント・本文幅は
+  // （02.architecture/04-rust-responsibilities.md §5 / 02.architecture/05-startup-sequence.md §1）。テーマ・フォント・本文幅は
   // `initSettings` の中で**同期的に** CSS 変数へ当たる。後から当てると、
-  // 一度出た絵が描き変わる（§5.1 の「後回しにしてよいもの」の表）。
+  // 一度出た絵が描き変わる（02.architecture/05-startup-sequence.md §1 の表）。
   initSettings(bootstrap);
 
-  // カスタム CSS も**本文を描くより前**（F-CONF-07 / §10.3）。
+  // カスタム CSS も**本文を描くより前**（F-CONF-07 / 02.architecture/10-theming.md §3）。
   //
   // 64KB 以下なら bootstrap に同梱されて届いている。ここで当てないと、
   // ダークな背景を指定している人の画面で**白い初期画面が一瞬見える**。
@@ -242,14 +242,14 @@ function reportStartupProblems(bootstrap: Bootstrap | null): void {
 }
 
 /**
- * アプリの再読み込みに置き換えるキー（03.ux-spec/04-keybindings.md §3 / OQ-19）。
+ * アプリの再読み込みに置き換えるキー（03.ux-spec/04-keybindings.md §3）。
  *
  * **WebView の再読み込みは 1 つのキーに割り当たっているのではない。**
  * `F5` / `Ctrl+R` が通常の再読み込み、`Ctrl+Shift+R` / `Ctrl+F5` / `Shift+F5` が
  * キャッシュを無視した再読み込みで、Chromium 系ではどれも効く。
  * 1 つでも取りこぼすと、そこだけ「開いているファイルが消える」経路が残る。
  *
- * **トレイ常駐でプロセスの寿命が延びるほど、1 回の誤爆の被害が重くなる**（§5.3）。
+ * **トレイ常駐でプロセスの寿命が延びるほど、1 回の誤爆の被害が重くなる**。
  * 意味の違い（キャッシュを使うかどうか）はアプリ側の再読み込みには無いので、
  * 全部同じ動作に倒す。
  */
@@ -276,8 +276,8 @@ function installShortcuts(): void {
     // 起きるため。「このキーは WebView に渡さない」が要件そのものになっている。
     ...RELOAD_KEYS.map((key) => ({ key, run: () => void reloadCurrent(), whenEditing: true })),
 
-    // VS Code と同じ `Ctrl+,`（Familiar）。03.ux-spec/04-keybindings.md §3 の一覧に
-    // このキーは無く、**Phase 4 での仕様追加**にあたる。
+    // VS Code と同じ `Ctrl+,`（Familiar）。03.ux-spec/04-keybindings.md §3 の
+    // 一覧には無く、**設定 UI と一緒に足したキー**である。
     // `whenEditing: true` なのは、設定パネルの入力欄にフォーカスがあるまま
     // もう一度押したときも「設定を開く」であってほしいため（開いていれば
     // フォーカスが戻るだけで、2 枚目は出ない）。
@@ -294,7 +294,7 @@ function installShortcuts(): void {
     { key: 'Ctrl+Alt+B', run: () => toggleRightPane() },
     { key: 'Ctrl+Shift+U', run: () => void showOutline() },
 
-    // 見出しへジャンプ（§5.3「移動」）。中身は遅延チャンク。
+    // 見出しへジャンプ（03.ux-spec/04-keybindings.md §3「移動」）。中身は遅延チャンク。
     // **コマンドパレット（`Ctrl+Shift+P` / M3）ではない。** 見出し専用。
     { key: 'Ctrl+Shift+O', run: () => void openJumpLazily() },
 
@@ -320,7 +320,7 @@ function installShortcuts(): void {
     //
     // `whenEditing: true` なのは、検索欄や設定パネルにフォーカスがあるときに
     // **終了できないほうが困る**ため。編集機能が入る M2 以降は、ここに
-    // ダーティ状態の確認（§8.1）が挟まる。
+    // ダーティ状態の確認（03.ux-spec/07-status-and-notifications.md §1）が挟まる。
     { key: 'Ctrl+Q', run: () => void getPlatform().quitApp(), whenEditing: true },
   ]);
 }
@@ -366,7 +366,7 @@ function installTrayOpen(): void {
  *
  * **Warm Start（20.0ms）とは別の経路である。** あちらはウィンドウが可視のまま
  * argv 転送を受けた値で、こちらはサスペンドされた WebView が起こされて
- * 画面に出るまで。ロードマップ §5.3 の完了条件は**この経路のほう**を見る。
+ * 画面に出るまで。06.roadmap/m1.5-shell-and-settings.md §3 の完了条件は**この経路のほう**を見る。
  *
  * 本文は既に描かれている（ウィンドウを破棄していないので再描画が要らない）ため、
  * 「読める」の判定は **1 フレーム描かれたこと**でよい。開き直す経路と違って

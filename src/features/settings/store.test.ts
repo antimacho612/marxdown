@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-// 値が変わるたびに `applyAppearance` が `:root` を触る（Phase 4）ので DOM が要る。
+// 値が変わるたびに `applyAppearance` が `:root` を触るので DOM が要る。
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { documentStore } from '@/features/document/store.svelte';
@@ -95,7 +95,7 @@ describe('設定ストア (02.architecture/04-rust-responsibilities.md §5)', ()
     initSettings(null);
   });
 
-  /** §4.5「常駐が既定」。実際に効くのは Phase 7 だが、キーと既定値はここで決まる。 */
+  /** 常駐が既定（ADR-0007）。キーと既定値はここで決まる。 */
   it('ウィンドウを閉じたときの既定はトレイ常駐', () => {
     expect(DEFAULT_SETTINGS['window.closeBehavior']).toBe('tray');
   });
@@ -150,7 +150,7 @@ describe('settings.json の読み直し', () => {
   });
 
   /**
-   * §4.5 の肝。編集の途中で JSON として壊れた状態を経由するのは普通のことで、
+   * 02.architecture/04-rust-responsibilities.md §5 の肝。編集の途中で JSON として壊れた状態を経由するのは普通のことで、
    * そのたびにテーマが飛んでは設定を試行錯誤できない。
    */
   it('読めない内容に変わっても既定値に戻さない', async () => {

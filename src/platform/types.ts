@@ -62,7 +62,7 @@ export interface CoreError {
 /** ペイン 1 枚の状態（`src-tauri/src/store.rs` の `PaneState`）。 */
 export interface PaneState {
   open: boolean;
-  /** 幅（CSS ピクセル）。**左右で別々に記憶する**（§7.3）。 */
+  /** 幅（CSS ピクセル）。**左右で別々に記憶する**（03.ux-spec/06-panes.md §3）。 */
   width: number;
 }
 
@@ -92,7 +92,7 @@ export const DEFAULT_PANES: Panes = {
 
 export type Theme = 'system' | 'light' | 'dark';
 
-/** ウィンドウを閉じたときの挙動。**実際に効くのは M1.5 Phase 7 から。** */
+/** ウィンドウを閉じたときの挙動（ADR-0007）。 */
 export type WindowCloseBehavior = 'tray' | 'exit';
 
 /**
@@ -388,7 +388,7 @@ export interface Platform {
    */
   openCustomCssFile(): Promise<void>;
   /**
-   * `custom.css` の外部変更を購読する（§10.3）。
+   * `custom.css` の外部変更を購読する（02.architecture/10-theming.md §3）。
    *
    * `onSettingsChanged` と同じく中身は渡さない。受け取ったら
    * `readCustomCss` で読み直して当て直すのが唯一の使い方。
@@ -406,7 +406,7 @@ export interface Platform {
   /** 監視しているファイルの外部変更を購読する。 */
   onFileChanged(handler: (change: FileChange) => void): () => void;
   /**
-   * `settings.json` の外部変更を購読する（§4.5）。
+   * `settings.json` の外部変更を購読する（02.architecture/04-rust-responsibilities.md §5）。
    *
    * 中身は渡さない。**受け取ったら `readSettings` で読み直して全体を当て直す**のが
    * 唯一の使い方で、差分を運ぶ意味がない（設定は小さい）。
@@ -415,7 +415,7 @@ export interface Platform {
   /** ウィンドウへのドラッグ＆ドロップを購読する（F-OPEN-08）。 */
   onDragDrop(handler: (event: DragDropEvent) => void): () => void;
   /**
-   * ウィンドウ操作（カスタムタイトルバー / 03.ux-spec/01-screen-layout.md §1 / OQ-02 = B）。
+   * ウィンドウ操作（カスタムタイトルバー / 03.ux-spec/01-screen-layout.md §1）。
    *
    * `decorations: false` にしたぶん、`─ □ ✕` は自分たちの `<button>` になった。
    * 実体は Rust 側の自作コマンドで、JS の `@tauri-apps/api/window` は入れていない

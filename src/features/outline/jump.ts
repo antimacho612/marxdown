@@ -25,7 +25,7 @@ export function jumpToHeading(item: OutlineItem): void {
   const target = findHeading(container, item);
   if (!target) return;
 
-  // §10「スクロールジャンプ 200ms / `prefers-reduced-motion` で無効」。
+  // 03.ux-spec/09-motion.md「スクロールジャンプ 200ms / `prefers-reduced-motion` で無効」。
   // 位置の変化が大きいほど、飛んだ先が本文のどこなのか分からなくなる。
   target.scrollIntoView({ block: 'start', behavior: prefersReducedMotion() ? 'auto' : 'smooth' });
 }

@@ -4,7 +4,7 @@
  *
  * # `setInterval` を使わない
  *
- * §7.2 が名指しで **`IntersectionObserver` を使うこと**を求めている（N-PERF-05）。
+ * §2 が名指しで **`IntersectionObserver` を使うこと**を求めている（N-PERF-05）。
  * ポーリングにすると、読んでいるだけの時間にも CPU を使い続ける。常駐アプリ
  * （ADR-0007）では、それが 8 時間そのまま積算する。
  *

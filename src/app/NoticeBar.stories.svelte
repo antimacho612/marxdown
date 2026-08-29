@@ -24,7 +24,7 @@
 <Story name="エラー" args={{ notice: { level: 'error', message: 'ファイルを開けませんでした: C:\\work\\a.md' } }} />
 
 <!--
-  操作が必要な通知。§8.2 が「自動で消えるものと見分けられるように」と求めているので、
+  操作が必要な通知。03.ux-spec/07-status-and-notifications.md §2 が「自動で消えるものと見分けられるように」と求めているので、
   選択肢が枠付きで出ていることを目で確かめるのがこの story の目的。
 -->
 <Story

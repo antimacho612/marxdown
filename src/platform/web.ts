@@ -54,7 +54,7 @@ function saveFs(fs: Record<string, VirtualFile>): void {
  *
  * 実装では 2 ファイルに分かれている（`state.json` / `settings.json`）が、
  * ここで再現したいのは値の往復だけなので 1 つのキーにまとめる。
- * **「壊れていたら上書きしない」という §4.5 の肝は Rust 側の担当**であり、
+ * **「壊れていたら上書きしない」という 02.architecture/04-rust-responsibilities.md §5 の肝は Rust 側の担当**であり、
  * ブラウザには壊しようがない。
  */
 interface WebState {
@@ -73,7 +73,7 @@ function loadState(): WebState {
     return {
       recent: raw.recent ?? [],
       zoom: raw.zoom ?? 1,
-      // 実装（Rust）と同じく、欠けていれば「閉じている」。§7.3 の引用ブロック
+      // 実装（Rust）と同じく、欠けていれば「閉じている」。03.ux-spec/06-panes.md §3 の引用ブロック
       panes: { ...DEFAULT_PANES, ...raw.panes },
       // 欠けたキーは既定値。実装（Rust）と同じく、読んだ時点で埋める
       settings: { ...DEFAULT_SETTINGS, ...raw.settings },
@@ -226,7 +226,7 @@ blockquote {
 /**
  * **クロームを消そうとする CSS**（`}` でブロックを閉じて外へ出る）。
  *
- * `applyCustomCss` がこれを拒否することが Phase 5 の要点で、
+ * `applyCustomCss` がこれを拒否することがカスタム CSS の要点で、
  * 実アプリでも `?customCss=escape` と同じものを `custom.css` に書けば同じ結果になる。
  */
 const ESCAPING_CUSTOM_CSS = `h1 { color: red }

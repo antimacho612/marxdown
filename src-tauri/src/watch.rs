@@ -1,4 +1,4 @@
-//! ファイル監視（02.architecture/04-rust-responsibilities.md §4 / §4.5 / F-EDIT-16）。
+//! ファイル監視（02.architecture/04-rust-responsibilities.md §4 / 02.architecture/04-rust-responsibilities.md §5 / F-EDIT-16）。
 //!
 //! # 何を見るか
 //!
@@ -15,7 +15,7 @@
 //! 監視しているファイルは、アプリ自身も書く（設定 UI からの保存、M2 以降の本文保存）。
 //! 書いた直後のイベントをそのまま流すと、保存するたびに再読み込みが走る。
 //!
-//! 弾き方は「直前に自分が書いた mtime との照合」（§4.4）。これを
+//! 弾き方は「直前に自分が書いた mtime との照合」（02.architecture/04-rust-responsibilities.md §4）。これを
 //! **「最後に自分が知っているファイルの姿」との照合**に一般化してある。
 //! 保存直後は `note_self_write` がその姿を更新するので自己イベントは落ち、
 //! 実体が変わっていないイベント（属性の変更、一時ファイルの巻き添え）も同じ経路で落ちる。
@@ -42,12 +42,12 @@ use crate::document;
 
 /// 外部変更の通知（02.architecture/04-rust-responsibilities.md §1）。
 pub const EVENT_FILE_CHANGED: &str = "marxdown://file-changed";
-/// `settings.json` の外部変更（§4.5）。フロントは受け取ったら `read_settings` で読み直す。
+/// `settings.json` の外部変更（02.architecture/04-rust-responsibilities.md §5）。フロントは受け取ったら `read_settings` で読み直す。
 pub const EVENT_SETTINGS_CHANGED: &str = "marxdown://settings-changed";
-/// `custom.css` の外部変更（§10.3）。フロントは `read_custom_css` で読み直して当て直す。
+/// `custom.css` の外部変更（02.architecture/10-theming.md §3）。フロントは `read_custom_css` で読み直して当て直す。
 pub const EVENT_CUSTOM_CSS_CHANGED: &str = "marxdown://custom-css-changed";
 
-/// 変更が落ち着いたと見なすまでの時間（§4.4）。
+/// 変更が落ち着いたと見なすまでの時間（02.architecture/04-rust-responsibilities.md §4）。
 ///
 /// エディタの保存は 1 回の操作でも複数のイベントになる（一時ファイルの作成 → rename →
 /// 属性の変更）。ここを短くすると、書き換えの途中の状態を読みに行くことになる。
@@ -64,15 +64,15 @@ const TICK: Duration = Duration::from_millis(150);
 
 /// 監視対象の役割。**パスではなく役割でイベントの宛先が決まる。**
 ///
-/// カスタム CSS（§10.3）は変種を 1 つ足すだけで同じ仕組みに乗った。
+/// カスタム CSS（02.architecture/10-theming.md §3）は変種を 1 つ足すだけで同じ仕組みに乗った。
 /// 監視・デバウンス・自己イベントの排除は共通のまま。
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Role {
     /// 開いているドキュメント（F-EDIT-16 / N-REL-02）。
     Document,
-    /// `settings.json`（§4.5）。
+    /// `settings.json`（02.architecture/04-rust-responsibilities.md §5）。
     Settings,
-    /// `custom.css`（§10.3）。`settings.json` と同じディレクトリにあるので、
+    /// `custom.css`（02.architecture/10-theming.md §3）。`settings.json` と同じディレクトリにあるので、
     /// **どちらもまだ存在しないときは同じ親ディレクトリを共有して見る**
     /// （`Registry::roots` がその対応を持っている）。
     CustomCss,
@@ -100,7 +100,7 @@ pub enum ChangeKind {
     Removed,
 }
 
-/// フロントへ渡す変更（§4.1 の `path, mtime, kind`）。
+/// フロントへ渡す変更（02.architecture/04-rust-responsibilities.md §1 の `path, mtime, kind`）。
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct FileChange {
@@ -255,7 +255,7 @@ impl FileWatcher {
     ///
     /// ファイルがまだ存在しない場合は親ディレクトリを見て、届いたイベントを
     /// パスで絞る。`settings.json` は最初の保存まで存在しないため、
-    /// ここが無いと「手で作った瞬間」を拾えない（§4.5）。
+    /// ここが無いと「手で作った瞬間」を拾えない（02.architecture/04-rust-responsibilities.md §5）。
     pub fn watch(&self, path: &Path, role: Role) -> bool {
         let Ok(key) = document::canonicalize(path) else {
             return false;
@@ -310,7 +310,7 @@ impl FileWatcher {
     /// 監視をやめる。
     ///
     /// **必ず経路を用意しておく。** タブ（M3）が入ると開いたぶんだけ監視が積算し、
-    /// 常駐しているぶん解放されないまま残る（ADR-0004 / §4.4）。
+    /// 常駐しているぶん解放されないまま残る（ADR-0004 / 02.architecture/04-rust-responsibilities.md §4）。
     pub fn unwatch(&self, path: &Path) {
         let Ok(key) = document::canonicalize(path) else {
             return;
@@ -345,7 +345,7 @@ impl FileWatcher {
         }
     }
 
-    /// 「いま開いているドキュメント」を差し替える（§4.4「タブを閉じたらウォッチャを解除する」）。
+    /// 「いま開いているドキュメント」を差し替える（02.architecture/04-rust-responsibilities.md §4「タブを閉じたらウォッチャを解除する」）。
     ///
     /// M3 でタブが入るまで、開いているドキュメントは 1 つしかない。
     /// **前のファイルの監視をここで必ず外す**ことで、開き直すたびに監視が積み上がらない。
@@ -368,7 +368,7 @@ impl FileWatcher {
         self.watch(path, Role::Document)
     }
 
-    /// 自分がファイルを書いた直後に呼ぶ（§4.4 の「直前の保存 mtime と照合」）。
+    /// 自分がファイルを書いた直後に呼ぶ（02.architecture/04-rust-responsibilities.md §4 の「直前の保存 mtime と照合」）。
     ///
     /// これを忘れると、設定 UI から保存するたびに「外部で変更された」が飛ぶ。
     pub fn note_self_write(&self, path: &Path) {
@@ -415,7 +415,7 @@ mod tests {
     }
 
     /// 中身が変わっていないイベントは流さない。
-    /// 保存直後の自己イベント（§4.4）が落ちるのはこの性質による。
+    /// 保存直後の自己イベント（02.architecture/04-rust-responsibilities.md §4）が落ちるのはこの性質による。
     #[test]
     fn an_event_without_a_real_change_is_dropped() {
         let d = temp_dir("noop");
@@ -445,7 +445,7 @@ mod tests {
         std::fs::remove_dir_all(&d).ok();
     }
 
-    /// §4.4 の自己イベント排除。保存した側が姿を教えておけば、続くイベントは落ちる。
+    /// 02.architecture/04-rust-responsibilities.md §4 の自己イベント排除。保存した側が姿を教えておけば、続くイベントは落ちる。
     #[test]
     fn a_self_write_is_not_reported() {
         let d = temp_dir("self");
@@ -503,7 +503,7 @@ mod tests {
         assert_eq!(Role::CustomCss.event(), EVENT_CUSTOM_CSS_CHANGED);
     }
 
-    /// §10.3 と §4.5 が**同じディレクトリ**にあることの帰結。
+    /// 02.architecture/10-theming.md §3 と 02.architecture/04-rust-responsibilities.md §5 が**同じディレクトリ**にあることの帰結。
     ///
     /// `settings.json` も `custom.css` も、まだ無いうちは親ディレクトリを見る。
     /// 監視元を共有しているので、**片方を外したときにもう片方まで落ちない**ことを

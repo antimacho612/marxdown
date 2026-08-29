@@ -29,7 +29,7 @@ use crate::window::MAIN_LABEL;
 /// いま `✕` がどちらの意味か（設定 `window.closeBehavior`）。
 ///
 /// **ディスクではなくメモリ上の設定を見る。** 外部エディタで `settings.json` を
-/// 書き換えたら Phase 2 の監視が読み直しているので、ここで読みに行く必要はない。
+/// 書き換えたらファイル監視が読み直しているので、ここで読みに行く必要はない。
 pub fn stashes_on_close<R: Runtime>(app: &AppHandle<R>) -> bool {
     app.try_state::<AppState>()
         .map(|s| s.close_behavior() == CloseBehavior::Tray)

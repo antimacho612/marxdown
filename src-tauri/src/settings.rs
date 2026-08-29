@@ -7,7 +7,7 @@
 //! 読めなければ捨てて既定値に戻してよい。
 //! **`settings.json` はユーザーが手で書いたものなので、同じ扱いをしてはいけない。**
 //!
-//! パースに失敗したときの挙動は §4.5 が 3 つ挙げている。
+//! パースに失敗したときの挙動は 02.architecture/04-rust-responsibilities.md §5 が 3 つ挙げている。
 //!
 //! 1. 既定値で起動する（起動は止めない）
 //! 2. 通知バーに知らせる（`broken` を bootstrap に載せてフロントが出す）
@@ -69,7 +69,7 @@ pub enum Theme {
     Dark,
 }
 
-/// ウィンドウを閉じたときの挙動（F-WIN-*)。**M1.5 Phase 7 まで実際には効かない。**
+/// ウィンドウを閉じたときの挙動（F-WIN-* / ADR-0007）。
 /// 既定を `Tray` にしているのは、常駐してウォーム起動を活かすのが
 /// プロダクトの中心価値だから（ADR-0004）。
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
@@ -83,7 +83,7 @@ pub enum CloseBehavior {
 /// 設定の全体。**既定値で埋めた後の姿**であり、ファイルの中身そのものではない。
 ///
 /// `flatten` した `extra` に未知のキーが入る。シリアライズすると
-/// 既知のキーと同じ階層に並ぶので、書き戻しても消えない（§4.5）。
+/// 既知のキーと同じ階層に並ぶので、書き戻しても消えない（02.architecture/04-rust-responsibilities.md §5）。
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct Settings {
     #[serde(rename = "theme")]
@@ -126,7 +126,7 @@ impl Settings {
     /// JSON オブジェクトから読む。**既知のキーを取り除いた残りが `extra` になる。**
     ///
     /// 値の型が違うキーは既定値に落とす。ファイル全体を「壊れている」とは見なさない。
-    /// `version` を持たない以上、互換性はキー単位で保つしかない（§4.5）。
+    /// `version` を持たない以上、互換性はキー単位で保つしかない（02.architecture/04-rust-responsibilities.md §5）。
     fn from_map(mut map: Map<String, Value>) -> Self {
         let d = Self::default();
         Self {
@@ -154,7 +154,7 @@ impl Settings {
         }
     }
 
-    /// 変更したキーだけを当てる（§4.1 `write_settings`）。
+    /// 変更したキーだけを当てる（02.architecture/04-rust-responsibilities.md §1 `write_settings`）。
     ///
     /// **値が `null` のキーは削除する。** 設定 UI の「既定に戻す」がこれにあたる。
     /// 既定値を書き込むのではなく行ごと消すことで、既定値が変わったときに追従する。
@@ -180,7 +180,7 @@ fn take_number(map: &mut Map<String, Value>, key: &str, range: (f64, f64)) -> Op
     value.is_finite().then(|| value.clamp(range.0, range.1))
 }
 
-/// 読み込みの結果。**「壊れている」という事実を値と一緒に運ぶ**（§4.5）。
+/// 読み込みの結果。**「壊れている」という事実を値と一緒に運ぶ**（02.architecture/04-rust-responsibilities.md §5）。
 ///
 /// 呼び出し側が `broken` を無視すると、壊れたファイルを既定値で上書きしてしまう。
 /// 単に `Settings` を返す形にしないのはそのため。
@@ -209,7 +209,7 @@ pub fn settings_path(identifier: &str) -> Option<PathBuf> {
     Some(crate::store::config_dir(identifier)?.join(FILE_NAME))
 }
 
-/// 設定を読む。**壊れていても既定値を返し、起動は止めない**（§4.5）。
+/// 設定を読む。**壊れていても既定値を返し、起動は止めない**（02.architecture/04-rust-responsibilities.md §5）。
 ///
 /// ファイルが無いのは壊れているうちに入らない。初回起動がそれであり、
 /// このとき書き戻しを拒否してしまうと設定 UI が永久に保存できなくなる。
@@ -289,7 +289,7 @@ mod tests {
         std::fs::remove_dir_all(&d).ok();
     }
 
-    /// §4.5 の中心。壊れたファイルは**読まないだけで、触らない**。
+    /// 02.architecture/04-rust-responsibilities.md §5 の中心。壊れたファイルは**読まないだけで、触らない**。
     #[test]
     fn a_corrupt_file_falls_back_to_defaults_without_touching_the_file() {
         let d = temp_dir("corrupt");
@@ -359,7 +359,7 @@ mod tests {
         std::fs::remove_dir_all(&d).ok();
     }
 
-    /// §4.5「未知のキーは保持して書き戻す」。
+    /// 02.architecture/04-rust-responsibilities.md §5「未知のキーは保持して書き戻す」。
     /// 旧バージョンで開いて保存したときに、新しいキーが消えないようにする。
     #[test]
     fn unknown_keys_survive_a_write() {
@@ -408,7 +408,10 @@ mod tests {
 
         let text = std::fs::read_to_string(&p).unwrap();
         assert!(text.contains("\"preview.fontSize\""), "{text}");
-        assert!(!text.contains("\"version\""), "版管理は持たない（§4.5）");
+        assert!(
+            !text.contains("\"version\""),
+            "版管理は持たない（02.architecture/04-rust-responsibilities.md §5）"
+        );
         assert!(text.ends_with('\n'));
         std::fs::remove_dir_all(&d).ok();
     }

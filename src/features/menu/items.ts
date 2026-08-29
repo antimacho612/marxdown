@@ -6,16 +6,16 @@
  *
  * # 見た目と切り離す理由
  *
- * 項目を足すのは後続の Phase の仕事である（Phase 7 で「終了」、
- * M3 でコマンドパレットへの登録）。**足す作業が `buildMenu` に 1 行加えるだけで
- * 終わる**ようにしてある。`AppMenu.svelte` はこの配列を描くだけで、
+ * 項目は今後も増える（M3 でコマンドパレットへの登録）。
+ * **足す作業が `buildMenu` に 1 行加えるだけで終わる**ようにしてある。
+ * `AppMenu.svelte` はこの配列を描くだけで、
  * どんな項目があるかを知らない。
  *
  * # 押せないものを並べない
  *
  * Principle 3「Simple Means Low Cognitive Load」。ファイルを開いていないときの
  * 再読み込み・倍率・検索は、押しても何も起きない。**存在ごと消す。**
- * Welcome 画面（§9.1）が「フォルダを開く」を並べないのと同じ判断。
+ * Welcome 画面（03.ux-spec/08-empty-states.md §1）が「フォルダを開く」を並べないのと同じ判断。
  */
 import { openPath, openViaDialog, reloadCurrent } from '@/features/document/open';
 import { documentStore } from '@/features/document/store.svelte';
@@ -154,7 +154,7 @@ export function buildMenu(): MenuGroup[] {
       // **`✕` がトレイ格納の意味になったので、ここが必要になった。**
       // ウィンドウの中から確実に終われる場所が 1 つも無いと、
       // 「閉じたのに終わっていない」に気づいた人の逃げ場が
-      // トレイアイコンだけになる。ハンバーガーメニューは §2.3 が言う
+      // トレイアイコンだけになる。ハンバーガーメニューは §3 が言う
       // 「初学者の逃げ道」であり、まさにその役割。
       { id: 'quit', label: ja.menu.quit, shortcut: 'Ctrl+Q', run: () => void getPlatform().quitApp() },
     ],

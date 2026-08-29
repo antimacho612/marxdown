@@ -8,7 +8,7 @@
 //! 直接渡せるので、「既定位置に出てから復元先へ動く」ちらつきが起きない。
 //! `visible: false` から本文ごと見せる設計（04.tech-stack/09-tauri-config.md §1）と噛み合う。
 //!
-//! # タイトルバーは自前で描く（OQ-02 = B / 03.ux-spec/01-screen-layout.md §1）
+//! # タイトルバーは自前で描く（03.ux-spec/01-screen-layout.md §1）
 //!
 //! `decorations(false)` にして、`─ □ ✕` もファイル名も Svelte 側が描く。
 //! OS 標準のタイトルバーとタブが二段になるのを避け、縦 30px を本文に返すため。
@@ -59,7 +59,7 @@ pub fn create(
         .title("Marxdown")
         .min_inner_size(480.0, 360.0)
         .visible(false) // 描画準備が整うまで見せない
-        // カスタムタイトルバー（OQ-02 = B）。モジュールの冒頭に、
+        // カスタムタイトルバー。モジュールの冒頭に、
         // これで何が失われて何が残るかを表にしてある。
         .decorations(false)
         // **`decorations(false)` とセットでなければならない。**

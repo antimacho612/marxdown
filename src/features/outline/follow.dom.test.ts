@@ -92,7 +92,7 @@ describe('アウトラインのスクロール追従 (03.ux-spec/06-panes.md §2
 
     const follower = followHeadings(container, (i) => active.push(i));
 
-    // §7.2 が名指しで求めているのはこれ。タイマーを 1 本も足さない
+    // 03.ux-spec/06-panes.md §2 が名指しで求めているのはこれ。タイマーを 1 本も足さない
     expect(vi.getTimerCount()).toBe(0);
     expect(FakeObserver.latest?.observed).toHaveLength(3);
     // 本文のスクロールコンテナを root にしないと、ウィンドウ基準で判定してしまう

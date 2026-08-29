@@ -10,7 +10,7 @@
  * 入力欄を 1 文字打つたびにファイルを書くと、`preview.fontFamily` を
  * 「N」「o」「t」…と打つ間じゅう `settings.json` が書き換わる。
  * `zoom.ts` と同じく、**当てるのは即座・保存はデバウンス**に分ける。
- * 設定を試行錯誤しながら使えることが M1.5 の目的そのものなので（§4.5）、
+ * 設定を試行錯誤しながら使えること自体が目的なので、
  * 遅らせてよいのは保存だけである。
  *
  * # 楽観的に当てる
@@ -36,7 +36,7 @@ let timer: ReturnType<typeof setTimeout> | null = null;
  * キー単位で積むので、同じ項目を連続でいじっても書き込みは 1 回で済む。
  * **`null` は「キーを消す」**（＝既定値に戻す）で、Rust 側の `patched` が
  * そのまま行ごと削除する。既定値を書き込む形にしないのは、
- * 既定値が変わったときに追従させるため（§4.5）。
+ * 既定値が変わったときに追従させるため（02.architecture/04-rust-responsibilities.md §5）。
  */
 let pending: SettingsPatch = {};
 
@@ -60,7 +60,7 @@ export function changeSetting<K extends keyof Settings>(key: K, value: Settings[
   // **既定値と同じになったら、行を消す。**「既定に戻す」ボタンと、テーマで
   // 「OS に合わせる」を選び直すことと、`16` と打ち直すことが、
   // ファイルの上で同じ結果になる。既定値が変わったときに追従するのも
-  // 消しておいた側だけである（§4.5）。
+  // 消しておいた側だけである（同上）。
   pending = { ...pending, [key]: resolved === DEFAULT_SETTINGS[key] ? null : resolved };
   schedulePersist();
 }

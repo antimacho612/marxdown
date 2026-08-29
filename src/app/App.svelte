@@ -12,7 +12,7 @@
   M3 でタブが入るときは `TitleBar` の `center` にタブストリップを渡す
   （タブはタイトルバーと同じ 1 段に入る / 03.ux-spec/01-screen-layout.md §2）。
   ライトペインは `grid-area: rightpane` を持つコンポーネント 1 つで、
-  grid の定義は作り直していない（Phase 3 がその形にしてある）。
+  grid の定義は作り直していない（`shell.css` が最初からその形にしてある）。
   レフトペイン（Explorer / M3）も、同じように 1 つ足すだけで入る。
 -->
 <script lang="ts">

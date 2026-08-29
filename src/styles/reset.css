@@ -36,7 +36,7 @@ body {
   background: var(--mx-color-selection);
 }
 
-/* WebView 内でのトップレベルナビゲーションを誘発する操作を減らす（§9.1 Layer 5）。 */
+/* WebView 内でのトップレベルナビゲーションを誘発する操作を減らす（02.architecture/09-security.md §1 Layer 5）。 */
 a {
   color: var(--mx-color-accent);
   text-decoration-thickness: 1px;
