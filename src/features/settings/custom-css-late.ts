@@ -1,5 +1,5 @@
 /**
- * カスタム CSS の、**起動が終わってからやること**（02.architecture/10-theming.md §3 / §5.1）。
+ * カスタム CSS の、**起動が終わってからやること**（02.architecture/10-theming.md §3 / 02.architecture/05-startup-sequence.md §1）。
  *
  * # なぜ分かれているか
  *
@@ -29,14 +29,14 @@ import { applyCustomCss, type CustomCssResult } from './custom-css';
  */
 export function installCustomCss(initial: CustomCss | null, applied: CustomCssResult): void {
   if (initial?.deferred) {
-    // 64KB 超。ここで初めて IPC が 1 往復する（§10.3 の表の 3 行目）。
+    // 64KB 超。ここで初めて IPC が 1 往復する（§3 の表の 3 行目）。
     void refreshCustomCss();
   } else {
     report(problemOf(initial, applied));
   }
 
   // 外部エディタで書き換えられたら当て直す。**ファイルが後から作られた場合も届く**
-  // （Rust 側が親ディレクトリを見ている / §4.4）。
+  // （Rust 側が親ディレクトリを見ている / 02.architecture/04-rust-responsibilities.md §4）。
   getPlatform().onCustomCssChanged(() => void refreshCustomCss());
 }
 

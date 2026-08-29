@@ -15,7 +15,7 @@
 //! `tauri.conf.json` の CSP は `style-src 'self' 'unsafe-inline'` なので、
 //! `file://` や `asset:` のスタイルシートを `<link>` では読めない。
 //! **Rust 側で読み、フロントが `<style>` として注入する**のはそのため
-//! （ADR-0006 / §10.3）。CSP は緩めない。
+//! （ADR-0006 / 02.architecture/10-theming.md §3）。CSP は緩めない。
 //!
 //! # 中身は検証しない
 //!
@@ -36,15 +36,15 @@ use crate::error::CoreResult;
 
 const FILE_NAME: &str = "custom.css";
 
-/// bootstrap へ同梱する上限（§10.3 の表）。
+/// bootstrap へ同梱する上限（02.architecture/10-theming.md §3 の表）。
 ///
 /// **小さいうちに載せる理由は FOUC を防ぐこと。** ダークな背景を当てている
 /// カスタム CSS を `ready()` の後に適用すると、白い初期画面が一瞬見える。
-/// 読み取りは WebView 初期化と並行するので（§5.1）、クリティカルパスの時間は
+/// 読み取りは WebView 初期化と並行するので（02.architecture/05-startup-sequence.md §1）、クリティカルパスの時間は
 /// 実質増えない。
 pub const INLINE_LIMIT: u64 = 64 * 1024;
 
-/// これを超えるものは読まない（§10.3）。通知バーで知らせて終わりにする。
+/// これを超えるものは読まない（02.architecture/10-theming.md §3）。通知バーで知らせて終わりにする。
 ///
 /// 本文の `MAX_READ_BYTES`（64MB）より 2 桁小さいのは、こちらが
 /// **1 打鍵ごとに再パースされるスタイルシート**だからで、
@@ -63,7 +63,7 @@ pub struct CustomCss {
     /// bootstrap には載せなかったが、`read_custom_css` で取りに行けば読める
     /// （64KB 超 1MB 以下）。
     pub deferred: bool,
-    /// 適用できなかった理由。通知バーに出す（§10.3 の表）。
+    /// 適用できなかった理由。通知バーに出す（02.architecture/10-theming.md §3 の表）。
     pub problem: Option<CustomCssProblem>,
 }
 
@@ -91,7 +91,7 @@ pub fn custom_css_path(identifier: &str) -> Option<PathBuf> {
     Some(crate::store::config_dir(identifier)?.join(FILE_NAME))
 }
 
-/// 読む。**「無い」を失敗にしない**（§10.3）。
+/// 読む。**「無い」を失敗にしない**（02.architecture/10-theming.md §3）。
 ///
 /// `inline_limit` を超えたときは中身を読まずに `deferred` を立てる。
 /// 起動時は `INLINE_LIMIT`、`read_custom_css` からは `MAX_BYTES` を渡す
@@ -191,7 +191,7 @@ mod tests {
         d
     }
 
-    /// §10.3 の表の 1 行目。**初回起動が常にこれ**であり、通知の材料にしない。
+    /// 02.architecture/10-theming.md §3 の表の 1 行目。**初回起動が常にこれ**であり、通知の材料にしない。
     #[test]
     fn a_missing_file_is_a_normal_state() {
         let d = temp_dir("missing");

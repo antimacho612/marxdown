@@ -40,7 +40,7 @@ pub const ZOOM_DEFAULT: f64 = 1.0;
 /// ペインの幅（03.ux-spec/06-panes.md §3）。既定 240px、最小 180px。
 pub const PANE_WIDTH_DEFAULT: f64 = 240.0;
 pub const PANE_WIDTH_MIN: f64 = 180.0;
-/// 上限は §7.3 に無い。**本文が主役である**（Principle 2）ことを守るための歯止めで、
+/// 上限は 03.ux-spec/06-panes.md §3 に無い。**本文が主役である**（Principle 2）ことを守るための歯止めで、
 /// 手で書いた `state.json` や解像度の違う環境から巨大な幅が来ても本文が潰れないようにする。
 pub const PANE_WIDTH_MAX: f64 = 640.0;
 
@@ -71,7 +71,7 @@ pub struct WindowState {
 /// ペイン 1 枚の状態（03.ux-spec/06-panes.md §3 / 02.architecture/04-rust-responsibilities.md §5）。
 ///
 /// **記録が無いときは閉じている。** F-NAV-04 の「既定は非表示」は初回起動の話であり、
-/// 一度開いた人がそれを維持できることと両立する（§7.3 の引用ブロック）。
+/// 一度開いた人がそれを維持できることと両立する（03.ux-spec/06-panes.md §3 の引用ブロック）。
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PaneState {
@@ -105,7 +105,7 @@ impl PaneState {
 #[derive(Debug, Clone, Copy, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Panes {
-    /// Explorer（M3）。M1.5 では誰も書き換えない。
+    /// Explorer（M3）。それまでは誰も書き換えない。
     #[serde(default)]
     pub left: PaneState,
     /// Outline（M1.5）。
@@ -129,10 +129,10 @@ pub struct StoreData {
     pub recent: Vec<RecentEntry>,
     pub zoom: f64,
     pub window: Option<WindowState>,
-    /// ペインの開閉と幅（§4.5 の表）。
+    /// ペインの開閉と幅（02.architecture/04-rust-responsibilities.md §5 の表）。
     ///
-    /// `#[serde(default)]` にしてあるので、**Phase 5 までに書かれた `state.json`
-    /// （`panes` が無い）もそのまま読める**。版を上げると最近開いたファイルと倍率まで
+    /// `#[serde(default)]` にしてあるので、**`panes` を持たない古い `state.json`
+    /// もそのまま読める**。版を上げると最近開いたファイルと倍率まで
     /// 一緒に捨てることになり、キー 1 つの追加に対して代償が大き過ぎる。
     #[serde(default)]
     pub panes: Panes,
@@ -141,7 +141,7 @@ pub struct StoreData {
     /// **`✕` の意味が OS の慣習と変わる瞬間**にだけモーダルを出す。
     /// 03.ux-spec/07-status-and-notifications.md §2 の「モーダルはデータ消失の可能性がある場面だけ」に対する
     /// 意図的な例外であり、**生涯 1 回**であることがその許容条件そのものなので、
-    /// フラグを永続化する。`state.json` に置くのは、アプリが自動的に書く値だから（§4.5）。
+    /// フラグを永続化する。`state.json` に置くのは、アプリが自動的に書く値だから（02.architecture/04-rust-responsibilities.md §5）。
     #[serde(default)]
     pub tray_intro_shown: bool,
 }
@@ -345,7 +345,7 @@ mod tests {
         assert_eq!(data.panes.right.width, PANE_WIDTH_DEFAULT);
     }
 
-    /// Phase 5 までに書かれた `state.json` には `panes` が無い。
+    /// 古い `state.json` には `panes` が無い。
     /// **版を上げずに読めること**が、最近開いたファイルと倍率を守る条件になっている。
     #[test]
     fn a_store_written_before_panes_existed_is_still_readable() {
@@ -379,7 +379,7 @@ mod tests {
         std::fs::remove_dir_all(&d).ok();
     }
 
-    /// §7.3「幅は左右で別々に記憶する」。
+    /// 03.ux-spec/06-panes.md §3「幅は左右で別々に記憶する」。
     #[test]
     fn pane_widths_are_remembered_per_side() {
         let d = temp_dir("panes-roundtrip");
@@ -425,7 +425,7 @@ mod tests {
         std::fs::remove_dir_all(&d).ok();
     }
 
-    /// Phase 6 までに書かれた `state.json`（`trayIntroShown` が無い）を読んでも、
+    /// `trayIntroShown` を持たない古い `state.json` を読んでも、
     /// 最近開いたファイルと倍率を捨てないこと。
     ///
     /// **版を上げるとここが壊れる。** キー 1 つの追加に対して代償が大き過ぎるので、

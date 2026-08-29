@@ -194,7 +194,7 @@ function summarize(results) {
   return {
     marks,
     wallMedianMs: median(results.map((r) => r.wallMs)),
-    /** 「読める」瞬間 = T8。これが Cold Start の定義（§4.1）。 */
+    /** 「読める」瞬間 = T8。これが Cold Start の定義（05.performance-budget/04-targets.md §1）。 */
     readableMs: median(byMark.get('T8') ?? []),
   };
 }

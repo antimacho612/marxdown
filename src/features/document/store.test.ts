@@ -109,7 +109,7 @@ describe('通知の自動消滅 (03.ux-spec/07-status-and-notifications.md §2)'
     expect(documentStore.notice?.message).toBe('エラー');
   });
 
-  it('タイマーは 1 本しか走らない（ポーリングにしない / §4.5）', () => {
+  it('タイマーは 1 本しか走らない（ポーリングにしない / N-PERF-05）', () => {
     notifyInfo('a');
     notifyInfo('b');
     notifyInfo('c');

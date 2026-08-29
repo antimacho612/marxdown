@@ -71,7 +71,7 @@ pub fn forward_open<R: tauri::Runtime>(app: &tauri::AppHandle<R>, paths: Vec<Str
 
 /// 最大化状態が変わったことをフロントへ知らせる（ペイロードは `bool`）。
 ///
-/// カスタムタイトルバー（OQ-02 = B）にしたので、`□` と `❐` の描き分けは
+/// カスタムタイトルバーなので、`□` と `❐` の描き分けは
 /// フロントの仕事になった。**変化したときだけ**流す。`Resized` はドラッグ中に
 /// 毎フレーム飛んでくるので、素通しすると意味のない IPC が積み上がる。
 pub const EVENT_WINDOW_MAXIMIZED: &str = "marxdown://window-maximized";
@@ -145,7 +145,7 @@ pub fn run() {
     // カスタム CSS も同じ理由でここ（02.architecture/10-theming.md §3）。
     // **64KB 以下なら bootstrap に同梱する。** 後から当てると、ダークな背景を
     // 当てているときに白い初期画面が一瞬見える。読み取りは WebView 初期化と
-    // 並行するので、クリティカルパスの時間は実質増えない（§5.1）。
+    // 並行するので、クリティカルパスの時間は実質増えない（02.architecture/05-startup-sequence.md §1）。
     let custom_css_path = custom_css::custom_css_path(&context.config().identifier);
     let custom_css_data = custom_css::load(custom_css_path.as_deref(), custom_css::INLINE_LIMIT);
 
@@ -256,7 +256,7 @@ pub fn run() {
                 let _ = app.asset_protocol_scope().allow_directory(root, true);
             }
 
-            // ファイル監視（§4.4）。**ウィンドウを作る前に `manage` する。**
+            // ファイル監視（02.architecture/04-rust-responsibilities.md §4）。**ウィンドウを作る前に `manage` する。**
             // WebView が動き出した直後の `watch_path` が、まだ管理されていない状態を
             // 引き当てないようにするため。ここで起きるのはスレッド 1 本ぶんの生成だけで、
             // ファイル I/O は伴わない（実際に何を見るかは下で決める）。
@@ -269,16 +269,16 @@ pub fn run() {
             state.trace.mark("T3", None);
 
             // 監視の登録は T3 の後。ここから先は「本文が読める」までの経路に載らない
-            // （§5.1 の判断基準: IPC を伴わず、遅れても最悪 300ms 反映が遅れるだけ）。
+            // （02.architecture/05-startup-sequence.md §1 の判断基準: IPC を伴わず、遅れても最悪 300ms 反映が遅れるだけ）。
             //
             // 開いているドキュメントの登録はフロントが `watch_path` で行う。
             // **`settings.json` だけは Rust 側で登録する。** パスを知っているのは
-            // こちらだけであり、取りに行かせると IPC が 1 往復増える（§4.5）。
+            // こちらだけであり、取りに行かせると IPC が 1 往復増える（02.architecture/04-rust-responsibilities.md §5）。
             if let Some(path) = state.settings_path() {
                 app.state::<watch::FileWatcher>()
                     .watch(path, watch::Role::Settings);
             }
-            // `custom.css` も同じ扱い（§10.3「外部エディタで編集されたら即反映」）。
+            // `custom.css` も同じ扱い（02.architecture/10-theming.md §3「外部エディタで編集されたら即反映」）。
             // **まだ存在しなくても登録する。** 親ディレクトリを見る形になるので、
             // 後から手で置かれた瞬間に拾える（`settings.json` と監視元を共有する）。
             if let Some(path) = state.custom_css_path() {

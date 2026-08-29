@@ -8,7 +8,7 @@
  * （06.roadmap/m1.5-shell-and-settings.md §3「カスタム CSS が遅延チャンクに載っている」）。
  *
  * **ここだけが例外で `main` に残る。** 64KB 以下のカスタム CSS は bootstrap に
- * 同梱されて届き（§10.3）、**本文を描くより前に**当てなければならない。
+ * 同梱されて届き（§3）、**本文を描くより前に**当てなければならない。
  * 後から当てると、ダークな背景を指定している人の画面で白い初期画面が一瞬見える。
  * `applyAppearance` がクリティカルパスに残っているのと同じ理由・同じ扱いで、
  * やることも「`<style>` を 1 枚差し替える」ことに尽きる。
@@ -95,7 +95,7 @@ export function applyCustomCss(css: string | null): CustomCssResult {
  * 後に来ることを分かりやすくするため。もっとも `@scope` された規則は
  * スコープ近接（CSS Cascade 6）でスコープ外の規則に優先するので、
  * `h1 { … }` のような素のセレクタでも `.mx-preview h1 { … }` に負けない。
- * ユーザーがプレーンなセレクタのまま書ける（§10.3）のはこの性質による。
+ * ユーザーがプレーンなセレクタのまま書ける（§3）のはこの性質による。
  */
 function styleElement(): HTMLStyleElement {
   const existing = document.querySelector<HTMLStyleElement>(`style#${STYLE_ID}`);
@@ -108,7 +108,7 @@ function styleElement(): HTMLStyleElement {
 }
 
 /**
- * 本文の中に閉じ込められているか。**ここが Phase 5 の要**。
+ * 本文の中に閉じ込められているか。**ここがカスタム CSS の要**。
  *
  * ブラウザがどう解釈したかだけを見る。「1 つの `@scope` 規則しか無い」なら、
  * どんな書き方をされていても外へは出ていない。

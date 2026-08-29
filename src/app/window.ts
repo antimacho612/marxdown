@@ -1,5 +1,5 @@
 /**
- * ウィンドウ操作（03.ux-spec/01-screen-layout.md §1 / OQ-02 = B）。
+ * ウィンドウ操作（03.ux-spec/01-screen-layout.md §1）。
  *
  * `decorations: false` にしたので、`─ □ ✕` は自分たちの `<button>` である。
  * ここはその押し下げを Platform 層へ渡すだけの薄い層で、

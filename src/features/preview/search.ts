@@ -7,9 +7,9 @@
  *
  * 一致箇所を `<mark>` で包む実装にしない。理由が 3 つある。
  *
- * 1. 段階的描画（§6.4）で本文は後からも増える。包んだ DOM と増える DOM が混ざる
+ * 1. 段階的描画（02.architecture/06-markdown-rendering-pipeline.md §4）で本文は後からも増える。包んだ DOM と増える DOM が混ざる
  * 2. 包んで外すたびに、本文の DOM が作り直される。`huge.md` で無視できない
- * 3. `data-line` の行マッピング（§6.3）が壊れる。スクロール同期（M2）の土台
+ * 3. `data-line` の行マッピング（同 §3）が壊れる。スクロール同期（M2）の土台
  *
  * 代わりに **CSS Custom Highlight API** を使う。`Range` を登録するだけで、
  * DOM には一切触らない。WebView2 Evergreen / WKWebView のみを対象とする

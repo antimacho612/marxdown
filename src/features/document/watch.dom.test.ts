@@ -100,7 +100,7 @@ describe('外部変更の自動反映', () => {
       expect(documentStore.notice).toMatchObject({
         level: 'info',
         message: ja.open.reloadedExternal,
-        // M1.5 に編集機能は無く、失われるものがない。尋ねずに読み込んで自動で消す
+        // 編集機能が入るのは M2 で、失われるものがない。尋ねずに読み込んで自動で消す
         autoDismissMs: 3000,
       }),
     );

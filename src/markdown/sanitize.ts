@@ -5,14 +5,14 @@
  * 開いた瞬間に何かが実行される経路を全部塞ぐ。
  *
  * このモジュールは **DOM を必要とする**ため Worker では動かない。
- * メインスレッド固定（04.tech-stack/README.md §11 の未決事項はここで一旦こう決める）。
+ * メインスレッド固定。クリティカルパスから外せるかは OQ-10。
  */
 import DOMPurify, { type Config } from 'dompurify';
 
 /**
  * スキーム付き URI かどうかの判定と、許可するスキーム。
  *
- * リンクの実際の分岐は JS 側で行う（§9.2）。ここでは
+ * リンクの実際の分岐は JS 側で行う（02.architecture/09-security.md §2）。ここでは
  * 「未知のスキームを属性ごと落とす」だけを担当する。
  *
  * # 形ではなくスキームで判定する理由
@@ -79,7 +79,7 @@ function configure(): void {
 }
 
 const CONFIG: Config = {
-  // script / iframe / object / embed / form を除去（§9.1 Layer 3）
+  // script / iframe / object / embed / form を除去（§1 Layer 3）
   FORBID_TAGS: [
     'script',
     'iframe',
@@ -96,7 +96,7 @@ const CONFIG: Config = {
   ],
   FORBID_ATTR: ['style', 'srcset', 'formaction', 'ping'],
   // on* 属性は DOMPurify が既定で落とすが、明示しておく
-  ALLOW_DATA_ATTR: true, // data-line が必要（§6.3）
+  ALLOW_DATA_ATTR: true, // data-line が必要（02.architecture/06-markdown-rendering-pipeline.md §3）
   ALLOW_ARIA_ATTR: true,
   // SVG は Mermaid が生成したものを通す必要がある（M4）
   USE_PROFILES: { html: true, svg: true, svgFilters: true },
@@ -110,7 +110,7 @@ export function sanitize(html: string): string {
 }
 
 /**
- * Mermaid が生成した SVG も**同じサニタイザ**を通す（§9.1 Layer 3）。
+ * Mermaid が生成した SVG も**同じサニタイザ**を通す（§1 Layer 3）。
  * 使うのは Mermaid が入る M4 だが、ここに置いておくのは
  * **DOM に入る HTML の経路を 2 つに分岐させない**ため。
  */

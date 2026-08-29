@@ -287,13 +287,13 @@ mod tests {
             CustomCss::default(),
         );
 
-        // 本文は初期化スクリプトに載る。ここが IPC 往復を 1 回省いている（§5.1）
+        // 本文は初期化スクリプトに載る。ここが IPC 往復を 1 回省いている（02.architecture/05-startup-sequence.md §1）
         assert!(to_init_script(&b).contains("secret-marker"));
 
         std::fs::remove_dir_all(&dir).ok();
     }
 
-    /// §4.5「bootstrap には設定全体を載せる」。
+    /// 02.architecture/04-rust-responsibilities.md §5「bootstrap には設定全体を載せる」。
     /// **フロントから取りに行く経路を作らない**ので、ここに全部載っている必要がある。
     #[test]
     fn the_script_carries_the_whole_settings() {
@@ -322,7 +322,7 @@ mod tests {
         );
     }
 
-    /// 壊れている事実も bootstrap に載る。通知バーは初回フレームで出せる（§8.2）。
+    /// 壊れている事実も bootstrap に載る。通知バーは初回フレームで出せる（03.ux-spec/07-status-and-notifications.md §2）。
     #[test]
     fn a_broken_settings_file_is_reported_through_the_bootstrap() {
         let trace = crate::trace::Trace::start(Instant::now());
@@ -343,7 +343,7 @@ mod tests {
         std::fs::remove_dir_all(&dir).ok();
     }
 
-    /// §10.3「64KB 以下は bootstrap に同梱する」。
+    /// 02.architecture/10-theming.md §3「64KB 以下は bootstrap に同梱する」。
     ///
     /// **ここが空だと FOUC になる。** ダークな背景を当てているカスタム CSS を
     /// `ready()` の後に適用すると、白い初期画面が一瞬見える。

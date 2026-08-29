@@ -25,8 +25,8 @@
  * # JS で個別要素にスタイルを書かない
  *
  * 当てる先はすべてトークン層。`zoom.ts` が `--mx-zoom` 1 つで本文全体を
- * 拡縮しているのと同じ作法で、ユーザーのカスタム CSS（Phase 5）からも
- * 同じ変数として見える（§10.1）。
+ * 拡縮しているのと同じ作法で、ユーザーのカスタム CSS（F-CONF-07）からも
+ * 同じ変数として見える（§1）。
  */
 import { DEFAULT_SETTINGS, type Settings } from '@/platform';
 
@@ -69,7 +69,7 @@ export function applyAppearance(values: Settings): void {
 
   setVar(root, '--mx-font-size-content', numeric(values, 'preview.fontSize', 'px'));
   setVar(root, '--mx-line-height', numeric(values, 'preview.lineHeight', ''));
-  // 単位は `ch`。px にすると、文字サイズを変えたときに列幅が揺れる（§10.2）。
+  // 単位は `ch`。px にすると、文字サイズを変えたときに列幅が揺れる（02.architecture/10-theming.md §2）。
   setVar(root, '--mx-content-width', numeric(values, 'preview.maxWidth', 'ch'));
 }
 
@@ -105,7 +105,7 @@ function setVar(root: HTMLElement, name: string, value: string | null): void {
 /**
  * フォント名を CSS の `font-family` に入れられる形にする。
  *
- * **ウェブフォントは読み込めない**（CSP の `font-src 'self'` / §10.3）。
+ * **ウェブフォントは読み込めない**（CSP の `font-src 'self'` / 02.architecture/10-theming.md §3）。
  * ここに書けるのは OS に入っているフォントのファミリ名だけで、
  * 見つからなければ後ろのスタックに落ちる。
  *

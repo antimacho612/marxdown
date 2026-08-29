@@ -59,7 +59,7 @@ afterEach(() => {
 
 describe('ペインの開閉と幅 (03.ux-spec/06-panes.md §3)', () => {
   /**
-   * §7.3 の引用ブロック。F-NAV-04 の「既定は非表示」は**初回起動の話**であり、
+   * 03.ux-spec/06-panes.md §3 の引用ブロック。F-NAV-04 の「既定は非表示」は**初回起動の話**であり、
    * 一度開いた人がそれを維持できることと両立する。
    */
   it('記録が無ければ閉じた状態で出る', () => {
@@ -97,7 +97,7 @@ describe('ペインの開閉と幅 (03.ux-spec/06-panes.md §3)', () => {
   });
 });
 
-describe('ライトペインのトグル (Ctrl+Alt+B / OQ-24)', () => {
+describe('ライトペインのトグル (Ctrl+Alt+B)', () => {
   it('開閉が反転し、左右まとめて永続化される', () => {
     toggleRightPane();
     expect(viewStore.panes.right.open).toBe(true);

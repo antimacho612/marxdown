@@ -41,7 +41,7 @@ pub fn write_document(
 ) -> CoreResult<SaveResult> {
     let result = document::write(&req)?;
     // 保存した直後のイベントは自分のもの（02.architecture/04-rust-responsibilities.md §4）。
-    // **M1.5 にはまだ編集機能が無いのでここは通らない**が、監視を入れた時点で
+    // **編集機能が入るまでここは通らない**が、監視を入れた時点で
     // 対にしておかないと、M2 で保存するたびに再読み込みが走る。
     if matches!(result, SaveResult::Saved { .. }) {
         watcher.note_self_write(Path::new(&req.path));
@@ -155,7 +155,7 @@ pub fn window_toggle_maximize(window: Window) {
 /// 閉じる。
 ///
 /// `close()` は `CloseRequested` を経由するので、ウィンドウ位置の保存（F-CONF-10）は
-/// ネイティブの `✕` と同じ経路を通る。**Phase 7 でトレイ格納に化けるのもここ**
+/// ネイティブの `✕` と同じ経路を通る。**トレイ格納に化けるのもここ**
 /// （`window.closeBehavior`）なので、フロントから直接 `exit` を呼ばせない。
 #[tauri::command]
 pub fn window_close(window: Window) {
@@ -266,8 +266,8 @@ pub fn store_set_panes(state: State<'_, AppState>, panes: store::Panes) {
 /// 設定を読み直す。
 ///
 /// **起動時の読み込みはここを通らない。** 設定は bootstrap に丸ごと載っており、
-/// フロントが取りに行く経路は無い（§4.5）。ここが要るのは、外部エディタで
-/// 編集されたあとの読み直し（Phase 2 のファイル監視）と設定 UI の再表示。
+/// フロントが取りに行く経路は無い（02.architecture/04-rust-responsibilities.md §5）。ここが要るのは、外部エディタで
+/// 編集されたあとの読み直し（ファイル監視）と設定 UI の再表示。
 #[tauri::command]
 pub fn read_settings(state: State<'_, AppState>) -> settings::SettingsLoad {
     state.reload_settings()
@@ -276,7 +276,7 @@ pub fn read_settings(state: State<'_, AppState>) -> settings::SettingsLoad {
 /// 変更したキーだけを書き戻す。更新後の設定全体を返す。
 ///
 /// `null` を渡したキーは削除する（既定値に戻る）。未知のキーは保持される。
-/// **`settings.json` が読めない状態では拒否する**（§4.5）。
+/// **`settings.json` が読めない状態では拒否する**（02.architecture/04-rust-responsibilities.md §5）。
 #[tauri::command]
 pub fn write_settings(
     state: State<'_, AppState>,
@@ -314,7 +314,7 @@ pub fn open_settings_file(app: tauri::AppHandle, state: State<'_, AppState>) -> 
 /// カスタム CSS を読む。
 ///
 /// **起動時の 64KB 以下はここを通らない。** bootstrap に同梱されており
-/// （§10.3 / FOUC を防ぐため）、ここが要るのは 2 つの場合だけ。
+/// （02.architecture/10-theming.md §3 / FOUC を防ぐため）、ここが要るのは 2 つの場合だけ。
 ///
 /// 1. 64KB を超えていて bootstrap に載らなかった（`deferred`）
 /// 2. 外部エディタで編集された後の読み直し（`marxdown://custom-css-changed`）
@@ -329,7 +329,7 @@ pub fn read_custom_css(state: State<'_, AppState>) -> custom_css::CustomCss {
 
 /// `custom.css` を OS の既定アプリで開く（F-CONF-07 / 設定 UI のボタン）。
 ///
-/// **無ければ雛形を作ってから開く。** 仕様（§10.3）は「ファイルが存在すれば効く」
+/// **無ければ雛形を作ってから開く。** 仕様（02.architecture/10-theming.md §3）は「ファイルが存在すれば効く」
 /// としか書いておらず、存在しないときの挙動は決まっていない。
 /// ここで「ファイルがありません」と答えると、ユーザーは
 /// **どこに何という名前で作ればよいか**を自分で調べることになる。
@@ -345,7 +345,7 @@ pub fn open_custom_css_file(
         .ok_or_else(|| CoreError::Io("カスタム CSS の置き場所が決まらない".into()))?;
 
     custom_css::ensure_exists(path)?;
-    // 雛形を作ったのは自分なので、続くイベントは外部変更ではない（§4.4）。
+    // 雛形を作ったのは自分なので、続くイベントは外部変更ではない（02.architecture/04-rust-responsibilities.md §4）。
     watcher.note_self_write(path);
 
     tauri_plugin_opener::OpenerExt::opener(&app)
@@ -367,7 +367,7 @@ pub fn open_custom_css_file(
 /// 監視が外れる**。解除を忘れても積算しないのは、この Phase の間だけの性質。
 ///
 /// `settings.json` はここを通らない。パスを知っているのは Rust 側であり、
-/// 起動時に自分で登録する（§4.5）。
+/// 起動時に自分で登録する（02.architecture/04-rust-responsibilities.md §5）。
 #[tauri::command]
 pub fn watch_path(watcher: State<'_, FileWatcher>, path: String) {
     watcher.watch_document(Path::new(&path));

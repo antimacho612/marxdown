@@ -1,6 +1,6 @@
 //! ドキュメントの読み書き。
 //!
-//! 02.architecture/04-rust-responsibilities.md §2 / §4.3。`tauri-plugin-fs` を使わず自作しているのは、
+//! 02.architecture/04-rust-responsibilities.md §2 / 02.architecture/04-rust-responsibilities.md §3。`tauri-plugin-fs` を使わず自作しているのは、
 //! EOL / BOM / mtime / 原子性の制御が要件（F-EDIT-14 / N-REL-01 / N-CMP-03）だから
 //! （04.tech-stack/06-rust.md §3）。
 

@@ -49,7 +49,7 @@
 
 <Story name="読み取り専用" loaders={[seed({ ...BASE, readonly: true })]} />
 
-<!-- 倍率は 100% でも出す（押せる場所を動かさないため / §8.3）。 -->
+<!-- 倍率は 100% でも出す（押せる場所を動かさないため / 03.ux-spec/07-status-and-notifications.md §3）。 -->
 <Story name="拡大中" loaders={[seed(BASE, 1.5)]} />
 
 <!-- 何も開いていないとき。左側が丸ごと消え、倍率も出ない。 -->

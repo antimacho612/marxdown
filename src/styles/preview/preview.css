@@ -209,7 +209,7 @@
   border-color: currentColor;
 }
 
-/* 動きを減らす設定を尊重する（03.ux-spec/09-motion.md / §11） */
+/* 動きを減らす設定を尊重する（03.ux-spec/09-motion.md / 03.ux-spec/10-accessibility.md） */
 @media (prefers-reduced-motion: reduce) {
   .mx-copy {
     transition: none;
@@ -354,7 +354,7 @@
   border-radius: var(--mx-radius-sm);
 }
 
-/* サニタイザが落とした参照は、黙って消さずに痕跡を残す（§9.1 Layer 3） */
+/* サニタイザが落とした参照は、黙って消さずに痕跡を残す（02.architecture/09-security.md §1 Layer 3） */
 .mx-preview [data-mx-blocked] {
   color: var(--mx-color-fg-subtle);
   text-decoration: line-through;

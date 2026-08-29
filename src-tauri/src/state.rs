@@ -17,7 +17,7 @@ use crate::settings::{Settings, SettingsLoad};
 use crate::store::{RecentEntry, StoreData};
 use crate::trace::Trace;
 
-/// アプリデータ領域に置く 3 ファイルの場所（02.architecture/04-rust-responsibilities.md §5 / §10.3）。
+/// アプリデータ領域に置く 3 ファイルの場所（02.architecture/04-rust-responsibilities.md §5 / 02.architecture/10-theming.md §3）。
 ///
 /// ```text
 /// %APPDATA%\com.antimacho612.marxdown\
@@ -117,7 +117,7 @@ impl AppState {
     ///
     /// **読めない内容に変わったときは既定値に戻さない。** 直前に読めていた値を保持し、
     /// 壊れている事実だけを添えて返す。外部エディタで編集している最中の中間状態で
-    /// テーマが飛ぶのを防ぐため（Phase 2 のファイル監視も、この経路を通す）。
+    /// テーマが飛ぶのを防ぐため（ファイル監視も、この経路を通す）。
     pub fn reload_settings(&self) -> SettingsLoad {
         let fresh = crate::settings::load(self.paths.settings.as_deref());
 
@@ -132,9 +132,9 @@ impl AppState {
         current.clone()
     }
 
-    /// 変更したキーだけを当てて書き戻す（§4.1 `write_settings`）。
+    /// 変更したキーだけを当てて書き戻す（02.architecture/04-rust-responsibilities.md §1 `write_settings`）。
     ///
-    /// **壊れている間は拒否する**（§4.5 の 3 番目）。これが無いと、
+    /// **壊れている間は拒否する**（02.architecture/04-rust-responsibilities.md §5 の 3 番目）。これが無いと、
     /// ユーザーが直そうとしている最中に設定 UI がファイルごと吹き飛ばす。
     pub fn patch_settings(
         &self,
@@ -163,7 +163,7 @@ impl AppState {
 
     /// `✕` の意味（ADR-0007 論点 1）。**メモリ上の設定を見る。**
     ///
-    /// ディスクを読み直さないのは、外部エディタでの編集を Phase 2 の監視が
+    /// ディスクを読み直さないのは、外部エディタでの編集をファイル監視が
     /// 既に取り込んでいるため。`✕` を押すたびにファイル I/O をするのは、
     /// 得られるものに対して高い。
     pub fn close_behavior(&self) -> crate::settings::CloseBehavior {
@@ -275,7 +275,7 @@ mod tests {
         )
     }
 
-    /// §4.5 の 3 番目。ユーザーが直している最中に設定 UI がファイルごと吹き飛ばさない。
+    /// 02.architecture/04-rust-responsibilities.md §5 の 3 番目。ユーザーが直している最中に設定 UI がファイルごと吹き飛ばさない。
     #[test]
     fn writing_is_refused_while_the_settings_file_is_broken() {
         let d = temp_dir("refuse");
@@ -319,7 +319,7 @@ mod tests {
         std::fs::remove_dir_all(&d).ok();
     }
 
-    /// §4.5「読めない内容に変わったときは既定値に戻さない」。
+    /// 02.architecture/04-rust-responsibilities.md §5「読めない内容に変わったときは既定値に戻さない」。
     /// 編集途中の中間状態でテーマが飛ぶのを防ぐ。
     #[test]
     fn a_reload_of_a_broken_file_keeps_the_last_readable_values() {
