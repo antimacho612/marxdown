@@ -29,7 +29,7 @@ beforeEach(() => {
   documentStore.notice = null;
 });
 
-describe('ドキュメントストア (ADR-0005)', () => {
+describe('documentStore', () => {
   it('本文を保持するフィールドを持たない', () => {
     // ここに content / html が生えたら ADR-0005 違反。
     // 1 打鍵ごとに巨大な文字列がリアクティビティを通過し、入力レスポンス 16ms を満たせなくなる。
@@ -72,8 +72,7 @@ describe('ドキュメントストア (ADR-0005)', () => {
   });
 });
 
-/** 03.ux-spec/07-status-and-notifications.md §2「情報は 3 秒で自動消滅、警告とエラーは消えない」。 */
-describe('通知の自動消滅 (03.ux-spec/07-status-and-notifications.md §2)', () => {
+describe('notifyInfo', () => {
   beforeEach(() => {
     vi.useFakeTimers();
   });

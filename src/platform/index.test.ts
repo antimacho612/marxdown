@@ -8,8 +8,7 @@ afterEach(() => {
   setPlatform(original);
 });
 
-/** Domain 層が Tauri を知らないことを構造で担保する（02.architecture/03-layers.md §1）。 */
-describe('Platform 層', () => {
+describe('getPlatform', () => {
   it('Tauri の外では web 実装が選ばれる', () => {
     expect(getPlatform().kind).toBe('web');
   });

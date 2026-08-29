@@ -78,14 +78,7 @@ afterEach(() => {
   setPlatform(original);
 });
 
-describe('起動シーケンス (02.architecture/05-startup-sequence.md §1)', () => {
-  /**
-   * 03.ux-spec/07-status-and-notifications.md §2 の 5 行目は「消えない」通知である。
-   *
-   * **`openDocument` は描画に成功した時点で通知バーを下げる**（開けなかったことを
-   * 知らせる通知を、開けたあとも残さないため）。起動時の通知をその手前で出すと、
-   * ファイルを指定して起動したときだけ、壊れた `settings.json` が黙って無視される。
-   */
+describe('startup', () => {
   it('本文を開いても、settings.json が壊れている通知は残る', async () => {
     stubPlatform(
       bootstrapWith({
@@ -108,10 +101,6 @@ describe('起動シーケンス (02.architecture/05-startup-sequence.md §1)', (
     expect(documentStore.notice?.message).toBe(ja.settings.broken);
   });
 
-  /**
-   * 02.architecture/05-startup-sequence.md §1「テーマ / 本文幅 / フォントは**描画より前**」。
-   * 後から当てると FOUC になる（一度出た絵が描き変わる）。
-   */
   it('本文を描くより前に、設定が見た目へ当たっている', async () => {
     const seen: (string | undefined)[] = [];
     stubPlatform(
@@ -129,13 +118,6 @@ describe('起動シーケンス (02.architecture/05-startup-sequence.md §1)', (
     expect(seen).toEqual(['dark', '80ch']);
   });
 
-  /**
-   * 02.architecture/10-theming.md §3。**同じ理由でカスタム CSS も描画より前**に当てる。
-   *
-   * 遅らせてよいのは「取りに行く」ほうだけで、bootstrap に載って届いたものを
-   * `ready()` の後に当てると、ダークな背景を指定している人の画面で
-   * 白い初期画面が一瞬見える。
-   */
   it('本文を描くより前に、bootstrap のカスタム CSS が当たっている', async () => {
     const seen: string[] = [];
     stubPlatform(bootstrapWith({ customCss: { ...NO_CUSTOM_CSS, css: 'h1 { color: red }' } }));

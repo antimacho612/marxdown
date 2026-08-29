@@ -84,7 +84,7 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-describe('開く経路の集約 (F-OPEN-01, 05, 07, 08)', () => {
+describe('install', () => {
   it('読み込み → パース → 描画 → 派生状態の更新まで一度に進む', async () => {
     install();
 
@@ -157,7 +157,7 @@ describe('開く経路の集約 (F-OPEN-01, 05, 07, 08)', () => {
   });
 });
 
-describe('起動シーケンスとの重ね合わせ (02.architecture/05-startup-sequence.md §1)', () => {
+describe('configureOpener', () => {
   it('シェル描画はパース送信の後、描画結果を待つ前に呼ばれる', async () => {
     install();
     const order: string[] = [];
@@ -200,7 +200,7 @@ describe('起動シーケンスとの重ね合わせ (02.architecture/05-startup
   });
 });
 
-describe('ドラッグ＆ドロップ (F-OPEN-08)', () => {
+describe('openDropped', () => {
   it('複数落とされても先頭だけ開き、残りがあることを伝える', async () => {
     install();
 
@@ -228,7 +228,7 @@ describe('ドラッグ＆ドロップ (F-OPEN-08)', () => {
   });
 });
 
-describe('ファイルダイアログ (F-OPEN-07)', () => {
+describe('openViaDialog', () => {
   it('選ばれたファイルを開く', async () => {
     const spies = install({ pickFile: vi.fn(() => Promise.resolve('C:/work/picked.md')) });
 
@@ -265,7 +265,7 @@ function trackScrollTop(element: HTMLElement): number[] {
   return writes;
 }
 
-describe('再読み込み (F5)', () => {
+describe('reloadCurrent', () => {
   it('いま開いているファイルをディスクから読み直す', async () => {
     const spies = install();
     await openPath('C:/work/b.md');
