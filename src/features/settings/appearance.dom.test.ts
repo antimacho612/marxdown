@@ -24,7 +24,7 @@ beforeEach(() => {
   delete root().dataset['theme'];
 });
 
-describe('設定を見た目に当てる (02.architecture/10-theming.md §1)', () => {
+describe('applyAppearance', () => {
   /**
    * 06.roadmap/m1.5-shell-and-settings.md §3 の完了条件「設定を一度も開かない状態の見た目が M1 から
    * 劣化していない」。**既定値を書き込む実装にすると、ここが黙って壊れる。**
@@ -77,13 +77,14 @@ describe('設定を見た目に当てる (02.architecture/10-theming.md §1)', (
    * 置き換えると、そのフォントに無い字の落とし先（混植スタック）が消える。
    */
   it('フォントは既定スタックの先頭に足す', () => {
-    applyAppearance(withSettings({ 'preview.fontFamily': 'Noto Sans JP' }));
+    applyAppearance(withSettings({ 'preview.codeFontFamily': 'BIZ UD Gothic', 'preview.fontFamily': 'Noto Sans JP' }));
 
+    expect(root().style.getPropertyValue('--mx-font-code')).toBe('"BIZ UD Gothic", var(--mx-font-code-stack)');
     expect(root().style.getPropertyValue('--mx-font-content')).toBe('"Noto Sans JP", var(--mx-font-content-stack)');
   });
 
   it('フォントが空文字なら、トークン層のスタックをそのまま使う', () => {
-    applyAppearance(withSettings({ 'preview.fontFamily': '  ' }));
+    applyAppearance(withSettings({ 'preview.codeFontFamily': '  ', 'preview.fontFamily': '  ' }));
 
     expect(written()).toEqual([]);
   });
@@ -96,7 +97,7 @@ describe('設定を見た目に当てる (02.architecture/10-theming.md §1)', (
   });
 });
 
-describe('フォント名の整形', () => {
+describe('formatFontFamily', () => {
   it('空白入りの名前も数字始まりも、引用符で包んで一様に扱う', () => {
     expect(formatFontFamily('Meiryo UI')).toBe('"Meiryo UI"');
     expect(formatFontFamily('  Yu Gothic  ')).toBe('"Yu Gothic"');
@@ -122,7 +123,7 @@ describe('フォント名の整形', () => {
   });
 });
 
-describe('数値の範囲 (src-tauri/src/settings.rs と揃える)', () => {
+describe('clampSetting (src-tauri/src/settings.rs と揃える)', () => {
   it('上下限で潰す', () => {
     expect(clampSetting('preview.fontSize', 0)).toBe(8);
     expect(clampSetting('preview.fontSize', 999)).toBe(72);

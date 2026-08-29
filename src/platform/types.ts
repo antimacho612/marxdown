@@ -107,6 +107,7 @@ export type WindowCloseBehavior = 'tray' | 'exit';
 export interface Settings {
   theme: Theme;
   /** 空文字は「トークン層の既定スタックを使う」。 */
+  'preview.codeFontFamily': string;
   'preview.fontFamily': string;
   'preview.fontSize': number;
   'preview.lineHeight': number;
@@ -123,6 +124,7 @@ export interface Settings {
  */
 export const DEFAULT_SETTINGS: Settings = {
   theme: 'system',
+  'preview.codeFontFamily': '',
   'preview.fontFamily': '',
   'preview.fontSize': 16,
   'preview.lineHeight': 1.75,

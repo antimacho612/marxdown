@@ -199,6 +199,33 @@
       <p class="mx-settings__hint">{ja.settings.fontFamilyHint}</p>
     </div>
 
+    <div class="mx-settings__field">
+      <div class="mx-settings__row">
+        <label class="mx-settings__label" for="{uid}-font">{ja.settings.codeFontFamily}</label>
+        {#if customized('preview.codeFontFamily')}
+          <button
+            type="button"
+            class="mx-settings__reset"
+            title={ja.settings.resetOf(ja.settings.codeFontFamily)}
+            onclick={() => changeSetting('preview.codeFontFamily', null)}
+          >
+            {ja.settings.reset}
+          </button>
+        {/if}
+      </div>
+      <input
+        id="{uid}-font"
+        type="text"
+        class="mx-settings__text"
+        spellcheck="false"
+        autocomplete="off"
+        placeholder={ja.settings.fontFamilyPlaceholder}
+        value={values['preview.codeFontFamily']}
+        oninput={(e) => changeSetting('preview.codeFontFamily', e.currentTarget.value)}
+      />
+      <p class="mx-settings__hint">{ja.settings.fontFamilyHint}</p>
+    </div>
+
     <!--
       数値の 3 項目は形が同じ。単位と補足だけが違うので snippet で 1 つにまとめる。
       **`preview.fontSize` だけ単位を書き、`preview.lineHeight` には書かない**のは、

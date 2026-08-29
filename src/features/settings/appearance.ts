@@ -62,10 +62,12 @@ export function applyAppearance(values: Settings): void {
 
   applyTheme(root, values.theme);
 
-  // フォント名は**既定スタックの前に足す**（F-CONF-04）。置き換えてしまうと、
-  // そのフォントに無い字（日本語 / 記号）の落とし先が消える。
+  // フォント名は**既定スタックの前に足す**（F-CONF-04）。置き換えてしまうと、そのフォントに無い字（日本語 / 記号）の落とし先が消える。
   const family = formatFontFamily(values['preview.fontFamily']);
   setVar(root, '--mx-font-content', family === null ? null : `${family}, var(--mx-font-content-stack)`);
+
+  const codeFamily = formatFontFamily(values['preview.codeFontFamily']);
+  setVar(root, '--mx-font-code', codeFamily === null ? null : `${codeFamily}, var(--mx-font-code-stack)`);
 
   setVar(root, '--mx-font-size-content', numeric(values, 'preview.fontSize', 'px'));
   setVar(root, '--mx-line-height', numeric(values, 'preview.lineHeight', ''));

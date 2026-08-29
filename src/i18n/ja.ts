@@ -163,6 +163,7 @@ export const ja = {
     themeLight: 'ライト',
     themeDark: 'ダーク',
     fontFamily: '本文のフォント',
+    codeFontFamily: 'コードのフォント',
     /** ウェブフォントは CSP（`font-src 'self'`）で読み込めない（02.architecture/10-theming.md §3）。 */
     fontFamilyHint: 'OS に入っているフォント名。無いフォントを書いても既定のフォントに落ちる',
     fontFamilyPlaceholder: '既定のフォント',
