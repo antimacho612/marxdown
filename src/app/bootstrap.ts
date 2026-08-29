@@ -25,33 +25,23 @@
  * このファイルに残るのは**起動に固有の仕事**（bootstrap の読み取り、
  * ウィンドウの表示、購読の登録）だけ。
  */
-import {
-  configureOpener,
-  openDocument,
-  openDropped,
-  openPath,
-  openViaDialog,
-  reloadCurrent,
-} from '@/features/document/open';
+import { configureOpener, openDocument, openDropped, openPath } from '@/features/document/open';
 import { documentStore } from '@/features/document/store.svelte';
 import { installFileWatch } from '@/features/document/watch';
-import { goBack, goForward } from '@/features/history/navigate';
-import { openJumpLazily } from '@/features/outline/open-jump';
-import { showOutline } from '@/features/outline/show';
-import { initPanes, toggleRightPane } from '@/features/panes/panes';
+import { initPanes } from '@/features/panes/panes';
 import { installLinkHandler } from '@/features/preview/links';
-import { openSearchLazily } from '@/features/preview/open-search';
-import { applyZoom, zoomIn, zoomOut, zoomReset } from '@/features/preview/zoom';
+import { applyZoom } from '@/features/preview/zoom';
 import { applyCustomCss } from '@/features/settings/custom-css';
-import { openSettingsLazily } from '@/features/settings/open-settings';
 import { initSettings, installSettingsWatch, reportSettingsProblem } from '@/features/settings/store.svelte';
 import { recentStore } from '@/features/workspace/recent.svelte';
 import { ja } from '@/i18n/ja';
+import { runCommand } from '@/lib/commands';
+import { toMessage } from '@/lib/error';
+import { adoptT4, drain, initTrace, isTracing, mark } from '@/lib/trace';
 import { createParser } from '@/markdown/worker/client';
 import { getPlatform, type Bootstrap, type DocumentPayload, type SpikeFlags } from '@/platform';
 
-import { bindKeys } from './shortcuts';
-import { adoptT4, drain, initTrace, isTracing, mark } from './trace';
+import { installCommands } from './commands';
 import { installWindowState } from './window';
 
 const PREVIEW_SELECTOR = '#mx-preview';
@@ -121,8 +111,11 @@ export async function startup(renderShell: () => void): Promise<void> {
   //
   // どちらもリスナーの登録だけで IPC を伴わない。クリティカルパスへの上乗せは
   // 無視できる（IPC を伴う購読は下の `ready()` の後に置いてある）。
+  //
+  // コマンドの登録もここ。**メニューより先**に済んでいる必要がある
+  // （`features/menu` は id しか知らず、実体はこの登録を見に行く / `commands.ts`）。
   installLinks();
-  installShortcuts();
+  installCommands();
 
   // シェルは、本文があってもなくても同じ場所で描く。
   // 本文がある場合は `openDocument` がパース送信の直後に呼び出す。
@@ -242,104 +235,6 @@ function reportStartupProblems(bootstrap: Bootstrap | null): void {
 }
 
 /**
- * アプリの再読み込みに置き換えるキー（03.ux-spec/04-keybindings.md §3）。
- *
- * **WebView の再読み込みは 1 つのキーに割り当たっているのではない。**
- * `F5` / `Ctrl+R` が通常の再読み込み、`Ctrl+Shift+R` / `Ctrl+F5` / `Shift+F5` が
- * キャッシュを無視した再読み込みで、Chromium 系ではどれも効く。
- * 1 つでも取りこぼすと、そこだけ「開いているファイルが消える」経路が残る。
- *
- * **トレイ常駐でプロセスの寿命が延びるほど、1 回の誤爆の被害が重くなる**。
- * 意味の違い（キャッシュを使うかどうか）はアプリ側の再読み込みには無いので、
- * 全部同じ動作に倒す。
- */
-const RELOAD_KEYS = ['F5', 'Ctrl+R', 'Ctrl+Shift+R', 'Ctrl+F5', 'Shift+F5'];
-
-/**
- * グローバルキーバインド（03.ux-spec/04-keybindings.md §3）。
- *
- * ここに並ぶのは**アプリ全体で効くもの**だけ。プレビュー内検索のように
- * 遅延ロードされる機能は、自分のモジュールの中で `bindKeys` する。
- */
-function installShortcuts(): void {
-  bindKeys([
-    { key: 'Ctrl+O', run: () => void openViaDialogSafely() },
-
-    // 再読み込みのキーは**必ず飲み込む**。
-    //
-    // 素通しすると WebView がページごと再読み込みし、`initialization_script` に
-    // 載っている**起動時の** bootstrap が再適用される。コマンドラインで指定した
-    // ファイルが、その後に D&D やダイアログで開いたファイルを押しのけて戻ってくる。
-    //
-    // 何も開いていないときも同じ理由で飲み込む（`reloadCurrent` は何もしない）。
-    // `whenEditing: true` なのは、検索欄にフォーカスがあるときも同じ事故が
-    // 起きるため。「このキーは WebView に渡さない」が要件そのものになっている。
-    ...RELOAD_KEYS.map((key) => ({ key, run: () => void reloadCurrent(), whenEditing: true })),
-
-    // VS Code と同じ `Ctrl+,`（Familiar）。03.ux-spec/04-keybindings.md §3 の
-    // 一覧には無く、**設定 UI と一緒に足したキー**である。
-    // `whenEditing: true` なのは、設定パネルの入力欄にフォーカスがあるまま
-    // もう一度押したときも「設定を開く」であってほしいため（開いていれば
-    // フォーカスが戻るだけで、2 枚目は出ない）。
-    { key: 'Ctrl+,', run: () => void openSettingsLazily(), whenEditing: true },
-
-    // --- ペインとビュー（03.ux-spec/06-panes.md §4） ---------------------------
-    //
-    // **キーの意味を 2 系統に分けてある。**
-    //   ペイン: `Ctrl+Alt+B` は「ライトペインを開閉する」。中身が何であれ。
-    //   ビュー: `Ctrl+Shift+U` は「Outline を出してフォーカスする」。**閉じない。**
-    //
-    // 後者がトグルでないのは、「アウトラインを見たい」という意図に対して
-    // 常に同じ結果を返すため。アウトラインを左ペインへ移しても意味が変わらない。
-    { key: 'Ctrl+Alt+B', run: () => toggleRightPane() },
-    { key: 'Ctrl+Shift+U', run: () => void showOutline() },
-
-    // 見出しへジャンプ（03.ux-spec/04-keybindings.md §3「移動」）。中身は遅延チャンク。
-    // **コマンドパレット（`Ctrl+Shift+P` / M3）ではない。** 見出し専用。
-    { key: 'Ctrl+Shift+O', run: () => void openJumpLazily() },
-
-    // 戻る / 進む（F-NAV-07）。相対リンクで辿った先から帰ってくるための経路で、
-    // **スクロール位置も一緒に戻る**（`features/history/navigate.ts`）。
-    { key: 'Alt+ArrowLeft', run: () => void goBack() },
-    { key: 'Alt+ArrowRight', run: () => void goForward() },
-
-    { key: 'Ctrl+=', run: () => void zoomIn() },
-    { key: 'Ctrl+-', run: () => void zoomOut() },
-    { key: 'Ctrl+0', run: () => void zoomReset() },
-
-    // 検索を**開く**キーだけがここにある。開いている間だけ効く F3 / Escape は、
-    // 検索モジュール自身が登録して自分で外す。押されてもいない機能のキーが
-    // グローバルに居座らないようにするため。
-    { key: 'Ctrl+F', run: () => void openSearchLazily(), whenEditing: true },
-
-    // Marxdown を終了する（ADR-0007 論点 3 / 03.ux-spec/04-keybindings.md §3）。
-    //
-    // **トレイ常駐では `✕` が「格納」の意味になる**ため、「本当に終わらせたい」を
-    // 表すキーが別に要る。確実に終了できる導線を 3 つ用意するという決定の 1 つ
-    // （残りはトレイメニューとハンバーガーメニュー）。
-    //
-    // `whenEditing: true` なのは、検索欄や設定パネルにフォーカスがあるときに
-    // **終了できないほうが困る**ため。編集機能が入る M2 以降は、ここに
-    // ダーティ状態の確認（03.ux-spec/07-status-and-notifications.md §1）が挟まる。
-    { key: 'Ctrl+Q', run: () => void getPlatform().quitApp(), whenEditing: true },
-  ]);
-}
-
-/**
- * ダイアログを開く（F-OPEN-07）。
- *
- * ダイアログ自体の失敗（プラットフォーム側の異常）は通知に出す。
- * 「取り消した」は失敗ではないので何も出さない。
- */
-async function openViaDialogSafely(): Promise<void> {
-  try {
-    await openViaDialog();
-  } catch (e) {
-    documentStore.notice = { level: 'error', message: toMessage(e) };
-  }
-}
-
-/**
  * 別インスタンスからの起動要求（ウォーム起動）。
  *
  * ここには WebView の初期化も、バンドルの評価も、Svelte のマウントも存在しない。
@@ -358,7 +253,9 @@ async function openViaDialogSafely(): Promise<void> {
  * ここには来ない。
  */
 function installTrayOpen(): void {
-  getPlatform().onTrayOpen(() => void openViaDialogSafely());
+  getPlatform().onTrayOpen(() => {
+    runCommand('document.open');
+  });
 }
 
 /**
@@ -437,10 +334,4 @@ function describeError(kind: string, path: string, fallback: string): string {
   if (typeof entry === 'function') return (entry as (p: string) => string)(path);
   if (typeof entry === 'string') return entry;
   return fallback;
-}
-
-function toMessage(e: unknown): string {
-  if (e instanceof Error) return e.message;
-  if (typeof e === 'object' && e !== null && 'message' in e) return String((e as { message: unknown }).message);
-  return String(e);
 }

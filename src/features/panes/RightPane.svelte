@@ -16,15 +16,27 @@
   # 中身を知らない
 
   §4 の「ペイン」と「ビュー」の分離。ここが持つのは**枠と幅**だけで、
-  中に何が入るかは知らない。将来アウトラインを左へ移すときに直すのは
-  中身の 1 行だけになる。
+  中に何が入るかは知らない。**中身はスニペットで受け取る**（`App.svelte` が渡す）。
+
+  直接 `Outline` を import していた頃は、枠が中身を名指ししているせいで
+  `panes → outline → panes`（`show.ts` が `openRightPane` を呼ぶ）という
+  参照の輪ができていた。将来アウトラインを左へ移すときに直すのは、
+  **`App.svelte` の受け渡し 1 行**だけになる。
 -->
 <script lang="ts">
-  import Outline from '@/features/outline/Outline.svelte';
+  import type { Snippet } from 'svelte';
+
   import { viewStore } from '@/features/view/store.svelte';
   import { ja } from '@/i18n/ja';
 
   import { PANE_WIDTH_DEFAULT, PANE_WIDTH_MAX, PANE_WIDTH_MIN, setRightPaneWidth } from './panes';
+
+  interface Props {
+    /** ペインに入れるもの。**何であるかは、ここでは決めない。** */
+    children: Snippet;
+  }
+
+  const { children }: Props = $props();
 
   /** キーボードでリサイズするときの刻み。ドラッグより粗くてよい。 */
   const KEY_STEP = 16;
@@ -124,7 +136,7 @@
     onkeydown={onKeyDown}
   ></div>
 
-  <Outline />
+  {@render children()}
 </aside>
 
 <style>

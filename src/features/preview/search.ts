@@ -15,9 +15,9 @@
  * DOM には一切触らない。WebView2 Evergreen / WKWebView のみを対象とする
  * 設計（04.tech-stack/08-typescript.md）なので、この API を前提にしてよい。
  */
-import { bindKeys } from '@/app/shortcuts';
-import { registerSearchRefresher } from '@/features/document/open';
+import { registerSearchRefresher } from '@/features/document/refresh';
 import { ja } from '@/i18n/ja';
+import { bindKeys } from '@/lib/shortcuts';
 
 /**
  * 一度に登録する一致の上限。
