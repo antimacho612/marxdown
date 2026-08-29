@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { resetShortcuts } from '@/app/shortcuts';
+import { resetShortcuts } from '@/lib/shortcuts';
 
 import { closeSearch, isOpen, openSearch } from './search';
 

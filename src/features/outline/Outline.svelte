@@ -21,7 +21,7 @@
   `role="tree"` + `aria-level` で伝わるので、支援技術から見た構造は失われない。
 -->
 <script lang="ts">
-  import { registerOutlineRefresher } from '@/features/document/open';
+  import { registerOutlineRefresher } from '@/features/document/refresh';
   import { documentStore } from '@/features/document/store.svelte';
   import { ja } from '@/i18n/ja';
   import type { OutlineItem } from '@/markdown/plugins/line-map';

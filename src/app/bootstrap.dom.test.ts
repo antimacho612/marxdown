@@ -4,6 +4,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { documentStore } from '@/features/document/store.svelte';
 import { settingsStore } from '@/features/settings/store.svelte';
 import { ja } from '@/i18n/ja';
+import { resetCommands } from '@/lib/commands';
+import { resetShortcuts } from '@/lib/shortcuts';
 import {
   DEFAULT_PANES,
   DEFAULT_SETTINGS,
@@ -15,7 +17,6 @@ import {
 } from '@/platform';
 
 import { startup } from './bootstrap';
-import { resetShortcuts } from './shortcuts';
 
 /** Worker を立てない。パイプラインの中身はこのテストの関心ではない。 */
 vi.mock('@/markdown/worker/client', () => ({
@@ -75,6 +76,7 @@ beforeEach(() => {
 
 afterEach(() => {
   resetShortcuts();
+  resetCommands();
   setPlatform(original);
 });
 

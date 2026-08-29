@@ -15,6 +15,7 @@
 
   import TitleBar from '@/app/TitleBar.svelte';
   import { documentStore } from '@/features/document/store.svelte';
+  import Outline from '@/features/outline/Outline.svelte';
   import { viewStore } from '@/features/view/store.svelte';
   import type { OutlineItem } from '@/markdown/plugins/line-map';
   import type { DocumentMeta } from '@/platform';
@@ -71,7 +72,9 @@
         <p>ここまで来ると、アウトラインの現在位置も下がっている。</p>
       </div>
     </div>
-    <RightPane />
+    <RightPane>
+      <Outline />
+    </RightPane>
   </div>
 {/snippet}
 

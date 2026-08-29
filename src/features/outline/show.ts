@@ -15,7 +15,7 @@
  * 「アウトラインの現在位置」がどの DOM 要素かを知っているのは
  * `Outline.svelte` だけ。ここから `querySelector` で探しに行くと、
  * マークアップを変えるたびにこちらが壊れる。**向こうから名乗り出てもらう**
- * （`open.ts` の `registerSearchRefresher` と同じ形）。
+ * （`features/document/refresh.ts` の `registerSearchRefresher` と同じ形）。
  */
 import { tick } from 'svelte';
 

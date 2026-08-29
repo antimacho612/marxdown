@@ -1,11 +1,21 @@
 // @vitest-environment jsdom
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
+import { registerAppCommands } from '@/app/commands';
 import { documentStore } from '@/features/document/store.svelte';
 import { recentStore } from '@/features/workspace/recent.svelte';
 import type { DocumentMeta } from '@/platform';
 
 import { buildMenu, MENU_RECENT_SHOWN, type MenuGroup } from './items';
+
+/**
+ * **実物の表を使う。**
+ *
+ * メニューは `CommandId` しか持たず、何を並べるかは `app/commands.ts` の
+ * `isListed` が決める（06.roadmap/m2-editor.md §1.2）。差し替えたダミーで試すと、
+ * 「id は合っているのに実体が無い」という一番起きやすい壊れ方を見逃す。
+ */
+let uninstall: () => void = () => {};
 
 const META: DocumentMeta = {
   path: 'C:\\Users\\me\\repos\\marxdown\\README.md',
@@ -28,6 +38,11 @@ function group(groups: MenuGroup[], id: string): MenuGroup | undefined {
 beforeEach(() => {
   documentStore.meta = null;
   recentStore.entries = [];
+  uninstall = registerAppCommands();
+});
+
+afterEach(() => {
+  uninstall();
 });
 
 describe('ハンバーガーメニューの項目 (03.ux-spec/01-screen-layout.md §3)', () => {

@@ -4,32 +4,34 @@
  * **このモジュールは遅延チャンク。** メニューが開かれるまでロードされない
  * （06.roadmap/m1.5-shell-and-settings.md §3 の完了条件）。
  *
+ * # 実体を知らない
+ *
+ * 並べるのは **`CommandId` とラベルの対応**だけで、押したときに何が起きるかは
+ * 知らない（06.roadmap/m2-editor.md §1.2 / 実体の表は `app/commands.ts`）。
+ * 以前は 8 つの feature を名指しで import しており、メニューに項目を足すたびに
+ * **メニューと feature の間に参照が 1 本増えていた**。
+ *
+ * この形にすると、M3 のコマンドパレットが同じ表を別の見せ方で並べるだけで済む。
+ *
  * # 見た目と切り離す理由
  *
- * 項目は今後も増える（M3 でコマンドパレットへの登録）。
- * **足す作業が `buildMenu` に 1 行加えるだけで終わる**ようにしてある。
- * `AppMenu.svelte` はこの配列を描くだけで、
- * どんな項目があるかを知らない。
+ * 項目は今後も増える。**足す作業が `MENU` に 1 行加えるだけで終わる**ようにしてある。
+ * `AppMenu.svelte` はこの配列を描くだけで、どんな項目があるかを知らない。
  *
  * # 押せないものを並べない
  *
  * Principle 3「Simple Means Low Cognitive Load」。ファイルを開いていないときの
  * 再読み込み・倍率・検索は、押しても何も起きない。**存在ごと消す。**
  * Welcome 画面（03.ux-spec/08-empty-states.md §1）が「フォルダを開く」を並べないのと同じ判断。
+ *
+ * 判定そのものはここには無い。**`app/commands.ts` の `isListed` が唯一の根拠**で、
+ * ここはそれを引くだけ。メニューとパレットで結論がずれない形にしてある。
  */
-import { openPath, openViaDialog, reloadCurrent } from '@/features/document/open';
-import { documentStore } from '@/features/document/store.svelte';
-import { canGoBack, canGoForward, goBack, goForward } from '@/features/history/navigate';
-import { openJumpLazily } from '@/features/outline/open-jump';
-import { toggleRightPane } from '@/features/panes/panes';
-import { openSearchLazily } from '@/features/preview/open-search';
-import { zoomIn, zoomOut, zoomReset } from '@/features/preview/zoom';
-import { openSettingsLazily } from '@/features/settings/open-settings';
 import { viewStore } from '@/features/view/store.svelte';
 import { recentStore } from '@/features/workspace/recent.svelte';
 import { ja } from '@/i18n/ja';
+import { isCommandListed, runCommand, type CommandId } from '@/lib/commands';
 import { splitPath } from '@/lib/path';
-import { getPlatform } from '@/platform';
 
 /**
  * 一覧に出す最近開いたファイルの件数。
@@ -61,94 +63,74 @@ export interface MenuGroup {
   empty?: string;
 }
 
+/** 表に書く 1 行。`command` が押せる状態のときだけ `MenuAction` になる。 */
+interface MenuEntry {
+  /** `{#each}` のキー。`CommandId` をそのまま使わないのは、短いほうが読めるため。 */
+  id: string;
+  command: CommandId;
+  /** ラベル。状態で変わるものだけ関数で渡す。 */
+  label: string | (() => string);
+  shortcut?: string;
+}
+
+interface MenuSection {
+  id: string;
+  label?: string;
+  entries: MenuEntry[];
+}
+
 /**
- * いま並べるべきものを組み立てる。
+ * 並べる順。**この配列が「メニューに何があるか」の全体**である。
  *
- * ストア（`documentStore` / `recentStore`）を直接読む。呼び出し側で `$derived`
- * すれば、ファイルを開いた / 履歴が増えたときに自動で組み直される。
+ * グループの意味は 03.ux-spec/01-screen-layout.md §3。
+ * - `document` … いま開いている文書に対する操作。再読み込みと検索は同じ対象を指すので隣に置く
+ * - `zoom` … 3 つで 1 組。見出しを付けないと「拡大」が単独の機能に見える
+ * - `app` … アプリに対する操作。**ファイルを開いていなくても押せる**
  */
-export function buildMenu(): MenuGroup[] {
-  const hasDocument = documentStore.meta !== null;
-
-  const groups: MenuGroup[] = [
-    {
-      id: 'file',
-      items: [
-        {
-          id: 'open',
-          label: ja.menu.open,
-          shortcut: 'Ctrl+O',
-          run: () => void openViaDialog(),
-        },
-      ],
-    },
-    {
-      id: 'recent',
-      label: ja.menu.recent,
-      empty: ja.menu.noRecent,
-      // 開けなかった場合の通知と履歴からの除去は `openPath` の担当（Welcome と同じ）。
-      items: recentStore.entries.slice(0, MENU_RECENT_SHOWN).map((entry) => {
-        const split = splitPath(entry.path);
-        return {
-          id: entry.path,
-          label: split.name,
-          detail: split.dir,
-          title: entry.path,
-          run: () => void openPath(entry.path),
-        };
-      }),
-    },
-  ];
-
-  // 戻る / 進む（F-NAV-07）。**辿れるときにしか出さない。**
-  // 押しても何も起きない項目を並べないのは、再読み込みや倍率と同じ判断。
-  // ここに置くのは、`Alt+←` というキーの存在を知る場所が他に無いため
-  // （コマンドパレットは M3 / 06.roadmap/m1.5-shell-and-settings.md §5）。
-  const history: MenuAction[] = [];
-  if (canGoBack()) history.push({ id: 'back', label: ja.history.back, shortcut: 'Alt+←', run: () => void goBack() });
-  if (canGoForward()) {
-    history.push({ id: 'forward', label: ja.history.forward, shortcut: 'Alt+→', run: () => void goForward() });
-  }
-  if (history.length > 0) groups.push({ id: 'history', items: history });
-
-  if (hasDocument) {
-    groups.push(
+const MENU: MenuSection[] = [
+  {
+    id: 'file',
+    entries: [{ id: 'open', command: 'document.open', label: ja.menu.open, shortcut: 'Ctrl+O' }],
+  },
+  {
+    id: 'history',
+    // 戻る / 進む（F-NAV-07）。**辿れるときにしか出ない**（`isListed`）。
+    // ここに置くのは、`Alt+←` というキーの存在を知る場所が他に無いため
+    // （コマンドパレットは M3 / 06.roadmap/m1.5-shell-and-settings.md §5）。
+    entries: [
+      { id: 'back', command: 'history.back', label: ja.history.back, shortcut: 'Alt+←' },
+      { id: 'forward', command: 'history.forward', label: ja.history.forward, shortcut: 'Alt+→' },
+    ],
+  },
+  {
+    id: 'document',
+    entries: [
+      { id: 'reload', command: 'document.reload', label: ja.menu.reload, shortcut: 'F5' },
+      { id: 'search', command: 'preview.search', label: ja.menu.search, shortcut: 'Ctrl+F' },
+      // ペインの開閉（03.ux-spec/06-panes.md §4 の「ペイン」系）。
+      // ラベルが状態で変わるのは、押した結果を先に言うため。
       {
-        // 「いま開いている文書に対する操作」。再読み込みと検索は同じ対象を指すので隣に置く。
-        id: 'document',
-        items: [
-          { id: 'reload', label: ja.menu.reload, shortcut: 'F5', run: () => void reloadCurrent() },
-          { id: 'search', label: ja.menu.search, shortcut: 'Ctrl+F', run: () => void openSearchLazily() },
-          // ペインの開閉（03.ux-spec/06-panes.md §4 の「ペイン」系）。
-          // ラベルが状態で変わるのは、押した結果を先に言うため。
-          {
-            id: 'outline',
-            label: viewStore.panes.right.open ? ja.pane.hideOutline : ja.pane.showOutline,
-            shortcut: 'Ctrl+Alt+B',
-            run: () => toggleRightPane(),
-          },
-          { id: 'jump', label: ja.outline.jump, shortcut: 'Ctrl+Shift+O', run: () => void openJumpLazily() },
-        ],
+        id: 'outline',
+        command: 'pane.toggleRight',
+        label: () => (viewStore.panes.right.open ? ja.pane.hideOutline : ja.pane.showOutline),
+        shortcut: 'Ctrl+Alt+B',
       },
-      {
-        // 倍率は 3 つで 1 組。見出しを付けないと「拡大」が単独の機能に見える。
-        id: 'zoom',
-        label: ja.menu.zoom,
-        items: [
-          { id: 'zoom-in', label: ja.menu.zoomIn, shortcut: 'Ctrl+=', run: () => void zoomIn() },
-          { id: 'zoom-out', label: ja.menu.zoomOut, shortcut: 'Ctrl+-', run: () => void zoomOut() },
-          { id: 'zoom-reset', label: ja.menu.zoomReset, shortcut: 'Ctrl+0', run: () => void zoomReset() },
-        ],
-      },
-    );
-  }
-
-  // 「アプリに対する操作」。**ファイルを開いていなくても押せる**ので、
-  // 文書に対する操作の早期 return より後ろではなく、両方の経路に載せる。
-  groups.push({
+      { id: 'jump', command: 'outline.jump', label: ja.outline.jump, shortcut: 'Ctrl+Shift+O' },
+    ],
+  },
+  {
+    id: 'zoom',
+    label: ja.menu.zoom,
+    entries: [
+      { id: 'zoom-in', command: 'preview.zoomIn', label: ja.menu.zoomIn, shortcut: 'Ctrl+=' },
+      { id: 'zoom-out', command: 'preview.zoomOut', label: ja.menu.zoomOut, shortcut: 'Ctrl+-' },
+      { id: 'zoom-reset', command: 'preview.zoomReset', label: ja.menu.zoomReset, shortcut: 'Ctrl+0' },
+    ],
+  },
+  {
     id: 'app',
-    items: [
-      { id: 'settings', label: ja.menu.settings, shortcut: 'Ctrl+,', run: () => void openSettingsLazily() },
+    entries: [
+      { id: 'settings', command: 'settings.open', label: ja.menu.settings, shortcut: 'Ctrl+,' },
       // 終了（ADR-0007 論点 3 の 3 経路のうちの 1 つ）。
       //
       // **`✕` がトレイ格納の意味になったので、ここが必要になった。**
@@ -156,9 +138,70 @@ export function buildMenu(): MenuGroup[] {
       // 「閉じたのに終わっていない」に気づいた人の逃げ場が
       // トレイアイコンだけになる。ハンバーガーメニューは §3 が言う
       // 「初学者の逃げ道」であり、まさにその役割。
-      { id: 'quit', label: ja.menu.quit, shortcut: 'Ctrl+Q', run: () => void getPlatform().quitApp() },
+      { id: 'quit', command: 'app.quit', label: ja.menu.quit, shortcut: 'Ctrl+Q' },
     ],
-  });
+  },
+];
+
+/**
+ * いま並べるべきものを組み立てる。
+ *
+ * ストア（`viewStore` / `recentStore`）を直接読む。呼び出し側で `$derived`
+ * すれば、ファイルを開いた / 履歴が増えたときに自動で組み直される。
+ */
+export function buildMenu(): MenuGroup[] {
+  const groups: MenuGroup[] = [];
+
+  for (const section of MENU) {
+    // 「最近開いたファイル」は**コマンドの一覧ではなくデータの一覧**なので、
+    // `file` グループの直後に別枠で差し込む。
+    if (section.id === 'history') groups.push(recentGroup());
+
+    const items = section.entries.filter((entry) => isCommandListed(entry.command)).map(toAction);
+    // 空になったグループは区切り線ごと消す（`recent` だけは `empty` の文で埋める）。
+    if (items.length === 0) continue;
+
+    groups.push(
+      section.label === undefined ? { id: section.id, items } : { id: section.id, label: section.label, items },
+    );
+  }
 
   return groups;
+}
+
+function toAction(entry: MenuEntry): MenuAction {
+  const action: MenuAction = {
+    id: entry.id,
+    label: typeof entry.label === 'function' ? entry.label() : entry.label,
+    run: () => {
+      runCommand(entry.command);
+    },
+  };
+  return entry.shortcut === undefined ? action : { ...action, shortcut: entry.shortcut };
+}
+
+/**
+ * 最近開いたファイル（F-OPEN-09）。
+ *
+ * 開けなかった場合の通知と履歴からの除去は `openPath` の担当（Welcome と同じ）。
+ * **履歴が空でも見出しは出す。** 押せない項目の代わりに 1 行の文で埋める。
+ */
+function recentGroup(): MenuGroup {
+  return {
+    id: 'recent',
+    label: ja.menu.recent,
+    empty: ja.menu.noRecent,
+    items: recentStore.entries.slice(0, MENU_RECENT_SHOWN).map((entry) => {
+      const split = splitPath(entry.path);
+      return {
+        id: entry.path,
+        label: split.name,
+        detail: split.dir,
+        title: entry.path,
+        run: () => {
+          runCommand('document.openPath', entry.path);
+        },
+      };
+    }),
+  };
 }

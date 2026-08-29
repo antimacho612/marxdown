@@ -17,6 +17,7 @@
 -->
 <script lang="ts">
   import { documentStore } from '@/features/document/store.svelte';
+  import Outline from '@/features/outline/Outline.svelte';
   import RightPane from '@/features/panes/RightPane.svelte';
   import { viewStore } from '@/features/view/store.svelte';
   import Welcome from '@/features/workspace/Welcome.svelte';
@@ -46,9 +47,14 @@
 
   開閉の初期値は bootstrap から**シェルを描く前**に入っている（`panes.ts`）ので、
   ここが 1 フレームだけ閉じた状態で描かれることは無い。
+
+  **中身を決めるのはここ。** `RightPane` は枠と幅しか持たない（`RightPane.svelte`）。
+  M3 でアウトラインを左へ移すときも、直すのはこの受け渡しだけになる。
 -->
 {#if viewStore.panes.right.open}
-  <RightPane />
+  <RightPane>
+    <Outline />
+  </RightPane>
 {/if}
 
 <StatusBar />

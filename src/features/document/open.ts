@@ -22,17 +22,19 @@
  * 描き終えた HTML も Markdown テキストも、この層は保持しない（ADR-0005）。
  * ストアへ渡すのはメタ情報・アウトライン・計測値といった派生値だけ。
  */
-import { mark } from '@/app/trace';
 import { pushHistory } from '@/features/history/history';
 import { scrollToAnchor } from '@/features/preview/anchor';
 import { enhance } from '@/features/preview/enhance';
 import { paint } from '@/features/preview/paint';
 import { forgetRecent, rememberRecent } from '@/features/workspace/recent.svelte';
 import { ja } from '@/i18n/ja';
+import { toMessage } from '@/lib/error';
 import { dirOf } from '@/lib/path';
+import { mark } from '@/lib/trace';
 import type { MarkdownParser } from '@/markdown/worker/client';
 import { getPlatform, type DocumentPayload } from '@/platform';
 
+import { refreshOutline, refreshSearch } from './refresh';
 import { documentStore, INFO_NOTICE_MS, notifyInfo } from './store.svelte';
 
 const PREVIEW_SELECTOR = '#mx-preview';
@@ -184,7 +186,7 @@ export async function openDocument(payload: DocumentPayload, options: OpenOption
     enhance(container, enhanceOptions);
 
     // 検索が開いていれば、新しい本文で引き直す（閉じない理由は `search.ts`）。
-    searchRefresher?.();
+    refreshSearch();
 
     // `./other.md#section` で開かれた場合の着地点（F-VIEW-05 / F-VIEW-07）。
     // 段階的描画では、飛び先がまだ DOM に入っていないことがある。
@@ -197,7 +199,7 @@ export async function openDocument(payload: DocumentPayload, options: OpenOption
       enhance(container, enhanceOptions);
       // 後から入ったチャンクの見出しを、アウトラインの追従に拾わせる
       // （`IntersectionObserver` の観測対象を足す / `features/outline/follow.ts`）。
-      outlineRefresher?.();
+      refreshOutline();
       if (anchorPending && options.anchor !== undefined) {
         anchorPending = !scrollToAnchor(container, options.anchor);
       }
@@ -328,34 +330,6 @@ async function watch(path: string): Promise<void> {
   }
 }
 
-/**
- * 検索モジュールが自分を登録する口（F-VIEW-10）。
- *
- * ここから `import('@/features/preview/search')` を呼ぶわけにはいかない。
- * 呼べば、検索を一度も使っていないユーザーのためにも `search` チャンクを
- * 落とすことになる。**読み込まれたモジュールのほうから名乗り出る**形にする。
- */
-let searchRefresher: (() => void) | null = null;
-
-export function registerSearchRefresher(refresh: () => void): void {
-  searchRefresher = refresh;
-}
-
-/**
- * アウトラインが自分を登録する口（F-VIEW-02 / 03.ux-spec/06-panes.md §2）。
- *
- * 段階的描画（02.architecture/06-markdown-rendering-pipeline.md §4）では、本文は idle 時に後から増える。
- * 増え終わったことを知っているのはここだけなので、**知らせる側**になる。
- *
- * ペインを閉じると `null` が渡り、以降は誰も呼ばれない。
- * 開いていないアウトラインのために本文の描画経路が働くことは無い（N-PERF-05）。
- */
-let outlineRefresher: (() => void) | null = null;
-
-export function registerOutlineRefresher(refresh: (() => void) | null): void {
-  outlineRefresher = refresh;
-}
-
 /** いま本文がどこまでスクロールされているか。履歴（F-NAV-07）が控える値。 */
 export function previewScrollTop(): number {
   return document.querySelector<HTMLElement>(PREVIEW_SELECTOR)?.scrollTop ?? 0;
@@ -389,10 +363,4 @@ export function describeOpenError(e: unknown, path: string): string {
     if (typeof entry === 'string') return entry;
   }
   return toMessage(e);
-}
-
-function toMessage(e: unknown): string {
-  if (e instanceof Error) return e.message;
-  if (typeof e === 'object' && e !== null && 'message' in e) return String((e as { message: unknown }).message);
-  return String(e);
 }

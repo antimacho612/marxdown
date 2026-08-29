@@ -11,7 +11,7 @@
  */
 import { mount, unmount } from 'svelte';
 
-import { bindKeys } from '@/app/shortcuts';
+import { bindKeys } from '@/lib/shortcuts';
 
 import JumpPalette from './JumpPalette.svelte';
 

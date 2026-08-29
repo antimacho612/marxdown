@@ -15,6 +15,20 @@ import '../src/styles/reset.css';
 import '../src/styles/shell.css';
 import '../src/styles/preview/preview.css';
 
+import { registerAppCommands } from '../src/app/commands';
+
+/**
+ * コマンドを登録する（`src/app/commands.ts`）。
+ *
+ * メニューは `CommandId` しか持たず、実体はレジストリから引く。
+ * 登録しないと**ハンバーガーメニューの項目が 1 つも出ない**ので、
+ * 実アプリの `bootstrap` にあたる仕事をここで 1 回だけ済ませる。
+ *
+ * キーは割り当てない（`installCommands` ではなくこちらを呼ぶ理由）。
+ * Storybook で `Ctrl+F` を奪われると、story を探せなくなる。
+ */
+registerAppCommands();
+
 const preview: Preview = {
   parameters: {
     // 背景はテーマトークンが決める。Storybook 側の背景切り替えとは二重になるので使わない。

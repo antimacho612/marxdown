@@ -19,9 +19,9 @@
   押しても何も起きない項目を置くのは Principle 3 に反する。
 -->
 <script lang="ts">
-  import Mark from '@/app/Mark.svelte';
-  import { openPath, openViaDialog } from '@/features/document/open';
   import { ja } from '@/i18n/ja';
+  import { runCommand } from '@/lib/commands';
+  import Mark from '@/lib/Mark.svelte';
   import { splitPath } from '@/lib/path';
 
   import { recentStore } from './recent.svelte';
@@ -44,7 +44,7 @@
       {ja.welcome.title}
     </h1>
 
-    <button type="button" class="mx-welcome__action" onclick={() => void openViaDialog()}>
+    <button type="button" class="mx-welcome__action" onclick={() => runCommand('document.open')}>
       <span>{ja.welcome.openFile}</span>
       <kbd>Ctrl+O</kbd>
     </button>
@@ -62,7 +62,7 @@
               <button
                 type="button"
                 class="mx-welcome__item"
-                onclick={() => void openPath(entry.path)}
+                onclick={() => runCommand('document.openPath', entry.path)}
                 title={entry.path}
               >
                 <span class="mx-welcome__item-name">{split.name}</span>
