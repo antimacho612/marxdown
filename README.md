@@ -28,7 +28,7 @@ Marxdown はこのループのためだけに作る。
 
 ## 開発
 
-Node 24 / pnpm 11 / Rust stable 1.80+ が要る。
+Node 24 / pnpm 12 / Rust stable 1.80+ が要る。
 パッケージマネージャは **pnpm**。
 
 ```bash
