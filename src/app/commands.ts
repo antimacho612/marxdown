@@ -39,6 +39,8 @@ import { toggleRightPane } from '@/features/panes/panes';
 import { openSearchLazily } from '@/features/preview/open-search';
 import { zoomIn, zoomOut, zoomReset } from '@/features/preview/zoom';
 import { openSettingsLazily } from '@/features/settings/open-settings';
+import { togglePreview } from '@/features/view/mode';
+import { viewStore } from '@/features/view/store.svelte';
 import { registerCommands, runCommand, type Command, type CommandId } from '@/lib/commands';
 import { toMessage } from '@/lib/error';
 import { bindKeys } from '@/lib/shortcuts';
@@ -88,8 +90,28 @@ const COMMANDS: Command[] = [
   // **コマンドパレット（`Ctrl+Shift+P` / M3）ではない。** 見出し専用。
   { id: 'outline.jump', run: () => void openJumpLazily(), isListed: hasDocument },
 
-  { id: 'preview.search', run: () => void openSearchLazily(), isListed: hasDocument },
+  // 表示モードの切り替え（F-MODE-06 / 03.ux-spec/02-view-modes.md §2）。
+  //
+  // **`Ctrl+Shift+M`（順送り）と `Ctrl+\`（Split）はまだ登録しない。**
+  // モードが 2 つしか無いあいだ、順送りはこのトグルと同じ操作になり、
+  // Split は存在しない。押しても同じ / 何も起きないキーを先に置かない
+  // （Principle 3）。どちらも Phase 5 で Split と一緒に入る。
+  { id: 'view.togglePreview', run: () => void togglePreview(), isListed: hasDocument },
 
+  // プレビュー内検索（F-VIEW-10）。**Preview を見ているときだけ。**
+  // Edit ではエディタ側の検索（F-EDIT-05 / Phase 3）が受け持つので、
+  // ここで本文を探しに行くと、見えていない面を検索することになる。
+  {
+    id: 'preview.search',
+    run: () => {
+      if (viewStore.mode === 'preview') void openSearchLazily();
+    },
+    isListed: () => hasDocument() && viewStore.mode === 'preview',
+  },
+
+  // 倍率は Preview 専用ではない。エディタの font-size にも `--mx-zoom` が乗っている
+  // （`features/editor/theme.ts`）。id の接頭辞が `preview.` なのは
+  // 実装の置き場所であって、効く範囲ではない。
   { id: 'preview.zoomIn', run: () => void zoomIn(), isListed: hasDocument },
   { id: 'preview.zoomOut', run: () => void zoomOut(), isListed: hasDocument },
   { id: 'preview.zoomReset', run: () => void zoomReset(), isListed: hasDocument },
@@ -155,6 +177,12 @@ export const KEY_BINDINGS: KeyBinding[] = [
   // フォーカスが戻るだけで、2 枚目は出ない）。
   { key: 'Ctrl+,', id: 'settings.open', whenEditing: true },
 
+  // Preview ⇄ 直前の編集モード（03.ux-spec/02-view-modes.md §2 の「最も使うトグル」）。
+  //
+  // `whenEditing: true` が要る。**Edit モードではフォーカスが CodeMirror にある**ので、
+  // 既定の「入力中は発火しない」に任せると、入った先から戻れなくなる。
+  { key: 'Ctrl+Shift+V', id: 'view.togglePreview', whenEditing: true },
+
   { key: 'Ctrl+Alt+B', id: 'pane.toggleRight' },
   { key: 'Ctrl+Shift+U', id: 'outline.show' },
   { key: 'Ctrl+Shift+O', id: 'outline.jump' },
@@ -164,9 +192,18 @@ export const KEY_BINDINGS: KeyBinding[] = [
   { key: 'Alt+ArrowLeft', id: 'history.back' },
   { key: 'Alt+ArrowRight', id: 'history.forward' },
 
-  { key: 'Ctrl+=', id: 'preview.zoomIn' },
-  { key: 'Ctrl+-', id: 'preview.zoomOut' },
-  { key: 'Ctrl+0', id: 'preview.zoomReset' },
+  // 表示倍率（F-VIEW-11）。**`whenEditing: true` が要る。**
+  //
+  // Edit モードではフォーカスが CodeMirror にあり、既定の「入力中は発火しない」に
+  // 任せるとここを素通りする。素通りした `Ctrl+=` / `Ctrl+-` は **WebView 自身の
+  // ズーム**に当たるので、アプリの倍率と WebView の倍率が二重にかかる
+  // （`lib/shortcuts.ts` の「既定動作を必ず止める」）。
+  //
+  // 倍率は「いまどの面を見ているか」ではなく「この人の見え方の好み」なので、
+  // どこにフォーカスがあっても効くのが正しい（VS Code も同じ）。
+  { key: 'Ctrl+=', id: 'preview.zoomIn', whenEditing: true },
+  { key: 'Ctrl+-', id: 'preview.zoomOut', whenEditing: true },
+  { key: 'Ctrl+0', id: 'preview.zoomReset', whenEditing: true },
 
   // 検索を**開く**キーだけがここにある。開いている間だけ効く F3 / Escape は、
   // 検索モジュール自身が登録して自分で外す。押されてもいない機能のキーが

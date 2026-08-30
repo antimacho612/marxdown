@@ -7,7 +7,7 @@
   },
   {
     "name": "editor (上限の根拠は 05.performance-budget.md §5.1)",
-    "path": ["dist/assets/editor-*.js", "dist/assets/spike-editor-*.js"],
+    "path": ["dist/assets/editor-*.js"],
     "limit": "215 KB",
     "gzip": true
   },

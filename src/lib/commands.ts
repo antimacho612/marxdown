@@ -43,7 +43,8 @@ export type CommandId =
   | 'preview.zoomIn'
   | 'preview.zoomOut'
   | 'preview.zoomReset'
-  | 'settings.open';
+  | 'settings.open'
+  | 'view.togglePreview';
 
 export interface Command {
   id: CommandId;

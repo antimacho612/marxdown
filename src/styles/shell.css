@@ -46,9 +46,38 @@ body {
   display: contents;
 }
 
-.mx-preview {
+.mx-preview,
+.mx-editor {
   grid-area: main;
   min-height: 0;
+}
+
+/*
+ * # 表示モード（F-MODE-01, 02 / 03.ux-spec/02-view-modes.md）
+ *
+ * 本文の面とエディタの面は**同じセルに重ねてある**。出し分けはここだけで行い、
+ * 要素の付け外しはしない（`features/view/mode.ts`）。
+ *
+ * エディタを DOM から外すと `EditorView` を作り直すことになり、Undo 履歴が消える。
+ * §4 は「モードを切り替えても Undo 履歴を保持する」を要求している。
+ *
+ * `data-mx-mode` が無い状態（bootstrap を持たない経路 / Storybook）は Preview 扱い。
+ * **既定が Preview であることを、属性の有無にも一致させてある。**
+ *
+ * Split（Phase 5）はこの grid を 2 列に割る形で足す。そのとき変わるのは
+ * `grid-template-areas` の定義と、ここの 2 行だけで済む。
+ */
+.mx-editor {
+  display: none;
+  overflow: hidden;
+}
+
+:root[data-mx-mode='edit'] .mx-preview {
+  display: none;
+}
+
+:root[data-mx-mode='edit'] .mx-editor {
+  display: block;
 }
 
 /*

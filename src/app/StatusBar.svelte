@@ -6,8 +6,13 @@
   ```
 
   押せるのは倍率だけ（§3.1 の表）。エンコーディングの再解釈も EOL の変換も
-  ドキュメントの書き戻しに触るので M2 以降であり、**押しても何も起きないものを
-  ボタンに見せない**。カーソル位置は Preview では出ない（§3 の但し書き）。
+  ドキュメントの書き戻しに触るので、押せるようにするのは Phase 7。
+  **押しても何も起きないものをボタンに見せない。**
+  カーソル位置は Preview では出ない（§3 の但し書き / Phase 7）。
+
+  モードの表示は**いまの値を出すだけ**で、まだ押せない。§3.1 は「クリックで
+  モード切替メニュー」を M2 の期限としているが、モードが 2 つしか無いあいだは
+  メニューではなくトグルであり、Split が入る Phase 5 まで形が決まらない。
 
   計測値（パース / 描画）は開発ビルドでのみ出す。開発中の道具であって、
   製品の画面に居座る理由が説明できない（06.roadmap/invariants.md）。
@@ -25,7 +30,7 @@
 
 <footer class="mx-statusbar">
   {#if meta}
-    <span>{ja.status.mode}</span>
+    <span>{ja.status.mode[viewStore.mode]}</span>
     <span>{meta.encoding.toUpperCase()}</span>
     <span>{meta.eol.toUpperCase()}</span>
     {#if meta.bom}<span>BOM</span>{/if}

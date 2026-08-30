@@ -36,6 +36,7 @@ import { getPlatform, type DocumentPayload } from '@/platform';
 
 import { refreshOutline, refreshSearch } from './refresh';
 import { documentStore, INFO_NOTICE_MS, notifyInfo } from './store.svelte';
+import { setDocumentText } from './text';
 
 const PREVIEW_SELECTOR = '#mx-preview';
 
@@ -134,6 +135,14 @@ export async function openDocument(payload: DocumentPayload, options: OpenOption
   if (options.history !== false) pushHistory(payload.path, previewScrollTop());
 
   documentStore.meta = payload;
+
+  // 本文のテキストを渡す（F-EDIT-01）。**ストアではなく素のモジュールへ**（ADR-0005）。
+  // エディタが載っていればそちらの内容も差し替わる（`document/text.ts`）。
+  //
+  // パースを投げた**後**に置いてある。ここは代入 1 つだが、`editor` が載っていると
+  // CodeMirror の dispatch を伴う。T6→T7 の重ね合わせを崩さない位置に置く。
+  setDocumentText(payload.content);
+
   options.betweenParseAndPaint?.();
 
   try {
