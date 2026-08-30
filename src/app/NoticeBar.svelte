@@ -52,6 +52,28 @@
     background: var(--mx-color-bg-inset);
     font-size: var(--mx-font-size-ui);
     box-shadow: var(--mx-shadow-1);
+    animation: mx-notice-in 150ms ease-out;
+  }
+
+  /*
+   * 出現に 150ms（03.ux-spec/09-motion.md）。
+   *
+   * 動かすのは `opacity` と `translate` だけで、**本文のレイアウトには触らない**。
+   * このバーは本文の上に重なっているので、動かしても再レイアウトが走らない。
+   * サイドバー（`width` の遷移）を 0ms にしてあるのと、ここが 150ms なのは
+   * 同じ基準の裏表である（07.open-questions/oq-26-motion-rules.md の推奨 B）。
+   */
+  @keyframes mx-notice-in {
+    from {
+      opacity: 0;
+      translate: 0 -4px;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .mx-notice {
+      animation: none;
+    }
   }
 
   .mx-notice__message {
