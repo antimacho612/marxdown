@@ -181,8 +181,6 @@ impl SnapTarget {
                 SWP_ASYNCWINDOWPOS | SWP_NOACTIVATE | SWP_SHOWWINDOW,
             )
         };
-
-        debug::log(|| format!("reposition: css=({x}, {y}, {width}, {height}) scale={scale}"));
     }
 
     /// ホバー状態が変わったときだけフロントへ流す。
@@ -315,8 +313,6 @@ pub fn install(app: &tauri::AppHandle) {
         eprintln!("[marxdown] Snap Layouts: 位置の追従だけ諦める（フライアウトは出る）");
     }
 
-    debug::log(|| format!("install: parent={:?} overlay={:?}", parent.0, overlay.0));
-
     target.reposition(parent);
 }
 
@@ -327,12 +323,10 @@ pub fn install(app: &tauri::AppHandle) {
 pub fn set_target(app: &tauri::AppHandle, x: f64, y: f64, width: f64, height: f64) {
     // `prepare` に失敗していれば `manage` されていない。黙って捨てる。
     let Some(target) = tauri::Manager::try_state::<Arc<SnapTarget>>(app) else {
-        debug::log(|| format!("set_target: ({x}, {y}, {width}, {height}) 受け皿が無い"));
         return;
     };
 
     target.store_rect(x, y, width, height);
-    debug::log(|| format!("set_target: ({x}, {y}, {width}, {height})"));
 
     if let Some(overlay) = target.overlay() {
         if let Ok(parent) = unsafe { GetParent(overlay) } {
