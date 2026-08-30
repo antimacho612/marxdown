@@ -401,10 +401,11 @@ pub fn ready(window: Window, state: State<'_, AppState>) {
     // `hwnd()` はイベントループへの問い合わせなので `setup()` の中では答えが返らない。
     // 失敗しても中で握り潰す。付かなかったときに起きるのは
     // 「ホバーしてもフライアウトが出ない」ことだけで、ボタン自体は押せる。
+    //
+    // 矩形の受け皿は `setup()` の中で先に置いてある（`snap_layouts.rs` の `prepare`）。
+    // フロントの矩形通知はここへ来るより前に届くため。
     #[cfg(windows)]
-    if let Some(main) = window.get_webview_window(crate::window::MAIN_LABEL) {
-        crate::snap_layouts::install(window.app_handle(), &main);
-    }
+    crate::snap_layouts::install(window.app_handle());
 
     // トレイアイコン（F-OS-08 / ADR-0007）。
     //
