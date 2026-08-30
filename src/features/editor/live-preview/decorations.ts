@@ -1,5 +1,5 @@
 /**
- * Live Preview の装飾（02.architecture/07-editor-wysiwyg.md §2 / ADR-0002）。
+ * Live Preview の装飾（02.architecture/07-editor-wysiwyg.md §3 / ADR-0002）。
  *
  * **見出しと強調だけ**を実装した骨格。全記法を書くのは M5 の担当で、
  * ここは方式が成立することを確かめ、拡張の型を示すためのもの。

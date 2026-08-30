@@ -35,6 +35,7 @@ import type { MarkdownParser } from '@/markdown/worker/client';
 import { getPlatform, type DocumentPayload } from '@/platform';
 
 import { markClean } from './dirty';
+import { confirmDiscard } from './discard';
 import { refreshOutline, refreshSearch } from './refresh';
 import { documentStore, INFO_NOTICE_MS, notifyInfo } from './store.svelte';
 import { setDocumentText } from './text';
@@ -248,6 +249,10 @@ export async function openDocument(payload: DocumentPayload, options: OpenOption
  * 次の起動でも同じ失敗を踏むことになる（03.ux-spec/08-empty-states.md §1 の一覧は道具であって記録ではない）。
  */
 export async function openPath(path: string, options: OpenOptions = {}): Promise<OpenOutcome | null> {
+  // 編集中の内容を捨てる前に尋ねる（F-EDIT-03 / `discard.ts`）。
+  // **読み込みより前**に置く。開くと決まっていないのに I/O を始めない。
+  if (!(await confirmDiscard())) return null;
+
   const startedAt = options.startedAt ?? performance.now();
 
   let payload: DocumentPayload;

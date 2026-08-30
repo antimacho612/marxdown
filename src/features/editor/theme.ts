@@ -58,6 +58,54 @@ const base = EditorView.theme({
     backgroundColor: 'var(--mx-color-bg-hover)',
     outline: 'none',
   },
+
+  /*
+   * 検索の一致（F-EDIT-05）。**プレビュー内検索と同じトークンを使う**
+   * （`--mx-color-search-*` / `styles/tokens.css`）。同じ `Ctrl+F` で開くものが、
+   * 面ごとに違う色で光ってはいけない。
+   */
+  '.cm-searchMatch': { backgroundColor: 'var(--mx-color-search-match)' },
+  '.cm-searchMatch.cm-searchMatch-selected': {
+    backgroundColor: 'var(--mx-color-search-current)',
+    color: 'var(--mx-color-accent-fg)',
+  },
+  // 選択した語と同じもの。**一致より弱く**塗る。探しているのではなく、
+  // たまたま同じ語がそこにある、という情報でしかない。
+  '.cm-selectionMatch': { backgroundColor: 'var(--mx-color-bg-hover)' },
+
+  /*
+   * 検索・置換パネル（F-EDIT-05）。
+   *
+   * CodeMirror は素の状態でも自前の色を持っているが、**ライト固定**なので
+   * ダークテーマで白いパネルが出る。トークン層で塗り直す。
+   */
+  '.cm-panels': {
+    backgroundColor: 'var(--mx-color-bg-subtle)',
+    color: 'var(--mx-color-fg)',
+    fontFamily: 'var(--mx-font-ui)',
+    fontSize: 'var(--mx-font-size-ui)',
+  },
+  '.cm-panels.cm-panels-top': { borderBottom: '1px solid var(--mx-color-border)' },
+  '.cm-panels.cm-panels-bottom': { borderTop: '1px solid var(--mx-color-border)' },
+  '.cm-panel.cm-search': { padding: 'var(--mx-space-2)' },
+  '.cm-panel.cm-search label': { color: 'var(--mx-color-fg-muted)' },
+  '.cm-textfield': {
+    backgroundColor: 'var(--mx-color-bg)',
+    color: 'var(--mx-color-fg)',
+    border: '1px solid var(--mx-color-border)',
+    borderRadius: 'var(--mx-radius-sm)',
+    padding: '2px 6px',
+  },
+  '.cm-textfield:focus-visible': { outline: '2px solid var(--mx-color-accent)', outlineOffset: '-1px' },
+  '.cm-button': {
+    backgroundColor: 'var(--mx-color-bg)',
+    backgroundImage: 'none',
+    color: 'var(--mx-color-fg)',
+    border: '1px solid var(--mx-color-border)',
+    borderRadius: 'var(--mx-radius-sm)',
+  },
+  '.cm-button:hover': { backgroundColor: 'var(--mx-color-bg-hover)' },
+  '.cm-panel button[name="close"]': { color: 'var(--mx-color-fg-muted)', fontSize: '16px' },
 });
 
 /**

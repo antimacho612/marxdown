@@ -16,6 +16,7 @@ import {
   NO_CUSTOM_CSS,
   type Bootstrap,
   type CustomCss,
+  type DiscardChoice,
   type DocumentPayload,
   type OpenRequest,
   type Panes,
@@ -429,6 +430,18 @@ export const webPlatform: Platform = {
    */
   setDirty() {
     return Promise.resolve();
+  },
+
+  /**
+   * ブラウザに 3 択のネイティブダイアログは無い。**「保存して開く」を落として
+   * 2 択にする**（`confirm` は真偽しか返さない）。
+   *
+   * 落としてよいのは、これが `dev:web` の経路だからで、**既定を
+   * 「移らない」側に倒す**点だけは製品と同じにしてある（N-REL-01）。
+   */
+  confirmDiscard() {
+    const discard = globalThis.confirm('保存していない変更があります。破棄して開きますか？');
+    return Promise.resolve<DiscardChoice>(discard ? 'discard' : 'cancel');
   },
 
   onSaveAndQuit() {

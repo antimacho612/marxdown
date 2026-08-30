@@ -39,8 +39,8 @@ export function openJumpPalette(): void {
   instance = mount(JumpPalette, { target: host, props: { onclose: closeJumpPalette } });
 
   // 開いている間だけ効くキー。**押されてもいない機能のキーをグローバルに残さない**
-  // （`search.ts` と同じ）。`whenEditing` なのは、フォーカスが入力欄にあるため。
-  unbind = bindKeys([{ key: 'Escape', run: () => closeJumpPalette(), whenEditing: true }]);
+  // （`search.ts` と同じ）。
+  unbind = bindKeys([{ key: 'Escape', run: () => closeJumpPalette() }]);
 }
 
 export function closeJumpPalette(): void {

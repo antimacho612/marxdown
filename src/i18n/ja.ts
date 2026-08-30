@@ -63,7 +63,14 @@ export const ja = {
     zoomIn: '拡大',
     zoomOut: '縮小',
     zoomReset: '等倍',
+    /**
+     * 検索（F-VIEW-10 / F-EDIT-05）。**ラベルは探す対象を言う。**
+     * Preview では本文の DOM を、Edit ではエディタのテキストを探す
+     * （`features/view/find.ts`）。同じ `Ctrl+F` でも別物なので、名前を分ける。
+     */
     search: 'プレビュー内を検索',
+    find: '検索',
+    replace: '置換',
     /**
      * 終了（ADR-0007 論点 3）。
      *
@@ -153,6 +160,37 @@ export const ja = {
     /** `truncated` は上限で打ち切った場合。黙って切らずに `+` を付けて示す。 */
     position: (index: number, total: number, truncated: boolean) =>
       `${index} / ${total.toLocaleString('ja-JP')}${truncated ? '+' : ''}`,
+  },
+  /**
+   * エディタの中で CodeMirror 自身が出す文言（F-EDIT-05）。
+   *
+   * **キーは英語のまま**でなければならない。CodeMirror は原文をキーにして
+   * `EditorState.phrases` を引く（`view.state.phrase("Find")`）ので、
+   * ここは「原文 → 日本語」の対応表であって、こちらで名前を決められない。
+   *
+   * 訳していないキーは英語のまま出る。検索・置換・指定行へ移動のパネルに
+   * 出るものだけを並べてある。
+   */
+  editor: {
+    phrases: {
+      Find: '検索',
+      Replace: '置換',
+      next: '次へ',
+      previous: '前へ',
+      all: 'すべて選択',
+      'match case': '大文字と小文字を区別',
+      regexp: '正規表現',
+      'by word': '単語単位',
+      replace: '置換',
+      'replace all': 'すべて置換',
+      close: '閉じる',
+      'Go to line': '指定行へ移動',
+      go: '移動',
+      'current match': '現在の一致',
+      'on line': '行目',
+      'replaced match on line $': '$ 行目を置換しました',
+      'replaced $ matches': '$ 件を置換しました',
+    },
   },
   /** リンククリックの分岐（02.architecture/09-security.md §2）。 */
   link: {

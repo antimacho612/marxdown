@@ -33,6 +33,7 @@ describe('getPlatform', () => {
       'pickFile',
       'pickSavePath',
       'setDirty',
+      'confirmDiscard',
       'readSettings',
       'writeSettings',
       'openSettingsFile',

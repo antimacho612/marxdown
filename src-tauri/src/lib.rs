@@ -225,6 +225,7 @@ pub fn run() {
             commands::pick_file,
             commands::pick_save_path,
             commands::set_dirty,
+            commands::confirm_discard,
             commands::store_push_recent,
             commands::store_remove_recent,
             commands::store_set_zoom,

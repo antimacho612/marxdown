@@ -11,6 +11,7 @@ import { getCurrentWebview } from '@tauri-apps/api/webview';
 import type {
   Bootstrap,
   CustomCss,
+  DiscardChoice,
   DocumentPayload,
   FileChange,
   OpenRequest,
@@ -110,6 +111,10 @@ export const tauriPlatform: Platform = {
 
   setDirty(dirty) {
     return invoke<void>('set_dirty', { dirty });
+  },
+
+  confirmDiscard() {
+    return invoke<DiscardChoice>('confirm_discard');
   },
 
   readSettings() {
