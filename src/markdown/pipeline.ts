@@ -6,13 +6,26 @@
  *
  * # プラグイン構成の方針
  *
- * 04.tech-stack/04-markdown.md §2 が「既定で有効」とするもののうち、
- * CommonMark + GFM に必要なものだけを入れている。
- * 脚注 / タスクリスト / GitHub Alerts は M4 の担当（06.roadmap/m3-workspace.md §1）で、
- * 先に入れると、クリティカルパスの予算にどの機能がいくら乗っているかが見えなくなる。
+ * 04.tech-stack/04-markdown.md §2 が「既定で有効」とするものを入れている。
+ * 目次（F-VIEW-15）だけは採用パッケージが未定なので OQ-27 に残してある。
+ *
+ * 脚注 / タスクリスト / GitHub Alerts は元々 M4 の担当だったが、
+ * **OQ-27 の決着により M2 の着手時点へ前倒した**（06.roadmap/m2-editor.md §1.4）。
+ * Design Brief §5.3 の目安「GitHub のプレビューで表示できるものは、Marxdown でも
+ * 表示できる」に届いていないことが、読む体験（価値 2 位 / ADR-0008）を
+ * 最も直接に損なっていたため。Mermaid（OQ-27 の案 C）は OQ-18 待ちで M3 以降。
+ *
+ * # `use` の順序が仕様である
+ *
+ * `lineMapPlugin` を**最後**に置く。あれは `md.renderer.rules[...]` を
+ * その時点の中身ごと包むので、先に置くと後続プラグインの代入で上書きされる
+ * （`plugins/line-map.ts`）。GitHub Alerts の `alert_open` がまさにそれに当たる。
  */
 import MarkdownItCallable, { type MarkdownIt, type Token } from 'markdown-it';
 import anchor from 'markdown-it-anchor';
+import footnote from 'markdown-it-footnote';
+import githubAlerts from 'markdown-it-github-alerts';
+import taskLists from 'markdown-it-task-lists';
 
 import { splitFrontMatter } from './plugins/front-matter';
 import { extractOutline, lineMapPlugin, type OutlineItem } from './plugins/line-map';
@@ -37,10 +50,27 @@ export function createMarkdownIt(): MarkdownIt {
     typographer: false, // 勝手な記号変換はしない（Markdown Is the Product）
   });
 
-  md.use(lineMapPlugin);
   // 見出しに id を振るだけ。permalink（¶ リンク）は付けない。
   // 本文に無い記号を勝手に足すのは Principle 2「Markdown Is the Product」に反する。
   md.use(anchor, { slugify: slugifyHeading });
+
+  // GitHub Alerts（F-VIEW-14）。`> [!NOTE]` の blockquote を `alert_open` に書き換える。
+  // タイトルは GitHub と同じ英語のまま（Familiar）。ここは UI 文言ではなく
+  // **本文の一部として GitHub が描くもの**なので、i18n/ja.ts の対象にしない。
+  md.use(githubAlerts);
+
+  // 脚注（F-VIEW-16）。生成されるブロックは本文の末尾に付く。
+  // **チャンク分割はこのブロックの中で切ってはいけない**（`renderChunks`）。
+  md.use(footnote);
+
+  // タスクリスト（F-VIEW-01 の GFM 相当）。`<input type="checkbox" disabled>` を出す。
+  // **既定のまま disabled で出す。** プレビュー上でチェックを許すか（OQ-05）は
+  // 未決着で、期限は M4。ここで `enabled: true` にすると、その決定を
+  // 先取りしたことになる（サニタイザ側も `markdown/sanitize.ts` で disabled を要求する）。
+  md.use(taskLists);
+
+  // **最後に置く。** 上のプラグインが登録したレンダラごと包む必要がある。
+  md.use(lineMapPlugin);
 
   return md;
 }
@@ -125,7 +155,16 @@ export function renderChunks(
   let blocks = 0;
   let limit = firstChunkBlocks;
 
-  for (let i = 0; i < tokens.length; i++) {
+  // 脚注ブロック（`markdown-it-footnote` が末尾に足す）より手前でしか切らない。
+  //
+  // `footnote_anchor`（↩ の戻りリンク）は **level 0 / nesting 0** で、下の判定からは
+  // 「トップレベルブロックの終端」に見える。実際には `<li>` の中に居るので、
+  // ここで切ると `<section class="footnotes">` が閉じないまま次のチャンクへ渡る。
+  // 脚注ブロックは本文の末尾にしか出ないため、丸ごと最後のチャンクへ送れば足りる。
+  const footnoteBlock = tokens.findIndex((t) => t.type === 'footnote_block_open');
+  const cutEnd = footnoteBlock === -1 ? tokens.length : footnoteBlock;
+
+  for (let i = 0; i < cutEnd; i++) {
     const token = tokens[i];
     if (!token) continue;
     // level 0 かつ nesting が閉じたところがトップレベルブロックの終端

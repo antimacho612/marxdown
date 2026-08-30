@@ -11,6 +11,12 @@
  *
  * 消費側（スクロール同期）は M2 だが、**先行投資として最初から付けておく**。
  * あとから入れると HTML の形が変わって回帰が出る。
+ *
+ * # プラグインより後に `use` すること
+ *
+ * ここは `md.renderer.rules[...]` を**その時点の中身ごと包む**。先に `use` すると
+ * 包む相手がまだ居らず、後から登録したプラグインの代入で丸ごと上書きされる。
+ * `pipeline.ts` が `lineMapPlugin` を最後に置いているのはこのため。
  */
 import type { MarkdownIt, RendererRule, Token } from 'markdown-it';
 
@@ -32,14 +38,23 @@ const BLOCK_OPEN_RULES = [
 ] as const;
 
 /**
- * `renderToken` を通らないルール。
+ * `renderToken` を通らないルールと、`data-line` を差し込む開始タグ。
  *
  * markdown-it の `fence` / `code_block` レンダラは `<pre><code ...>` を手で組み立て、
  * **トークンの属性を `<code>` 側に出す**。そのまま `attrSet` すると
  * `data-line` が `<code>` に付き、ブロック要素である `<pre>` に付かない。
  * スクロール同期は `<pre>` の位置を必要とするので、出力後に `<pre>` へ差し込む。
+ *
+ * `alert_open`（GitHub Alerts / F-VIEW-14）も同じ形。あちらは
+ * **`blockquote_open` を書き換えて作られる**（`markdown-it-github-alerts` の core ルール）ので、
+ * `BLOCK_OPEN_RULES` の `blockquote_open` は当たらない。レンダラはタイトル行と
+ * アイコンを含む `<div>` を文字列で組み立て、トークンの属性を見ない。
  */
-const RAW_HTML_RULES = ['fence', 'code_block'] as const;
+const RAW_OPEN_RULES = [
+  ['fence', '<pre'],
+  ['code_block', '<pre'],
+  ['alert_open', '<div'],
+] as const;
 
 export function lineMapPlugin(md: MarkdownIt): void {
   for (const rule of BLOCK_OPEN_RULES) {
@@ -56,14 +71,14 @@ export function lineMapPlugin(md: MarkdownIt): void {
     md.renderer.rules[rule] = patched;
   }
 
-  for (const rule of RAW_HTML_RULES) {
+  for (const [rule, tag] of RAW_OPEN_RULES) {
     const original = md.renderer.rules[rule];
 
     const patched: RendererRule = (tokens, idx, options, env, self) => {
       const html = original ? original(tokens, idx, options, env, self) : self.renderToken(tokens, idx, options);
       const line = tokens[idx]?.map?.[0];
       if (line === undefined) return html;
-      return html.replace('<pre', `<pre data-line="${line}"`);
+      return html.replace(tag, `${tag} data-line="${line}"`);
     };
     md.renderer.rules[rule] = patched;
   }

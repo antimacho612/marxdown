@@ -195,6 +195,23 @@ export default tseslint.config(
     rules: { '@typescript-eslint/no-explicit-any': 'off' },
   },
 
+  {
+    // E2E。**ここだけ Node と WebdriverIO のグローバルが同居する。**
+    // `browser` / `$` / `expect` はランナーが注入するので、
+    // import しないまま使うのが正しい（型は tsconfig.e2e.json が入れる）。
+    files: ['e2e/**'],
+    languageOptions: {
+      globals: { ...globals.node, ...globals.mocha, browser: 'readonly', $: 'readonly', $$: 'readonly' },
+    },
+    rules: {
+      'no-console': 'off',
+      // spec は「1 つずつ順番に確かめる」ことが要件そのもの。
+      'no-await-in-loop': 'off',
+      // ドライバのプロセス起動と対象ファイルの入れ替えは、素直に副作用として書く。
+      'unicorn/no-process-exit': 'off',
+    },
+  },
+
   // 整形は Prettier の担当。競合するルールをすべて落とす（**必ず最後**）。
   prettier,
 );

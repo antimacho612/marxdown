@@ -153,3 +153,58 @@ describe('リンクの後処理', () => {
     expect(pipeline('<img src="ftp://example.com/a.png">')).toContain('data-mx-blocked');
   });
 });
+
+describe('タスクリストのチェックボックスだけ input を通す (F-VIEW-01 / OQ-05)', () => {
+  it('タスクリストの記法はチェックボックスとして残る', () => {
+    const out = pipeline('- [ ] 未完了\n- [x] 完了\n');
+    expect(out).toContain('type="checkbox"');
+    expect(out).toContain('disabled');
+    expect(out).toContain('checked');
+  });
+
+  it('テキスト入力欄は落とす', () => {
+    expect(pipeline('<input type="text" name="password">')).not.toContain('<input');
+  });
+
+  it('disabled でないチェックボックスは落とす', () => {
+    // プレビュー上でチェックを許すか（OQ-05）は未決着。生 HTML から
+    // 操作可能なチェックボックスを持ち込ませない。
+    expect(pipeline('<input type="checkbox">')).not.toContain('<input');
+  });
+
+  it('type の無い input は落とす', () => {
+    expect(pipeline('<input disabled>')).not.toContain('<input');
+  });
+
+  it('残ったチェックボックスからも on* 属性は落ちる', () => {
+    const out = pipeline('<input type="checkbox" disabled onfocus="alert(1)">');
+    expect(out).toContain('<input');
+    expect(out).not.toContain('onfocus');
+  });
+
+  it('button / textarea / select は引き続き落とす', () => {
+    const out = pipeline('<button>x</button><textarea></textarea><select></select>');
+    expect(out).not.toContain('<button');
+    expect(out).not.toContain('<textarea');
+    expect(out).not.toContain('<select');
+  });
+});
+
+describe('前倒した記法を壊さない (OQ-27 / 06.roadmap/m2-editor.md §1.4)', () => {
+  it('GitHub Alerts を残す (F-VIEW-14)', () => {
+    const out = pipeline('> [!NOTE]\n> 本文\n');
+    expect(out).toContain('markdown-alert-note');
+    expect(out).toContain('<svg');
+  });
+
+  it('Alerts のアイコン SVG が SVG プロファイルを通る', () => {
+    // USE_PROFILES に svg が入っていないと、ここで path ごと消える。
+    expect(pipeline('> [!WARNING]\n> 本文\n')).toContain('<path');
+  });
+
+  it('脚注のリンクと本文を残す (F-VIEW-16)', () => {
+    const out = pipeline('本文[^1]。\n\n[^1]: 脚注。\n');
+    expect(out).toContain('href="#fn1"');
+    expect(out).toContain('class="footnotes"');
+  });
+});

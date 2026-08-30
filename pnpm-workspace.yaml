@@ -1,5 +1,12 @@
 allowBuilds:
+  # WebdriverIO の推移的依存。**どちらも false で正しい。**
+  # E2E は `tauri-driver` 経由で WebView2 を操作する（02.architecture/12-testing-strategy.md）ので、
+  # ブラウザ用のドライバは要らない。postinstall を許すと、
+  # 入れた覚えのないドライバを毎回ダウンロードしに行く。
+  # msedgedriver は WebView2 ランタイムと版を合わせて `e2e/.drivers/` に置く（e2e/README.md）。
+  edgedriver: false
   esbuild: true
+  geckodriver: false
   lefthook: true
   # eslint-import-resolver-typescript が使う napi ネイティブ解決器。
   # `@/` エイリアスを解決できないと import-x/no-cycle が機能しない。
