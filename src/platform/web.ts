@@ -114,6 +114,32 @@ const platform: Platform = import.meta.env.DEV ? webPlatform : tauriPlatform
 \`\`\`
 
 > Platform 層があることで、この 2 つは同じ Domain 層から使える。
+
+## 前倒した記法（OQ-27）
+
+> [!NOTE]
+> GitHub Alerts は 5 種類ある。
+
+> [!TIP]
+> 色とアイコンの確認用。
+
+> [!IMPORTANT]
+> 重要。
+
+> [!WARNING]
+> 警告。
+
+> [!CAUTION]
+> 危険。
+
+- [x] タスクリスト（チェック済み）
+- [ ] タスクリスト（未チェック）
+  - [ ] ネストしたタスク
+- 普通の箇条書きと混ざった場合
+
+脚注はこう書く[^note]。
+
+[^note]: 本文の末尾にまとまって出る。
 `;
 
 /**

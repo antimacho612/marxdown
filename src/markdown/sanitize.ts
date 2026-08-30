@@ -46,11 +46,33 @@ function isAllowedUri(value: string): boolean {
   return ALLOWED_SCHEMES.has(scheme);
 }
 
+/**
+ * 生き残ってよい `<input>` か（タスクリストのチェックボックスだけ / F-VIEW-01）。
+ *
+ * `markdown-it-task-lists` が出すのは `<input class="..." disabled type="checkbox">` の 1 形だけ。
+ * **それ以外の `<input>` は本文の中に居てよい理由が無い**ので落とす。
+ *
+ * `disabled` を必須にしているのは、プレビュー上でチェックを許すか（OQ-05）が
+ * まだ決まっていないため。決まる前に、生 HTML を書いたドキュメントが
+ * 操作可能なチェックボックスを本文へ持ち込めてしまう状態を作らない。
+ */
+function isTaskListCheckbox(node: Element): boolean {
+  if (node.tagName !== 'INPUT') return true;
+  return node.getAttribute('type')?.toLowerCase() === 'checkbox' && node.hasAttribute('disabled');
+}
+
 let configured = false;
 
 function configure(): void {
   if (configured) return;
   configured = true;
+
+  // `input` は許可タグに戻してあるが、通ってよいのは上の 1 形だけ。
+  // **タグの許可と、その中の絞り込みを別の場所に置かない**ため、ここで一緒に落とす。
+  DOMPurify.addHook('uponSanitizeElement', (node) => {
+    if (!(node instanceof Element)) return;
+    if (!isTaskListCheckbox(node)) node.remove();
+  });
 
   DOMPurify.addHook('afterSanitizeAttributes', (node) => {
     if (!(node instanceof Element)) return;
@@ -80,20 +102,13 @@ function configure(): void {
 
 const CONFIG: Config = {
   // script / iframe / object / embed / form を除去（§1 Layer 3）
-  FORBID_TAGS: [
-    'script',
-    'iframe',
-    'object',
-    'embed',
-    'form',
-    'input',
-    'button',
-    'textarea',
-    'select',
-    'base',
-    'meta',
-    'link',
-  ],
+  //
+  // `button` 以降は仕様が要求していない上積みで、「本文に操作可能な部品を置かない」
+  // ための保険である。**`input` だけはここから外してある。** タスクリストの
+  // チェックボックス（F-VIEW-01）が唯一の例外で、絞り込みは `isTaskListCheckbox`
+  // が `uponSanitizeElement` で行う。`form` を落としているので、生き残った
+  // チェックボックスに送信先は無い。
+  FORBID_TAGS: ['script', 'iframe', 'object', 'embed', 'form', 'button', 'textarea', 'select', 'base', 'meta', 'link'],
   FORBID_ATTR: ['style', 'srcset', 'formaction', 'ping'],
   // on* 属性は DOMPurify が既定で落とすが、明示しておく
   ALLOW_DATA_ATTR: true, // data-line が必要（02.architecture/06-markdown-rendering-pipeline.md §3）

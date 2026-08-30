@@ -162,3 +162,76 @@ describe('壊れた入力に耐える (N-REL-04)', () => {
     expect(() => render(input)).not.toThrow();
   });
 });
+
+describe('OQ-27 で前倒した記法 (06.roadmap/m2-editor.md §1.4)', () => {
+  it('GitHub Alerts を描画する (F-VIEW-14)', () => {
+    const { html } = render('> [!TIP]\n> 役に立つ話。\n');
+    expect(html).toContain('class="markdown-alert markdown-alert-tip"');
+    expect(html).toContain('markdown-alert-title');
+    expect(html).toContain('役に立つ話。');
+  });
+
+  it('マーカーでない引用は引用のまま', () => {
+    const { html } = render('> ただの引用\n');
+    expect(html).toContain('<blockquote');
+    expect(html).not.toContain('markdown-alert');
+  });
+
+  it('Alerts にも data-line が付く（スクロール同期の基盤）', () => {
+    // `alert_open` は `blockquote_open` を書き換えて作られるうえ、
+    // レンダラがトークンの属性を見ない。ここが落ちると Split の同期が
+    // アラートの上で飛ぶ（plugins/line-map.ts）。
+    const { html } = render('段落\n\n> [!NOTE]\n> 本文\n');
+    expect(html).toContain('<div data-line="2" class="markdown-alert');
+  });
+
+  it('脚注を描画する (F-VIEW-16)', () => {
+    const { html } = render('本文[^a]。\n\n[^a]: 脚注の中身。\n');
+    expect(html).toContain('class="footnote-ref"');
+    expect(html).toContain('class="footnotes"');
+    expect(html).toContain('脚注の中身。');
+  });
+
+  it('タスクリストを描画する (GFM)', () => {
+    const { html } = render('- [ ] 未完了\n- [x] 完了\n');
+    expect(html).toContain('contains-task-list');
+    expect(html).toContain('task-list-item');
+    expect(html).toContain('type="checkbox"');
+  });
+
+  it('タスクリストのチェックボックスは disabled のまま出す (OQ-05 は未決着)', () => {
+    expect(render('- [x] 完了\n').html).toContain('disabled');
+  });
+
+  it('タスクリストの li にも data-line が残る', () => {
+    // `markdown-it-task-lists` は `list_item_open` の class を上書きする。
+    // data-line まで巻き添えにしていないことを見張る。
+    expect(render('- [ ] a\n').html).toContain('data-line="0"');
+  });
+});
+
+describe('脚注があってもチャンク分割が壊れない (N-PERF-04)', () => {
+  const withFootnotes = [
+    ...Array.from({ length: 40 }, (_, i) => `## 見出し ${i}\n\n段落 ${i}[^${i}]\n`),
+    ...Array.from({ length: 40 }, (_, i) => `[^${i}]: 脚注 ${i}`),
+  ].join('\n');
+
+  it('チャンクを連結すると分割なしの結果と一致する', () => {
+    const joined = renderChunks(withFootnotes, 5, 10).chunks.join('');
+    expect(joined).toBe(render(withFootnotes).html);
+  });
+
+  it('脚注ブロックの途中で切らない', () => {
+    // `footnote_anchor` は level 0 / nesting 0 で「ブロックの終端」に見える。
+    // ここで切ると <section class="footnotes"> が閉じないまま次のチャンクへ渡る。
+    const chunks = renderChunks(withFootnotes, 5, 10).chunks;
+    const withSection = chunks.filter((c) => c.includes('<section class="footnotes">'));
+    expect(withSection).toHaveLength(1);
+    expect(withSection[0]).toContain('</section>');
+  });
+
+  it('脚注だけのドキュメントでも 1 チャンクに収まる', () => {
+    const { chunks } = renderChunks('a[^1]\n\n[^1]: b\n', 1, 1);
+    expect(chunks.join('')).toBe(render('a[^1]\n\n[^1]: b\n').html);
+  });
+});

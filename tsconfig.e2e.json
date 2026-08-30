@@ -1,0 +1,27 @@
+{
+  // E2E だけの型チェック。**ルートの tsconfig からは参照しない。**
+  //
+  // `references` を置くと `eslint-import-resolver-typescript` が `paths` を
+  // 読まなくなり、ESLint から `@/*` が全滅する（OQ-20 / tsconfig.json のコメント）。
+  // `tsconfig.node.json` と同じ扱いで、`tsc -p` で個別に指す。
+  //
+  // 分けているもう 1 つの理由は型の混線を防ぐこと。`@wdio/globals/types` は
+  // `browser` / `$` / `expect` をグローバルに生やす。アプリ側の型チェックに
+  // 混ぜると、`expect` が Vitest のものと衝突する。
+  "compilerOptions": {
+    "target": "ES2023",
+    "lib": ["ES2023", "DOM"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "skipLibCheck": true,
+    "noEmit": true,
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "verbatimModuleSyntax": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "types": ["node", "mocha", "@wdio/globals/types", "@wdio/mocha-framework"]
+  },
+  "include": ["e2e"]
+}
