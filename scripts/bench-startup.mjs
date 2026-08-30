@@ -177,6 +177,8 @@ function summarize(results) {
   }
   // T2b / T2c は T2→T3 の内訳。ここが伸びたときに
   // 「WebView2 が重いのか、自分たちが足したものが重いのか」を切り分ける。
+  // 計測点を足したときに並びを気にしなくて済むよう、ここは集合として持つ。
+  // 表示順は下で中央値順に直す。
   const order = ['T0', 'T1', 'T2', 'T2b', 'T2c', 'T3', 'T4', 'T5', 'T6', 'T7', 'T8', 'T8-all', 'T9'];
   const marks = [];
   for (const id of order) {
@@ -191,6 +193,10 @@ function summarize(results) {
       n: values.length,
     });
   }
+  // **中央値の昇順に並べ替える。** printSummary の「内訳」は 1 つ前との差なので、
+  // 並びが時系列でないと内訳が負になって読めなくなる。計測点を足したときの保険。
+  marks.sort((a, b) => a.medianMs - b.medianMs);
+
   return {
     marks,
     wallMedianMs: median(results.map((r) => r.wallMs)),
