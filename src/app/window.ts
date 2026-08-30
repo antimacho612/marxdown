@@ -65,6 +65,14 @@ export function installWindowState(): void {
 const SNAP_REPORT_DEBOUNCE_MS = 120;
 
 /**
+ * 居場所を答える相手（最大化ボタン）。
+ *
+ * 追従の登録（`trackSnapLayoutsTarget`）と初回の報告（`reportSnapLayoutsTarget`）が
+ * **別の時点で走る**ので、あいだをこれで繋ぐ。ボタンは 1 つしか無い。
+ */
+let target: HTMLElement | null = null;
+
+/**
  * 最大化ボタンの居場所を Rust へ知らせ続ける（Windows の Snap Layouts）。
  *
  * ボタンは右端に張り付いているので、**位置が変わるのはウィンドウ幅が変わったときだけ**。
@@ -72,33 +80,72 @@ const SNAP_REPORT_DEBOUNCE_MS = 120;
  *
  * Windows 以外では Rust 側が受け取って捨てる。分岐をここに持ち込まないのは、
  * Domain 層がプラットフォームを知らない状態を保つため（02.architecture/03-layers.md §1）。
+ *
+ * # ここで矩形を測らない（OQ-30）
+ *
+ * この関数はボタンがマウントされた直後（`WindowControls.svelte` の `$effect`）に
+ * 呼ばれる。**その場で `getBoundingClientRect()` を呼んではいけない。**
+ *
+ * シェルを描いた直後はスタイルが未計算で、矩形を要求すると全体のスタイル再計算と
+ * レイアウトが同期的に走る。**実測 32〜35ms。** しかも本文（`#mx-preview`）はまだ
+ * 空なので、そこで作ったレイアウトは本文を入れた時点で捨てられる。
+ *
+ * 悪いのは捨てられることだけではない。この 32〜35ms のあいだ **Worker のスクリプト
+ * 評価も進まない。** 「パースの送信をシェルの描画より前に置き、両者を重ねる」という
+ * 起動シーケンスの前提（02.architecture/05-startup-sequence.md §1）が、ここで壊れる。
+ *
+ * だから**ここでは相手を控えて `resize` を見張るだけ**にして、初回の報告は
+ * `reportSnapLayoutsTarget()` が `ready()` の後に行う。
  */
 export function trackSnapLayoutsTarget(element: HTMLElement): () => void {
   let timer: ReturnType<typeof setTimeout> | null = null;
-
-  const report = (): void => {
-    const box = element.getBoundingClientRect();
-    void getPlatform().setSnapLayoutsTarget({
-      x: box.x,
-      y: box.y,
-      width: box.width,
-      height: box.height,
-    });
-  };
 
   const schedule = (): void => {
     if (timer !== null) clearTimeout(timer);
     timer = setTimeout(() => {
       timer = null;
-      report();
+      report(element);
     }, SNAP_REPORT_DEBOUNCE_MS);
   };
 
-  report();
+  target = element;
   globalThis.addEventListener('resize', schedule);
 
   return () => {
+    if (target === element) target = null;
     if (timer !== null) clearTimeout(timer);
     globalThis.removeEventListener('resize', schedule);
   };
+}
+
+/**
+ * 最初の 1 回だけ矩形を報告する。**`ready()` の後に呼ぶ**
+ * （02.architecture/05-startup-sequence.md §1 / OQ-30）。
+ *
+ * Windows へ「ここが最大化ボタンだ」と答える主体（`snap_layouts::install`）は
+ * `ready` コマンドの中で付く（`src-tauri/src/commands.rs`）。**ここへ回しても
+ * 取りこぼさない。**
+ *
+ * 遅れたときの最悪は「起動直後の数十 ms だけ、最大化ボタンにホバーしても
+ * フライアウトが出ない」ことで、ホバーし直せば必ず出る。
+ */
+export function reportSnapLayoutsTarget(): void {
+  if (!target) return;
+  report(target);
+}
+
+/**
+ * 矩形を測って Rust へ渡す。
+ *
+ * **`getBoundingClientRect()` は強制同期レイアウトである。**
+ * 呼ぶ時点を選ぶこと（`trackSnapLayoutsTarget` の「ここで矩形を測らない」）。
+ */
+function report(element: HTMLElement): void {
+  const box = element.getBoundingClientRect();
+  void getPlatform().setSnapLayoutsTarget({
+    x: box.x,
+    y: box.y,
+    width: box.width,
+    height: box.height,
+  });
 }

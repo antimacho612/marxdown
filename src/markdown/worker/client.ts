@@ -5,6 +5,7 @@
  * メインスレッドで直接呼ぶ。A/B 比較のため、**呼び出し側から見た
  * インタフェースを同一に保つ**ことが重要（OQ-15）。
  */
+import { takeBootedWorker } from './boot';
 import {
   DEFAULT_CHUNK_BLOCKS,
   DEFAULT_FIRST_CHUNK_BLOCKS,
@@ -25,10 +26,17 @@ export interface MarkdownParser {
 
 /** Worker を使う実装（本命）。 */
 function createWorkerParser(): MarkdownParser {
-  const worker = new Worker(new URL('./md-worker.ts', import.meta.url), {
-    type: 'module',
-    name: 'md-worker',
-  });
+  // `main.ts` の最初の import が立てておいたものを引き取る（`boot.ts`）。
+  // **スレッドの起動には 32〜35ms かかる。** ここで初めて `new Worker()` すると、
+  // その 35ms がまるごと「本文が読める」までに乗る。
+  //
+  // 引き取れないのは 2 つ目以降を作るときだけで、そのときは普通に立てる。
+  const worker =
+    takeBootedWorker() ??
+    new Worker(new URL('./md-worker.ts', import.meta.url), {
+      type: 'module',
+      name: 'md-worker',
+    });
 
   let nextId = 1;
   const pending = new Map<number, { resolve: (r: ParseResponse) => void; reject: (e: Error) => void }>();
