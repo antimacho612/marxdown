@@ -265,8 +265,18 @@ pub fn run() {
             // Snap Layouts のサブクラス化は**ここではできない**。`hwnd()` は
             // イベントループへの問い合わせで、まだ回っていない（`snap_layouts.rs`）。
             // `ready` コマンドの中で付ける。
-            window::create(app.handle(), window::MAIN_LABEL, &payload, restore_window)?;
+            let main = window::create(app.handle(), window::MAIN_LABEL, &payload, restore_window)?;
             state.trace.mark("T3", None);
+
+            // **矩形の受け皿だけは、ここで置く**（`snap_layouts.rs` の `prepare`）。
+            // フロントは最大化ボタンをマウントした時点で 1 度だけ矩形を投げ、
+            // 以後はウィンドウ幅が変わるまで投げ直さない。これは `ready()` より前なので、
+            // 受け皿をサブクラス化と一緒に `ready` へ置くと、その 1 度を取りこぼす。
+            // イベントループを必要としない仕事なので、ここに置いて差し支えない。
+            #[cfg(windows)]
+            snap_layouts::prepare(app.handle(), &main);
+            #[cfg(not(windows))]
+            let _ = main;
 
             // 監視の登録は T3 の後。ここから先は「本文が読める」までの経路に載らない
             // （02.architecture/05-startup-sequence.md §1 の判断基準: IPC を伴わず、遅れても最悪 300ms 反映が遅れるだけ）。
