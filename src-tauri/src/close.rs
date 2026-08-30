@@ -104,9 +104,75 @@ pub fn restore<R: Runtime>(app: &AppHandle<R>) {
 ///
 /// **保存してから終える**（論点 11）。`exit` はイベントループを畳むので、
 /// 後ろに書いた処理は走らない。
+///
+/// ここは**確認しない**。未保存の変更があるかを見るのは `request_quit` の担当で、
+/// この関数は「もう終えてよい」と決まったあとにだけ呼ばれる。
 pub fn quit<R: Runtime>(app: &AppHandle<R>) {
     save_window_state(app);
     app.exit(0);
+}
+
+/// 終了してよいか確かめてから終える（F-EDIT-03 / 03.ux-spec/07-status-and-notifications.md §1）。
+///
+/// # なぜ Rust 側で確認するのか
+///
+/// 終了の導線は 3 つあり（論点 3）、**トレイメニューからの終了はフロントを経由しない。**
+/// 確認をフロントに置くと、その経路だけ未保存の内容を黙って捨てることになる。
+/// 3 経路が合流しているのはここなので、確認もここに置く。
+///
+/// ダーティかどうかはフロントが `set_dirty` で知らせてくる（`state.rs`）。
+///
+/// # モーダルを使う数少ない場面
+///
+/// 03.ux-spec/07-status-and-notifications.md §2 は「モーダルはデータ消失の可能性がある場面だけ」としている。
+/// **ここはその筆頭**であり、通知バーでは足りない（押さずに終われてしまう）。
+pub fn request_quit<R: Runtime>(app: &AppHandle<R>) {
+    let dirty = app
+        .try_state::<AppState>()
+        .map(|s| s.is_dirty())
+        .unwrap_or(false);
+
+    if !dirty {
+        quit(app);
+        return;
+    }
+
+    ask_then_quit(app.clone());
+}
+
+/// 「保存して終了 / 保存せず終了 / キャンセル」の 3 択（§1）。
+///
+/// **「保存して終了」はここでは保存しない。** 保存できるのはフロントだけ
+/// （本文は CodeMirror の `EditorState` にある / ADR-0005）なので、
+/// 保存してくれと頼んで戻る。フロントは保存に成功したら `set_dirty(false)` してから
+/// もう一度終了を要求し、そのときは上の `!dirty` を通って素直に終わる。
+///
+/// **保存に失敗したらダーティのままなので、終了しない。** これが要件そのもので
+/// （N-REL-01「ユーザーが書いた内容を失わない」）、失敗を握り潰して終わる経路が無い。
+fn ask_then_quit<R: Runtime>(app: AppHandle<R>) {
+    use tauri_plugin_dialog::{
+        DialogExt, MessageDialogButtons, MessageDialogKind, MessageDialogResult,
+    };
+
+    let handle = app.clone();
+    app.dialog()
+        .message("保存していない変更があります。")
+        .title("Marxdown")
+        .kind(MessageDialogKind::Warning)
+        .buttons(MessageDialogButtons::YesNoCancelCustom(
+            "保存して終了".to_string(),
+            "保存せず終了".to_string(),
+            "キャンセル".to_string(),
+        ))
+        .show_with_result(move |result| match result {
+            MessageDialogResult::Yes => {
+                let _ = handle.emit_to(MAIN_LABEL, crate::EVENT_SAVE_AND_QUIT, ());
+            }
+            MessageDialogResult::No => quit(&handle),
+            // キャンセル / ダイアログを閉じた場合は何もしない。
+            // **既定を「終了しない」側に倒す**（N-REL-01）。
+            _ => {}
+        });
 }
 
 /// `✕` が押されたときの分岐。`CloseRequested` から呼ぶ。

@@ -83,6 +83,7 @@ beforeEach(() => {
   document.body.innerHTML = '<div id="mx-preview"></div>';
   documentStore.meta = null;
   documentStore.notice = null;
+  documentStore.isDirty = false;
   recentStore.entries = [];
 
   configureOpener({ parser: fakeParser(), site: 'worker' });
@@ -100,7 +101,7 @@ describe('外部変更の自動反映', () => {
       expect(documentStore.notice).toMatchObject({
         level: 'info',
         message: ja.open.reloadedExternal,
-        // 編集機能が入るのは M2 で、失われるものがない。尋ねずに読み込んで自動で消す
+        // ダーティでなければ失われるものが無い。尋ねずに読み込んで自動で消す
         autoDismissMs: 3000,
       }),
     );
@@ -169,5 +170,61 @@ describe('監視の付け替え', () => {
 
     await openPath('C:/work/b.md');
     await vi.waitFor(() => expect(h.watchPath).toHaveBeenLastCalledWith('C:/work/b.md'));
+  });
+});
+
+/**
+ * 編集中の外部変更（N-REL-02 / 02.architecture/08-state-management.md §3）。
+ *
+ * **ここが「ユーザーの入力を絶対に失わない」の実装そのもの。**
+ * 自動で読み直すと、打った内容が黙って消える。
+ */
+describe('編集中に外部変更が来たとき', () => {
+  it('読み直さず、消えない警告で選ばせる', async () => {
+    const h = install();
+    await openPath('C:/work/a.md');
+    documentStore.isDirty = true;
+    h.readDocument.mockClear();
+
+    // `notice` にリテラルを代入すると、そこから先で型が `null` に狭まる。
+    // 開いた時点で既に null なので、代入せずに進む。
+    h.emit(changed('C:/work/a.md'));
+    await vi.waitFor(() => expect(documentStore.notice).not.toBeNull());
+
+    const notice = documentStore.notice;
+    expect(h.readDocument).not.toHaveBeenCalled();
+    expect(notice).toMatchObject({ level: 'warning', message: ja.open.changedExternally });
+    // 自動で消えると、気づかないまま古い内容を保存することになる
+    expect(notice?.autoDismissMs).toBeUndefined();
+  });
+
+  it('「再読み込み」を選ぶと読み直す', async () => {
+    const h = install();
+    await openPath('C:/work/a.md');
+    documentStore.isDirty = true;
+    h.readDocument.mockClear();
+
+    h.emit(changed('C:/work/a.md'));
+    await vi.waitFor(() => expect(documentStore.notice?.actions).toHaveLength(2));
+
+    documentStore.notice?.actions?.[0]?.run();
+    await vi.waitFor(() => expect(h.readDocument).toHaveBeenCalledWith('C:/work/a.md'));
+    expect(documentStore.isDirty).toBe(false);
+  });
+
+  it('「無視」を選んでもダーティのまま残す', async () => {
+    // clean にすると、保存時の衝突検知という安全網まで外れる。
+    const h = install();
+    await openPath('C:/work/a.md');
+    documentStore.isDirty = true;
+    h.readDocument.mockClear();
+
+    h.emit(changed('C:/work/a.md'));
+    await vi.waitFor(() => expect(documentStore.notice?.actions).toHaveLength(2));
+
+    documentStore.notice?.actions?.[1]?.run();
+    expect(documentStore.notice).toBeNull();
+    expect(documentStore.isDirty).toBe(true);
+    expect(h.readDocument).not.toHaveBeenCalled();
   });
 });

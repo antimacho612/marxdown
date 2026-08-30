@@ -140,7 +140,10 @@ fn on_menu_event<R: Runtime>(app: &AppHandle<R>, event: MenuEvent) {
 
     if id == ID_QUIT {
         // ADR-0007 論点 3 の 3 経路のうちの 1 つ。**論点 11 の保存もここを通る。**
-        crate::close::quit(app);
+        //
+        // **この経路はフロントを通らない。** 未保存の変更の確認を Rust 側に置いて
+        // あるのは、まさにここで取りこぼさないため（F-EDIT-03 / `close.rs`）。
+        crate::close::request_quit(app);
         return;
     }
 

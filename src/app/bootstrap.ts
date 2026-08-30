@@ -26,6 +26,7 @@
  * ウィンドウの表示、購読の登録）だけ。
  */
 import { configureOpener, openDocument, openDropped, openPath } from '@/features/document/open';
+import { saveThenQuit } from '@/features/document/save';
 import { documentStore } from '@/features/document/store.svelte';
 import { installFileWatch } from '@/features/document/watch';
 import { mountEditorLazily, preloadEditor } from '@/features/editor/open-editor';
@@ -170,6 +171,7 @@ export async function startup(renderShell: () => void): Promise<void> {
   // 数十 ms だけ、ボタンの絵柄が `□` のまま」で、次に状態が変われば必ず直る。
   installOpenRequestHandler();
   installTrayOpen();
+  installSaveAndQuit();
   installTrayResume();
   installDragAndDrop();
   installFileWatch();
@@ -308,6 +310,22 @@ function reportStartupProblems(bootstrap: Bootstrap | null): void {
 function installTrayOpen(): void {
   getPlatform().onTrayOpen(() => {
     runCommand('document.open');
+  });
+}
+
+/**
+ * 終了の確認で「保存して終了」が選ばれたとき（F-EDIT-03 / `src-tauri/src/close.rs`）。
+ *
+ * **保存できるのはフロントだけである。** 本文は CodeMirror の `EditorState` にあり
+ * （ADR-0005）、Rust からは読めない。Rust は頼むだけで、
+ * 成功したらこちらがもう一度終了を要求する。
+ *
+ * 失敗したらダーティのままなので終了しない。もう一度 `Ctrl+Q` を押せば
+ * 同じ確認が出る（N-REL-01）。
+ */
+function installSaveAndQuit(): void {
+  getPlatform().onSaveAndQuit(() => {
+    void saveThenQuit();
   });
 }
 

@@ -90,7 +90,12 @@ interface MenuSection {
 const MENU: MenuSection[] = [
   {
     id: 'file',
-    entries: [{ id: 'open', command: 'document.open', label: ja.menu.open, shortcut: 'Ctrl+O' }],
+    entries: [
+      { id: 'open', command: 'document.open', label: ja.menu.open, shortcut: 'Ctrl+O' },
+      // 保存（F-EDIT-02）。**キーを知る場所が他に無い**（パレットは M3）。
+      { id: 'save', command: 'document.save', label: ja.menu.save, shortcut: 'Ctrl+S' },
+      { id: 'save-as', command: 'document.saveAs', label: ja.menu.saveAs, shortcut: 'Ctrl+Shift+S' },
+    ],
   },
   {
     id: 'history',
@@ -105,6 +110,13 @@ const MENU: MenuSection[] = [
   {
     id: 'document',
     entries: [
+      // モードの切り替え（F-MODE-06）。ラベルは行き先を言う（`ja.menu`）。
+      {
+        id: 'mode',
+        command: 'view.togglePreview',
+        label: () => (viewStore.mode === 'preview' ? ja.menu.toEdit : ja.menu.toPreview),
+        shortcut: 'Ctrl+Shift+V',
+      },
       { id: 'reload', command: 'document.reload', label: ja.menu.reload, shortcut: 'F5' },
       { id: 'search', command: 'preview.search', label: ja.menu.search, shortcut: 'Ctrl+F' },
       // ペインの開閉（03.ux-spec/06-panes.md §4 の「ペイン」系）。

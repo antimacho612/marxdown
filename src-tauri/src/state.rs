@@ -58,6 +58,16 @@ pub struct AppState {
     /// `Resized` はドラッグ中に毎フレーム飛んでくる。**変化したときだけ**
     /// イベントを出すために、直前の値をここに置く。
     maximized: AtomicBool,
+    /// 未保存の変更があるか（F-EDIT-03 / 03.ux-spec/07-status-and-notifications.md §1）。
+    ///
+    /// **本当の持ち主はフロントである。** ここに複製があるのは、終了の 3 経路
+    /// （トレイメニュー / ハンバーガーメニュー / `Ctrl+Q`）が Rust 側で合流していて
+    /// （`close.rs`）、**トレイメニューからの終了はフロントを経由しない**ため。
+    /// 確認をフロントに置くと、その経路だけ確認せずに終わる。
+    ///
+    /// 更新は `false ⇄ true` の変わり目だけで、打鍵ごとの IPC にはならない
+    /// （`features/document/save.ts`）。
+    dirty: AtomicBool,
 }
 
 impl AppState {
@@ -85,6 +95,7 @@ impl AppState {
             warm: Mutex::new(HashMap::new()),
             warm_counter: AtomicU64::new(1),
             maximized: AtomicBool::new(false),
+            dirty: AtomicBool::new(false),
         }
     }
 
@@ -222,6 +233,15 @@ impl AppState {
     /// 「変わったときだけ知らせる」の判定をここに閉じ込める。
     pub fn note_maximized(&self, now: bool) -> bool {
         self.maximized.swap(now, Ordering::Relaxed) != now
+    }
+
+    /// 未保存の変更があるか（F-EDIT-03）。フロントが変わり目だけ知らせてくる。
+    pub fn set_dirty(&self, dirty: bool) {
+        self.dirty.store(dirty, Ordering::Relaxed);
+    }
+
+    pub fn is_dirty(&self) -> bool {
+        self.dirty.load(Ordering::Relaxed)
     }
 
     pub fn allow_asset_root(&self, dir: PathBuf) {

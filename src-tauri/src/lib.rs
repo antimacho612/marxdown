@@ -90,6 +90,12 @@ pub const EVENT_TRAY_OPEN: &str = "marxdown://tray-open";
 /// 画面に出る」までを測る。同じ数字だと思って比べると判断を誤る。
 pub const EVENT_TRAY_RESUME: &str = "marxdown://tray-resume";
 
+/// 終了の確認で「保存して終了」が選ばれた（F-EDIT-03 / `close.rs`）。
+///
+/// **保存できるのはフロントだけである**（本文は CodeMirror の `EditorState` にある）。
+/// Rust は保存してくれと頼むだけで、成功したらフロントがもう一度終了を要求する。
+pub const EVENT_SAVE_AND_QUIT: &str = "marxdown://save-and-quit";
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     // T0。これより前に何も置かない。
@@ -217,6 +223,8 @@ pub fn run() {
             commands::write_document,
             commands::resolve_asset,
             commands::pick_file,
+            commands::pick_save_path,
+            commands::set_dirty,
             commands::store_push_recent,
             commands::store_remove_recent,
             commands::store_set_zoom,

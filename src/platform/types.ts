@@ -358,6 +358,22 @@ export interface Platform {
    */
   pickFile(): Promise<string | null>;
   /**
+   * 保存先を選ばせる（F-EDIT-02「名前を付けて保存」）。
+   *
+   * `suggested` は初期表示するディレクトリとファイル名の元。
+   * **返るパスは正規化されていない。** まだ存在しないことがあるため
+   * （`src-tauri/src/commands.rs` の `pick_save_path`）。正規化は保存時に行われる。
+   */
+  pickSavePath(suggested: string | null): Promise<string | null>;
+  /**
+   * 未保存の変更があることを知らせる（F-EDIT-03）。
+   *
+   * **変わり目だけ呼ぶ。** 打鍵ごとに呼ぶものではない。
+   * Rust 側が持っているのは、トレイメニューからの終了がフロントを経由しないため
+   * （`src-tauri/src/state.rs` の `dirty`）。
+   */
+  setDirty(dirty: boolean): Promise<void>;
+  /**
    * 設定を読み直す（F-CONF-03）。
    *
    * **起動時はこれを呼ばない。** 設定は bootstrap に丸ごと載っている。
@@ -486,6 +502,14 @@ export interface Platform {
    * 「本文が読める」までの経過ミリ秒を返す。
    */
   warmDone(requestId: number, path: string, detail: string, kind?: WarmKind): Promise<number | null>;
+  /**
+   * 終了の確認で「保存して終了」が選ばれたことを購読する（F-EDIT-03）。
+   *
+   * **保存できるのはフロントだけである**（本文は CodeMirror の `EditorState` にある）。
+   * 受け取ったら保存し、成功したらもう一度 `quitApp()` を呼ぶ。
+   * 失敗したらダーティのままなので、終了しない（N-REL-01）。
+   */
+  onSaveAndQuit(handler: () => void): () => void;
   /**
    * トレイから復帰した瞬間を購読する（ADR-0007「計測項目」）。
    *
