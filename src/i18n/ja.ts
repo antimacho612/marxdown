@@ -197,8 +197,14 @@ export const ja = {
   },
   /** ステータスバー（03.ux-spec/07-status-and-notifications.md §3）。 */
   status: {
-    /** モード切り替え（M2）が入るまでは Preview 固定。 */
-    mode: 'Preview',
+    /**
+     * 表示モードの名前（03.ux-spec/02-view-modes.md §1）。
+     *
+     * **英語のまま。** モード名は VS Code の Preview / Edit と同じ語で、
+     * 画面上は 1 語のラベルとして働く（OQ-11 の i18n とは別の判断）。
+     * `'split'` は Phase 5 で使う。
+     */
+    mode: { preview: 'Preview', edit: 'Edit', split: 'Split' } as const,
     lines: (n: number) => `${n} 行`,
     bytes: (n: number) => `${formatBytes(n)}`,
     chars: (n: number) => `${n.toLocaleString('ja-JP')} 文字`,

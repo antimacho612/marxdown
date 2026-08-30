@@ -95,6 +95,20 @@ export default defineConfig(({ mode }) => ({
           if (isOutlineJump) return 'assets/outline-[hash].js';
 
           /*
+           * エディタ（M2 Phase 1）。menu / settings / outline と同じく**名前付けだけ**。
+           *
+           * 下の `manualChunks` が `@codemirror/*` を `editor` へ寄せているが、
+           * それは**依存側**の話で、こちらは `features/editor/` から始まる
+           * 動的 import の入口に名前を付けている。両方が `editor-*.js` に
+           * 落ちることで、size-limit が 1 つの予算として指せる。
+           *
+           * `src/features/editor/open-editor.ts` は `main` から静的に import
+           * されているので `main` に残る（動的 import の一行だけを持つ入口）。
+           */
+          const isEditor = /[\\/]src[\\/]features[\\/]editor[\\/]/.test(chunk.facadeModuleId ?? '');
+          if (isEditor) return 'assets/editor-[hash].js';
+
+          /*
            * 共有チャンク（**facade を持たない** = 動的 import の入口ではない）。
            *
            * 遅延チャンクの枚数がある数を超えると、rolldown は `main` と遅延チャンクの

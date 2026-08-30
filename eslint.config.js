@@ -173,7 +173,7 @@ export default tseslint.config(
   },
 
   {
-    files: ['src/spike/**', 'bench/**'],
+    files: ['bench/**'],
     rules: { 'no-console': 'off' },
   },
 
@@ -209,6 +209,9 @@ export default tseslint.config(
       'no-await-in-loop': 'off',
       // ドライバのプロセス起動と対象ファイルの入れ替えは、素直に副作用として書く。
       'unicorn/no-process-exit': 'off',
+      // `browser.keys()` は WebdriverIO のキー送信 API で、返るのは Promise。
+      // ルールが `Array.prototype.keys()` と取り違える（await していても出る）。
+      'unicorn/no-unused-array-method-return': 'off',
     },
   },
 

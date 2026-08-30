@@ -35,22 +35,4 @@ function renderShell(): void {
   mount(App, { target: root });
 }
 
-/**
- * CodeMirror の参照実装画面への分岐（`?spike=editor`）。
- *
- * 動的 import なので `editor` チャンクは通常の起動では一切ロードされない。
- * これ自体が「既定モードが Preview であることがバンドル分割の境界になる」
- * （02.architecture/05-startup-sequence.md §1 の要点 3）の実証になっている。
- */
-function spikeRoute(): string | null {
-  return new URLSearchParams(globalThis.location.search).get('spike');
-}
-
-if (spikeRoute() === 'editor') {
-  const host = document.getElementById('mx-preview');
-  if (host) {
-    void import('@/spike/spike-editor').then(({ mountEditorSpike }) => mountEditorSpike(host));
-  }
-} else {
-  void startup(renderShell);
-}
+void startup(renderShell);

@@ -5,11 +5,21 @@
  * ファイルを開き直しても保たれる状態だから。倍率は「今このファイル」の性質ではなく
  * 「この人の見え方の好み」であり、ライフサイクルが違う。
  *
- * 表示モード（M2）もここに増える。
  */
-import { DEFAULT_PANES, type Panes } from '@/platform';
+import { DEFAULT_PANES, type Panes, type ViewMode } from '@/platform';
 
 class ViewStore {
+  /**
+   * 表示モード（F-MODE-01, 02, 03）。切り替えは `features/view/mode.ts`。
+   *
+   * **ここは値だけを持つ。** 面の出し分けは `<html data-mx-mode>` を見る CSS が行い、
+   * エディタの実体は遅延チャンクにいる。UI（ステータスバー）はこの値だけを購読する。
+   *
+   * 初期値は `initMode` が bootstrap から**シェルを描く前**に入れる（倍率・ペインと同じ）。
+   * `'split'` は Phase 5。器としての型には最初から入っている。
+   */
+  mode = $state<ViewMode>('preview');
+
   /** 表示倍率（F-VIEW-11）。実際の適用は `zoom.ts` が CSS 変数で行う。 */
   zoom = $state(1);
 

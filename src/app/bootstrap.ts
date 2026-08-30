@@ -28,15 +28,19 @@
 import { configureOpener, openDocument, openDropped, openPath } from '@/features/document/open';
 import { documentStore } from '@/features/document/store.svelte';
 import { installFileWatch } from '@/features/document/watch';
+import { mountEditorLazily, preloadEditor } from '@/features/editor/open-editor';
 import { initPanes } from '@/features/panes/panes';
 import { installLinkHandler } from '@/features/preview/links';
 import { applyZoom } from '@/features/preview/zoom';
 import { applyCustomCss } from '@/features/settings/custom-css';
 import { initSettings, installSettingsWatch, reportSettingsProblem } from '@/features/settings/store.svelte';
+import { decideInitialMode, initMode } from '@/features/view/mode';
+import { viewStore } from '@/features/view/store.svelte';
 import { recentStore } from '@/features/workspace/recent.svelte';
 import { ja } from '@/i18n/ja';
 import { runCommand } from '@/lib/commands';
 import { toMessage } from '@/lib/error';
+import { requestIdle } from '@/lib/idle';
 import { adoptT4, drain, initTrace, isTracing, mark } from '@/lib/trace';
 import { createParser } from '@/markdown/worker/client';
 import { getPlatform, type Bootstrap, type DocumentPayload, type SpikeFlags } from '@/platform';
@@ -128,6 +132,14 @@ export async function startup(renderShell: () => void): Promise<void> {
 
   const initial = await resolveInitialDocument(bootstrap);
 
+  // 表示モードも**本文を描くより前**に当てる（F-MODE-07 / 倍率・ペインと同じ理由）。
+  // 後から当てると、Preview の面が 1 フレーム描かれてからエディタに差し替わる。
+  //
+  // `--mode edit` で起動しても、ここではまだ `editor` チャンクを取りに行かない。
+  // 属性を立てるだけなので、クリティカルパスは太らない。実体は下の
+  // `installInitialEditor()` が `ready()` の後で載せる。
+  initMode(decideInitialMode(bootstrap, initial));
+
   if (initial) {
     await openDocument(initial, { trace: true, betweenParseAndPaint: renderShellOnce });
   } else {
@@ -175,6 +187,14 @@ export async function startup(renderShell: () => void): Promise<void> {
   // Windows へ答える主体は `ready()` の中で付くので、ここでも取りこぼさない。
   reportSnapLayoutsTarget();
 
+  // エディタ（F-EDIT-01）。**`ready()` の後**に回す。
+  //
+  // `--mode edit` で起動した場合でも、本文が読める瞬間（T8）を 203KB の
+  // チャンク取得と評価の後ろへ動かさない。遅れたときの最悪は「起動直後の
+  // 一瞬だけ空のエディタ面が見える」ことで、これは回復する
+  // （02.architecture/05-startup-sequence.md §1 の判断基準）。
+  installInitialEditor();
+
   // カスタム CSS の残り（遅延取得・監視・通知）は**遅延チャンク**に置いてある
   // （06.roadmap/m1.5-shell-and-settings.md §3）。`main` に残っているのは適用そのものだけ。
   // ここで待たないのは、いずれも本文の表示に関与しないため。
@@ -182,6 +202,28 @@ export async function startup(renderShell: () => void): Promise<void> {
     installCustomCss(customCss, customCssResult);
     return null;
   });
+}
+
+/**
+ * エディタを用意する。**起動時のモードによって、載せるか温めるかが変わる。**
+ *
+ * ```text
+ * --mode edit で起動した  → その場で載せる（画面がエディタを待っている）
+ * それ以外（既定の Preview） → アイドルでチャンクだけ取っておく
+ * ```
+ *
+ * 後者が `editor` チャンクの idle プリロード。**載せはしない**ので、
+ * `#mx-editor` は空のまま隠れている。初めて `Ctrl+Shift+V` を押したときの
+ * 待ちが消えるだけで、押さなければ何も起きない。
+ *
+ * `requestIdle` は 1 回きりで、ポーリングではない（`lib/idle.ts`）。
+ */
+function installInitialEditor(): void {
+  if (viewStore.mode !== 'preview') {
+    void mountEditorLazily();
+    return;
+  }
+  requestIdle(() => void preloadEditor());
 }
 
 /**
