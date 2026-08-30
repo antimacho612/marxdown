@@ -3,7 +3,8 @@
   <img src="assets/logo-light.svg" alt="Marxdown" width="256" height="72" />
 </picture>
 
-速く開く Markdown ビューア / エディタ。
+**Markdown を見る・書くなら、これ一択。**
+速さと軽さを前提として持ったまま、体験の質で勝負するデスクトップアプリ。
 
 `marxdown README.md` と打ってから本文が読めるまでの時間を、**常に満たす前提条件** として設計している。
 常駐した 2 回目以降は WebView の初期化を払わずに開く。
