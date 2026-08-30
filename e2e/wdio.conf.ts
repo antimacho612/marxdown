@@ -70,6 +70,20 @@ function assertNoRunningInstance(): void {
   );
 }
 
+/**
+ * 残っている Marxdown を落とす。**居なくても失敗にしない。**
+ *
+ * ここで落とすのが E2E のものだけであることは、走り始めの
+ * `assertNoRunningInstance()` が担保している。
+ */
+function killLeftoverInstances(): void {
+  try {
+    execFileSync('taskkill', ['/IM', 'marxdown.exe', '/F'], { stdio: 'ignore' });
+  } catch {
+    // 居なければ taskkill は失敗する。それが正常
+  }
+}
+
 function assertPrerequisites(): void {
   if (!existsSync(APP)) {
     throw new Error(`実行ファイルが無い: ${APP}\n先に \`pnpm build:app\` を実行すること。`);
@@ -121,17 +135,40 @@ export const config: WebdriverIO.Config = {
   onPrepare() {
     assertPrerequisites();
 
-    // 対象ファイルは**セッションを張る前**に用意する。argv で渡す以上、
-    // ここより後に作っても間に合わない。
-    resetWorkspace();
-
     driver = spawn('tauri-driver', ['--port', String(TAURI_DRIVER_PORT), '--native-driver', NATIVE_DRIVER], {
       stdio: [null, process.stdout, process.stderr],
       shell: true,
     });
   },
 
+  /**
+   * **spec ファイルごとに作業ファイルを作り直す。**
+   *
+   * spec ファイル 1 つにつきセッションが 1 つ張られ、そのたびにアプリが起動する。
+   * `onPrepare` で 1 回だけ用意すると、保存を試す spec が書き換えたファイルを
+   * 次の spec が引き継ぐ。「保存していないのに内容が違う」テストが生まれる。
+   *
+   * 対象ファイルは**セッションを張る前**に無ければならない。argv 転送で開く以上、
+   * ここより後に作っても間に合わない。
+   */
+  beforeSession() {
+    resetWorkspace();
+  },
+
+  /**
+   * **残ったプロセスを片付ける。**
+   *
+   * Marxdown は `✕` でプロセスが終わらない（ADR-0007）。セッションが終わっても
+   * トレイに残ることがあり、残ったまま次のセッションが始まると、ドライバが立てた
+   * 2 つ目は argv を転送して即座に終了する（単一インスタンス / ADR-0004）。
+   * **次の spec が丸ごと開けなくなる。**
+   */
+  afterSession() {
+    killLeftoverInstances();
+  },
+
   onComplete() {
+    killLeftoverInstances();
     driver?.kill();
     driver = null;
   },

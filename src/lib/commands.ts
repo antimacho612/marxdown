@@ -34,6 +34,8 @@ export type CommandId =
   | 'document.open'
   | 'document.openPath'
   | 'document.reload'
+  | 'document.save'
+  | 'document.saveAs'
   | 'history.back'
   | 'history.forward'
   | 'outline.jump'

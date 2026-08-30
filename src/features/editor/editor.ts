@@ -36,6 +36,7 @@ import {
   rectangularSelection,
 } from '@codemirror/view';
 
+import { markDirty } from '@/features/document/dirty';
 import { attachEditor, getDocumentText } from '@/features/document/text';
 
 import { editorTheme } from './theme';
@@ -74,6 +75,14 @@ export function mountEditor(host: HTMLElement): EditorView {
         // 衝突整理（`Ctrl+F` / `Ctrl+K`）が同じ回に混ざる。
         keymap.of([...historyKeymap, ...defaultKeymap]),
         EditorView.lineWrapping,
+        // ダーティ状態（F-EDIT-03）。**boolean 1 つだけがリアクティビティを通る。**
+        // 本文そのものはここを通らない（ADR-0005 / 02.architecture/08-state-management.md §1）。
+        //
+        // `markDirty` は既にダーティなら何もしないので、打鍵ごとに
+        // ストアの書き込みや IPC が走ることはない（`document/save.ts`）。
+        EditorView.updateListener.of((update) => {
+          if (update.docChanged) markDirty();
+        }),
         editorTheme,
       ],
     }),

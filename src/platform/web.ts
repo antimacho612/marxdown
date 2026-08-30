@@ -8,6 +8,8 @@
  * Rust 実装と同じ形で再現するが、**原子性と衝突検知の正しさは保証しない**。
  * そこは Rust 側のユニットテストの担当。
  */
+import { splitPath } from '@/lib/path';
+
 import {
   DEFAULT_PANES,
   DEFAULT_SETTINGS,
@@ -409,6 +411,29 @@ export const webPlatform: Platform = {
       // 取り消しは change が飛ばない。dev 用なので待ちっぱなしを許容する
       input.click();
     });
+  },
+
+  /**
+   * 保存先（F-EDIT-02）。**ブラウザにはネイティブの保存ダイアログが無い**ので、
+   * 仮想 FS 上の名前を尋ねるだけにしてある。実際の書き込み先は `localStorage`。
+   */
+  async pickSavePath(suggested) {
+    const base = suggested === null ? 'untitled.md' : splitPath(suggested).name || 'untitled.md';
+    const name = globalThis.prompt('保存先のファイル名（dev:web の仮想 FS）', base);
+    return name === null || name.trim() === '' ? null : `/virtual/${name.trim()}`;
+  },
+
+  /**
+   * dev:web には終了の経路もトレイも無い（`close.rs` に対応するものが無い）ので、
+   * 知らせる相手が居ない。**受け取って捨てる。**
+   */
+  setDirty() {
+    return Promise.resolve();
+  },
+
+  onSaveAndQuit() {
+    // 終了の確認は Rust 側の経路（`close.rs`）。dev:web では起きない。
+    return () => {};
   },
 
   async watchPath() {

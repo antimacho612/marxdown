@@ -10,13 +10,15 @@
  * 選択: 「ファイルが外部で変更されました」+ 再読み込み / 無視 → 消えない
  * ```
  *
- * **編集機能が入るのは M2 である。** それまでは失われるものが何も無いのだから、
- * 読み直すかどうかを人に尋ねる理由がない。ここは前者に倒す。
+ * **分岐はダーティかどうかだけ**（02.architecture/08-state-management.md §3）。
  *
- * 後者（選択）は**ダーティな本文があるとき**のもので、M2 で編集が入ってから
- * `documentStore.isDirty` を見て分岐させる。そのときも「ダーティでなければ黙って
- * 読み直す」は残す。中心ユースケース（LLM が書き換えたファイルを開いたまま眺める）が
- * 成立しなくなるため。
+ * ```text
+ * Clean → 黙って読み直し、控えめに通知する
+ * Dirty → 何もせず、バーで選ばせる（ユーザーの入力を絶対に失わない / N-REL-02）
+ * ```
+ *
+ * Clean で尋ねないのは、中心ユースケース（LLM が書き換えたファイルを開いたまま
+ * 眺める）で毎回選択を迫られると成立しないため。失われるものが無いなら訊かない。
  *
  * # 監視そのものは Rust 側
  *
@@ -27,6 +29,7 @@
 import { ja } from '@/i18n/ja';
 import { getPlatform } from '@/platform';
 
+import { markClean } from './dirty';
 import { reloadCurrent } from './open';
 import { documentStore } from './store.svelte';
 
@@ -64,8 +67,46 @@ export function installFileWatch(): void {
     // 本文は画面に残っており、ユーザーが困っているとは限らない。
     if (change.kind === 'removed') return;
 
+    // 未保存の変更があるなら、**読み直さずに選ばせる**（N-REL-02）。
+    // ここで自動再読み込みすると、ユーザーが打った内容が黙って消える。
+    if (documentStore.isDirty) {
+      offerReloadChoice();
+      return;
+    }
+
     reloadFromDisk();
   });
+}
+
+/**
+ * 編集中に外部変更が来たときの選択（03.ux-spec/07-status-and-notifications.md §2 の「選択」）。
+ *
+ * ```text
+ * 「ファイルが外部で変更されました」+ 再読み込み / 無視
+ * ```
+ *
+ * **消えない通知にする。** 3 秒で消えると「気づかないまま古い内容を保存する」ことになり、
+ * その保存は衝突として弾かれる（`save.ts`）。弾かれること自体は正しいが、
+ * 変更があった事実は画面に残しておくほうが親切である。
+ *
+ * 「無視」を押しても**ダーティのままにする**。保存すれば衝突が出て、そこでもう一度
+ * 上書きか読み直しを選べる。ここで clean にすると、その安全網が外れる。
+ */
+function offerReloadChoice(): void {
+  documentStore.notice = {
+    level: 'warning',
+    message: ja.open.changedExternally,
+    actions: [
+      { label: ja.open.reloadAction, run: () => void discardAndReload() },
+      { label: ja.open.ignoreAction, run: () => (documentStore.notice = null) },
+    ],
+  };
+}
+
+/** 編集内容を捨てて読み直す。**押した人が承知のうえで選んでいる。** */
+async function discardAndReload(): Promise<void> {
+  markClean();
+  await reloadCurrent({ notice: ja.open.reloadedExternal });
 }
 
 function reloadFromDisk(): void {

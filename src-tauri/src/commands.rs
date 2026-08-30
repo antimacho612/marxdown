@@ -121,6 +121,69 @@ pub async fn pick_file(window: Window) -> CoreResult<Option<String>> {
     Ok(Some(document::canonicalize(&path)?.display().to_string()))
 }
 
+/// 保存先を選ばせる（F-EDIT-02「名前を付けて保存」）。
+///
+/// `pick_file` と対になる。`@tauri-apps/plugin-dialog` を入れず Rust 側で包む理由も同じ
+/// （04.tech-stack/06-rust.md §2）。
+///
+/// # 返すパスを正規化しない
+///
+/// **`pick_file` との違いはここ。** 保存先はまだ存在しないことがあり、
+/// `canonicalize` は存在しないパスに対して失敗する。正規化されるのは
+/// 保存が済んで実体ができた後で、`write_document` の中で行われる。
+///
+/// # 親ディレクトリを asset のスコープに入れる
+///
+/// 保存した先が新しい場所なら、そこが相対パス画像の基準になる（N-SEC-05）。
+/// `read_document` と同じ扱いにしておかないと、名前を付けて保存した直後だけ
+/// 画像が出なくなる。
+#[tauri::command]
+pub async fn pick_save_path(
+    window: Window,
+    state: State<'_, AppState>,
+    suggested: Option<String>,
+) -> CoreResult<Option<String>> {
+    use tauri_plugin_dialog::DialogExt;
+
+    let (tx, mut rx) = tauri::async_runtime::channel(1);
+
+    let mut dialog = window
+        .dialog()
+        .file()
+        .set_parent(&window)
+        .add_filter("Markdown", &["md", "markdown"])
+        .add_filter("すべてのファイル", &["*"]);
+
+    // 開いているファイルの場所と名前を初期値にする。何も開いていなければ OS の既定。
+    if let Some(hint) = suggested.as_deref() {
+        let path = Path::new(hint);
+        if let Some(dir) = path.parent() {
+            dialog = dialog.set_directory(dir);
+        }
+        if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
+            dialog = dialog.set_file_name(name);
+        }
+    }
+
+    dialog.save_file(move |picked| {
+        let _ = tx.try_send(picked);
+    });
+
+    let Some(Some(picked)) = rx.recv().await else {
+        return Ok(None);
+    };
+
+    let path = picked
+        .into_path()
+        .map_err(|e| CoreError::InvalidArgument(e.to_string()))?;
+
+    if let Some(parent) = path.parent() {
+        state.allow_asset_root(parent.to_path_buf());
+    }
+
+    Ok(Some(path.display().to_string()))
+}
+
 /* ------------------------------------------------------------------ */
 /* ウィンドウ操作（カスタムタイトルバー / 03.ux-spec/01-screen-layout.md §1）             */
 /* ------------------------------------------------------------------ */
@@ -495,12 +558,22 @@ pub fn startup_trace(state: State<'_, AppState>) -> crate::trace::TraceReport {
 ///
 /// **`✕` とは別に必要**である。トレイ常駐では `✕` が「格納」の意味になるため、
 /// 「本当に終わらせたい」を表す経路が無くなる。フロント側の `Ctrl+Q` と
-/// ハンバーガーメニューの「終了」がここへ来る（3 経路のうちの 2 つ）。
+/// `Ctrl+Q` とハンバーガーメニューの「終了」がここへ来る（3 経路のうちの 2 つ）。
 ///
+/// **未保存の変更があれば確認する**（F-EDIT-03 / `close::request_quit`）。
 /// ウィンドウ位置の保存は `close::quit` が行う（論点 11）。
 #[tauri::command]
 pub fn app_quit(app: tauri::AppHandle) {
-    crate::close::quit(&app);
+    crate::close::request_quit(&app);
+}
+
+/// 未保存の変更があるかを知らせる（F-EDIT-03）。
+///
+/// **変わり目だけ呼ばれる。** 打鍵ごとではない（`features/document/save.ts`）。
+/// Rust 側が持つ理由は `state.rs` の `dirty` を参照。
+#[tauri::command]
+pub fn set_dirty(state: State<'_, AppState>, dirty: bool) {
+    state.set_dirty(dirty);
 }
 
 #[tauri::command]

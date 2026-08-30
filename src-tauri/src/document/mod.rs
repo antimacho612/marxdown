@@ -62,8 +62,23 @@ pub struct WriteRequest {
     pub expected_mtime_ms: Option<i64>,
 }
 
+/// 保存の結果。
+///
+/// **`rename_all_fields` が要る。** enum に付けた `rename_all` が変えるのは
+/// **バリアント名だけ**で（`Saved` → `"saved"`）、中のフィールドは
+/// `mtime_ms` のまま送られる。構造体と同じつもりで書くと、
+/// フロント側の `mtimeMs` が `undefined` になる。
+///
+/// これは**画面に出ない壊れ方**をする。1 回目の保存は通り、
+/// 2 回目が「別のプロセスが変更しています」になる（`expectedMtimeMs` が欠けるため、
+/// Rust 側が新規作成として扱い、既存ファイルとの衝突になる）。
+/// 下の `serializes_fields_in_camel_case` が見張っている。
 #[derive(Debug, Clone, Serialize)]
-#[serde(tag = "status", rename_all = "camelCase")]
+#[serde(
+    tag = "status",
+    rename_all = "camelCase",
+    rename_all_fields = "camelCase"
+)]
 pub enum SaveResult {
     /// 保存に成功した。新しい mtime を返す。
     Saved { mtime_ms: i64, size: u64 },
@@ -191,6 +206,43 @@ pub fn write(req: &WriteRequest) -> CoreResult<SaveResult> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// **フロントとの対応表を固定する**（`src/platform/types.ts`）。
+    ///
+    /// serde の `rename_all` は enum ではバリアント名しか変えない。
+    /// 構造体と同じつもりで書くと、フィールドが snake_case のまま送られ、
+    /// フロント側の `mtimeMs` / `diskMtimeMs` が `undefined` になる。
+    ///
+    /// **この壊れ方は 1 回目の保存では表に出ない。** 2 回目で
+    /// 「別のプロセスが変更しています」として現れるため、原因が遠い。
+    #[test]
+    fn serializes_fields_in_camel_case() {
+        let saved = serde_json::to_value(SaveResult::Saved {
+            mtime_ms: 12,
+            size: 34,
+        })
+        .unwrap();
+        assert_eq!(saved["status"], "saved");
+        assert_eq!(saved["mtimeMs"], 12, "mtimeMs が snake_case で出ている");
+        assert_eq!(saved["size"], 34);
+
+        let conflict = serde_json::to_value(SaveResult::Conflict { disk_mtime_ms: 56 }).unwrap();
+        assert_eq!(conflict["status"], "conflict");
+        assert_eq!(
+            conflict["diskMtimeMs"], 56,
+            "diskMtimeMs が snake_case で出ている"
+        );
+    }
+
+    /// `WriteRequest` は逆向き（フロント → Rust）。こちらも形を固定する。
+    #[test]
+    fn deserializes_write_request_from_camel_case() {
+        let req: WriteRequest = serde_json::from_str(
+            r#"{"path":"a.md","content":"x","eol":"lf","bom":false,"encoding":"utf8","expectedMtimeMs":7}"#,
+        )
+        .unwrap();
+        assert_eq!(req.expected_mtime_ms, Some(7));
+    }
 
     fn temp_dir(tag: &str) -> PathBuf {
         let d = std::env::temp_dir().join(format!("marxdown-doc-{}-{}", tag, std::process::id()));

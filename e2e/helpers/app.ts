@@ -27,6 +27,8 @@ import { spawn } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { Key } from 'webdriverio';
+
 const here = path.dirname(fileURLToPath(import.meta.url));
 
 /**
@@ -96,4 +98,104 @@ export async function openViaForward(target: string, expected: string): Promise<
   }
 
   throw new Error(`argv 転送で "${target}" が開かなかった（3 回試行）`);
+}
+
+/* ------------------------------------------------------------------ */
+/* 編集と保存（M2 Phase 2）                                             */
+/* ------------------------------------------------------------------ */
+
+/** いまの表示モード（`features/view/mode.ts` が `<html>` に立てる）。 */
+export async function currentMode(): Promise<string> {
+  return browser.execute(() => document.documentElement.dataset['mxMode'] ?? '');
+}
+
+/** Edit モードに入り、CodeMirror が載るまで待つ。 */
+export async function enterEditMode(): Promise<void> {
+  if ((await currentMode()) === 'edit') return;
+
+  await browser.keys([Key.Control, Key.Shift, 'v']);
+  await browser.waitUntil(async () => (await currentMode()) === 'edit', {
+    timeout: 20_000,
+    timeoutMsg: 'Edit へ切り替わらなかった',
+  });
+  await browser.waitUntil(() => browser.execute(() => document.querySelectorAll('.cm-editor').length === 1), {
+    timeout: 20_000,
+    timeoutMsg: 'エディタが載らなかった',
+  });
+}
+
+/** エディタの末尾に文字を打つ。**実際のキー入力**で入れる（IME を除く本番の経路）。 */
+export async function typeAtEnd(text: string): Promise<void> {
+  await $('.cm-content').click();
+  await browser.keys([Key.Control, 'End']);
+  await browser.keys(text);
+}
+
+/** エディタが持っている本文。改行は CodeMirror の行区切りから組み直す。 */
+export async function editorText(): Promise<string> {
+  return browser.execute(() =>
+    [...document.querySelectorAll('.cm-content .cm-line')].map((line) => line.textContent ?? '').join('\n'),
+  );
+}
+
+/** 未保存の印（`●` / 03.ux-spec/07-status-and-notifications.md §1）が出ているか。 */
+export async function isDirtyShown(): Promise<boolean> {
+  return browser.execute(() => document.querySelector('.mx-titlebar__dirty') !== null);
+}
+
+/** 保存する。**印が消えるまで待つ**（保存できた唯一の見える合図）。 */
+export async function saveAndWaitClean(): Promise<void> {
+  await browser.keys([Key.Control, 's']);
+  await browser.waitUntil(async () => !(await isDirtyShown()), {
+    timeout: 20_000,
+    timeoutMsg: '保存しても未保存の印が消えなかった',
+  });
+}
+
+/** 通知バーの文言。出ていなければ空文字。 */
+export async function noticeText(): Promise<string> {
+  return browser.execute(() => document.querySelector('.mx-notice')?.textContent ?? '');
+}
+
+/**
+ * 通知バーのボタンを文言で押す。
+ *
+ * WebdriverIO の `button=文言` セレクタは、このドライバでは
+ * `invalid selector` で通らない。DOM 側で探して押す。
+ */
+export async function clickNoticeAction(label: string): Promise<void> {
+  await browser.waitUntil(
+    () =>
+      browser.execute((text: string) => {
+        const button = [...document.querySelectorAll('.mx-notice__action')].find(
+          (el) => (el.textContent ?? '').trim() === text,
+        );
+        if (!(button instanceof HTMLElement)) return false;
+        button.click();
+        return true;
+      }, label),
+    { timeout: 10_000, timeoutMsg: `通知バーに「${label}」が無い` },
+  );
+}
+
+/** 通知バーに `needle` を含む文言が出るまで待つ。 */
+export async function waitForNotice(needle: string): Promise<void> {
+  await browser.waitUntil(
+    async () => {
+      const text = await noticeText();
+      return text.includes(needle);
+    },
+    { timeout: 20_000, timeoutMsg: `通知バーに「${needle}」が出なかった` },
+  );
+}
+
+/** エディタの本文に `needle` が現れるまで待つ。 */
+export async function waitForEditorText(needle: string): Promise<void> {
+  await browser.waitUntil(
+    async () => {
+      const text = await editorText();
+      return text.includes(needle);
+    },
+    { timeout: 20_000, timeoutMsg: `エディタに「${needle}」が現れなかった` },
+  );
 }

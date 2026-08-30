@@ -34,6 +34,7 @@ import { mark } from '@/lib/trace';
 import type { MarkdownParser } from '@/markdown/worker/client';
 import { getPlatform, type DocumentPayload } from '@/platform';
 
+import { markClean } from './dirty';
 import { refreshOutline, refreshSearch } from './refresh';
 import { documentStore, INFO_NOTICE_MS, notifyInfo } from './store.svelte';
 import { setDocumentText } from './text';
@@ -142,6 +143,10 @@ export async function openDocument(payload: DocumentPayload, options: OpenOption
   // パースを投げた**後**に置いてある。ここは代入 1 つだが、`editor` が載っていると
   // CodeMirror の dispatch を伴う。T6→T7 の重ね合わせを崩さない位置に置く。
   setDocumentText(payload.content);
+
+  // ディスクと一致した状態から始まる（F-EDIT-03）。
+  // **開き直しでもここを通る**ので、再読み込みの後にダーティが残らない。
+  markClean();
 
   options.betweenParseAndPaint?.();
 

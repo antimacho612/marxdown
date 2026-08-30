@@ -47,6 +47,14 @@ export const ja = {
    */
   menu: {
     open: 'ファイルを開く',
+    save: '保存',
+    saveAs: '名前を付けて保存',
+    /**
+     * モードの切り替え（F-MODE-06）。**ラベルは「行き先」を言う。**
+     * いまが Preview なら「編集」、Edit なら「プレビュー」。押した結果が読める。
+     */
+    toEdit: '編集する',
+    toPreview: 'プレビューに戻る',
     settings: '設定',
     recent: '最近開いたファイル',
     noRecent: 'まだ何も開いていません',
@@ -105,6 +113,26 @@ export const ja = {
      * 自分では何もしていないので、**何が起きたか**を先に言う。
      */
     reloadedExternal: '外部の変更を読み込みました',
+    /**
+     * 編集中に外部で変更されたとき（03.ux-spec/07-status-and-notifications.md §2 の「選択」）。
+     *
+     * **ダーティなら黙って読み直さない**（02.architecture/08-state-management.md §3）。
+     * 読み直すと未保存の編集が消えるので、選ばせる。
+     */
+    changedExternally: 'ファイルが外部で変更されました',
+    reloadAction: '再読み込み',
+    ignoreAction: '無視',
+  },
+  /** 保存（F-EDIT-02, 03 / 03.ux-spec/07-status-and-notifications.md §2）。 */
+  save: {
+    failed: '保存できませんでした',
+    /** §2 の「警告」の文面。**消えない通知**として出す。 */
+    conflict: '保存できませんでした: 別のプロセスが変更しています',
+    overwrite: '上書き',
+    /** 押すと編集内容が失われる。**押すまでは何も起きない。** */
+    reloadInstead: '再読み込み',
+    /** タイトルバーの `●`（§1）。読み上げのために文言を持たせる。 */
+    dirtyLabel: '未保存の変更があります',
   },
   preview: {
     copy: 'コピー',

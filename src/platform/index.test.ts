@@ -31,6 +31,8 @@ describe('getPlatform', () => {
       'removeRecent',
       'setZoom',
       'pickFile',
+      'pickSavePath',
+      'setDirty',
       'readSettings',
       'writeSettings',
       'openSettingsFile',
@@ -56,6 +58,7 @@ describe('getPlatform', () => {
       'openLocalFile',
       'revealInFileManager',
       'onOpenRequest',
+      'onSaveAndQuit',
     ];
     for (const key of required) {
       expect(original[key], `web 実装に ${key} が無い`).toBeDefined();

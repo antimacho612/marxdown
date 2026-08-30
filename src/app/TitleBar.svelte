@@ -57,6 +57,7 @@
 
   const meta = $derived(documentStore.meta);
   const split = $derived(splitPath(meta?.path ?? ''));
+  const dirty = $derived(documentStore.isDirty);
 </script>
 
 <header class="mx-titlebar" data-tauri-drag-region="deep">
@@ -67,6 +68,15 @@
       {@render center()}
     {:else}
       <span class="mx-titlebar__name">{meta ? split.name : ja.app.name}</span>
+      <!--
+        未保存の印（03.ux-spec/07-status-and-notifications.md §1）。**ファイル名の右に `●`。**
+
+        ステータスバーには出さない（§1 の表が「変更なし。うるさくしない」と
+        定めている）。M3 でタブが入ると、この印はタブ側へ移る。
+      -->
+      {#if meta && dirty}
+        <span class="mx-titlebar__dirty" title={ja.save.dirtyLabel} aria-label={ja.save.dirtyLabel}>●</span>
+      {/if}
       {#if meta}
         <span class="mx-titlebar__dir">{split.dir}</span>
       {/if}
@@ -115,6 +125,16 @@
   .mx-titlebar__name {
     font-weight: 600;
     white-space: nowrap;
+  }
+
+  /*
+   * 未保存の印。**本文と同じ色にしない。**
+   * 常時見えるものではないので、出たときに気づく程度の強さがあればよい。
+   */
+  .mx-titlebar__dirty {
+    color: var(--mx-color-fg-muted);
+    font-size: 10px;
+    line-height: 1;
   }
 
   .mx-titlebar__dir {

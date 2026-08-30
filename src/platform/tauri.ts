@@ -28,6 +28,7 @@ const EVENT_FILE_CHANGED = 'marxdown://file-changed';
 const EVENT_SETTINGS_CHANGED = 'marxdown://settings-changed';
 const EVENT_TRAY_OPEN = 'marxdown://tray-open';
 const EVENT_TRAY_RESUME = 'marxdown://tray-resume';
+const EVENT_SAVE_AND_QUIT = 'marxdown://save-and-quit';
 const EVENT_CUSTOM_CSS_CHANGED = 'marxdown://custom-css-changed';
 const EVENT_WINDOW_MAXIMIZED = 'marxdown://window-maximized';
 const EVENT_MAXIMIZE_HOVER = 'marxdown://maximize-hover';
@@ -103,6 +104,14 @@ export const tauriPlatform: Platform = {
     return invoke<string | null>('pick_file');
   },
 
+  pickSavePath(suggested) {
+    return invoke<string | null>('pick_save_path', { suggested });
+  },
+
+  setDirty(dirty) {
+    return invoke<void>('set_dirty', { dirty });
+  },
+
   readSettings() {
     return invoke<SettingsLoad>('read_settings');
   },
@@ -171,6 +180,10 @@ export const tauriPlatform: Platform = {
 
   onTrayOpen(handler) {
     return subscribe(() => listen(EVENT_TRAY_OPEN, () => handler()));
+  },
+
+  onSaveAndQuit(handler) {
+    return subscribe(() => listen(EVENT_SAVE_AND_QUIT, () => handler()));
   },
 
   onTrayResume(handler) {

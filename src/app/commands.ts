@@ -31,6 +31,7 @@
  * （動的 import 一行だけのモジュールを経由するので、押されるまで何もロードされない）。
  */
 import { openPath, openViaDialog, reloadCurrent } from '@/features/document/open';
+import { saveAsSafely, saveSafely } from '@/features/document/save';
 import { documentStore } from '@/features/document/store.svelte';
 import { canGoBack, canGoForward, goBack, goForward } from '@/features/history/navigate';
 import { openJumpLazily } from '@/features/outline/open-jump';
@@ -72,6 +73,11 @@ const COMMANDS: Command[] = [
   },
 
   { id: 'document.reload', run: () => void reloadCurrent(), isListed: hasDocument },
+
+  // 保存（F-EDIT-02）。**ダーティでなくても押せる。**
+  // 「押したのに何も起きない」を避けるためで、内容が同じならディスクは変わらない。
+  { id: 'document.save', run: () => void saveSafely(), isListed: hasDocument },
+  { id: 'document.saveAs', run: () => void saveAsSafely(), isListed: hasDocument },
 
   // 戻る / 進む（F-NAV-07）。**辿れるときにしか一覧に出さない。**
   { id: 'history.back', run: () => void goBack(), isListed: canGoBack },
@@ -158,6 +164,15 @@ const RELOAD_KEYS = ['F5', 'Ctrl+R', 'Ctrl+Shift+R', 'Ctrl+F5', 'Shift+F5'];
  */
 export const KEY_BINDINGS: KeyBinding[] = [
   { key: 'Ctrl+O', id: 'document.open' },
+
+  // 保存（F-EDIT-02）。**`whenEditing: true` が要る。**
+  // 保存したい瞬間はほぼ必ずエディタにフォーカスがあり、既定の
+  // 「入力中は発火しない」に任せると `Ctrl+S` が一度も効かない。
+  //
+  // 素通りさせると WebView 自身の「名前を付けて保存」が開く。倍率と同じ事故で、
+  // こちらは**アプリの本文と無関係な HTML が保存される**ぶん質が悪い。
+  { key: 'Ctrl+S', id: 'document.save', whenEditing: true },
+  { key: 'Ctrl+Shift+S', id: 'document.saveAs', whenEditing: true },
 
   // 再読み込みのキーは**必ず飲み込む**。
   //

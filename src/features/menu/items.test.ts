@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { registerAppCommands } from '@/app/commands';
 import { documentStore } from '@/features/document/store.svelte';
+import { viewStore } from '@/features/view/store.svelte';
 import { recentStore } from '@/features/workspace/recent.svelte';
 import type { DocumentMeta } from '@/platform';
 
@@ -38,6 +39,7 @@ function group(groups: MenuGroup[], id: string): MenuGroup | undefined {
 beforeEach(() => {
   documentStore.meta = null;
   recentStore.entries = [];
+  viewStore.mode = 'preview';
   uninstall = registerAppCommands();
 });
 
@@ -64,6 +66,9 @@ describe('ハンバーガーメニューの項目 (03.ux-spec/01-screen-layout.m
 
     expect(ids(buildMenu())).toEqual([
       'open',
+      'save',
+      'save-as',
+      'mode',
       'reload',
       'search',
       'outline',
@@ -74,6 +79,20 @@ describe('ハンバーガーメニューの項目 (03.ux-spec/01-screen-layout.m
       'settings',
       'quit',
     ]);
+  });
+
+  /**
+   * プレビュー内検索は **Preview を見ているときだけ**（`app/commands.ts`）。
+   *
+   * Edit ではエディタ側の検索（F-EDIT-05 / Phase 3）が受け持つので、
+   * ここに残っていると「押しても見えていない面を探す」項目になる。
+   */
+  it('Edit モードではプレビュー内検索を並べない', () => {
+    documentStore.meta = META;
+    viewStore.mode = 'edit';
+
+    expect(ids(buildMenu())).not.toContain('search');
+    expect(ids(buildMenu())).toContain('mode');
   });
 
   /** 履歴が空でも見出しは出す。**項目ではなく 1 行の文**で埋める。 */
