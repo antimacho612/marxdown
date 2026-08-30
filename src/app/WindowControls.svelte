@@ -36,6 +36,11 @@
    * ホバーの塗りも Rust 側からの通知で行う（`viewStore.maximizeHovered`）。
    *
    * Windows 以外では通知が来ないだけで、素の `:hover` がそのまま効く。
+   *
+   * **ここでは矩形を測らない。** マウント直後の `getBoundingClientRect()` は
+   * スタイル再計算とレイアウトを同期的に走らせ、起動を 32〜35ms 遅らせる
+   * （OQ-30 / `window.ts`）。ここでやるのは相手の登録と `resize` の見張りだけで、
+   * 初回の報告は `ready()` の後に行われる。
    */
   $effect(() => trackSnapLayoutsTarget(maximizeButton));
 </script>

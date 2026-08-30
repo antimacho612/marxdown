@@ -269,9 +269,9 @@ pub fn run() {
             state.trace.mark("T3", None);
 
             // **矩形の受け皿だけは、ここで置く**（`snap_layouts.rs` の `prepare`）。
-            // フロントは最大化ボタンをマウントした時点で 1 度だけ矩形を投げ、
-            // 以後はウィンドウ幅が変わるまで投げ直さない。これは `ready()` より前なので、
-            // 受け皿をサブクラス化と一緒に `ready` へ置くと、その 1 度を取りこぼす。
+            // フロントは 1 度だけ矩形を投げ、以後はウィンドウ幅が変わるまで投げ直さない
+            // （`src/app/window.ts` の `reportSnapLayoutsTarget`）。
+            // その 1 度を受け損ねると、矩形は 0 のままになる。
             // イベントループを必要としない仕事なので、ここに置いて差し支えない。
             #[cfg(windows)]
             snap_layouts::prepare(app.handle(), &main);

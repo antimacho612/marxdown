@@ -216,12 +216,11 @@ fn track_leave(hwnd: HWND) {
 /// 作成（`install`）は `ready` まで待たされる。`hwnd()` がイベントループへの
 /// 問い合わせだからで、これは動かせない。
 ///
-/// 一方、矩形を送ってくるフロントは **`ready()` より前**に動く。
-/// `set_snap_layouts_target` はボタンがマウントされた時点（`WindowControls.svelte` の
-/// `$effect`）で 1 度だけ投げられ、以後は**ウィンドウ幅が変わったときしか**投げ直されない
-/// （`src/app/window.ts` の `trackSnapLayoutsTarget`）。
+/// 一方、矩形を送ってくるフロントは `set_snap_layouts_target` を **1 度しか投げない**。
+/// 以後は**ウィンドウ幅が変わったときしか**投げ直さない
+/// （`src/app/window.ts` の `reportSnapLayoutsTarget` と `trackSnapLayoutsTarget`）。
+/// その 1 度を受け損ねると、矩形は 0 のままになる。
 ///
-/// 受け皿の生成を作成と一緒に `ready` へ置くと、その 1 度が捨てられ、矩形は 0 のままになる。
 /// **受け皿だけならイベントループを必要としない。先に置いておけば取りこぼさない。**
 pub fn prepare(app: &tauri::AppHandle, window: &WebviewWindow) {
     if tauri::Manager::try_state::<Arc<SnapTarget>>(app).is_some() {

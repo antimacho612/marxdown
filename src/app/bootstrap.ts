@@ -42,7 +42,7 @@ import { createParser } from '@/markdown/worker/client';
 import { getPlatform, type Bootstrap, type DocumentPayload, type SpikeFlags } from '@/platform';
 
 import { installCommands } from './commands';
-import { installWindowState } from './window';
+import { installWindowState, reportSnapLayoutsTarget } from './window';
 
 const PREVIEW_SELECTOR = '#mx-preview';
 
@@ -163,6 +163,17 @@ export async function startup(renderShell: () => void): Promise<void> {
   installFileWatch();
   installSettingsWatch();
   installWindowState();
+
+  // Snap Layouts の初回報告（OQ-30）。**ここより前に置いてはいけない。**
+  //
+  // 矩形を測る `getBoundingClientRect()` は強制同期レイアウトで、シェルを描いた
+  // 直後に呼ぶとスタイル再計算とレイアウトがまるごと走る（実測 32〜35ms）。
+  // その間はパース側のスクリプト評価も進まないので、シェルとパースを重ねるという
+  // この経路の前提そのものが崩れる（`window.ts` の `trackSnapLayoutsTarget`）。
+  //
+  // 遅れたときの最悪は「起動直後の数十 ms だけフライアウトが出ない」。
+  // Windows へ答える主体は `ready()` の中で付くので、ここでも取りこぼさない。
+  reportSnapLayoutsTarget();
 
   // カスタム CSS の残り（遅延取得・監視・通知）は**遅延チャンク**に置いてある
   // （06.roadmap/m1.5-shell-and-settings.md §3）。`main` に残っているのは適用そのものだけ。

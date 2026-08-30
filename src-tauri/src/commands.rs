@@ -403,7 +403,7 @@ pub fn ready(window: Window, state: State<'_, AppState>) {
     // 「ホバーしてもフライアウトが出ない」ことだけで、ボタン自体は押せる。
     //
     // 矩形の受け皿は `setup()` の中で先に置いてある（`snap_layouts.rs` の `prepare`）。
-    // フロントの矩形通知はここへ来るより前に届くため。
+    // フロントの矩形通知は**この直後**に届く（`src/app/window.ts` の `reportSnapLayoutsTarget`）。
     #[cfg(windows)]
     crate::snap_layouts::install(window.app_handle());
 
