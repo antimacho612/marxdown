@@ -54,7 +54,7 @@ describe('コマンドレジストリ (06.roadmap/m2-editor.md §1.2)', () => {
    */
   it('文書を開いていないと、文書に対するコマンドは一覧に出ない', () => {
     expect(isCommandListed('document.reload')).toBe(false);
-    expect(isCommandListed('preview.search')).toBe(false);
+    expect(isCommandListed('find.open')).toBe(false);
     expect(isCommandListed('preview.zoomIn')).toBe(false);
 
     // 文書に依存しないものは、開いていなくても出る。
@@ -67,7 +67,7 @@ describe('コマンドレジストリ (06.roadmap/m2-editor.md §1.2)', () => {
     documentStore.meta = META;
 
     expect(isCommandListed('document.reload')).toBe(true);
-    expect(isCommandListed('preview.search')).toBe(true);
+    expect(isCommandListed('find.open')).toBe(true);
     expect(isCommandListed('preview.zoomIn')).toBe(true);
   });
 

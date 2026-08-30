@@ -5,6 +5,7 @@
 
 use std::path::{Path, PathBuf};
 
+use serde::Serialize;
 use tauri::{Manager, State, Window};
 
 use crate::custom_css;
@@ -543,17 +544,6 @@ pub fn startup_trace(state: State<'_, AppState>) -> crate::trace::TraceReport {
     state.trace.report("cold", state.args.spike)
 }
 
-/// ウォーム起動（S6）の完了報告。
-///
-/// フロントが「本文が読める」状態（paint + 次の rAF）に到達したら呼ぶ。
-/// 02.architecture/05-startup-sequence.md §2 の経路を、argv 転送を受けた瞬間から測る。
-///
-/// 1 プロセスで何度も起きるので、1 レコード 1 行の JSONL に追記する。
-///
-/// `kind` は `"warm"`（argv 転送）か `"tray-resume"`（トレイからの復帰）。
-/// **中央値を別々に取るために要る。** 経路が違えば分布も違い、混ぜると
-/// 「どちらも速い / どちらも遅い」しか分からなくなる
-/// （ADR-0007「Warm Start の計測経路が 2 本になる」）。省略時は `"warm"`。
 /// Marxdown を終了する（ADR-0007 論点 3）。
 ///
 /// **`✕` とは別に必要**である。トレイ常駐では `✕` が「格納」の意味になるため、
@@ -576,6 +566,92 @@ pub fn set_dirty(state: State<'_, AppState>, dirty: bool) {
     state.set_dirty(dirty);
 }
 
+/// 未保存のまま別の文書へ移ってよいか尋ねる（F-EDIT-03 / N-REL-01）。
+///
+/// # なぜ「閉じるとき」だけでは足りないのか
+///
+/// F-EDIT-03 の文面は「閉じる際の確認」だが、**単一文書のアプリでは
+/// 「別のファイルを開く」が「閉じる」そのもの**である。`open.ts` の 5 つの入口
+/// （argv 転送 / ダイアログ / D&D / 相対リンク / 再読み込み）はどれも
+/// いま開いている文書を置き換えるので、確認を通さないと編集内容が黙って消える。
+///
+/// # 確認だけを担当する
+///
+/// `close::request_quit` と違い、ここは**ダーティかどうかを見ない**。
+/// 判断材料（`documentStore.isDirty`）を持っているのはフロントで、
+/// 呼ぶかどうかもフロントが決める。Rust 側が持っているのは
+/// 「ネイティブの 3 択ダイアログを出す手段」だけ。
+///
+/// 終了の確認が Rust 側にあるのは、トレイメニューがフロントを経由しないからで
+/// （`close.rs`）、その事情はこちらには無い。
+///
+/// # 「開く」と言わない
+///
+/// ボタンは「保存する / 保存しない / キャンセル」。同じ確認を再読み込み（`F5`）と、
+/// この先の新規ファイル（`Ctrl+N`）でも通すので、**行き先を名乗ると経路ごとに
+/// 文言が要る**ことになる。危険なのは行き先ではなく、保存していない変更のほう。
+///
+/// # 既定は「移らない」側
+///
+/// `✕` で閉じられた場合も `Cancel` を返す。**開き直すことはできるが、
+/// 消えた編集内容は取り返せない**（N-REL-01）。
+#[tauri::command]
+pub async fn confirm_discard(app: tauri::AppHandle) -> DiscardChoice {
+    use tauri_plugin_dialog::{
+        DialogExt, MessageDialogButtons, MessageDialogKind, MessageDialogResult,
+    };
+
+    let (tx, mut rx) = tauri::async_runtime::channel(1);
+
+    app.dialog()
+        .message(crate::close::DIRTY_MESSAGE)
+        .title("Marxdown")
+        .kind(MessageDialogKind::Warning)
+        .buttons(MessageDialogButtons::YesNoCancelCustom(
+            "保存する".to_string(),
+            "保存しない".to_string(),
+            "キャンセル".to_string(),
+        ))
+        .show_with_result(move |result| {
+            let choice = match result {
+                MessageDialogResult::Yes => DiscardChoice::Save,
+                MessageDialogResult::No => DiscardChoice::Discard,
+                _ => DiscardChoice::Cancel,
+            };
+            let _ = tx.try_send(choice);
+        });
+
+    rx.recv().await.unwrap_or(DiscardChoice::Cancel)
+}
+
+/// `confirm_discard` の答え。
+///
+/// **フロントが受け取る文字列を型で固定する。** `SaveResult` の
+/// `rename_all_fields` を落として `mtimeMs` が `undefined` になった件
+/// （06.roadmap/m2-editor.md §5 の Phase 2）と同じ事故を、
+/// ここでは下のテストが見張る。
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub enum DiscardChoice {
+    /// 保存してから移る。**保存できるのはフロントだけ**なので、保存はフロントが行う。
+    Save,
+    /// 保存せずに移る。編集内容は失われる。
+    Discard,
+    /// 移らない。
+    Cancel,
+}
+
+/// ウォーム起動（S6）の完了報告。
+///
+/// フロントが「本文が読める」状態（paint + 次の rAF）に到達したら呼ぶ。
+/// 02.architecture/05-startup-sequence.md §2 の経路を、argv 転送を受けた瞬間から測る。
+///
+/// 1 プロセスで何度も起きるので、1 レコード 1 行の JSONL に追記する。
+///
+/// `kind` は `"warm"`（argv 転送）か `"tray-resume"`（トレイからの復帰）。
+/// **中央値を別々に取るために要る。** 経路が違えば分布も違い、混ぜると
+/// 「どちらも速い / どちらも遅い」しか分からなくなる
+/// （ADR-0007「Warm Start の計測経路が 2 本になる」）。省略時は `"warm"`。
 #[tauri::command]
 pub fn warm_done(
     state: State<'_, AppState>,
@@ -609,4 +685,29 @@ pub fn warm_done(
     }
 
     Some(elapsed)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// フロントの `DiscardChoice`（`src/platform/types.ts`）と同じ綴りで出ること。
+    ///
+    /// **enum の `rename_all` はバリアント名を変える。** 構造体のフィールドと
+    /// 違う挙動であり、Phase 2 ではそこを取り違えて `mtimeMs` を落とした。
+    #[test]
+    fn discard_choice_serializes_in_camel_case() {
+        assert_eq!(
+            serde_json::to_string(&DiscardChoice::Save).unwrap(),
+            "\"save\""
+        );
+        assert_eq!(
+            serde_json::to_string(&DiscardChoice::Discard).unwrap(),
+            "\"discard\""
+        );
+        assert_eq!(
+            serde_json::to_string(&DiscardChoice::Cancel).unwrap(),
+            "\"cancel\""
+        );
+    }
 }

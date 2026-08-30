@@ -118,7 +118,15 @@ const MENU: MenuSection[] = [
         shortcut: 'Ctrl+Shift+V',
       },
       { id: 'reload', command: 'document.reload', label: ja.menu.reload, shortcut: 'F5' },
-      { id: 'search', command: 'preview.search', label: ja.menu.search, shortcut: 'Ctrl+F' },
+      // 検索は面によって実体が変わる（`features/view/find.ts`）。ラベルも変える。
+      {
+        id: 'search',
+        command: 'find.open',
+        label: () => (viewStore.mode === 'preview' ? ja.menu.search : ja.menu.find),
+        shortcut: 'Ctrl+F',
+      },
+      // 置換は Edit のときだけ出る（`isListed`）。
+      { id: 'replace', command: 'find.replace', label: ja.menu.replace, shortcut: 'Ctrl+H' },
       // ペインの開閉（03.ux-spec/06-panes.md §4 の「ペイン」系）。
       // ラベルが状態で変わるのは、押した結果を先に言うため。
       {

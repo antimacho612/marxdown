@@ -121,9 +121,9 @@ function mount(container: HTMLElement): SearchState {
   // 開いている間だけ効くキー（03.ux-spec/04-keybindings.md §3「F3 / Shift+F3 で次 / 前」）。
   // 閉じたら外す。使っていない機能のキーをグローバルに残さない。
   const unbind = bindKeys([
-    { key: 'F3', run: () => step(1), whenEditing: true },
-    { key: 'Shift+F3', run: () => step(-1), whenEditing: true },
-    { key: 'Escape', run: () => closeSearch(), whenEditing: true },
+    { key: 'F3', run: () => step(1) },
+    { key: 'Shift+F3', run: () => step(-1) },
+    { key: 'Escape', run: () => closeSearch() },
   ]);
 
   const created: SearchState = {

@@ -21,9 +21,10 @@
  * `#mx-editor` は `index.html` にあり、Svelte の管理下に無い。
  * `#mx-preview` と同じ理由で、**ここを Svelte に移さないこと**（ADR-0005）。
  */
-import { defaultKeymap, history, historyKeymap } from '@codemirror/commands';
+import { history } from '@codemirror/commands';
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown';
 import { bracketMatching } from '@codemirror/language';
+import { highlightSelectionMatches, openSearchPanel, search } from '@codemirror/search';
 import { EditorState } from '@codemirror/state';
 import {
   drawSelection,
@@ -31,14 +32,15 @@ import {
   EditorView,
   highlightActiveLine,
   highlightSpecialChars,
-  keymap,
   lineNumbers,
   rectangularSelection,
 } from '@codemirror/view';
 
 import { markDirty } from '@/features/document/dirty';
 import { attachEditor, getDocumentText } from '@/features/document/text';
+import { ja } from '@/i18n/ja';
 
+import { editorKeymap } from './keymap';
 import { editorTheme } from './theme';
 
 let view: EditorView | null = null;
@@ -63,17 +65,35 @@ export function mountEditor(host: HTMLElement): EditorView {
         history(),
         drawSelection(),
         dropCursor(),
-        rectangularSelection(),
         highlightActiveLine(),
         highlightSpecialChars(),
         bracketMatching(),
         EditorState.allowMultipleSelections.of(true),
         markdown({ base: markdownLanguage }),
-        // VS Code 互換キーマップ（F-EDIT-04〜07）は Phase 3。ここに置いてあるのは
-        // 「文字が打てて Undo できる」までの最小限で、`defaultKeymap` が
-        // それを賄う。先に `vscodeKeymap` を入れると、アプリ側のキーとの
-        // 衝突整理（`Ctrl+F` / `Ctrl+K`）が同じ回に混ざる。
-        keymap.of([...historyKeymap, ...defaultKeymap]),
+
+        // マルチカーソルと矩形選択（F-EDIT-06 / 03.ux-spec/04-keybindings.md §3）。
+        //
+        // **既定のままでは VS Code と食い違う。** CodeMirror は
+        //   - カーソルの追加を `Ctrl+クリック`（`clickAddsSelectionRange` の既定）
+        //   - 矩形選択を `Alt+ドラッグ`（`rectangularSelection` の既定）
+        // に割り当てるが、VS Code はそれぞれ `Alt+クリック` と `Shift+Alt+ドラッグ`。
+        // §3 が `Alt+Click` = カーソル追加と定めている以上、**Alt をカーソル追加へ渡し、
+        // 矩形選択を Shift+Alt へずらす**。片方だけ直すと 2 つが同じ修飾子を奪い合う。
+        rectangularSelection({ eventFilter: (event) => event.altKey && event.shiftKey }),
+        EditorView.clickAddsSelectionRange.of((event) => event.altKey && !event.shiftKey),
+
+        // 検索・置換（F-EDIT-05）。パネルは上に出す（VS Code と同じ側）。
+        // 正規表現・大文字小文字・単語単位はパネルのチェックボックスが持っている。
+        search({ top: true }),
+        // 選択した語と同じものを薄く光らせる。VS Code の既定の挙動で、
+        // `Ctrl+D` で次を選ぶときに「次がどこか」が先に見える。
+        highlightSelectionMatches(),
+        // CodeMirror 自身が出す文言（パネルのラベルと読み上げ）を日本語にする。
+        // **UI 文言は `i18n/ja.ts` に集約する**という決定（OQ-11）の範囲。
+        EditorState.phrases.of(ja.editor.phrases),
+
+        // VS Code 互換キーマップ（F-EDIT-04〜07）。外したキーとその理由は `keymap.ts`。
+        editorKeymap,
         EditorView.lineWrapping,
         // ダーティ状態（F-EDIT-03）。**boolean 1 つだけがリアクティビティを通る。**
         // 本文そのものはここを通らない（ADR-0005 / 02.architecture/08-state-management.md §1）。
@@ -108,4 +128,25 @@ export function isEditorMounted(): boolean {
 /** フォーカスを移す。Edit へ切り替えたら、そのまま打てるようにする。 */
 export function focusEditor(): void {
   view?.focus();
+}
+
+/**
+ * 検索パネルを開く（F-EDIT-05）。`replace` が true なら置換欄へフォーカスする。
+ *
+ * **載っていなければ何もしない。** Preview を見ているときの `Ctrl+F` は
+ * 本文検索へ行くので、ここまで来ない（`features/view/find.ts`）。
+ *
+ * 置換欄を探せるのは、`openSearchPanel` がパネルの DOM を
+ * `dispatch` の中で同期的に組み立てるため。読み取り専用のときは
+ * 置換欄そのものが作られないので、その場合は検索欄のままになる。
+ */
+export function openEditorSearch(replace: boolean): void {
+  if (!view) return;
+
+  openSearchPanel(view);
+  if (!replace) return;
+
+  const field = view.dom.querySelector<HTMLInputElement>('.cm-search input[name="replace"]');
+  field?.focus();
+  field?.select();
 }

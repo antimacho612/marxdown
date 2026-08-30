@@ -26,6 +26,13 @@ use crate::settings::CloseBehavior;
 use crate::state::AppState;
 use crate::window::MAIN_LABEL;
 
+/// 未保存の変更があることを伝える文面。
+///
+/// **終了の確認（`ask_then_quit`）と、別の文書へ移るときの確認
+/// （`commands::confirm_discard`）で共有する。** 同じ状態を指す言葉が
+/// 経路ごとに違うと、同じ危険が別のことのように見える。
+pub const DIRTY_MESSAGE: &str = "保存していない変更があります。";
+
 /// いま `✕` がどちらの意味か（設定 `window.closeBehavior`）。
 ///
 /// **ディスクではなくメモリ上の設定を見る。** 外部エディタで `settings.json` を
@@ -156,7 +163,7 @@ fn ask_then_quit<R: Runtime>(app: AppHandle<R>) {
 
     let handle = app.clone();
     app.dialog()
-        .message("保存していない変更があります。")
+        .message(DIRTY_MESSAGE)
         .title("Marxdown")
         .kind(MessageDialogKind::Warning)
         .buttons(MessageDialogButtons::YesNoCancelCustom(

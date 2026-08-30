@@ -11,9 +11,21 @@
  */
 const PREVIEW_SELECTOR = '#mx-preview';
 
-export async function openSearchLazily(): Promise<void> {
+/**
+ * 開く。**閉じる手段を返す。**
+ *
+ * 返すのは、Edit へ切り替えたときにパネルを閉じる必要があるため
+ * （`features/view/find.ts`）。パネルは `document.body` にあるので、
+ * 放っておくと隠れた面の上に浮いたまま残り、`F3` / `Escape` が
+ * エディタ側の検索と食い合う。
+ *
+ * **閉じる側もこの入口を通す。** `mode.ts` から `./search` を import すると、
+ * 一度も検索していない起動でも `search` チャンクが落ちてくる。
+ */
+export async function openSearchLazily(): Promise<(() => void) | null> {
   const container = document.querySelector<HTMLElement>(PREVIEW_SELECTOR);
-  if (!container) return;
-  const { openSearch } = await import('./search');
+  if (!container) return null;
+  const { openSearch, closeSearch } = await import('./search');
   openSearch(container);
+  return closeSearch;
 }

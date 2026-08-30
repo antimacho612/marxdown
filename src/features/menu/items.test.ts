@@ -36,6 +36,10 @@ function group(groups: MenuGroup[], id: string): MenuGroup | undefined {
   return groups.find((g) => g.id === id);
 }
 
+function label(groups: MenuGroup[], itemId: string): string | undefined {
+  return groups.flatMap((g) => g.items).find((i) => i.id === itemId)?.label;
+}
+
 beforeEach(() => {
   documentStore.meta = null;
   recentStore.entries = [];
@@ -82,17 +86,33 @@ describe('ハンバーガーメニューの項目 (03.ux-spec/01-screen-layout.m
   });
 
   /**
-   * プレビュー内検索は **Preview を見ているときだけ**（`app/commands.ts`）。
+   * 検索は**どちらの面でも押せる**。探す対象が変わるだけで、
+   * 実体の振り分けは `features/view/find.ts` が持つ（F-VIEW-10 / F-EDIT-05）。
    *
-   * Edit ではエディタ側の検索（F-EDIT-05 / Phase 3）が受け持つので、
-   * ここに残っていると「押しても見えていない面を探す」項目になる。
+   * **ラベルは対象を言う。** Preview では「プレビュー内を検索」、Edit では「検索」。
    */
-  it('Edit モードではプレビュー内検索を並べない', () => {
+  it('検索のラベルは、いま見ている面で変わる', () => {
     documentStore.meta = META;
-    viewStore.mode = 'edit';
 
-    expect(ids(buildMenu())).not.toContain('search');
-    expect(ids(buildMenu())).toContain('mode');
+    viewStore.mode = 'preview';
+    expect(label(buildMenu(), 'search')).toBe('プレビュー内を検索');
+
+    viewStore.mode = 'edit';
+    expect(label(buildMenu(), 'search')).toBe('検索');
+  });
+
+  /**
+   * 置換は Edit のときだけ（`app/commands.ts` の `isListed`）。
+   * 読んでいる面を書き換える経路は無いので、Preview に出しても押せない項目になる。
+   */
+  it('置換は Edit モードのときだけ並べる', () => {
+    documentStore.meta = META;
+
+    viewStore.mode = 'preview';
+    expect(ids(buildMenu())).not.toContain('replace');
+
+    viewStore.mode = 'edit';
+    expect(ids(buildMenu())).toContain('replace');
   });
 
   /** 履歴が空でも見出しは出す。**項目ではなく 1 行の文**で埋める。 */

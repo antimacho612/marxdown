@@ -20,6 +20,7 @@
  * スクロール同期）は Phase 5 の担当で、ここは**同じ面へ戻ってきたときの復元**だけを見る。
  */
 import { mountEditorLazily } from '@/features/editor/open-editor';
+import { closePreviewFind } from '@/features/view/find';
 import { viewStore } from '@/features/view/store.svelte';
 import type { Bootstrap, DocumentMeta, ViewMode } from '@/platform';
 
@@ -84,7 +85,12 @@ export async function setMode(mode: ViewMode): Promise<void> {
     lastEditingMode = mode;
   }
 
-  if (viewStore.mode === 'preview') previewScroll = previewScrollTop();
+  if (viewStore.mode === 'preview') {
+    previewScroll = previewScrollTop();
+    // プレビュー内検索を閉じる。パネルは `document.body` にあるので、
+    // 隠れた面の上に浮いたまま残ってしまう（`features/view/find.ts`）。
+    closePreviewFind();
+  }
 
   viewStore.mode = mode;
   applyModeAttribute(mode);

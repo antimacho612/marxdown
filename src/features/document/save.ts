@@ -26,9 +26,14 @@ import { toMessage } from '@/lib/error';
 import { getPlatform, type SaveResult, type WriteRequest } from '@/platform';
 
 import { markClean } from './dirty';
+import { registerSaver } from './discard';
 import { describeOpenError, openPath } from './open';
 import { documentStore, notifyInfo } from './store.svelte';
 import { getDocumentText } from './text';
+
+// 「保存してから別の文書へ移る」の実体を渡す（`discard.ts`）。
+// **こちらから名乗り出る。** `open.ts` がここを import すると循環する。
+registerSaver(() => saveCurrent());
 
 /**
  * 保存する（`Ctrl+S`）。

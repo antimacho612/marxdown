@@ -37,9 +37,9 @@ import { canGoBack, canGoForward, goBack, goForward } from '@/features/history/n
 import { openJumpLazily } from '@/features/outline/open-jump';
 import { showOutline } from '@/features/outline/show';
 import { toggleRightPane } from '@/features/panes/panes';
-import { openSearchLazily } from '@/features/preview/open-search';
 import { zoomIn, zoomOut, zoomReset } from '@/features/preview/zoom';
 import { openSettingsLazily } from '@/features/settings/open-settings';
+import { openFind, openReplace } from '@/features/view/find';
 import { togglePreview } from '@/features/view/mode';
 import { viewStore } from '@/features/view/store.svelte';
 import { registerCommands, runCommand, type Command, type CommandId } from '@/lib/commands';
@@ -104,15 +104,15 @@ const COMMANDS: Command[] = [
   // （Principle 3）。どちらも Phase 5 で Split と一緒に入る。
   { id: 'view.togglePreview', run: () => void togglePreview(), isListed: hasDocument },
 
-  // プレビュー内検索（F-VIEW-10）。**Preview を見ているときだけ。**
-  // Edit ではエディタ側の検索（F-EDIT-05 / Phase 3）が受け持つので、
-  // ここで本文を探しに行くと、見えていない面を検索することになる。
+  // 検索と置換（F-VIEW-10 / F-EDIT-05）。**id が `preview.` でも `editor.` でもない**のは、
+  // 見ている面によって実体が変わるため。振り分けは `features/view/find.ts`。
+  //
+  // 置換は Edit だけ。読んでいる面を書き換える経路は無い。
+  { id: 'find.open', run: () => void openFind(), isListed: hasDocument },
   {
-    id: 'preview.search',
-    run: () => {
-      if (viewStore.mode === 'preview') void openSearchLazily();
-    },
-    isListed: () => hasDocument() && viewStore.mode === 'preview',
+    id: 'find.replace',
+    run: () => void openReplace(),
+    isListed: () => hasDocument() && viewStore.mode !== 'preview',
   },
 
   // 倍率は Preview 専用ではない。エディタの font-size にも `--mx-zoom` が乗っている
@@ -135,8 +135,6 @@ const COMMANDS: Command[] = [
 interface KeyBinding {
   key: string;
   id: CommandId;
-  /** 入力欄・エディタにフォーカスがあっても発火させるか。既定は false。 */
-  whenEditing?: boolean;
 }
 
 /**
@@ -161,18 +159,34 @@ const RELOAD_KEYS = ['F5', 'Ctrl+R', 'Ctrl+Shift+R', 'Ctrl+F5', 'Shift+F5'];
  *
  * **この表がクリティカルパスに載ってよい唯一の形**（06.roadmap/m2-editor.md §1.2）。
  * Design Brief §3.8 のキーバインド設定は、この表を差し替える形で入る。
+ *
+ * # ここに書いたキーは、どこにフォーカスがあっても効く
+ *
+ * M2 Phase 1・2 では 1 つずつ `whenEditing: true` を足していた。Edit モードでは
+ * フォーカスが CodeMirror にあり、既定の「入力中は発火しない」に任せると
+ * **入った先から戻れず、保存もできず、素通りしたキーが WebView 自身の機能
+ * （ズーム / 名前を付けて保存）に当たる**ためだった。
+ *
+ * Phase 3 で、足りないぶん（`Ctrl+O` / ペイン / アウトライン / 戻る・進む）を
+ * 埋めた結果、**例外が 1 つも残らなかった**。境界は「入力中かどうか」ではなく、
+ * どちらの表に書いてあるか、である。
+ *
+ * ```text
+ * この表                        アプリに対する操作。どこに居ても効く
+ * features/editor/keymap.ts     本文をどう編集するか。エディタに居るときだけ効く
+ * ```
+ *
+ * **2 つの表は重ならない。** 重なると CodeMirror（要素で捕まえる）が先に処理し、
+ * そのあと `globalThis` のリスナが同じキーをもう一度処理する。重ならないように
+ * するために `keymap.ts` が `Mod-f` などを外している。
  */
 export const KEY_BINDINGS: KeyBinding[] = [
   { key: 'Ctrl+O', id: 'document.open' },
 
-  // 保存（F-EDIT-02）。**`whenEditing: true` が要る。**
-  // 保存したい瞬間はほぼ必ずエディタにフォーカスがあり、既定の
-  // 「入力中は発火しない」に任せると `Ctrl+S` が一度も効かない。
-  //
-  // 素通りさせると WebView 自身の「名前を付けて保存」が開く。倍率と同じ事故で、
-  // こちらは**アプリの本文と無関係な HTML が保存される**ぶん質が悪い。
-  { key: 'Ctrl+S', id: 'document.save', whenEditing: true },
-  { key: 'Ctrl+Shift+S', id: 'document.saveAs', whenEditing: true },
+  // 保存（F-EDIT-02）。素通りさせると WebView 自身の「名前を付けて保存」が開き、
+  // **アプリの本文と無関係な HTML が保存される**。
+  { key: 'Ctrl+S', id: 'document.save' },
+  { key: 'Ctrl+Shift+S', id: 'document.saveAs' },
 
   // 再読み込みのキーは**必ず飲み込む**。
   //
@@ -181,22 +195,14 @@ export const KEY_BINDINGS: KeyBinding[] = [
   // ファイルが、その後に D&D やダイアログで開いたファイルを押しのけて戻ってくる。
   //
   // 何も開いていないときも同じ理由で飲み込む（`reloadCurrent` は何もしない）。
-  // `whenEditing: true` なのは、検索欄にフォーカスがあるときも同じ事故が
-  // 起きるため。「このキーは WebView に渡さない」が要件そのものになっている。
-  ...RELOAD_KEYS.map((key) => ({ key, id: 'document.reload' as const, whenEditing: true })),
+  ...RELOAD_KEYS.map((key) => ({ key, id: 'document.reload' as const })),
 
   // VS Code と同じ `Ctrl+,`（Familiar）。03.ux-spec/04-keybindings.md §3 の
   // 一覧には無く、**設定 UI と一緒に足したキー**である。
-  // `whenEditing: true` なのは、設定パネルの入力欄にフォーカスがあるまま
-  // もう一度押したときも「設定を開く」であってほしいため（開いていれば
-  // フォーカスが戻るだけで、2 枚目は出ない）。
-  { key: 'Ctrl+,', id: 'settings.open', whenEditing: true },
+  { key: 'Ctrl+,', id: 'settings.open' },
 
   // Preview ⇄ 直前の編集モード（03.ux-spec/02-view-modes.md §2 の「最も使うトグル」）。
-  //
-  // `whenEditing: true` が要る。**Edit モードではフォーカスが CodeMirror にある**ので、
-  // 既定の「入力中は発火しない」に任せると、入った先から戻れなくなる。
-  { key: 'Ctrl+Shift+V', id: 'view.togglePreview', whenEditing: true },
+  { key: 'Ctrl+Shift+V', id: 'view.togglePreview' },
 
   { key: 'Ctrl+Alt+B', id: 'pane.toggleRight' },
   { key: 'Ctrl+Shift+U', id: 'outline.show' },
@@ -204,33 +210,36 @@ export const KEY_BINDINGS: KeyBinding[] = [
 
   // 戻る / 進む（F-NAV-07）。相対リンクで辿った先から帰ってくるための経路で、
   // **スクロール位置も一緒に戻る**（`features/history/navigate.ts`）。
+  //
+  // Windows のエディタでは `Alt+←` は空いている（`vscodeKeymap` が
+  // `Mod-ArrowLeft` に単語移動を置いていて、`Alt` 側は mac だけ）。
   { key: 'Alt+ArrowLeft', id: 'history.back' },
   { key: 'Alt+ArrowRight', id: 'history.forward' },
 
-  // 表示倍率（F-VIEW-11）。**`whenEditing: true` が要る。**
-  //
-  // Edit モードではフォーカスが CodeMirror にあり、既定の「入力中は発火しない」に
-  // 任せるとここを素通りする。素通りした `Ctrl+=` / `Ctrl+-` は **WebView 自身の
-  // ズーム**に当たるので、アプリの倍率と WebView の倍率が二重にかかる
+  // 表示倍率（F-VIEW-11）。素通りした `Ctrl+=` / `Ctrl+-` は **WebView 自身の
+  // ズーム**に当たるので、アプリの倍率と二重にかかる
   // （`lib/shortcuts.ts` の「既定動作を必ず止める」）。
   //
   // 倍率は「いまどの面を見ているか」ではなく「この人の見え方の好み」なので、
   // どこにフォーカスがあっても効くのが正しい（VS Code も同じ）。
-  { key: 'Ctrl+=', id: 'preview.zoomIn', whenEditing: true },
-  { key: 'Ctrl+-', id: 'preview.zoomOut', whenEditing: true },
-  { key: 'Ctrl+0', id: 'preview.zoomReset', whenEditing: true },
+  { key: 'Ctrl+=', id: 'preview.zoomIn' },
+  { key: 'Ctrl+-', id: 'preview.zoomOut' },
+  { key: 'Ctrl+0', id: 'preview.zoomReset' },
 
-  // 検索を**開く**キーだけがここにある。開いている間だけ効く F3 / Escape は、
-  // 検索モジュール自身が登録して自分で外す。押されてもいない機能のキーが
-  // グローバルに居座らないようにするため。
-  { key: 'Ctrl+F', id: 'preview.search', whenEditing: true },
+  // 検索・置換（F-VIEW-10 / F-EDIT-05）。**開くキーだけがここにある。**
+  // 開いている間だけ効く `F3` / `Escape` は、Preview では検索モジュールが
+  // 自分で登録して自分で外し、Edit では `keymap.ts` が scope 付きで持っている。
+  //
+  // `Ctrl+F` は WebView 自身の検索にも割り当たっているので、飲み込むこと自体に
+  // 意味がある。`Ctrl+H` が Preview で何もしないのに登録してあるのも同じ理由。
+  { key: 'Ctrl+F', id: 'find.open' },
+  { key: 'Ctrl+H', id: 'find.replace' },
 
   // Marxdown を終了する（ADR-0007 論点 3 / 03.ux-spec/04-keybindings.md §3）。
   //
   // **トレイ常駐では `✕` が「格納」の意味になる**ため、「本当に終わらせたい」を
-  // 表すキーが別に要る。`whenEditing: true` なのは、検索欄や設定パネルに
-  // フォーカスがあるときに**終了できないほうが困る**ため。
-  { key: 'Ctrl+Q', id: 'app.quit', whenEditing: true },
+  // 表すキーが別に要る。
+  { key: 'Ctrl+Q', id: 'app.quit' },
 ];
 
 /**
@@ -258,7 +267,6 @@ export function installCommands(): () => void {
       run: () => {
         runCommand(binding.id);
       },
-      ...(binding.whenEditing === true && { whenEditing: true }),
     })),
   );
 

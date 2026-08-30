@@ -11,6 +11,14 @@ export type Encoding = 'utf8' | 'utf16-le' | 'utf16-be' | 'shift-jis' | 'euc-jp'
 
 export type ViewMode = 'preview' | 'edit' | 'split';
 
+/**
+ * 未保存のまま別の文書へ移るかの答え（`src-tauri/src/commands.rs` の `DiscardChoice`）。
+ *
+ * **綴りは Rust 側の serde が決める。** 同じ 3 語であることは
+ * `discard_choice_serializes_in_camel_case` が固定している。
+ */
+export type DiscardChoice = 'save' | 'discard' | 'cancel';
+
 /** 02.architecture/04-rust-responsibilities.md §2 `DocumentPayload` のメタ部分。 */
 export interface DocumentMeta {
   /** 正規化済み絶対パス */
@@ -373,6 +381,16 @@ export interface Platform {
    * （`src-tauri/src/state.rs` の `dirty`）。
    */
   setDirty(dirty: boolean): Promise<void>;
+  /**
+   * 未保存のまま別の文書へ移ってよいか尋ねる（F-EDIT-03 / N-REL-01）。
+   *
+   * **呼ぶかどうかは呼び出し側が決める。** ダーティでないときに呼ぶと、
+   * 変更が無いのにダイアログが出る（`features/document/discard.ts`）。
+   *
+   * 3 択なので `boolean` では表せない。`'save'` は「保存してから移る」で、
+   * **保存そのものはフロントが行う**（本文は CodeMirror の `EditorState` にある）。
+   */
+  confirmDiscard(): Promise<DiscardChoice>;
   /**
    * 設定を読み直す（F-CONF-03）。
    *

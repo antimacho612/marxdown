@@ -30,3 +30,16 @@ export async function mountEditorLazily(): Promise<void> {
 export async function preloadEditor(): Promise<void> {
   await import('./editor');
 }
+
+/**
+ * 検索・置換パネルを開く（F-EDIT-05）。
+ *
+ * **エディタが載っていなければ何も起きない。** ここでわざわざ載せないのは、
+ * Preview を見ているときの `Ctrl+F` は本文検索へ行くからで、
+ * この関数まで来た時点で Edit に居ることが決まっている
+ * （振り分けは `features/view/find.ts`）。
+ */
+export async function openEditorSearchLazily(replace: boolean): Promise<void> {
+  const { openEditorSearch } = await import('./editor');
+  openEditorSearch(replace);
+}

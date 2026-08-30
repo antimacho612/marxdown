@@ -74,6 +74,7 @@ beforeEach(() => {
   documentStore.frontMatter = null;
   documentStore.stats = null;
   documentStore.notice = null;
+  documentStore.isDirty = false;
   recentStore.entries = [];
 
   configureOpener({ parser: fakeParser(), site: 'worker' });
@@ -330,5 +331,53 @@ describe('reloadCurrent', () => {
     expect(outcome).toBeNull();
     expect(documentStore.notice?.level).toBe('error');
     expect(documentStore.meta?.path).toBe('C:/work/b.md');
+  });
+});
+
+/**
+ * 未保存のまま別の文書へ移るときの確認（F-EDIT-03 / N-REL-01 / `discard.ts`）。
+ *
+ * **入口は 5 つあるが、確認は 1 か所にしか無い。** `openPath` を通らない
+ * 「開く」を作らない限り、どの入口からでも同じ確認が挟まる。
+ */
+describe('未保存の変更があるとき', () => {
+  it('キャンセルされたら、読み込みにも行かない', async () => {
+    const spies = install({ confirmDiscard: () => Promise.resolve('cancel' as const) });
+    documentStore.isDirty = true;
+
+    expect(await openPath('C:/notes/a.md')).toBeNull();
+    // **尋ねるのは I/O より前。** 開くと決まっていないのにファイルを読まない。
+    expect(spies.readDocument).not.toHaveBeenCalled();
+  });
+
+  it('「保存しない」なら、そのまま開く', async () => {
+    const spies = install({ confirmDiscard: () => Promise.resolve('discard' as const) });
+    documentStore.isDirty = true;
+
+    expect(await openPath('C:/notes/a.md')).not.toBeNull();
+    expect(spies.readDocument).toHaveBeenCalledOnce();
+    // 開き直した以上、ディスクと一致した状態から始まる。
+    expect(documentStore.isDirty).toBe(false);
+  });
+
+  it('ダーティでなければ尋ねない', async () => {
+    const confirmDiscard = vi.fn(() => Promise.resolve('cancel' as const));
+    install({ confirmDiscard });
+
+    await openPath('C:/notes/a.md');
+
+    expect(confirmDiscard).not.toHaveBeenCalled();
+  });
+
+  /** `F5` も同じ入口を通る。Phase 2 の時点では、ここが素通りだった。 */
+  it('再読み込み（F5）でも確認する', async () => {
+    install({ confirmDiscard: () => Promise.resolve('cancel' as const) });
+    await openPath('C:/notes/a.md');
+    documentStore.isDirty = true;
+
+    const spies = install({ confirmDiscard: () => Promise.resolve('cancel' as const) });
+    await reloadCurrent();
+
+    expect(spies.readDocument).not.toHaveBeenCalled();
   });
 });

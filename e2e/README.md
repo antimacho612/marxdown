@@ -13,11 +13,39 @@ M2 で編集と保存が入ると、壊れたときの被害が「表示が崩�
 | `cargo test`（`src-tauri/src/document/`） | `document::write` の正しさ。**バイト列の往復はここで固めてある** |
 | **E2E（ここ）** | エディタの内容 → `WriteRequest` の組み立て → IPC → ディスクのバイト列 |
 
+M2 Phase 3 で**キーの経路**が加わった。アプリのグローバルキーと CodeMirror の
+キーマップが同じキーを取り合っていないことは、本物のキーイベントを流さないと確かめられない
+（[03.ux-spec > keybindings §4](../docs/03.ux-spec/04-keybindings.md)）。
+
+| spec | 見るもの |
+| --- | --- |
+| `smoke.e2e.ts` | 起動して本文が読める。開いただけでバイト列が変わらない |
+| `mode.e2e.ts` | Preview ⇄ Edit（F-MODE-01, 02, 06, 07） |
+| `save.e2e.ts` | 保存・CRLF/BOM の保持・衝突（F-EDIT-02, 14 / N-REL-01, 02） |
+| `quit.e2e.ts` | 未保存のまま終了しようとしたとき（F-EDIT-03） |
+| `edit.e2e.ts` | 行操作・検索・置換・キーの衝突（F-EDIT-04〜07） |
+
+> **ネイティブのモーダルは WebDriver から押せない。**
+> 未保存時の終了確認（`ask_then_quit`）と、別の文書へ移るときの確認
+> （`confirm_discard`）はどちらもネイティブダイアログなので、
+> **出るところまでしか見られない。** 押した先の分岐は単体テストの担当
+> （`src/features/document/discard.dom.test.ts`）。
+
 **CI では走らせない。** 実機が要り、環境ノイズも大きい
 （[05.performance-budget > operations §5](../docs/05.performance-budget/05-operations.md) の起動時間・メモリと同じ扱い）。
 `pnpm e2e` の手動実行と、マイルストーン完了時の実行にとどめる。
 
 ## 走らせる前に
+
+> **バイナリの更新時刻を先に見ること。**
+> `pnpm build:app` は**シェルによっては何もせずに終了コード 0 を返す**
+> （[measurements > caveats §1](../docs/measurements/09-caveats.md)）。
+> 古いバイナリのまま走らせると、新しく足したキーが「効かない」形で落ちる。
+>
+> ```bash
+> ls -l --time-style=+%H:%M src-tauri/target/release/marxdown.exe
+> ```
+
 
 ### 1. `tauri-driver`
 

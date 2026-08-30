@@ -7,11 +7,21 @@
  * 「第 1 打鍵を受けて待機する」状態機械は存在せず、1 イベント 1 判定で済む。
  * この単純さは Principle 3「Simple Means Low Cognitive Load」の実装でもある。
  *
- * # 編集中のキーを奪わない
+ * # エディタとキーを取り合わない
  *
- * M2 で CodeMirror が入ると、ほとんどのキーはエディタのものになる。
- * 既定では入力可能な要素にフォーカスがあるとき発火しない。
- * `whenEditing: true` を明示したものだけが、そこを越える。
+ * M2 Phase 1・2 では「入力可能な要素にフォーカスがあるときは発火しない」を既定にし、
+ * 越えたいものに `whenEditing: true` を付けていた。**Phase 3 で例外が全部になった。**
+ * `Ctrl+S` も倍率も `Ctrl+Shift+V` も、Edit モードで効かなければ困る。
+ *
+ * 境界の引き方を変えてある。フォーカスの位置ではなく、**どちらの表に書いてあるか**。
+ *
+ * ```text
+ * app/commands.ts KEY_BINDINGS   アプリに対する操作。どこに居ても効く
+ * features/editor/keymap.ts      本文をどう編集するか。エディタに居るときだけ効く
+ * ```
+ *
+ * 2 つの表は重ならない（`keymap.ts` が重なるキーを外している）。したがって、
+ * ここに「入力中かどうか」を見る仕掛けは要らない。
  *
  * # 既定動作を必ず止める
  *
@@ -31,8 +41,6 @@ export interface Binding {
    * 同じキーに登録された 1 つ前のバインドへ処理が渡る。
    */
   run: (event: KeyboardEvent) => boolean | void;
-  /** 入力欄・エディタにフォーカスがあっても発火させるか。既定は false。 */
-  whenEditing?: boolean;
 }
 
 const registry = new Map<string, Binding[]>();
@@ -79,12 +87,9 @@ function dispatch(event: KeyboardEvent): void {
   const list = registry.get(comboOf(event));
   if (!list) return;
 
-  const editing = isEditingContext(event.target);
-
   for (let i = list.length - 1; i >= 0; i--) {
     const binding = list[i];
     if (!binding) continue;
-    if (editing && binding.whenEditing !== true) continue;
     if (binding.run(event) === false) continue;
     event.preventDefault();
     return;
@@ -125,15 +130,6 @@ function canonicalKey(key: string): string {
   if (key === '+') return '=';
   if (key.length === 1) return key.toUpperCase();
   return key;
-}
-
-/**
- * 入力中かどうか。CodeMirror の編集面は `contenteditable` なのでここで捕まる。
- */
-function isEditingContext(target: EventTarget | null): boolean {
-  if (!(target instanceof HTMLElement)) return false;
-  if (target.isContentEditable) return true;
-  return target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT';
 }
 
 /** テスト用。登録済みバインドを全部落とす。 */

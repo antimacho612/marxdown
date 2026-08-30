@@ -54,7 +54,7 @@ describe('bindKeys', () => {
     expect(run).toHaveBeenCalledTimes(2);
   });
 
-  it('入力欄にフォーカスがあるときは既定で発火しない', () => {
+  it('入力欄にフォーカスがあっても発火する', () => {
     const run = vi.fn();
     bindKeys([{ key: 'Ctrl+O', run }]);
 
@@ -62,32 +62,23 @@ describe('bindKeys', () => {
     document.body.append(input);
     press({ key: 'o', ctrlKey: true }, input);
 
-    expect(run).not.toHaveBeenCalled();
-  });
-
-  it('whenEditing を立てたバインドは入力欄でも発火する', () => {
-    const run = vi.fn();
-    bindKeys([{ key: 'Escape', run, whenEditing: true }]);
-
-    const input = document.createElement('input');
-    document.body.append(input);
-    press({ key: 'Escape' }, input);
-
     expect(run).toHaveBeenCalledOnce();
   });
 
-  it('contenteditable も編集中として扱う（CodeMirror の編集面がこれ）', () => {
+  it('CodeMirror の編集面（contenteditable）でも発火する', () => {
+    // ここが発火しないと、Edit モードで `Ctrl+S` も倍率も効かなくなる。
+    // エディタと取り合うキーは `features/editor/keymap.ts` の側で外してある。
     const run = vi.fn();
-    bindKeys([{ key: 'Ctrl+O', run }]);
+    bindKeys([{ key: 'Ctrl+S', run }]);
 
     const editor = document.createElement('div');
     editor.contentEditable = 'true';
     // jsdom は contentEditable から isContentEditable を導出しない
     Object.defineProperty(editor, 'isContentEditable', { value: true });
     document.body.append(editor);
-    press({ key: 'o', ctrlKey: true }, editor);
+    press({ key: 's', ctrlKey: true }, editor);
 
-    expect(run).not.toHaveBeenCalled();
+    expect(run).toHaveBeenCalledOnce();
   });
 
   it('IME 変換中のキーは無視する', () => {
