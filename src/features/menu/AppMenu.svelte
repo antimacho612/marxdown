@@ -233,8 +233,11 @@
   }
 
   .mx-menu__label {
+    max-width: 70%;
     flex: none;
     white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   /* ディレクトリは補助情報。長いパスは頭を削って末尾（＝現在地）を残す（Welcome と同じ）。 */
