@@ -79,7 +79,7 @@ pub struct CliArgs {
 }
 
 pub const HELP: &str = "\
-marxdown — 速く開く Markdown ビューア / エディタ
+marxdown — Markdown を見る・書くなら、これ一択。
 
 USAGE:
     marxdown [OPTIONS] [FILE|DIR]...
