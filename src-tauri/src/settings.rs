@@ -35,6 +35,7 @@ use crate::error::CoreResult;
 const FILE_NAME: &str = "settings.json";
 
 pub const KEY_THEME: &str = "theme";
+pub const KEY_PREVIEW_CODE_FONT_FAMILY: &str = "preview.codeFontFamily";
 pub const KEY_PREVIEW_FONT_FAMILY: &str = "preview.fontFamily";
 pub const KEY_PREVIEW_FONT_SIZE: &str = "preview.fontSize";
 pub const KEY_PREVIEW_LINE_HEIGHT: &str = "preview.lineHeight";
@@ -88,6 +89,8 @@ pub enum CloseBehavior {
 pub struct Settings {
     #[serde(rename = "theme")]
     pub theme: Theme,
+    #[serde(rename = "preview.codeFontFamily")]
+    pub preview_code_font_family: String,
     #[serde(rename = "preview.fontFamily")]
     pub preview_font_family: String,
     #[serde(rename = "preview.fontSize")]
@@ -112,6 +115,7 @@ impl Default for Settings {
             // 空文字は「トークン層の既定スタックを使う」の意味。
             // 具体的なフォント名を既定に書くと、そのフォントが入っていない環境で
             // `tokens.css` の混植スタックが丸ごと外れる（F-CONF-04）。
+            preview_code_font_family: String::new(),
             preview_font_family: String::new(),
             preview_font_size: DEFAULT_FONT_SIZE,
             preview_line_height: DEFAULT_LINE_HEIGHT,
@@ -131,6 +135,8 @@ impl Settings {
         let d = Self::default();
         Self {
             theme: take(&mut map, KEY_THEME).unwrap_or(d.theme),
+            preview_code_font_family: take(&mut map, KEY_PREVIEW_CODE_FONT_FAMILY)
+                .unwrap_or(d.preview_code_font_family),
             preview_font_family: take(&mut map, KEY_PREVIEW_FONT_FAMILY)
                 .unwrap_or(d.preview_font_family),
             preview_font_size: take_number(&mut map, KEY_PREVIEW_FONT_SIZE, FONT_SIZE_RANGE)
@@ -422,6 +428,7 @@ mod tests {
         let p = d.join(FILE_NAME);
         let settings = Settings {
             theme: Theme::Dark,
+            preview_code_font_family: "BIZ UD Gothic".into(),
             preview_font_family: "Noto Sans JP".into(),
             preview_line_height: 1.9,
             window_close_behavior: CloseBehavior::Exit,
