@@ -6,9 +6,9 @@
     "gzip": true
   },
   {
-    "name": "editor (上限の根拠は 05.performance-budget.md §5.1)",
-    "path": ["dist/assets/editor-*.js"],
-    "limit": "215 KB",
+    "name": "editor (Monaco / 予算の対象外。上限は回帰検知の番人 — ADR-0009)",
+    "path": ["dist/assets/editor-*.js", "dist/assets/editor-*.css"],
+    "limit": "850 KB",
     "gzip": true
   },
   {
@@ -36,9 +36,9 @@
     "gzip": true
   },
   {
-    "name": "total (no mermaid) — 上限の根拠は 05.performance-budget.md §5.1",
-    "path": ["dist/assets/*.js", "!dist/assets/mermaid-*.js"],
-    "limit": "450 KB",
+    "name": "total (no mermaid, no editor) — 上限の根拠は 05.performance-budget.md §5.1",
+    "path": ["dist/assets/*.js", "!dist/assets/mermaid-*.js", "!dist/assets/editor-*.js"],
+    "limit": "235 KB",
     "gzip": true
   }
 ]
