@@ -164,37 +164,14 @@ export const ja = {
     position: (index: number, total: number, truncated: boolean) =>
       `${index} / ${total.toLocaleString('ja-JP')}${truncated ? '+' : ''}`,
   },
-  /**
-   * エディタの中で CodeMirror 自身が出す文言（F-EDIT-05）。
+  /*
+   * エディタ自身が出す文言（検索・置換パネルなど）は **Monaco が日本語を同梱している**
+   * ので、ここには置かない（`features/editor/monaco.ts` が `nls/lang/ja.js` を読む）。
    *
-   * **キーは英語のまま**でなければならない。CodeMirror は原文をキーにして
-   * `EditorState.phrases` を引く（`view.state.phrase("Find")`）ので、
-   * ここは「原文 → 日本語」の対応表であって、こちらで名前を決められない。
-   *
-   * 訳していないキーは英語のまま出る。検索・置換・指定行へ移動のパネルに
-   * 出るものだけを並べてある。
+   * CodeMirror のときは `EditorState.phrases` に「原文 → 日本語」の対応表を
+   * 自前で持っていた。[ADR-0009](../../docs/adr/0009-editor-engine-monaco.md) で
+   * 不要になったぶんである。
    */
-  editor: {
-    phrases: {
-      Find: '検索',
-      Replace: '置換',
-      next: '次へ',
-      previous: '前へ',
-      all: 'すべて選択',
-      'match case': '大文字と小文字を区別',
-      regexp: '正規表現',
-      'by word': '単語単位',
-      replace: '置換',
-      'replace all': 'すべて置換',
-      close: '閉じる',
-      'Go to line': '指定行へ移動',
-      go: '移動',
-      'current match': '現在の一致',
-      'on line': '行目',
-      'replaced match on line $': '$ 行目を置換しました',
-      'replaced $ matches': '$ 件を置換しました',
-    },
-  },
   /** Split（F-MODE-03, 05 / 03.ux-spec/03-split-mode.md）。 */
   split: {
     resize: '分割の幅を変える',

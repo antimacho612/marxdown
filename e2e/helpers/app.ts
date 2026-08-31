@@ -109,7 +109,96 @@ export async function currentMode(): Promise<string> {
   return browser.execute(() => document.documentElement.dataset['mxMode'] ?? '');
 }
 
-/** Edit モードに入り、CodeMirror が載るまで待つ。 */
+/* ------------------------------------------------------------------ */
+/* エディタの DOM（エンジン固有）                                       */
+/* ------------------------------------------------------------------ */
+
+/**
+ * エディタが吐く DOM を指すセレクタ。**`.cm-*` が書いてよいのはここだけ。**
+ *
+ * spec 側にエンジンの名前が散ると、[ADR-0009](../../docs/adr/0009-editor-engine-monaco.md) の
+ * 差し替えで 4 ファイルを同時に直すことになる。**この表 1 枚と、下の薄い関数群を
+ * 書き換えれば済む**状態にしてある。
+ *
+ * `browser.execute` に渡す関数は文字列化されて向こう側で走るので、
+ * **セレクタはクロージャで掴まず引数で渡す。**
+ */
+export const EDITOR_DOM = {
+  /** エディタの外枠。載っているかの判定に使う。 */
+  root: '.cm-editor',
+  /** 編集面。クリックしてフォーカスを取る先。 */
+  content: '.cm-content',
+  /** 1 行。本文の組み直しに使う。 */
+  line: '.cm-line',
+  /** カーソルがある行。 */
+  activeLine: '.cm-line.cm-activeLine',
+  /** スクロールする器。Split の同期で位置を読み書きする。 */
+  scroller: '.cm-scroller',
+  /** 検索・置換パネル。 */
+  searchPanel: '.cm-panel.cm-search',
+} as const;
+
+/** 載っているエディタの数。Preview だけで読んでいるときは 0。 */
+export async function mountedEditorCount(): Promise<number> {
+  return browser.execute((selector: string) => document.querySelectorAll(selector).length, EDITOR_DOM.root);
+}
+
+/** 遅延チャンクの取得と評価を待つ。**ここが失敗するなら分割が壊れている。** */
+export async function waitForEditorMounted(): Promise<void> {
+  await browser.waitUntil(async () => (await mountedEditorCount()) === 1, {
+    timeout: 20_000,
+    timeoutMsg: 'エディタが載らなかった',
+  });
+}
+
+/** 編集面をクリックしてフォーカスを取る。 */
+export async function focusEditorSurface(): Promise<void> {
+  await $(EDITOR_DOM.content).click();
+}
+
+/** 編集面の素のテキスト。**行区切りは入らない**（載ったことの確認に使う）。 */
+export async function editorContentText(): Promise<string> {
+  return browser.execute((selector: string) => document.querySelector(selector)?.textContent ?? '', EDITOR_DOM.content);
+}
+
+/** カーソルがある行の文字列。 */
+export async function activeLineText(): Promise<string> {
+  return browser.execute(
+    (selector: string) => document.querySelector(selector)?.textContent ?? '',
+    EDITOR_DOM.activeLine,
+  );
+}
+
+/** 検索・置換パネルが出ているか。 */
+export async function isSearchPanelOpen(): Promise<boolean> {
+  return browser.execute(
+    (selector: string) => document.querySelectorAll(selector).length === 1,
+    EDITOR_DOM.searchPanel,
+  );
+}
+
+/** エディタのスクロール位置。器が無ければ `-1`。 */
+export async function editorScrollTop(): Promise<number> {
+  return browser.execute((selector: string) => document.querySelector(selector)?.scrollTop ?? -1, EDITOR_DOM.scroller);
+}
+
+/** エディタのスクロール位置を動かす。**同期は `scroll` で動くので代入で足りる。** */
+export async function setEditorScrollTop(top: number): Promise<void> {
+  await browser.execute(
+    (selector: string, to: number) => {
+      const element = document.querySelector(selector);
+      if (element) element.scrollTop = to;
+    },
+    EDITOR_DOM.scroller,
+    top,
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* 編集の操作                                                          */
+/* ------------------------------------------------------------------ */
+
+/** Edit モードに入り、エディタが載るまで待つ。 */
 export async function enterEditMode(): Promise<void> {
   if ((await currentMode()) === 'edit') return;
 
@@ -118,23 +207,23 @@ export async function enterEditMode(): Promise<void> {
     timeout: 20_000,
     timeoutMsg: 'Edit へ切り替わらなかった',
   });
-  await browser.waitUntil(() => browser.execute(() => document.querySelectorAll('.cm-editor').length === 1), {
-    timeout: 20_000,
-    timeoutMsg: 'エディタが載らなかった',
-  });
+  await waitForEditorMounted();
 }
 
 /** エディタの末尾に文字を打つ。**実際のキー入力**で入れる（IME を除く本番の経路）。 */
 export async function typeAtEnd(text: string): Promise<void> {
-  await $('.cm-content').click();
+  await focusEditorSurface();
   await browser.keys([Key.Control, 'End']);
   await browser.keys(text);
 }
 
-/** エディタが持っている本文。改行は CodeMirror の行区切りから組み直す。 */
+/** エディタが持っている本文。改行はエディタの行区切りから組み直す。 */
 export async function editorText(): Promise<string> {
-  return browser.execute(() =>
-    [...document.querySelectorAll('.cm-content .cm-line')].map((line) => line.textContent ?? '').join('\n'),
+  return browser.execute(
+    (content: string, line: string) =>
+      [...document.querySelectorAll(`${content} ${line}`)].map((element) => element.textContent ?? '').join('\n'),
+    EDITOR_DOM.content,
+    EDITOR_DOM.line,
   );
 }
 

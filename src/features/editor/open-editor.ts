@@ -4,7 +4,7 @@
  * **動的 import の一行だけを持つモジュール**として切り出してある。
  * `open-search.ts` / `open-settings.ts` / `open-jump.ts` と同じ形で、理由も同じ。
  *
- * ここに置いても `editor` チャンク（203KB）は遅延のまま。
+ * ここに置いても `editor` チャンクは遅延のまま。
  * 既定の表示モードが Preview なのは、この分割境界を成立させるためでもある
  * （02.architecture/05-startup-sequence.md §1 の要点 3）。
  */
@@ -20,12 +20,29 @@ export async function mountEditorLazily(): Promise<void> {
 }
 
 /**
+ * 面を出したあとに器を測り直させる（`features/view/mode.ts` が呼ぶ）。
+ *
+ * **`display: none` のあいだ Monaco は寸法を失う**
+ * （[ADR-0009](../../../docs/adr/0009-editor-engine-monaco.md) の受け入れコスト 3）。
+ * 呼ぶのはエディタが見えるモードに入ったときだけなので、ここで `editor` チャンクが
+ * 新たに落ちてくることはない（既に `mountEditorLazily` を通っている）。
+ */
+export async function relayoutEditorLazily(): Promise<void> {
+  const { relayoutEditor } = await import('./editor');
+  relayoutEditor();
+}
+
+/**
  * チャンクだけ先に取っておく（`editor` の idle プリロード）。
  *
  * **載せはしない。** 取得と評価だけを済ませておくと、初めて `Ctrl+Shift+V` を
  * 押したときの待ちが消える。`ready()` の後のアイドルで呼ぶこと
  * （02.architecture/05-startup-sequence.md §1: IPC を伴わず、遅れても最悪は
  * 「初回の切り替えが少し遅い」だけ）。
+ *
+ * **Monaco になってからは任意ではなく必須である**（ADR-0009 の根拠 2）。
+ * raw 3.0MB の評価を切り替えの瞬間に払うと、モード切り替えの許容上限 400ms
+ * （05.performance-budget/04-targets.md §3）に収まらない。
  */
 export async function preloadEditor(): Promise<void> {
   await import('./editor');

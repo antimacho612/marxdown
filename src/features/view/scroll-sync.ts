@@ -8,6 +8,17 @@
  * エディタ側は行番号をそのまま持っているので、**両者を結ぶのは行番号だけ**でよい。
  * DOM の対応表も、要素同士の対応も持たない。
  *
+ * # エディタの実体を知らない
+ *
+ * このモジュールは `main` チャンクにいる。エディタを直接 import すると
+ * `editor` チャンクがクリティカルパスに載る（`document/text.ts` と同じ理由）。
+ * したがって受け取るのは **`EditorScrollPort` という行番号だけの窓口**であって、
+ * `EditorView` でも `IStandaloneCodeEditor` でもない。
+ *
+ * **ここに engine 固有の座標計算を持ち込まないこと。** 「スクロール量と行番号を
+ * どう換算するか」はエンジンごとに違い、その知識はポートの実装側
+ * （`features/editor/scroll-port.ts`）にだけ置く。
+ *
  * # 行の対応だけでは足りない
  *
  * 1 行の見出しと 50 行のコードブロックでは、行あたりの高さが桁で違う。
@@ -27,11 +38,29 @@
  * 時間で黙らせているのは、`scroll` が「誰が起こしたか」を持たないため。
  * 慣性スクロール（§2）もこの窓の中に収まる。
  */
-import type { EditorView } from '@codemirror/view';
-
 import { viewStore } from '@/features/view/store.svelte';
 
 const PREVIEW_SELECTOR = '#mx-preview';
+
+/**
+ * エディタ側の窓口。実装は `features/editor/scroll-port.ts`（`editor` チャンク）。
+ *
+ * **やり取りするのは行番号だけ。** 行番号は 1 始まりで、**端数を含む**
+ * （`3.5` は 3 行目の高さの半分まで隠れている状態）。
+ * 行あたりの高さが一定でない以上、整数に丸めると 1 行ぶんの跳ねが出る。
+ *
+ * 範囲外の行番号は**実装側が丸める**。呼び出し側が行数を知る必要は無い。
+ */
+export interface EditorScrollPort {
+  /** ビューポート最上部に来ている行番号。 */
+  topLine(): number;
+  /** その行がビューポート最上部に来る位置へ動かす。カーソルは動かさない。 */
+  scrollToLine(line: number): void;
+  /** カーソルをその行の先頭へ置き、見える位置まで運ぶ。 */
+  revealLine(line: number, options?: { focus?: boolean }): void;
+  /** スクロールを購読する。**解除する関数を返す。** */
+  onScroll(listener: () => void): () => void;
+}
 
 /**
  * 動かされた側を黙らせておく時間。
@@ -48,7 +77,7 @@ interface Anchor {
 }
 
 interface Sync {
-  view: EditorView;
+  port: EditorScrollPort;
   preview: HTMLElement;
   dispose: () => void;
 }
@@ -64,19 +93,20 @@ let leaderUntil = 0;
  *
  * 2 回目以降は何もしない。抜けるときは `stopScrollSync`。
  */
-export function startScrollSync(view: EditorView): void {
+export function startScrollSync(port: EditorScrollPort): void {
   if (active) return;
 
   const preview = document.querySelector<HTMLElement>(PREVIEW_SELECTOR);
   if (!preview) return;
 
-  const onEditorScroll = (): void => {
+  const offEditorScroll = port.onScroll(() => {
     if (!take('editor')) return;
-    syncPreviewToEditor(view, preview);
-  };
+    syncPreviewToEditor(port, preview);
+  });
+
   const onPreviewScroll = (): void => {
     if (!take('preview')) return;
-    syncEditorToPreview(view, preview);
+    syncEditorToPreview(port, preview);
   };
 
   // プレビューの要素をダブルクリック → エディタの該当行へ（§3）。
@@ -87,15 +117,14 @@ export function startScrollSync(view: EditorView): void {
     jumpToEditorLine(line);
   };
 
-  view.scrollDOM.addEventListener('scroll', onEditorScroll, { passive: true });
   preview.addEventListener('scroll', onPreviewScroll, { passive: true });
   preview.addEventListener('dblclick', onPreviewDoubleClick);
 
   active = {
-    view,
+    port,
     preview,
     dispose: () => {
-      view.scrollDOM.removeEventListener('scroll', onEditorScroll);
+      offEditorScroll();
       preview.removeEventListener('scroll', onPreviewScroll);
       preview.removeEventListener('dblclick', onPreviewDoubleClick);
     },
@@ -206,55 +235,16 @@ function lineForTop(anchors: Anchor[], top: number): number | null {
 /* 同期                                                                */
 /* ------------------------------------------------------------------ */
 
-/**
- * エディタのビューポート最上部に来ている**ドキュメント座標**。
- *
- * **`scrollDOM.scrollTop` をそのまま使ってはいけない。** CodeMirror の
- * `lineBlockAt*` が扱うのは「ドキュメントの先頭からの高さ」で、`scrollTop` とは
- * 本文の上下パディング（`theme.ts` が `.cm-content` に入れている）のぶんずれる。
- *
- * `documentTop` は画面座標でのドキュメント先頭なので、スクローラの上端との差が
- * そのままドキュメント座標になる。**パディングがいくつでも合う。**
- */
-function documentOffset(view: EditorView): number {
-  return view.scrollDOM.getBoundingClientRect().top - view.documentTop;
-}
-
-/** エディタのビューポート最上部の行番号（1 始まり / 端数を含む）。 */
-function topLineOf(view: EditorView): number {
-  const offset = documentOffset(view);
-  const block = view.lineBlockAtHeight(offset);
-  const line = view.state.doc.lineAt(block.from).number;
-  // ブロックの途中まで隠れているぶんを行の端数として足す。
-  const into = offset - block.top;
-  const fraction = block.height > 0 ? Math.min(1, Math.max(0, into / block.height)) : 0;
-  return line + fraction;
-}
-
-function syncPreviewToEditor(view: EditorView, preview: HTMLElement): void {
-  const top = topForLine(anchorsOf(preview), topLineOf(view));
+function syncPreviewToEditor(port: EditorScrollPort, preview: HTMLElement): void {
+  const top = topForLine(anchorsOf(preview), port.topLine());
   if (top === null) return;
   preview.scrollTop = top;
 }
 
-function syncEditorToPreview(view: EditorView, preview: HTMLElement): void {
+function syncEditorToPreview(port: EditorScrollPort, preview: HTMLElement): void {
   const line = lineForTop(anchorsOf(preview), preview.scrollTop);
   if (line === null) return;
-  scrollEditorToLine(view, line);
-}
-
-/**
- * エディタを、その行がビューポート最上部に来る位置へ動かす。
- *
- * **差分で動かす。** ドキュメント座標をそのまま `scrollTop` に代入すると、
- * `documentOffset` と同じぶんずれる。
- */
-function scrollEditorToLine(view: EditorView, line: number): void {
-  const clamped = Math.min(view.state.doc.lines, Math.max(1, Math.floor(line)));
-  const block = view.lineBlockAt(view.state.doc.line(clamped).from);
-  const fraction = line - Math.floor(line);
-  const target = block.top + block.height * fraction;
-  view.scrollDOM.scrollTop += target - documentOffset(view);
+  port.scrollToLine(line);
 }
 
 /* ------------------------------------------------------------------ */
@@ -286,19 +276,15 @@ function lineAtEvent(event: MouseEvent): number | null {
  * 飛んだあとはエディタが主導権を持つ（そのまま打ち始められる）。
  */
 export function jumpToEditorLine(line: number, options: { focus?: boolean } = {}): void {
-  const view = active?.view;
-  if (!view) return;
-
-  const clamped = Math.min(view.state.doc.lines, Math.max(1, line));
-  const at = view.state.doc.line(clamped);
+  const port = active?.port;
+  if (!port) return;
 
   leader = 'editor';
   leaderUntil = performance.now() + SUPPRESS_MS;
 
-  view.dispatch({ selection: { anchor: at.from }, scrollIntoView: true });
   // **フォーカスは呼び出し側が決める。** プレビューを叩いたなら移すのが自然だが、
   // アウトラインを叩いたのにエディタへ飛ばされると、続けて次の見出しを選べない。
-  if (options.focus !== false) view.focus();
+  port.revealLine(line, { focus: options.focus !== false });
 }
 
 /**

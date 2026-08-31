@@ -178,9 +178,18 @@ export default tseslint.config(
   },
 
   {
-    // CSS の副作用インポートと、テストのセットアップは代入しようがない
-    files: ['src/main.ts', 'tests/setup.ts', '.storybook/**'],
+    // CSS の副作用インポートと、テストのセットアップは代入しようがない。
+    // `features/editor/monaco.ts` は **Monaco から何を取るかの一覧**そのもので、
+    // contrib の登録は副作用インポート以外の書き方が無い（ADR-0009）。
+    files: ['src/main.ts', 'tests/setup.ts', 'src/features/editor/monaco.ts', '.storybook/**'],
     rules: { 'import-x/no-unassigned-import': 'off' },
+  },
+
+  {
+    // jsdom に無いものを立てるのが仕事のファイル（Monaco が要求する
+    // `ResizeObserver` / `matchMedia` / `queryCommandSupported`）。
+    files: ['tests/setup.ts'],
+    rules: { 'unicorn/no-global-object-property-assignment': 'off' },
   },
 
   {

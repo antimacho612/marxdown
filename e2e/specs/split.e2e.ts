@@ -20,7 +20,14 @@
  */
 import { Key } from 'webdriverio';
 
-import { enterEditMode, openViaForward } from '../helpers/app';
+import {
+  activeLineText,
+  editorScrollTop,
+  enterEditMode,
+  focusEditorSurface,
+  openViaForward,
+  setEditorScrollTop,
+} from '../helpers/app';
 import { WORK_DOC } from '../helpers/fixtures';
 
 /** いまの表示モード。 */
@@ -28,24 +35,27 @@ async function currentMode(): Promise<string> {
   return browser.execute(() => document.documentElement.dataset['mxMode'] ?? '');
 }
 
+/** プレビューのスクロール位置。エディタ側は `editorScrollTop`（helper）が持つ。 */
+async function previewScrollTop(): Promise<number> {
+  return browser.execute(() => document.querySelector('#mx-preview')?.scrollTop ?? -1);
+}
+
 /** エディタ / プレビューのスクロール位置。 */
 async function positions(): Promise<{ editor: number; preview: number }> {
-  return browser.execute(() => ({
-    editor: document.querySelector('.cm-scroller')?.scrollTop ?? -1,
-    preview: document.querySelector('#mx-preview')?.scrollTop ?? -1,
-  }));
+  return { editor: await editorScrollTop(), preview: await previewScrollTop() };
 }
 
 /** 片方を動かす。**同期は `scroll` イベントで動くので、代入で足りる。** */
 async function scrollTo(side: 'editor' | 'preview', top: number): Promise<void> {
-  await browser.execute(
-    (selector: string, to: number) => {
-      const element = document.querySelector(selector);
-      if (element) element.scrollTop = to;
-    },
-    side === 'editor' ? '.cm-scroller' : '#mx-preview',
-    top,
-  );
+  if (side === 'editor') {
+    await setEditorScrollTop(top);
+    return;
+  }
+
+  await browser.execute((to: number) => {
+    const element = document.querySelector('#mx-preview');
+    if (element) element.scrollTop = to;
+  }, top);
 }
 
 /**
@@ -82,7 +92,7 @@ const DOC = ['# 見出し', '', '```', ...Array.from({ length: 60 }, (_, i) => `
 before(async () => {
   await openViaForward(WORK_DOC, '本文です。');
   await enterEditMode();
-  await $('.cm-content').click();
+  await focusEditorSurface();
   await browser.keys([Key.Control, 'a']);
   await browser.keys(DOC);
 });
@@ -202,10 +212,7 @@ describe('双方向ジャンプ (§3)', () => {
 
     await browser.waitUntil(
       async () => {
-        const line = await browser.execute(() => {
-          const active = document.querySelector('.cm-line.cm-activeLine');
-          return active?.textContent ?? '';
-        });
+        const line = await activeLineText();
         return line.includes('終わり');
       },
       { timeout: 10_000, timeoutMsg: 'エディタの該当行へ移らなかった' },
