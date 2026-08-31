@@ -13,10 +13,12 @@ import type { Bootstrap, DocumentMeta } from '@/platform';
 
 const mountEditorLazily = vi.fn(() => Promise.resolve());
 const setSplitSyncLazily = vi.fn((_on: boolean) => Promise.resolve());
+const relayoutEditorLazily = vi.fn(() => Promise.resolve());
 
 vi.mock('@/features/editor/open-editor', () => ({
   mountEditorLazily: () => mountEditorLazily(),
   preloadEditor: () => Promise.resolve(),
+  relayoutEditorLazily: () => relayoutEditorLazily(),
   setSplitSyncLazily: (on: boolean) => setSplitSyncLazily(on),
 }));
 
@@ -42,6 +44,7 @@ function bootstrap(overrides: Partial<Bootstrap> = {}): Bootstrap {
 
 beforeEach(() => {
   mountEditorLazily.mockClear();
+  relayoutEditorLazily.mockClear();
   resetMode();
   document.body.innerHTML = '<div id="mx-preview"></div>';
   initMode('preview');
@@ -85,6 +88,22 @@ describe('モードの適用', () => {
   it('同じモードへの切り替えは何もしない', async () => {
     await setMode('preview');
     expect(mountEditorLazily).not.toHaveBeenCalled();
+  });
+
+  /**
+   * **Monaco は `display: none` のあいだ寸法を失う**（ADR-0009 の受け入れコスト 3）。
+   * 面が出るモードに入ったら測り直させる。**Preview へ抜けるときは呼ばない**
+   * （見えない面のために仕事をしない / N-PERF-05）。
+   */
+  it('エディタが見えるモードに入ったら器を測り直させる', async () => {
+    await setMode('edit');
+    expect(relayoutEditorLazily).toHaveBeenCalledTimes(1);
+
+    await setMode('split');
+    expect(relayoutEditorLazily).toHaveBeenCalledTimes(2);
+
+    await setMode('preview');
+    expect(relayoutEditorLazily).toHaveBeenCalledTimes(2);
   });
 });
 

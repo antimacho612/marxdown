@@ -70,6 +70,27 @@ body {
 .mx-editor {
   display: none;
   overflow: hidden;
+  background-color: var(--mx-color-bg);
+}
+
+/*
+ * 本文の幅をプレビューと揃えるための器（`features/editor/editor.ts` が作る）。
+ *
+ * **Monaco 自身には本文を中央へ寄せる手段が無い。** `padding` オプションは
+ * 上下だけで、行は器の幅いっぱいに描かれる。読む面と書く面で行長が変わると、
+ * モードを切り替えたときに同じ文章が違う形に見える。
+ *
+ * **フォントを指定してあるのは `ch` を正しく解決させるため。**
+ * `--mx-content-width` の単位は `ch`（02.architecture/10-theming.md §2）で、
+ * それは**この要素自身のフォント**に対して解決される。Monaco は内部のノードに
+ * 自前でフォントを当てるので、ここの指定が本文の見た目に出ることはない。
+ */
+.mx-editor__frame {
+  height: 100%;
+  max-width: var(--mx-content-width);
+  margin: 0 auto;
+  font-family: var(--mx-font-code);
+  font-size: calc(var(--mx-font-size-content) * var(--mx-zoom));
 }
 
 :root[data-mx-mode='edit'] .mx-preview {

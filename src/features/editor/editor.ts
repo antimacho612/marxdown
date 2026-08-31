@@ -1,18 +1,22 @@
 /**
- * CodeMirror 6 の生成と保持（F-EDIT-01 / `editor` チャンク）。
+ * Monaco の生成と保持（F-EDIT-01 / `editor` チャンク / [ADR-0009](../../../docs/adr/0009-editor-engine-monaco.md)）。
  *
  * # 1 インスタンスしか作らない
  *
  * 02.architecture/07-editor-wysiwyg.md §1 の単一エンジン方針。Edit / Split / WYSIWYG は
- * **同一の `EditorView`** で、違うのは有効な拡張と、どこに置くかだけ。
+ * **同一のエディタと同一のモデル**で、違うのはどこに置くかだけ。
  * これにより Undo 履歴・カーソル・IME の挙動がモード間で揃う
  * （03.ux-spec/02-view-modes.md §4）。
  *
  * # Preview へ戻っても壊さない
  *
- * モードを Preview に切り替えても `destroy()` しない。**Undo 履歴が消えるため。**
+ * モードを Preview に切り替えても `dispose()` しない。**Undo 履歴が消えるため。**
  * §4 は「モードを切り替えても Undo 履歴を保持する」を要求している。
  * 隠すのは CSS の担当（`styles/shell.css` の `data-mx-mode`）。
+ *
+ * **ただし Monaco は隠れているあいだ寸法を失う。** `display: none` から戻したら
+ * `relayoutEditor()` を呼ぶこと（`features/view/mode.ts` がプレビューの
+ * スクロール位置を戻すのと同じ場所・同じ理由）。
  *
  * 破棄するのはタブを閉じるときだけで、それは M3（N-PERF-06）。
  *
@@ -20,43 +24,40 @@
  *
  * `#mx-editor` は `index.html` にあり、Svelte の管理下に無い。
  * `#mx-preview` と同じ理由で、**ここを Svelte に移さないこと**（ADR-0005）。
+ *
+ * # 改行は必ず LF で読み書きする
+ *
+ * メモリ上の本文は LF に正規化されており、CRLF / BOM の復元は Rust 側の境界が持つ
+ * （N-CMP-03 / 02.architecture/04-rust-responsibilities.md）。
+ * Monaco のモデルは**自分で EOL を推定して保持する**ので、
+ * 明示的に LF を指定して読み書きしないと、ここで CRLF が混ざる。
  */
-import { history } from '@codemirror/commands';
-import { markdown, markdownLanguage } from '@codemirror/lang-markdown';
-import { bracketMatching } from '@codemirror/language';
-import { highlightSelectionMatches, openSearchPanel, search } from '@codemirror/search';
-import { EditorState, type Text } from '@codemirror/state';
-import {
-  drawSelection,
-  dropCursor,
-  EditorView,
-  highlightActiveLine,
-  highlightSpecialChars,
-  lineNumbers,
-  rectangularSelection,
-} from '@codemirror/view';
-
 import { setDirty } from '@/features/document/dirty';
 import { scheduleLiveRender } from '@/features/document/live';
 import { attachEditor, getDocumentText } from '@/features/document/text';
 import { startScrollSync, stopScrollSync } from '@/features/view/scroll-sync';
-import { ja } from '@/i18n/ja';
 
-import { editorKeymap } from './keymap';
-import { editorTheme } from './theme';
+import { MARKDOWN_LANGUAGE_ID, monaco } from './monaco';
+import { createScrollPort } from './scroll-port';
+import { applyEditorAppearance, watchEditorAppearance } from './theme';
 
-let view: EditorView | null = null;
+let editor: monaco.editor.IStandaloneCodeEditor | null = null;
+let model: monaco.editor.ITextModel | null = null;
 
 /**
  * ダーティ判定の基準（F-EDIT-03）。`markClean()` が呼ばれるたびに、
- * そのときの内容へ動かす（`sync`）。
+ * そのときの版へ動かす（`sync`）。
  *
- * 打鍵ごとの `docChanged` だけを見ると、Undo で編集前の内容まで戻っても
- * ダーティのままになる（#43）。ここと `Text.eq()` で内容そのものを比較する。
- * `Text` はロープ構造で共有されるので、Undo で戻ったときのように内部ノードを
- * 使い回すケースは文字列比較よりずっと安い。
+ * 内容が変わったことだけを見ると、Undo で編集前の内容まで戻ってもダーティのままになる（#43）。
+ * **`getAlternativeVersionId()` は Undo でその版へ戻ると同じ値に戻る**ので、
+ * 本文を文字列で比較しなくても「基準と同じ内容か」が分かる。
  */
-let cleanDoc: Text | null = null;
+let cleanVersionId = 0;
+
+/** 本文を LF で読む。モデルが CRLF を持っていても、外へ出るのは LF。 */
+function readText(): string {
+  return model?.getValue(monaco.editor.EndOfLinePreference.LF) ?? '';
+}
 
 /**
  * エディタを載せる。**2 回目以降は何もしない。**
@@ -64,133 +65,156 @@ let cleanDoc: Text | null = null;
  * 初期内容は `getDocumentText()` から取る。`attachEditor` より**前**に読むこと
  * （後にすると、控えを捨てたあとの空文字を読む）。
  */
-export function mountEditor(host: HTMLElement): EditorView {
-  if (view) return view;
+export function mountEditor(host: HTMLElement): monaco.editor.IStandaloneCodeEditor {
+  if (editor) return editor;
 
   const doc = getDocumentText();
 
-  view = new EditorView({
-    parent: host,
-    state: EditorState.create({
-      doc,
-      extensions: [
-        lineNumbers(),
-        history(),
-        drawSelection(),
-        dropCursor(),
-        highlightActiveLine(),
-        highlightSpecialChars(),
-        bracketMatching(),
-        EditorState.allowMultipleSelections.of(true),
-        // **既定のまま使う。** `markdown()` は素のパーサだけでなく、
-        // Markdown を書くための拡張を既に抱えている（M2 Phase 4 で気づいた）。
-        //
-        //   addKeymap      Enter でリストを続ける / Backspace で記法を畳む
-        //                  （`insertNewlineContinueMarkup` / `deleteMarkupBackward`）
-        //   pasteURLAsLink 選択したうえで URL を貼ると `[選んだ文字](URL)` になる
-        //
-        // 前者は **`Prec.high` で入る**ので、同じ `Enter` を後から足しても効かない。
-        // どちらも構文木を見て動くぶん、行を正規表現で見る自前の実装より確かで、
-        // F-EDIT-09, 10, 12 はこれで満たされている（06.roadmap/m2-editor.md §5 の Phase 4）。
-        markdown({ base: markdownLanguage }),
+  // 本文の幅をプレビューと揃えるための器（`styles/shell.css` の `.mx-editor__frame`）。
+  // **Monaco 自身には本文を中央へ寄せる手段が無い**（`padding` は上下だけ）。
+  // 読む面と書く面で行長が変わると、モードを切り替えたときに同じ文章が違う形に見える。
+  const frame = document.createElement('div');
+  frame.className = 'mx-editor__frame';
+  host.append(frame);
 
-        // マルチカーソルと矩形選択（F-EDIT-06 / 03.ux-spec/04-keybindings.md §3）。
-        //
-        // **既定のままでは VS Code と食い違う。** CodeMirror は
-        //   - カーソルの追加を `Ctrl+クリック`（`clickAddsSelectionRange` の既定）
-        //   - 矩形選択を `Alt+ドラッグ`（`rectangularSelection` の既定）
-        // に割り当てるが、VS Code はそれぞれ `Alt+クリック` と `Shift+Alt+ドラッグ`。
-        // §3 が `Alt+Click` = カーソル追加と定めている以上、**Alt をカーソル追加へ渡し、
-        // 矩形選択を Shift+Alt へずらす**。片方だけ直すと 2 つが同じ修飾子を奪い合う。
-        rectangularSelection({ eventFilter: (event) => event.altKey && event.shiftKey }),
-        EditorView.clickAddsSelectionRange.of((event) => event.altKey && !event.shiftKey),
+  model = monaco.editor.createModel(doc, MARKDOWN_LANGUAGE_ID);
+  model.setEOL(monaco.editor.EndOfLineSequence.LF);
 
-        // 検索・置換（F-EDIT-05）。パネルは上に出す（VS Code と同じ側）。
-        // 正規表現・大文字小文字・単語単位はパネルのチェックボックスが持っている。
-        search({ top: true }),
-        // 選択した語と同じものを薄く光らせる。VS Code の既定の挙動で、
-        // `Ctrl+D` で次を選ぶときに「次がどこか」が先に見える。
-        highlightSelectionMatches(),
-        // CodeMirror 自身が出す文言（パネルのラベルと読み上げ）を日本語にする。
-        // **UI 文言は `i18n/ja.ts` に集約する**という決定（OQ-11）の範囲。
-        EditorState.phrases.of(ja.editor.phrases),
+  editor = monaco.editor.create(frame, {
+    model,
+    // 器の大きさに追随させる（ResizeObserver）。**隠れている間は効かない**ので、
+    // 面を出し直したときは `relayoutEditor()` で明示的に測り直す。
+    automaticLayout: true,
 
-        // VS Code 互換キーマップ（F-EDIT-04〜07）と Markdown の書式（F-EDIT-08〜10）。
-        // 外したキーとその理由は `keymap.ts`。
-        editorKeymap,
-        EditorView.lineWrapping,
-        // ダーティ状態（F-EDIT-03）。**boolean 1 つだけがリアクティビティを通る。**
-        // 本文そのものはここを通らない（ADR-0005 / 02.architecture/08-state-management.md §1）。
-        //
-        // `docChanged` だけで dirty にはしない。Undo で `cleanDoc` まで戻ってきたら
-        // 逆にダーティを解除する（#43）。`setDirty` は値が変わらなければ何もしないので、
-        // 打鍵ごとにストアの書き込みや IPC が走ることはない（`document/save.ts`）。
-        EditorView.updateListener.of((update) => {
-          if (!update.docChanged) return;
-          setDirty(cleanDoc === null || !update.state.doc.eq(cleanDoc));
-          // Split では右のプレビューを追いかけさせる（F-MODE-03）。
-          // 打鍵ごとには描き直さない（`document/live.ts` が待つ）。
-          scheduleLiveRender();
-        }),
-        editorTheme,
-      ],
-    }),
+    // 読む面と揃える見た目
+    wordWrap: 'on',
+    lineNumbers: 'on',
+    // Markdown では価値が薄く、画面を狭める（ADR-0001 から引き継ぐ判断）。
+    minimap: { enabled: false },
+    // 概要ルーラも同じ理由で出さない。CodeMirror にも無かったので、
+    // 面の見た目は M2 Phase 5 までと変わらない。
+    overviewRulerLanes: 0,
+    overviewRulerBorder: false,
+    hideCursorInOverviewRuler: true,
+    renderLineHighlight: 'line',
+    renderControlCharacters: true,
+    renderWhitespace: 'none',
+    // 記号の色分けは Markdown の構造に対して意味を持たない。静かにしておく。
+    bracketPairColorization: { enabled: false },
+    padding: { top: 32 },
+    scrollbar: { horizontal: 'hidden' },
+    // 03.ux-spec/09-motion.md の禁則。スクロールに演出を足さない。
+    smoothScrolling: false,
+
+    // **触っていない箇所のバイト列を変えない**（N-CMP-03）。
+    // 以下はどれも「気を利かせて別の場所を書き換える」機能である。
+    detectIndentation: false,
+    trimAutoWhitespace: false,
+    formatOnPaste: false,
+    formatOnType: false,
+    autoIndent: 'keep',
+    tabSize: 2,
+    insertSpaces: true,
+
+    // Markdown に補完は要らない。**editor worker を起こす経路でもある。**
+    quickSuggestions: false,
+    suggestOnTriggerCharacters: false,
+    wordBasedSuggestions: 'off',
+    // 語のハイライトは「選択と同じもの」だけでよい。`occurrencesHighlight` は
+    // 言語サービス（DocumentHighlightProvider）を要求するので切る。
+    occurrencesHighlight: 'off',
+    selectionHighlight: true,
+    // 曖昧・不可視文字の警告は、日本語の本文では鳴りっぱなしになる。
+    unicodeHighlight: { ambiguousCharacters: false, invisibleCharacters: false },
   });
 
   // 載せた時点の内容がダーティ判定の基準（マウント前はダーティになりようがない）。
-  cleanDoc = view.state.doc;
+  cleanVersionId = model.getAlternativeVersionId();
 
-  // ここから先、本文の真実は `EditorState` にある（ADR-0005）。
+  // ダーティ状態（F-EDIT-03）。**boolean 1 つだけがリアクティビティを通る。**
+  // 本文そのものはここを通らない（ADR-0005 / 02.architecture/08-state-management.md §1）。
+  //
+  // `setDirty` は値が変わらなければ何もしないので、打鍵ごとにストアの書き込みや
+  // IPC が走ることはない（`document/save.ts`）。
+  //
+  // > **`editor.onDidChangeModelContent` ではなく、モデル側を購読する。**
+  // > Monaco の変更通知は 2 本ある。エディタが購読しているのは編集と同時に飛ぶ
+  // > 「速い」ほうで、**そちらは Undo で版を巻き戻す前に飛ぶ**
+  // > （`textModel.js` の `_applyUndoRedoEdits` は `_overwriteAlternativeVersionId` を
+  // > 呼んでから `endDeferredEmit()` する）。速いほうで判定すると、Undo で
+  // > 基準まで戻ってもダーティが外れない（#43 の再来）。実測で確認済み。
+  model.onDidChangeContent(() => {
+    setDirty(model?.getAlternativeVersionId() !== cleanVersionId);
+    // Split では右のプレビューを追いかけさせる（F-MODE-03）。
+    // 打鍵ごとには描き直さない（`document/live.ts` が待つ）。
+    scheduleLiveRender();
+  });
+
+  applyEditorAppearance(editor);
+  watchEditorAppearance(editor);
+
+  // ここから先、本文の真実は Monaco のモデルにある（ADR-0005）。
   attachEditor({
-    read: () => view?.state.doc.toString() ?? doc,
+    read: () => (model ? readText() : doc),
     replace: (text) => {
-      if (!view) return;
-      view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: text } });
+      const current = model;
+      if (!current) return;
+      // **Undo の履歴に載せる。** ここを `setValue` にすると履歴ごと消える。
+      current.pushEditOperations(null, [{ range: current.getFullModelRange(), text }], () => null);
     },
     sync: () => {
-      cleanDoc = view?.state.doc ?? null;
+      cleanVersionId = model?.getAlternativeVersionId() ?? 0;
     },
   });
 
-  return view;
+  return editor;
 }
 
 /** 載っているか。モード切り替えの判断に使う。 */
 export function isEditorMounted(): boolean {
-  return view !== null;
+  return editor !== null;
 }
 
 /** フォーカスを移す。Edit へ切り替えたら、そのまま打てるようにする。 */
 export function focusEditor(): void {
-  view?.focus();
+  editor?.focus();
 }
 
 /**
- * 検索パネルを開く（F-EDIT-05）。`replace` が true なら置換欄へフォーカスする。
+ * 器の大きさを測り直す（`features/view/mode.ts` が面を出したときに呼ぶ）。
+ *
+ * **`display: none` のあいだ Monaco は寸法を失う。** `automaticLayout` の
+ * ResizeObserver は隠れているあいだ動かないので、戻したときに測り直す。
+ *
+ * 次のフレームで測るのは、属性を立てた直後はまだレイアウトが確定していないため
+ * （`mode.ts` がプレビューのスクロール位置を戻すときと同じ理由）。
+ */
+export function relayoutEditor(): void {
+  const target = editor;
+  if (!target) return;
+  requestAnimationFrame(() => {
+    target.layout();
+  });
+}
+
+/**
+ * 検索・置換を開く（F-EDIT-05）。
  *
  * **載っていなければ何もしない。** Preview を見ているときの `Ctrl+F` は
  * 本文検索へ行くので、ここまで来ない（`features/view/find.ts`）。
- *
- * 置換欄を探せるのは、`openSearchPanel` がパネルの DOM を
- * `dispatch` の中で同期的に組み立てるため。読み取り専用のときは
- * 置換欄そのものが作られないので、その場合は検索欄のままになる。
  */
 export function openEditorSearch(replace: boolean): void {
-  if (!view) return;
-
-  openSearchPanel(view);
-  if (!replace) return;
-
-  const field = view.dom.querySelector<HTMLInputElement>('.cm-search input[name="replace"]');
-  field?.focus();
-  field?.select();
+  if (!editor) return;
+  const id = replace ? 'editor.action.startFindReplaceAction' : 'actions.find';
+  void editor.getAction(id)?.run();
 }
 
 /**
  * Split のスクロール同期を始める / やめる（F-MODE-05）。
  *
- * **`EditorView` を外へ渡さないための包み。** 同期の中身は `features/view/scroll-sync.ts`
- * （`main` チャンク）にあり、`EditorView` を型としてしか知らない。
+ * **エディタの実体を外へ渡さないための包み。** 同期の中身は `features/view/scroll-sync.ts`
+ * （`main` チャンク）にあり、そちらが知っているのは **行番号だけの窓口**
+ * （`EditorScrollPort`）である。座標計算は `scroll-port.ts` にあり、
  * 実体を渡せるのはここだけなので、ここが橋渡しをする。
  */
 export function setSplitSync(on: boolean): void {
@@ -198,5 +222,5 @@ export function setSplitSync(on: boolean): void {
     stopScrollSync();
     return;
   }
-  if (view) startScrollSync(view);
+  if (editor) startScrollSync(createScrollPort(editor));
 }

@@ -5,7 +5,7 @@
  *
  * 06.roadmap/m2-editor.md §1.2 の制約。ここにあるのは**モードの値と、切り替えの手続き**だけで、
  * エディタの実体は `features/editor/open-editor.ts` 経由の動的 import になっている。
- * CodeMirror を直接 import しないこと。`editor` チャンク 203KB が `main` に載る。
+ * **エディタを直接 import しないこと。** `editor` チャンク（Monaco）が `main` に載る。
  *
  * # 隠すのは CSS の担当
  *
@@ -20,7 +20,7 @@
  * スクロール同期）は Phase 5 の担当で、ここは**同じ面へ戻ってきたときの復元**だけを見る。
  */
 import { cancelLiveRender, renderNow } from '@/features/document/live';
-import { mountEditorLazily, setSplitSyncLazily } from '@/features/editor/open-editor';
+import { mountEditorLazily, relayoutEditorLazily, setSplitSyncLazily } from '@/features/editor/open-editor';
 import { closePreviewFind } from '@/features/view/find';
 import { viewStore } from '@/features/view/store.svelte';
 import type { Bootstrap, DocumentMeta, ViewMode } from '@/platform';
@@ -112,6 +112,11 @@ export async function setMode(mode: ViewMode): Promise<void> {
   applyModeAttribute(mode);
 
   if (!wasVisible && willBeVisible) restorePreviewScroll();
+
+  // **Monaco は `display: none` のあいだ寸法を失う**（ADR-0009）。プレビューの
+  // スクロール位置を戻すのと同じ理由・同じ場所で、器を測り直させる。
+  // エディタが見えるモードに入るときだけなので、ここでチャンクは増えない。
+  if (isEditorVisible(mode)) void relayoutEditorLazily();
 
   // スクロール同期は Split でしか意味を持たない（03.ux-spec/03-split-mode.md §2）。
   // **片面しか見えていないときに購読を残さない**（N-PERF-05）。

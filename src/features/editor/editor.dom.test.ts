@@ -2,12 +2,16 @@
 /**
  * Undo で保存済みの内容まで戻ったら dirty を解除する回帰テスト（#43）。
  *
- * それまでは `docChanged` の真偽だけで dirty を立てていたため、Undo で
+ * それまでは「内容が変わった」の真偽だけで dirty を立てていたため、Undo で
  * 編集前 / 保存直後の内容まで戻っても dirty が残ったままだった。
- * `mountEditor` を実際に通し、CodeMirror の `history()` を使って確かめる。
+ *
+ * # Monaco を jsdom で載せる
+ *
+ * `mountEditor` を実際に通す。Monaco はレイアウトと OS のテーマを問い合わせるので、
+ * jsdom に無いものを最小限だけ立てる（`preview/search.dom.test.ts` と同じ手当て）。
+ * **本物の描画は要らない。** ここで見たいのは
+ * 「モデルの版が基準に戻ったら dirty が外れるか」だけである。
  */
-import { redo, undo } from '@codemirror/commands';
-import type { EditorView } from '@codemirror/view';
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import { markClean } from '@/features/document/dirty';
@@ -15,9 +19,13 @@ import { documentStore } from '@/features/document/store.svelte';
 import { resetDocumentText, setDocumentText } from '@/features/document/text';
 
 import { mountEditor } from './editor';
+import { monaco } from './monaco';
 
-function type(view: EditorView, text: string): void {
-  view.dispatch({ changes: { from: view.state.doc.length, insert: text } });
+function type(editor: monaco.editor.IStandaloneCodeEditor, text: string): void {
+  const model = editor.getModel();
+  if (!model) throw new Error('モデルが無い');
+  const end = model.getFullModelRange().getEndPosition();
+  model.pushEditOperations(null, [{ range: monaco.Range.fromPositions(end, end), text }], () => null);
 }
 
 beforeEach(() => {
@@ -25,8 +33,9 @@ beforeEach(() => {
   documentStore.isDirty = false;
   document.body.innerHTML = '<div id="mx-editor"></div>';
 
-  // CodeMirror はレイアウトを測ってスクロール位置などを決める。jsdom に無いので、
-  // 空の矩形を返すだけの最小限のものを立てる（`preview/search.dom.test.ts` と同じ手当て）。
+  // Monaco が要求するが jsdom に無いもの（`ResizeObserver` / `matchMedia` /
+  // `queryCommandSupported`）は **`tests/setup.ts`** にある。
+  // モジュールの評価時に読まれるので、ここでは間に合わない。
   Range.prototype.getClientRects = () => ({ length: 0, item: () => null, [Symbol.iterator]: [][Symbol.iterator] });
   Range.prototype.getBoundingClientRect = () => new DOMRect(0, 0, 0, 0);
 });
@@ -36,29 +45,31 @@ describe('Undo でダーティが戻る (#43)', () => {
     setDocumentText('# hello\n');
     const host = document.querySelector<HTMLElement>('#mx-editor');
     if (!host) throw new Error('受け皿が無い');
-    const view = mountEditor(host);
+    const editor = mountEditor(host);
+    const model = editor.getModel();
+    if (!model) throw new Error('モデルが無い');
 
-    type(view, '追記1');
+    type(editor, '追記1');
     expect(documentStore.isDirty).toBe(true);
 
-    undo(view);
-    expect(view.state.doc.toString()).toBe('# hello\n');
+    model.undo();
+    expect(model.getValue(monaco.editor.EndOfLinePreference.LF)).toBe('# hello\n');
     expect(documentStore.isDirty).toBe(false);
 
-    redo(view);
+    model.redo();
     expect(documentStore.isDirty).toBe(true);
 
     // 保存した体にする（save.ts はここで markClean() を呼ぶ）。
     markClean();
     expect(documentStore.isDirty).toBe(false);
 
-    type(view, '追記2');
+    type(editor, '追記2');
     expect(documentStore.isDirty).toBe(true);
 
-    undo(view); // 保存直後の内容まで戻る
+    model.undo(); // 保存直後の内容まで戻る
     expect(documentStore.isDirty).toBe(false);
 
-    redo(view);
+    model.redo();
     expect(documentStore.isDirty).toBe(true);
   });
 });
