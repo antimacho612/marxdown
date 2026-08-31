@@ -70,17 +70,10 @@ export function mountEditor(host: HTMLElement): monaco.editor.IStandaloneCodeEdi
 
   const doc = getDocumentText();
 
-  // 本文の幅をプレビューと揃えるための器（`styles/shell.css` の `.mx-editor__frame`）。
-  // **Monaco 自身には本文を中央へ寄せる手段が無い**（`padding` は上下だけ）。
-  // 読む面と書く面で行長が変わると、モードを切り替えたときに同じ文章が違う形に見える。
-  const frame = document.createElement('div');
-  frame.className = 'mx-editor__frame';
-  host.append(frame);
-
   model = monaco.editor.createModel(doc, MARKDOWN_LANGUAGE_ID);
   model.setEOL(monaco.editor.EndOfLineSequence.LF);
 
-  editor = monaco.editor.create(frame, {
+  editor = monaco.editor.create(host, {
     model,
     // 器の大きさに追随させる（ResizeObserver）。**隠れている間は効かない**ので、
     // 面を出し直したときは `relayoutEditor()` で明示的に測り直す。

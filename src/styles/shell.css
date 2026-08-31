@@ -46,114 +46,62 @@ body {
   display: contents;
 }
 
+/* ========== Preview モード==========*/
+/* data-mx-mode が無い状態（bootstrap を持たない経路 / Storybook）は Preview 扱い。既定が Preview であることを、属性の有無にも一致させてある。 */
 .mx-preview,
 .mx-editor {
+  /* 本文の面とエディタの面は 同じセルに重ねてある。出し分けはここだけで行い、要素の付け外しはしない（features/view/mode.ts）。 */
+  /* Split はこの grid を 2 列に割る形で足す。そのとき変わるのは grid-template-areas の定義と、ここの 2 行だけで済む。 */
   grid-area: main;
   min-height: 0;
 }
 
-/*
- * # 表示モード（F-MODE-01, 02 / 03.ux-spec/02-view-modes.md）
- *
- * 本文の面とエディタの面は**同じセルに重ねてある**。出し分けはここだけで行い、
- * 要素の付け外しはしない（`features/view/mode.ts`）。
- *
- * エディタを DOM から外すと `EditorView` を作り直すことになり、Undo 履歴が消える。
- * §4 は「モードを切り替えても Undo 履歴を保持する」を要求している。
- *
- * `data-mx-mode` が無い状態（bootstrap を持たない経路 / Storybook）は Preview 扱い。
- * **既定が Preview であることを、属性の有無にも一致させてある。**
- *
- * Split（Phase 5）はこの grid を 2 列に割る形で足す。そのとき変わるのは
- * `grid-template-areas` の定義と、ここの 2 行だけで済む。
- */
 .mx-editor {
   display: none;
   overflow: hidden;
   background-color: var(--mx-color-bg);
 }
 
-/*
- * 本文の幅をプレビューと揃えるための器（`features/editor/editor.ts` が作る）。
- *
- * **Monaco 自身には本文を中央へ寄せる手段が無い。** `padding` オプションは
- * 上下だけで、行は器の幅いっぱいに描かれる。読む面と書く面で行長が変わると、
- * モードを切り替えたときに同じ文章が違う形に見える。
- *
- * **フォントを指定してあるのは `ch` を正しく解決させるため。**
- * `--mx-content-width` の単位は `ch`（02.architecture/10-theming.md §2）で、
- * それは**この要素自身のフォント**に対して解決される。Monaco は内部のノードに
- * 自前でフォントを当てるので、ここの指定が本文の見た目に出ることはない。
- */
-.mx-editor__frame {
-  height: 100%;
-  max-width: var(--mx-content-width);
-  margin: 0 auto;
-  font-family: var(--mx-font-code);
-  font-size: calc(var(--mx-font-size-content) * var(--mx-zoom));
+/* ========== Edit モード ========== */
+:root[data-mx-mode='edit'] {
+  .mx-preview {
+    display: none;
+  }
+
+  .mx-editor {
+    display: block;
+  }
 }
 
-:root[data-mx-mode='edit'] .mx-preview {
-  display: none;
-}
+/* ========== Split モード ========== */
+:root[data-mx-mode='split'] {
+  body {
+    /* 列を 2 つ増やすだけ。変わるのは grid-template-areas の定義と .mx-preview / .mx-editor の行き先だけで、要素の付け外しは無い（EditorView を壊さない）。 */
+    /* 分割比は fr の値そのものを変数で受け取る（features/view/split.ts が 0.3fr のような単位まで含んだ文字列を入れる）。ピクセルで持つと、ウィンドウの大きさやペインの開閉で左右の比が変わってしまう。 */
+    /* minmax(0, ...) を被せてあるのは、grid の既定の最小幅（auto = 中身の最小幅）が fr の指定を押しのけるため。エディタの長い行が比を無視して列を広げる。 */
+    grid-template-columns: auto minmax(0, var(--mx-split-editor, 1fr)) var(--mx-split-divider) minmax(
+        0,
+        var(--mx-split-preview, 1fr)
+      ) auto;
+    grid-template-areas:
+      'titlebar titlebar titlebar titlebar titlebar'
+      'leftpane editor divider preview rightpane'
+      'statusbar statusbar statusbar statusbar statusbar';
+  }
 
-:root[data-mx-mode='edit'] .mx-editor {
-  display: block;
-}
+  .mx-editor {
+    display: block;
+    grid-area: editor;
+  }
 
-/*
- * # Split（F-MODE-03 / 03.ux-spec/03-split-mode.md §1）
- *
- * ```text
- * ├────────────┬───────────┬─┬───────────┬─────────────┤
- * │ leftpane   │ editor    │▏│ preview   │ rightpane   │
- * ```
- *
- * **列を 2 つ増やすだけ。** 上のコメントが予告していたとおり、変わるのは
- * `grid-template-areas` の定義と `.mx-preview` / `.mx-editor` の行き先だけで、
- * 要素の付け外しは無い（`EditorView` を壊さない / 03.ux-spec/02-view-modes.md §4）。
- *
- * 分割比は `fr` の値そのものを変数で受け取る（`features/view/split.ts` が
- * `0.3fr` のような**単位まで含んだ文字列**を入れる）。ピクセルで持つと、
- * ウィンドウの大きさやペインの開閉で左右の比が変わってしまう。
- *
- * **`calc(var(--x) * 1fr)` とは書けない。** `<flex>` に `calc()` は通らず、
- * 宣言ごと捨てられて列が `auto` に潰れる（実測で確認済み。見た目は
- * それらしく出るので気づきにくい）。
- *
- * `minmax(0, ...)` を被せてあるのは、grid の既定の最小幅（`auto` = 中身の最小幅）が
- * `fr` の指定を押しのけるため。**エディタの長い行が比を無視して列を広げる。**
- */
-:root[data-mx-mode='split'] body {
-  grid-template-columns:
-    auto
-    minmax(0, var(--mx-split-editor, 1fr))
-    var(--mx-split-divider)
-    minmax(0, var(--mx-split-preview, 1fr))
-    auto;
-  grid-template-areas:
-    'titlebar titlebar titlebar titlebar titlebar'
-    'leftpane editor divider preview rightpane'
-    'statusbar statusbar statusbar statusbar statusbar';
-}
-
-:root[data-mx-mode='split'] .mx-editor {
-  display: block;
-  grid-area: editor;
-}
-
-:root[data-mx-mode='split'] .mx-editor__frame {
-  max-width: unset;
-}
-
-:root[data-mx-mode='split'] .mx-preview {
-  grid-area: preview;
+  .mx-preview {
+    grid-area: preview;
+  }
 }
 
 /*
- * 分割線（§1「ドラッグでリサイズ（ダブルクリックで 50:50 に戻す）」）。
- *
- * 線そのものは 1px に見せて、**掴める幅はその外側に広げる**。
+ * 分割線
+ * 線そのものは 1px に見せて、掴める幅はその外側に広げる。
  * 見た目のために掴みにくくしない（ライトペインの `__resizer` と同じ考え方）。
  */
 .mx-split-divider {
@@ -165,28 +113,27 @@ body {
   background: var(--mx-color-border-subtle);
   cursor: col-resize;
   touch-action: none;
-}
 
-.mx-split-divider::before {
-  content: '';
-  position: absolute;
-  inset: 0 -3px;
-}
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0 -3px;
+  }
 
-.mx-split-divider:hover,
-.mx-split-divider:focus-visible {
-  background: var(--mx-color-accent);
-}
+  &:hover,
+  &:focus-visible {
+    background: var(--mx-color-accent);
+  }
 
-.mx-split-divider:focus-visible {
-  outline: none;
+  &:focus-visible {
+    outline: none;
+  }
 }
 
 /*
  * プレビュー内検索（F-VIEW-10）。
- *
- * 本文の上に浮かせる。本文を押し下げると、検索を開いた瞬間に読んでいた行が
- * ずれる。ブラウザや VS Code と同じく右上に置く（Familiar）。
+ * 本文の上に浮かせる。本文を押し下げると、検索を開いた瞬間に読んでいた行がずれる。
+ * ブラウザや VS Code と同じく右上に置く（Familiar）。
  */
 .mx-search {
   position: fixed;
@@ -213,11 +160,11 @@ body {
   background: var(--mx-color-bg);
   color: var(--mx-color-fg);
   font: inherit;
-}
 
-.mx-search__input:focus-visible {
-  outline: none;
-  border-color: var(--mx-color-accent);
+  &:focus-visible {
+    outline: none;
+    border-color: var(--mx-color-accent);
+  }
 }
 
 /* 見つからないことは、件数の文字だけでなく入力欄の縁でも伝える */
@@ -243,22 +190,19 @@ body {
   font: inherit;
   line-height: 1.4;
   cursor: pointer;
-}
 
-.mx-search__nav:hover,
-.mx-search__close:hover {
-  background: var(--mx-color-bg-hover);
-}
+  &:hover {
+    background: var(--mx-color-bg-hover);
+  }
 
-.mx-search__nav:focus-visible,
-.mx-search__close:focus-visible {
-  outline: 2px solid var(--mx-color-accent);
-  outline-offset: -2px;
+  &:focus-visible {
+    outline: 2px solid var(--mx-color-accent);
+    outline-offset: -2px;
+  }
 }
 
 /*
  * 一致箇所の塗り（CSS Custom Highlight API）。
- *
  * `<mark>` を挿し込まないので、本文の DOM は検索中も無傷のまま。
  * `search.ts` の冒頭に理由がある。
  */
@@ -273,7 +217,6 @@ body {
 
 /*
  * ドラッグ中の見た目（F-OPEN-08）。
- *
  * 属性 1 つで表すのは、ドラッグ中 `over` が毎フレーム飛んでくるため。
  * リアクティビティを経由させない（ADR-0005 と同じ判断）。
  */
