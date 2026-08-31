@@ -1,5 +1,5 @@
 /**
- * エディタのキーマップ（F-EDIT-04〜07 / `editor` チャンク）。
+ * エディタのキーマップ（F-EDIT-04〜10, 12 / `editor` チャンク）。
  *
  * # 2 つの表の境界
  *
@@ -10,26 +10,40 @@
  * features/editor/keymap.ts      本文をどう編集するか。エディタに居るときだけ効く
  * ```
  *
- * **この 2 つは重ならない。** 重なると、CodeMirror（要素で捕まえる）が先に処理し、
+ * **この 2 つは重ならない。** 重なると、エディタ（要素で捕まえる）が先に処理し、
  * そのあと `globalThis` のリスナがもう一度同じキーを処理することになる。
- * `lib/shortcuts.ts` から `whenEditing` を落とせたのは、この境界を引いたため。
+ * 重ならないようにする作業が、下の `REMOVED` である。
  *
- * 重ならないようにする作業が、下の `DROPPED` である。
+ * # 作業が反転した
  *
- * # `@replit/codemirror-vscode-keymap` をそのまま使わない
+ * CodeMirror では **VS Code 互換キーマップを外から足す**必要があり、
+ * `@replit/codemirror-vscode-keymap` を丸ごと入れて要らないものを名指しで外していた。
  *
- * VS Code 互換であること自体は F-EDIT-04〜07 が要求しているが、
- * このパッケージには **Marxdown が採らないと決めたキー**が混ざっている
- * （和音 / lint パネル / Phase 4・5 で Markdown の書式に使うキー）。
- * 採用の形は「丸ごと入れて、外すものを名指しする」。**外した理由が読める**ことと、
- * パッケージが増やしたキーが黙って入ってこないことの両方が要る。
+ * **Monaco では VS Code のキーが最初から全部入っている。** やることは
+ * 「Marxdown がアプリ側で握るキーを剥がす」ことだけになった
+ * （[ADR-0009](../../../docs/adr/0009-editor-engine-monaco.md) の受け入れコスト 6）。
+ *
+ * ついでに消えた作業もある。**マルチカーソルと矩形選択の修飾子は直さなくてよい。**
+ * CodeMirror は `Ctrl+クリック` / `Alt+ドラッグ` を既定にしていて VS Code と食い違っていたが、
+ * Monaco は `Alt+クリック` / `Shift+Alt+ドラッグ` で
+ * [03.ux-spec > keybindings §3](../../../docs/03.ux-spec/04-keybindings.md) と最初から一致する。
+ *
+ * # 綴りではなく定数で書ける
+ *
+ * CodeMirror 版の `DROPPED` は**キーの綴りを文字列で照合**していたため、
+ * パッケージ側の綴りが変わると黙って外れなくなり、それをテストで見張っていた。
+ * Monaco は `KeyMod` / `KeyCode` の定数なので、**名前が変われば型で落ちる。**
+ * 見張るテストが要らなくなったぶん、`keymap.test.ts` は畳んである。
+ *
+ * # IME 変換中には割り込まない
+ *
+ * `Enter` と `Backspace` を横取りしているが、**変換中の確定は奪わない。**
+ * IME の変換中、ブラウザは `keyCode: 229` で keydown を出す。Monaco の
+ * `StandardKeyboardEvent` はこれをどのキーにも対応させないので、
+ * キーバインドはそもそも解決されない。
  */
-import { copyLineDown, copyLineUp, defaultKeymap, historyKeymap } from '@codemirror/commands';
-import { closeSearchPanel, findNext, findPrevious } from '@codemirror/search';
-import type { Extension } from '@codemirror/state';
-import { keymap, type KeyBinding } from '@codemirror/view';
-import { vscodeKeymap } from '@replit/codemirror-vscode-keymap';
-
+import { runEdit, type MarkdownEdit } from './edits';
+import { continueList, deleteMarkupBackward } from './enter';
 import {
   insertLink,
   setHeading,
@@ -44,108 +58,110 @@ import {
   toggleTaskCheck,
 } from './format';
 import { indentList, outdentList } from './list';
+import { monaco } from './monaco';
+
+const { KeyCode, KeyMod } = monaco;
+
+/** `editor.trigger` に渡す名前。**この文字列に意味がある**（`FALLTHROUGH` の但し書き）。 */
+const KEYBOARD_SOURCE = 'keyboard';
 
 /**
- * `vscodeKeymap` から外すキー。**綴りはパッケージの `key` そのまま**。
+ * Monaco から剥がすキー。**アプリ側が握るもの。**
  *
- * ここに書いたものがパッケージ側に実在することは `keymap.test.ts` が見張る。
- * 綴りが変わったら、黙って外れなくなるのではなくテストが落ちる。
+ * → [03.ux-spec > keybindings §4](../../../docs/03.ux-spec/04-keybindings.md)
  */
-const DROPPED: Record<string, string> = {
-  // 和音は採らない（03.ux-spec/04-keybindings.md §2）。第 1 打鍵のあとに待機状態が生まれ、
-  // 「いま何が起きているか」を意識させる。加えて **`Ctrl+K` はリンク挿入に使う**（Phase 4）。
-  'Mod-k Mod-0': '和音（折りたたみ）',
-  'Mod-k Mod-j': '和音（展開）',
-  'Mod-k Mod-c': '和音（行コメント）',
-  'Mod-k Mod-u': '和音（コメント解除）',
-
+const REMOVED: { keybinding: number; why: string }[] = [
   // 検索を開くのはアプリの仕事。**見ている面によって開くものが変わる**ので
   // （Preview なら本文検索 / Edit ならエディタ検索）、エディタが自分で受けると
   // 二重に開く（`features/view/find.ts`）。
-  'Mod-f': 'アプリの Ctrl+F が面ごとに振り分ける',
+  { keybinding: KeyMod.CtrlCmd | KeyCode.KeyF, why: 'アプリの Ctrl+F が面ごとに振り分ける' },
+  { keybinding: KeyMod.CtrlCmd | KeyCode.KeyH, why: 'Ctrl+H も同じ経路を通す' },
 
-  // Markdown の書式に使う（03.ux-spec/04-keybindings.md §3）。下の `MARKDOWN` が持つ。
-  'Shift-Mod-l': 'Ctrl+Shift+L は箇条書きの切替',
-
-  // lint 拡張を入れていないので、開いても空のパネルが出るだけ。
-  // `Ctrl+Shift+M` は Phase 5 でモードの順送りに使う。
-  'Mod-Shift-m': 'lint パネルの実体が無い / Ctrl+Shift+M はモード順送り（Phase 5）',
-  F8: 'lint の診断が無い',
-};
+  // Markdown の書式に使う（§3）。下の `MARKDOWN` が持つ。
+  { keybinding: KeyMod.CtrlCmd | KeyMod.Shift | KeyCode.KeyL, why: 'Ctrl+Shift+L は箇条書きの切替' },
+  { keybinding: KeyMod.CtrlCmd | KeyCode.Enter, why: 'Ctrl+Enter はタスクリストのチェック切替' },
+];
 
 /**
- * パッケージに無く、こちらで足すもの。
+ * Markdown の書式（F-EDIT-08 / §3「Markdown 書式」）。
  *
- * **`Shift+Alt+↑ / ↓` は Windows で効かない。** パッケージがこの 2 つを
- * `mac:` にしか割り当てておらず、`key` を持っていない。F-EDIT-07（行複製）が
- * 要求しているので、ここで補う。
+ * `Ctrl+B` が太字なのは §1 の決定（Markdown First > Familiar）。
+ * VS Code のサイドバー切替は `Ctrl+Shift+B` へ移してある。
  *
- * `F3` と `Escape` に `scope` を付けているのは、**検索パネルの入力欄に
- * フォーカスがあるときも効かせる**ため。`vscodeKeymap` の `Escape` は
- * scope を持たず、編集面に居るときしか効かない。
+ * > **`Ctrl+K` は Monaco では和音の頭でもある**（`Ctrl+K Ctrl+C` = 行コメントなど）。
+ * > `addCommand` で足したキーは「ユーザーの割り当て」として既定より優先されるので、
+ * > 和音へ入らずリンク挿入が動く。§2 で和音を採らないと決めているので、これでよい。
  */
-/**
- * Markdown の書式（F-EDIT-08〜10, 12 / 03.ux-spec/04-keybindings.md §3「Markdown 書式」）。
- *
- * **`Tab` は、リストの行でなければ手を引く**（`list.ts`）。
- * 下の `vscodeKeymap` にある本来の意味（`indentMore`）へそのまま渡るよう、
- * **この配列を先に置いている**。
- *
- * `Ctrl+B` が太字なのは 03.ux-spec/04-keybindings.md §1 の決定
- * （Markdown First > Familiar）。VS Code のサイドバー切替は `Ctrl+Shift+B` へ移してある。
- */
-const MARKDOWN: KeyBinding[] = [
-  // `Enter` と `Backspace` は `markdown()` が `Prec.high` で持っている（`list.ts`）。
-  // ここに置いても効かないので、置かない。
-  { key: 'Tab', run: indentList, shift: outdentList },
+const MARKDOWN: { keybinding: number; edit: MarkdownEdit }[] = [
+  { keybinding: KeyMod.CtrlCmd | KeyCode.KeyB, edit: toggleBold },
+  { keybinding: KeyMod.CtrlCmd | KeyCode.KeyI, edit: toggleItalic },
+  { keybinding: KeyMod.CtrlCmd | KeyMod.Shift | KeyCode.KeyX, edit: toggleStrikethrough },
+  { keybinding: KeyMod.CtrlCmd | KeyCode.Backquote, edit: toggleInlineCode },
+  { keybinding: KeyMod.CtrlCmd | KeyMod.Shift | KeyCode.Backquote, edit: toggleCodeBlock },
+  { keybinding: KeyMod.CtrlCmd | KeyCode.KeyK, edit: insertLink },
 
-  { key: 'Mod-b', run: toggleBold, preventDefault: true },
-  { key: 'Mod-i', run: toggleItalic, preventDefault: true },
-  { key: 'Mod-Shift-x', run: toggleStrikethrough, preventDefault: true },
-  { key: 'Mod-`', run: toggleInlineCode, preventDefault: true },
-  { key: 'Mod-Shift-`', run: toggleCodeBlock, preventDefault: true },
-  { key: 'Mod-k', run: insertLink, preventDefault: true },
-
-  { key: 'Mod-Shift-.', run: toggleBlockquote, preventDefault: true },
-  { key: 'Mod-Shift-l', run: toggleBulletList, preventDefault: true },
-  { key: 'Mod-Shift-n', run: toggleOrderedList, preventDefault: true },
-  { key: 'Mod-Enter', run: toggleTaskCheck, preventDefault: true },
+  { keybinding: KeyMod.CtrlCmd | KeyMod.Shift | KeyCode.Period, edit: toggleBlockquote },
+  { keybinding: KeyMod.CtrlCmd | KeyMod.Shift | KeyCode.KeyL, edit: toggleBulletList },
+  { keybinding: KeyMod.CtrlCmd | KeyMod.Shift | KeyCode.KeyN, edit: toggleOrderedList },
+  { keybinding: KeyMod.CtrlCmd | KeyCode.Enter, edit: toggleTaskCheck },
 
   // 見出しは `Ctrl+1`〜`9` がタブ切り替えに要るので `Ctrl+Alt+n`（§3 の但し書き）。
   // **1〜6 は設定であってトグルではない**（`format.ts`）。
   ...[1, 2, 3, 4, 5, 6].map((level) => ({
-    key: `Mod-Alt-${level}`,
-    run: setHeading(level),
-    preventDefault: true,
+    keybinding: KeyMod.CtrlCmd | KeyMod.Alt | (KeyCode.Digit0 + level),
+    edit: setHeading(level),
   })),
-  { key: 'Mod-Alt-0', run: setHeading(0), preventDefault: true },
+  { keybinding: KeyMod.CtrlCmd | KeyMod.Alt | KeyCode.Digit0, edit: setHeading(0) },
 ];
-
-const ADDED: KeyBinding[] = [
-  { key: 'Shift-Alt-ArrowUp', run: copyLineUp, preventDefault: true },
-  { key: 'Shift-Alt-ArrowDown', run: copyLineDown, preventDefault: true },
-  { key: 'F3', run: findNext, shift: findPrevious, scope: 'editor search-panel', preventDefault: true },
-  { key: 'Escape', run: closeSearchPanel, scope: 'editor search-panel' },
-];
-
-/** 外した後の VS Code 互換キーマップ。テストから見えるように export する。 */
-export function withoutDropped(bindings: readonly KeyBinding[]): KeyBinding[] {
-  return bindings.filter((binding) => binding.key === undefined || !Object.hasOwn(DROPPED, binding.key));
-}
-
-/** `DROPPED` の綴りが実在するかを検査するために要る。 */
-export const DROPPED_KEYS: readonly string[] = Object.keys(DROPPED);
 
 /**
- * 並び順は**先に書いたものが先に試される**。
+ * 手を引いたら**既定の動作へ渡す**もの。
  *
- * `defaultKeymap` を最後に残しているのは、`vscodeKeymap` が触れていない
- * 基本操作（改行のインデントなど）の受け皿として要るため。
+ * `Tab` はリストの行でなければただのインデント、`Enter` はリストの中でなければ
+ * ただの改行でなければならない。CodeMirror では `false` を返せば次のバインドへ
+ * 落ちたが、**Monaco のキーバインドには「次」が無い。** 既定の動作を
+ * `editor.trigger` で自分で呼ぶことで同じ形にする。
+ *
+ * `handler` は `browser/coreCommands.js` が登録している id。
+ *
+ * > **`source` は `'keyboard'` でなければならない。**
+ * > `CursorsController.type()` はこの文字列を見ており、`'keyboard'` のときだけ
+ * > `typeWithInterceptors` を通る（`common/cursor/cursor.js`）。別の名前を渡すと
+ * > **`Enter` が `autoIndent: 'keep'` を通らず、前の行のインデントを継がない。**
+ * > 実測で気づいた（`dev:web` で `  段落` の末尾から改行して桁 1 に落ちた）。
  */
-export const editorKeymap: Extension = keymap.of([
-  ...MARKDOWN,
-  ...ADDED,
-  ...withoutDropped(vscodeKeymap),
-  ...historyKeymap,
-  ...defaultKeymap,
-]);
+const FALLTHROUGH: { keybinding: number; edit: MarkdownEdit; handler: string; payload?: unknown }[] = [
+  { keybinding: KeyCode.Tab, edit: indentList, handler: 'tab' },
+  { keybinding: KeyMod.Shift | KeyCode.Tab, edit: outdentList, handler: 'outdent' },
+  // F-EDIT-09 / F-EDIT-10。既定は「前の行のインデントを継ぐ改行」（`autoIndent: 'keep'`）。
+  { keybinding: KeyCode.Enter, edit: continueList, handler: 'type', payload: { text: '\n' } },
+  { keybinding: KeyCode.Backspace, edit: deleteMarkupBackward, handler: 'deleteLeft' },
+];
+
+/** `editor.addCommand` に渡す実行体。`source` は Undo の履歴に残る名前。 */
+function commandFor(editor: monaco.editor.IStandaloneCodeEditor, edit: MarkdownEdit, source: string): () => void {
+  return () => {
+    runEdit(editor, edit, source);
+  };
+}
+
+/**
+ * キーを載せる。**`mountEditor` から 1 回だけ呼ぶ。**
+ *
+ * `addKeybindingRules` はグローバル（エディタごとではない）だが、
+ * エディタは 1 つしか作らないので問題にならない（`editor.ts`）。
+ */
+export function installEditorKeymap(editor: monaco.editor.IStandaloneCodeEditor): void {
+  monaco.editor.addKeybindingRules(REMOVED.map(({ keybinding }) => ({ keybinding, command: null })));
+
+  for (const { keybinding, edit } of MARKDOWN) {
+    editor.addCommand(keybinding, commandFor(editor, edit, 'markdown.format'));
+  }
+
+  for (const { keybinding, edit, handler, payload } of FALLTHROUGH) {
+    editor.addCommand(keybinding, () => {
+      if (runEdit(editor, edit, 'markdown.list')) return;
+      editor.trigger(KEYBOARD_SOURCE, handler, payload ?? null);
+    });
+  }
+}

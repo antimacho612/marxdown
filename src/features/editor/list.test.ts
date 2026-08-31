@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 /**
  * リストのインデントの回帰テスト（F-EDIT-09 の `Tab` / `Shift+Tab`）。
  *
@@ -8,12 +9,11 @@
  * したがって「何も起きない」ではなく **「次のバインドへ渡した」ことを確かめる**
  * 必要があり、`run` は手を引いたときだけ `null` を返す。
  *
- * # `Enter` の継続入力はここには無い
+ * # `Enter` の継続入力は隣（`enter.test.ts`）
  *
- * F-EDIT-09 の `Enter` と F-EDIT-10（自動採番）は
- * `@codemirror/lang-markdown` が持っている（`list.ts` のモジュールコメント）。
- * **自分で書いていないものをここでテストしない。** 効いていることは
- * E2E（`e2e/specs/edit.e2e.ts`）が通しで確かめる。
+ * F-EDIT-09 の `Enter` と F-EDIT-10（自動採番）は、CodeMirror では
+ * `@codemirror/lang-markdown` が持っていたのでテストしていなかった。
+ * **Monaco では自作なので、`enter.test.ts` で見ている**（ADR-0009）。
  */
 import { describe, expect, it } from 'vitest';
 
@@ -62,9 +62,9 @@ describe('Tab / Shift+Tab (F-EDIT-09)', () => {
   });
 
   it('選択した行をまとめて動かす', () => {
-    // 選択の先頭が入れた空白の後ろへ動くのは、行頭ちょうどに入れたときの
-    // CodeMirror の既定。選択は 2 行に触れたままなので、続けて押せる。
-    expect(run(indentList, '|- a\n- b|')).toBe('  |- a\n  - b|');
+    // 選択の先頭は動かず、入れた空白を含む形になる（行頭ちょうどに入れたとき、
+    // Monaco は選択の先頭を押し出さない / ADR-0009）。選択は 2 行に触れたままなので、続けて押せる。
+    expect(run(indentList, '|- a\n- b|')).toBe('|  - a\n  - b|');
   });
 
   /** リストでない場所の `Tab` は `indentMore` に渡す（`keymap.ts` の並び順）。 */

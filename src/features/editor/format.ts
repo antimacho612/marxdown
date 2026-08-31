@@ -23,11 +23,12 @@
  *
  * # テキストへ書き戻す経路ではない
  *
- * ここが触るのは **CodeMirror のドキュメント（＝ Markdown テキストそのもの）**であって、
+ * ここが触るのは **Monaco のモデル（＝ Markdown テキストそのもの）**であって、
  * AST でも DOM でもない（ADR-0002）。書式コマンドは「ユーザーが手で打つはずだった
  * 文字列を代わりに打つ」だけの操作で、それ以外の場所のバイト列には触れない（N-CMP-03）。
  */
-import { EditorSelection, type ChangeSpec, type EditorState, type StateCommand } from '@codemirror/state';
+import { byRange, lineInfo, offsetRange, offsetsOf, selectedLines, textAt, type MarkdownEdit } from './edits';
+import type { monaco } from './monaco';
 
 /* ------------------------------------------------------------------ */
 /* インラインの囲み（太字 / 斜体 / 取り消し線 / インラインコード）        */
@@ -58,16 +59,18 @@ const STRIKETHROUGH: Wrap = { marker: '~~', present: (run) => run >= 2 };
 const CODE: Wrap = { marker: '`', present: (run) => run === 1 };
 
 /** `pos` の手前に何文字 `char` が続いているか。 */
-function runBefore(state: EditorState, pos: number, char: string, limit: number): number {
+function runBefore(model: monaco.editor.ITextModel, pos: number, char: string, limit: number): number {
+  const text = textAt(model, pos - limit, pos);
   let run = 0;
-  while (run < limit && pos > run && state.sliceDoc(pos - run - 1, pos - run) === char) run++;
+  while (run < text.length && text.at(-1 - run) === char) run++;
   return run;
 }
 
 /** `pos` の直後に何文字 `char` が続いているか。 */
-function runAfter(state: EditorState, pos: number, char: string, limit: number): number {
+function runAfter(model: monaco.editor.ITextModel, pos: number, char: string, limit: number): number {
+  const text = textAt(model, pos, pos + limit);
   let run = 0;
-  while (run < limit && pos + run < state.doc.length && state.sliceDoc(pos + run, pos + run + 1) === char) run++;
+  while (run < text.length && text[run] === char) run++;
   return run;
 }
 
@@ -78,60 +81,52 @@ function runAfter(state: EditorState, pos: number, char: string, limit: number):
  * §5 の「選択なし」に従って記号が挿入される。語の範囲を推測して外すのは
  * 一見親切だが、**どこまでが対象か押す前に読めない**（Principle 3）。
  */
-function toggleWrap({ marker, present }: Wrap): StateCommand {
+function toggleWrap({ marker, present }: Wrap): MarkdownEdit {
   const char = marker[0] ?? '';
   const width = marker.length;
 
-  return ({ state, dispatch }) => {
-    if (state.readOnly) return false;
-
-    const spec = state.changeByRange((range) => {
-      const length = range.to - range.from;
+  return (model, selections) =>
+    byRange(model, selections, ({ from, to, empty }) => {
+      const length = to - from;
 
       // 1. 記号ごと選んでいる（`**word**` を選択して Ctrl+B）
       if (length >= width * 2) {
         const inner = Math.floor(length / 2);
-        const left = runAfter(state, range.from, char, inner);
-        const right = runBefore(state, range.to, char, inner);
+        const left = runAfter(model, from, char, inner);
+        const right = runBefore(model, to, char, inner);
         if (present(left) && present(right)) {
           return {
-            changes: [
-              { from: range.from, to: range.from + width },
-              { from: range.to - width, to: range.to },
+            edits: [
+              { from, to: from + width, text: '' },
+              { from: to - width, to, text: '' },
             ],
-            range: EditorSelection.range(range.from, range.to - width * 2),
+            select: { from, to: to - width * 2 },
           };
         }
       }
 
       // 2. 中身だけ選んでいる（`**word**` の `word` を選択して Ctrl+B）
-      const outerLeft = runBefore(state, range.from, char, width);
-      const outerRight = runAfter(state, range.to, char, width);
+      const outerLeft = runBefore(model, from, char, width);
+      const outerRight = runAfter(model, to, char, width);
       if (present(outerLeft) && present(outerRight) && outerLeft >= width && outerRight >= width) {
         return {
-          changes: [
-            { from: range.from - width, to: range.from },
-            { from: range.to, to: range.to + width },
+          edits: [
+            { from: from - width, to: from, text: '' },
+            { from: to, to: to + width, text: '' },
           ],
-          range: EditorSelection.range(range.from - width, range.to - width),
+          select: { from: from - width, to: to - width },
         };
       }
 
       // 3. 囲む。選択が無ければ記号だけを入れて、あいだにカーソルを置く（§5）
       return {
-        changes: [
-          { from: range.from, insert: marker },
-          { from: range.to, insert: marker },
+        edits: [
+          { from, to: from, text: marker },
+          { from: to, to, text: marker },
         ],
-        range: range.empty
-          ? EditorSelection.cursor(range.from + width)
-          : EditorSelection.range(range.from + width, range.to + width),
+        select: empty ? { from: from + width, to: from + width } : { from: from + width, to: to + width },
       };
     });
-
-    dispatch(state.update(spec, { scrollIntoView: true, userEvent: 'input.format' }));
-    return true;
-  };
 }
 
 export const toggleBold = toggleWrap(BOLD);
@@ -152,21 +147,16 @@ export const toggleInlineCode = toggleWrap(CODE);
  *
  * URL を**貼る**ほうは `paste.ts`（F-EDIT-12）。こちらは「いま無い URL を打つ」経路。
  */
-export const insertLink: StateCommand = ({ state, dispatch }) => {
-  if (state.readOnly) return false;
-
-  const spec = state.changeByRange((range) => {
-    const text = state.sliceDoc(range.from, range.to);
+export const insertLink: MarkdownEdit = (model, selections) =>
+  byRange(model, selections, ({ from, to, empty }) => {
+    const text = textAt(model, from, to);
+    const at = from + (empty ? 1 : text.length + 3);
     return {
-      changes: { from: range.from, to: range.to, insert: `[${text}]()` },
+      edits: [{ from, to, text: `[${text}]()` }],
       // 選択あり → `()` の中（URL を打つ） / 選択なし → `[]` の中（文字を打つ）
-      range: EditorSelection.cursor(range.from + (range.empty ? 1 : text.length + 3)),
+      select: { from: at, to: at },
     };
   });
-
-  dispatch(state.update(spec, { scrollIntoView: true, userEvent: 'input.format' }));
-  return true;
-};
 
 /* ------------------------------------------------------------------ */
 /* 行の頭に付くもの（見出し / 引用 / リスト）                            */
@@ -181,24 +171,6 @@ const ORDERED = /^(\s*)\d+[.)] +/;
 const QUOTE = /^(\s*)> ?/;
 const HEADING = /^(\s*)#{1,6} +/;
 
-/** 選択が触れているすべての行。複数カーソルでも 1 行を二度数えない。 */
-function selectedLines(state: EditorState): { from: number; to: number; text: string }[] {
-  const lines: { from: number; to: number; text: string }[] = [];
-  let last = 0;
-
-  for (const range of state.selection.ranges) {
-    const first = state.doc.lineAt(range.from).number;
-    const final = state.doc.lineAt(range.to).number;
-    for (let n = Math.max(first, last + 1); n <= final; n++) {
-      const line = state.doc.line(n);
-      lines.push({ from: line.from, to: line.to, text: line.text });
-      last = n;
-    }
-  }
-
-  return lines;
-}
-
 /** いま行頭に付いている記法の長さ。無ければ 0。 */
 function prefixLength(text: string, pattern: RegExp): number {
   return pattern.exec(text)?.[0].length ?? 0;
@@ -212,30 +184,30 @@ function prefixLength(text: string, pattern: RegExp): number {
  *
  * # 行まるごとを置き換えてはいけない
  *
- * `{ from: line.from, to: line.to }` で丸ごと差し替えると、**行の中に居た
- * カーソルが行頭へ飛ぶ**（CodeMirror は置換された範囲の中の位置を先頭へ寄せる）。
+ * 行を丸ごと差し替えると、**行の中に居たカーソルが行頭へ飛ぶ**。
  * 打っている途中に `Ctrl+Shift+L` を押すと入力位置を見失うことになるので、
  * **変えるのは記法の部分だけ**にして、本文には触らない。
  *
- * 1 行も変わらなければ `false` を返す。**キーを握り潰さない**ためで、
- * 呼び出し側（キーマップ）は次のバインドへ処理を渡せる。
+ * 選択範囲は指定しない。**Monaco が編集を通して移動させる**ので、
+ * 記法の部分だけを触っているかぎりカーソルは本文の同じ場所に残る。
+ *
+ * 1 行も変わらなければ `null` を返す。**キーを握り潰さない**ためで、
+ * 呼び出し側（キーマップ）は既定の動作へ処理を渡せる。
  */
-function lineCommand(build: (line: { from: number; text: string }, index: number) => ChangeSpec | null): StateCommand {
-  return ({ state, dispatch }) => {
-    if (state.readOnly) return false;
-
-    const lines = selectedLines(state);
-    const changes: ChangeSpec[] = [];
+function lineCommand(
+  build: (line: { from: number; text: string }, index: number) => { from: number; to: number; text: string } | null,
+): MarkdownEdit {
+  return (model, selections) => {
+    const lines = selectedLines(model, selections);
+    const edits: monaco.editor.IIdentifiedSingleEditOperation[] = [];
 
     for (const [index, line] of lines.entries()) {
       const change = build(line, index);
-      if (change !== null) changes.push(change);
+      if (change !== null) edits.push({ range: offsetRange(model, change.from, change.to), text: change.text });
     }
 
-    if (changes.length === 0) return false;
-
-    dispatch(state.update({ changes, scrollIntoView: true, userEvent: 'input.format' }));
-    return true;
+    if (edits.length === 0) return null;
+    return { edits };
   };
 }
 
@@ -263,16 +235,14 @@ function stripMarkers(text: string): { indent: string; body: string } {
  * 全部が既にその記法なら外し、1 行でも違えば全部に付ける。行ごとにトグルすると、
  * 押した結果が選択の中身に依存して読めなくなる（Principle 3）。
  */
-function toggleLinePrefix(pattern: RegExp, prefixOf: (index: number) => string): StateCommand {
-  return ({ state, dispatch }) => {
-    if (state.readOnly) return false;
-
-    const lines = selectedLines(state);
-    if (lines.length === 0) return false;
+function toggleLinePrefix(pattern: RegExp, prefixOf: (index: number) => string): MarkdownEdit {
+  return (model, selections) => {
+    const lines = selectedLines(model, selections);
+    if (lines.length === 0) return null;
 
     // 全部が既にその記法なら外す。1 行でも違えば全部に付ける。
     const remove = lines.every((line) => pattern.test(line.text));
-    const changes: ChangeSpec[] = [];
+    const edits: monaco.editor.IIdentifiedSingleEditOperation[] = [];
 
     for (const [index, line] of lines.entries()) {
       const { indent, body } = stripMarkers(line.text);
@@ -280,13 +250,11 @@ function toggleLinePrefix(pattern: RegExp, prefixOf: (index: number) => string):
       const to = line.from + line.text.length - body.length;
       const insert = remove ? indent : indent + prefixOf(index);
       if (insert === line.text.slice(0, to - line.from)) continue;
-      changes.push({ from: line.from, to, insert });
+      edits.push({ range: offsetRange(model, line.from, to), text: insert });
     }
 
-    if (changes.length === 0) return false;
-
-    dispatch(state.update({ changes, scrollIntoView: true, userEvent: 'input.format' }));
-    return true;
+    if (edits.length === 0) return null;
+    return { edits };
   };
 }
 
@@ -309,7 +277,7 @@ export const toggleBlockquote = toggleLinePrefix(QUOTE, () => '> ');
  * **1〜6 はトグルではなく設定。** 同じレベルをもう一度押しても見出しのまま。
  * 「`Ctrl+Alt+2` を押したら必ず `##` になる」ほうが、押す前に結果を読める。
  */
-export function setHeading(level: number): StateCommand {
+export function setHeading(level: number): MarkdownEdit {
   return lineCommand((line) => {
     const { indent, body } = stripMarkers(line.text);
     if (body === '') return null;
@@ -317,7 +285,7 @@ export function setHeading(level: number): StateCommand {
     const to = line.from + line.text.length - body.length;
     const insert = level === 0 ? indent : `${indent}${'#'.repeat(level)} `;
     if (insert === line.text.slice(0, to - line.from)) return null;
-    return { from: line.from, to, insert };
+    return { from: line.from, to, text: insert };
   });
 }
 
@@ -333,7 +301,7 @@ export const toggleTaskCheck = lineCommand((line) => {
 
   // **1 文字だけ差し替える。** チェックの切替で行の他の場所が変わる理由が無い。
   const at = line.from + (matched[1]?.length ?? 0);
-  return { from: at, to: at + 1, insert: matched[2] === ' ' ? 'x' : ' ' };
+  return { from: at, to: at + 1, text: matched[2] === ' ' ? 'x' : ' ' };
 });
 
 /* ------------------------------------------------------------------ */
@@ -348,52 +316,42 @@ const FENCE = '```';
  * 選択の**前後の行**がフェンスならほどき、そうでなければ囲む。
  * 選択が無ければ空のフェンスを入れて、あいだにカーソルを置く。
  */
-export const toggleCodeBlock: StateCommand = ({ state, dispatch }) => {
-  if (state.readOnly) return false;
+export const toggleCodeBlock: MarkdownEdit = (model, selections) => {
+  const main = selections[0];
+  if (!main) return null;
 
-  const main = state.selection.main;
-  const first = state.doc.lineAt(main.from);
-  const last = state.doc.lineAt(main.to);
+  const { from, to, empty } = offsetsOf(model, main);
+  const first = lineInfo(model, main.startLineNumber);
+  const last = lineInfo(model, main.endLineNumber);
+  const lastEnd = last.from + last.text.length;
 
   // ほどく: 選択の 1 つ外側がフェンスで挟まれている
-  const above = first.number > 1 ? state.doc.line(first.number - 1) : null;
-  const below = last.number < state.doc.lines ? state.doc.line(last.number + 1) : null;
+  const above = first.number > 1 ? lineInfo(model, first.number - 1) : null;
+  const below = last.number < model.getLineCount() ? lineInfo(model, last.number + 1) : null;
   if (above?.text.startsWith(FENCE) === true && below?.text.startsWith(FENCE) === true) {
-    dispatch(
-      state.update({
-        changes: [
-          { from: above.from, to: first.from },
-          { from: last.to, to: below.to },
-        ],
-        scrollIntoView: true,
-        userEvent: 'delete.format',
-      }),
-    );
-    return true;
+    return {
+      edits: [
+        { range: offsetRange(model, above.from, first.from), text: '' },
+        { range: offsetRange(model, lastEnd, below.from + below.text.length), text: '' },
+      ],
+    };
   }
 
   // 空行にカーソルを置いただけなら、空のブロックを入れて中へ運ぶ
-  if (main.empty && first.text === '') {
-    dispatch(
-      state.update({
-        changes: { from: first.from, insert: `${FENCE}\n\n${FENCE}` },
-        selection: EditorSelection.cursor(first.from + FENCE.length + 1),
-        scrollIntoView: true,
-        userEvent: 'input.format',
-      }),
-    );
-    return true;
+  if (empty && first.text === '') {
+    const at = first.from + FENCE.length + 1;
+    return {
+      edits: [{ range: offsetRange(model, first.from, first.from), text: `${FENCE}\n\n${FENCE}` }],
+      selectionOffsets: [{ from: at, to: at }],
+    };
   }
 
-  dispatch(
-    state.update({
-      changes: [
-        { from: first.from, insert: `${FENCE}\n` },
-        { from: last.to, insert: `\n${FENCE}` },
-      ],
-      scrollIntoView: true,
-      userEvent: 'input.format',
-    }),
-  );
-  return true;
+  return {
+    edits: [
+      { range: offsetRange(model, first.from, first.from), text: `${FENCE}\n` },
+      { range: offsetRange(model, lastEnd, lastEnd), text: `\n${FENCE}` },
+    ],
+    // 囲んだぶん、選択は 1 行ぶん（フェンスと改行）だけ後ろへ動く。
+    selectionOffsets: [{ from: from + FENCE.length + 1, to: to + FENCE.length + 1 }],
+  };
 };
