@@ -1,9 +1,6 @@
 /**
  * アプリシェルのレイアウトと、コンポーネントを持たない部品のスタイル。
  *
- * body 自体を 3 行の grid にし、Svelte のマウント先は display: contents でその grid にクロームだけを差し込む。
- * 本文（.mx-preview）はコンポーネントの外にあり、同じ grid のセル 2 を占める。
- *
  * ○ ここに置く: ① grid そのもの（本文とクロームが共有するので、どちらのコンポーネントにも属さない）
  *               ② DOM を手続き的に組み立てる機能（例: プレビュー内検索・ドラッグ中の表示）のスタイル（Svelte が描かない要素には scoped なクラスが付かない）
  *               ③ 要素セレクタ（`kbd`）。特定のコンポーネントの持ち物ではない
@@ -12,7 +9,13 @@
 
 body {
   display: grid;
-  /* 行番号ではなく名前で置く。番号で書いてあると、列が増えた瞬間にすべてのコンポーネントを直して回ることになる。名前なら grid の定義だけを差し替えればよい。 */
+  /*
+   * body 自体を 3 行の grid にし、Svelte のマウント先は display: contents でその grid にクロームだけを差し込む。
+   * 本文（.mx-preview）はコンポーネントの外にあり、同じ grid のセル 2 を占める。
+   *
+   * 行番号ではなく名前で置く。番号で書いてあると、列が増えた瞬間にすべてのコンポーネントを直して回ることになる。
+   * 名前なら grid の定義だけを差し替えればよい。
+   */
   grid-template-areas:
     'titlebar titlebar titlebar'
     'leftpane main rightpane'
@@ -59,9 +62,10 @@ body {
     /* 列を 2 つ増やすだけ。変わるのは grid-template-areas の定義と .mx-preview / .mx-editor の行き先だけで、要素の付け外しは無い（EditorView を壊さない）。 */
     /* 分割比は fr の値そのものを変数で受け取る（features/view/split.ts が 0.3fr のような単位まで含んだ文字列を入れる）。ピクセルで持つと、ウィンドウの大きさやペインの開閉で左右の比が変わってしまう。 */
     /* minmax(0, ...) を被せてあるのは、grid の既定の最小幅（auto = 中身の最小幅）が fr の指定を押しのけるため。エディタの長い行が比を無視して列を広げる。 */
-    grid-template-columns:
-      auto minmax(0, var(--mx-split-editor, 1fr)) var(--mx-split-divider) minmax(0, var(--mx-split-preview, 1fr))
-      auto;
+    grid-template-columns: auto minmax(0, var(--mx-split-editor, 1fr)) var(--mx-split-divider) minmax(
+        0,
+        var(--mx-split-preview, 1fr)
+      ) auto;
     grid-template-areas:
       'titlebar titlebar titlebar titlebar titlebar'
       'leftpane editor divider preview rightpane'
