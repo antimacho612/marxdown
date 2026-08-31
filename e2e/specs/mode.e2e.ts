@@ -8,7 +8,7 @@
  */
 import { Key } from 'webdriverio';
 
-import { openViaForward } from '../helpers/app';
+import { editorContentText, mountedEditorCount, openViaForward, waitForEditorMounted } from '../helpers/app';
 import { WORK_DOC } from '../helpers/fixtures';
 
 /** `bindKeys` は `globalThis` の keydown を見る（`src/lib/shortcuts.ts`）。 */
@@ -29,7 +29,7 @@ describe('Preview と Edit を行き来する', () => {
     // 既定が Preview であることが `editor` チャンクを分ける境界そのもの
     // （02.architecture/05-startup-sequence.md §1 の要点 3）。
     expect(await mode()).toBe('preview');
-    expect(await browser.execute(() => document.querySelectorAll('.cm-editor').length)).toBe(0);
+    expect(await mountedEditorCount()).toBe(0);
   });
 
   it('Ctrl+Shift+V で Edit に入り、CodeMirror が載る', async () => {
@@ -41,14 +41,11 @@ describe('Preview と Edit を行き来する', () => {
     });
 
     // 遅延チャンクの取得と評価を待つ。ここが失敗するなら分割が壊れている。
-    await browser.waitUntil(() => browser.execute(() => document.querySelectorAll('.cm-editor').length === 1), {
-      timeout: 20_000,
-      timeoutMsg: 'エディタが載らなかった',
-    });
+    await waitForEditorMounted();
   });
 
   it('エディタに読み込んだ本文が入っている', async () => {
-    const text = await browser.execute(() => document.querySelector('.cm-content')?.textContent ?? '');
+    const text = await editorContentText();
     expect(text).toContain('本文です。');
   });
 
@@ -65,6 +62,6 @@ describe('Preview と Edit を行き来する', () => {
       timeoutMsg: 'Preview へ戻らなかった',
     });
 
-    expect(await browser.execute(() => document.querySelectorAll('.cm-editor').length)).toBe(1);
+    expect(await mountedEditorCount()).toBe(1);
   });
 });

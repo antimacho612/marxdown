@@ -22,13 +22,8 @@
  */
 import { Key } from 'webdriverio';
 
-import { editorText, enterEditMode, openViaForward } from '../helpers/app';
+import { editorText, enterEditMode, focusEditorSurface, isSearchPanelOpen, openViaForward } from '../helpers/app';
 import { WORK_DOC } from '../helpers/fixtures';
-
-/** 検索・置換パネル（`@codemirror/search`）が出ているか。 */
-async function searchPanelOpen(): Promise<boolean> {
-  return browser.execute(() => document.querySelectorAll('.cm-panel.cm-search').length === 1);
-}
 
 /** いまフォーカスがある入力欄の `name`。パネルのどの欄に居るかを見る。 */
 async function focusedFieldName(): Promise<string> {
@@ -58,7 +53,7 @@ before(async () => {
   await openViaForward(WORK_DOC, '本文です。');
   await enterEditMode();
   // 行操作は「どの行に居るか」で結果が変わる。毎回ここから始める。
-  await $('.cm-content').click();
+  await focusEditorSurface();
   await browser.keys([Key.Control, Key.Home]);
 });
 
@@ -110,7 +105,7 @@ describe('検索と置換 (F-EDIT-05)', () => {
     // （`features/view/find.ts`）。ここは Edit なのでエディタ側。
     await browser.keys([Key.Control, 'f']);
 
-    await browser.waitUntil(() => searchPanelOpen(), {
+    await browser.waitUntil(() => isSearchPanelOpen(), {
       timeout: 10_000,
       timeoutMsg: 'エディタの検索パネルが開かなかった',
     });
@@ -133,7 +128,7 @@ describe('検索と置換 (F-EDIT-05)', () => {
   it('置換欄に居るまま Escape で閉じられる', async () => {
     await browser.keys([Key.Escape]);
 
-    await browser.waitUntil(async () => !(await searchPanelOpen()), {
+    await browser.waitUntil(async () => !(await isSearchPanelOpen()), {
       timeout: 10_000,
       timeoutMsg: 'Escape でパネルが閉じなかった',
     });
@@ -201,7 +196,7 @@ describe('Markdown 書式 (F-EDIT-08)', () => {
   before(async () => {
     // **先に編集面へフォーカスを戻す。** 直前の describe は検索パネルを
     // 触っており、フォーカスがエディタから外れたままになっている。
-    await $('.cm-content').click();
+    await focusEditorSurface();
     await browser.keys([Key.Control, 'a']);
     await browser.keys('書式の確認');
   });
@@ -255,7 +250,7 @@ describe('Markdown 書式 (F-EDIT-08)', () => {
  */
 describe('リストの継続入力 (F-EDIT-09, 10)', () => {
   before(async () => {
-    await $('.cm-content').click();
+    await focusEditorSurface();
     await browser.keys([Key.Control, 'a']);
     await browser.keys('1. a');
   });

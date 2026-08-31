@@ -2,83 +2,41 @@
  * 書式コマンドをテストから回すための道具
  * （`src/features/editor/format.test.ts` / `list.test.ts`）。
  *
- * **`src/` の外に置いてある。** `src/features/editor/` に置くと、
- * `vite.config.ts` の `chunkFileNames` が `editor` チャンクの一部として扱う。
- * 実際にバンドルされることは無い（誰も import しない）が、
- * 予算を見張る対象の中にテスト専用のコードを置かない。
- *
- * # なぜ `|` で書くのか
- *
- * 書式コマンドの正しさは**「どの文字が入ったか」と「カーソルがどこへ行ったか」の
- * 両方**で決まる。位置を数値で書くと、期待値が読めなくなる。
+ * # 2 つに割ってある
  *
  * ```text
- * '- a|'          カーソルが `a` の後ろ
- * '|word|'        `word` を選択
+ * marks.ts            `|` 記法の読み書き。エンジンを知らない
+ * editor-harness.ts   コマンドを 1 回流すアダプタ。ここだけがエンジンを知る
  * ```
  *
- * `|` は 1 つならカーソル、2 つなら選択範囲。入力も期待値も同じ書き方になる。
+ * **エンジンを差し替えるときに書き直すのはこのファイルだけになる**
+ * （[ADR-0009](../docs/adr/0009-editor-engine-monaco.md) / M2 Phase 8）。
+ * テスト本体（`run` / `runAt` の呼び出しと `|` の期待値）は 1 行も変わらない。
+ *
+ * # なぜ `EditorState` を直接触るのか
+ *
+ * 書式コマンドは**純粋なテキスト操作**で、DOM も IPC も要らない。
+ * CodeMirror は状態を DOM から切り離して持てるので、`EditorView` を作らずに
+ * コマンドを流せる。**これは CodeMirror の性質であって、要件ではない。**
+ * 同じことができないエンジンでは、ここをモデルの生成に置き換える。
  */
 import { EditorSelection, EditorState, type StateCommand } from '@codemirror/state';
 
-/** `|` を取り除き、位置に変換する。 */
-export function parse(source: string): { doc: string; selection: EditorSelection } {
-  const positions: number[] = [];
-  let doc = '';
+import { parseMarks, printMarks, type MarkedRange } from './marks';
 
-  for (const char of source) {
-    if (char === '|') positions.push(doc.length);
-    else doc += char;
-  }
-
-  const [first, second] = positions;
-  if (first === undefined) return { doc, selection: EditorSelection.single(0) };
-
-  return {
-    doc,
-    selection: second === undefined ? EditorSelection.single(first) : EditorSelection.single(first, second),
-  };
+function toSelection(ranges: readonly MarkedRange[]): EditorSelection {
+  return EditorSelection.create(ranges.map((range) => EditorSelection.range(range.from, range.to)));
 }
 
-/** カーソルと選択範囲を `|` に戻す。 */
-export function print(state: EditorState): string {
-  const doc = state.doc.toString();
-  const marks = state.selection.ranges
-    .flatMap((range) => (range.empty ? [range.head] : [range.from, range.to]))
-    .toSorted((a, b) => b - a);
-
-  let out = doc;
-  for (const at of marks) out = `${out.slice(0, at)}|${out.slice(at)}`;
-  return out;
+function toMarkedRanges(state: EditorState): MarkedRange[] {
+  return state.selection.ranges.map((range) => ({ from: range.from, to: range.to }));
 }
 
-/**
- * コマンドを 1 回流す。**手を引いた（`false` を返した）ときは `null`。**
- *
- * `Enter` と `Tab` は「リストでなければ既定の動作へ渡す」ことが要件なので、
- * 手を引いたことと、何も起きなかったことを取り違えられない形にしてある。
- */
-export function run(command: StateCommand, source: string): string | null {
-  const { doc, selection } = parse(source);
-  const state = EditorState.create({ doc, selection });
-
-  let next: EditorState | undefined;
-  const handled = command({
-    state,
-    dispatch: (transaction) => {
-      next = transaction.state;
-    },
-  });
-
-  if (!handled || !next) return null;
-  return print(next);
-}
-
-/** 複数カーソルで流す。位置は `doc` に対する数値で渡す。 */
-export function runAt(command: StateCommand, doc: string, ranges: number[][]): string | null {
+/** 状態を作ってコマンドを 1 回流す。**手を引いたら `undefined`。** */
+function apply(command: StateCommand, doc: string, ranges: readonly MarkedRange[]): EditorState | undefined {
   const state = EditorState.create({
     doc,
-    selection: EditorSelection.create(ranges.map(([from, to]) => EditorSelection.range(from ?? 0, to ?? from ?? 0))),
+    selection: toSelection(ranges),
     extensions: [EditorState.allowMultipleSelections.of(true)],
   });
 
@@ -90,6 +48,28 @@ export function runAt(command: StateCommand, doc: string, ranges: number[][]): s
     },
   });
 
-  if (!handled || !next) return null;
-  return print(next);
+  return handled ? next : undefined;
+}
+
+/**
+ * コマンドを 1 回流す。**手を引いた（`false` を返した）ときは `null`。**
+ *
+ * `Enter` と `Tab` は「リストでなければ既定の動作へ渡す」ことが要件なので、
+ * 手を引いたことと、何も起きなかったことを取り違えられない形にしてある。
+ */
+export function run(command: StateCommand, source: string): string | null {
+  const { doc, ranges } = parseMarks(source);
+  const next = apply(command, doc, ranges);
+
+  if (!next) return null;
+  return printMarks(next.doc.toString(), toMarkedRanges(next));
+}
+
+/** 複数カーソルで流す。位置は `doc` に対する数値で渡す。 */
+export function runAt(command: StateCommand, doc: string, ranges: number[][]): string | null {
+  const marked = ranges.map(([from, to]) => ({ from: from ?? 0, to: to ?? from ?? 0 }));
+  const next = apply(command, doc, marked);
+
+  if (!next) return null;
+  return printMarks(next.doc.toString(), toMarkedRanges(next));
 }
