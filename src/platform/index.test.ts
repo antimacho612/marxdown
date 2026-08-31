@@ -30,6 +30,7 @@ describe('getPlatform', () => {
       'pushRecent',
       'removeRecent',
       'setZoom',
+      'setSplit',
       'pickFile',
       'pickSavePath',
       'setDirty',

@@ -48,6 +48,9 @@ pub struct Bootstrap {
     /// **倍率と同じ理由でここに載る。** 後から当てると、本文が一度全幅で描かれてから
     /// 横に詰まる（02.architecture/04-rust-responsibilities.md §5「`panes` と `zoom` は bootstrap に載せる」）。
     pub panes: Panes,
+    /// Split の分割比（03.ux-spec/03-split-mode.md §1）。**倍率・ペインと同じ理由でここに載る。**
+    /// 後から当てると、Split で開いたときに 50:50 で一度描かれてから寄る。
+    pub split: f64,
     /// ユーザー設定の**全体**（F-CONF-03 / 02.architecture/04-rust-responsibilities.md §5）。
     ///
     /// 「どの設定が初回フレームに間に合う必要があるか」を毎回考えなくて済むよう、
@@ -149,6 +152,7 @@ pub fn build(
         recent: store.recent.clone(),
         zoom: store.zoom,
         panes: store.panes,
+        split: store.split,
         settings: settings.values.clone(),
         settings_error: settings.broken.clone(),
         custom_css,

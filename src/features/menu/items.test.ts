@@ -73,6 +73,7 @@ describe('ハンバーガーメニューの項目 (03.ux-spec/01-screen-layout.m
       'save',
       'save-as',
       'mode',
+      'split',
       'reload',
       'search',
       'outline',

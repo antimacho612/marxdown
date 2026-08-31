@@ -130,6 +130,8 @@
   /* --- レイアウト ------------------------------------------------------ */
   --mx-titlebar-height: 34px;
   --mx-statusbar-height: 24px;
+  /* Split の分割線（03.ux-spec/03-split-mode.md §1）。掴める幅はこれより広い（shell.css） */
+  --mx-split-divider: 1px;
 
   /*
    * ウィンドウ操作ボタン 1 つぶんの幅（03.ux-spec/01-screen-layout.md §1）。

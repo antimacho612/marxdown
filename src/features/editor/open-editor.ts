@@ -43,3 +43,14 @@ export async function openEditorSearchLazily(replace: boolean): Promise<void> {
   const { openEditorSearch } = await import('./editor');
   openEditorSearch(replace);
 }
+
+/**
+ * Split のスクロール同期を始める / やめる（F-MODE-05 / `features/view/mode.ts` が呼ぶ）。
+ *
+ * **やめる側もこの入口を通す。** `mode.ts` から `./editor` を import すると、
+ * Preview だけで読んでいる起動でも `editor` チャンクが落ちてくる。
+ */
+export async function setSplitSyncLazily(on: boolean): Promise<void> {
+  const { setSplitSync } = await import('./editor');
+  setSplitSync(on);
+}

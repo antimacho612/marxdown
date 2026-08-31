@@ -29,13 +29,14 @@ import { configureOpener, openDocument, openDropped, openPath } from '@/features
 import { saveThenQuit } from '@/features/document/save';
 import { documentStore } from '@/features/document/store.svelte';
 import { installFileWatch } from '@/features/document/watch';
-import { mountEditorLazily, preloadEditor } from '@/features/editor/open-editor';
+import { mountEditorLazily, preloadEditor, setSplitSyncLazily } from '@/features/editor/open-editor';
 import { initPanes } from '@/features/panes/panes';
 import { installLinkHandler } from '@/features/preview/links';
 import { applyZoom } from '@/features/preview/zoom';
 import { applyCustomCss } from '@/features/settings/custom-css';
 import { initSettings, installSettingsWatch, reportSettingsProblem } from '@/features/settings/store.svelte';
 import { decideInitialMode, initMode } from '@/features/view/mode';
+import { initSplit } from '@/features/view/split';
 import { viewStore } from '@/features/view/store.svelte';
 import { recentStore } from '@/features/workspace/recent.svelte';
 import { ja } from '@/i18n/ja';
@@ -87,6 +88,9 @@ export async function startup(renderShell: () => void): Promise<void> {
   // シェルの描画は本文の paint より前（`betweenParseAndPaint`）なので、
   // **全幅の本文が 1 フレームでも画面に出ることは無い。**
   initPanes(bootstrap);
+  // Split の分割比も同じ理由でここ（03.ux-spec/03-split-mode.md §1）。
+  // 後から当てると、`--mode split` で開いたときに 50:50 で一度描かれてから寄る。
+  initSplit(bootstrap);
 
   // 設定も同じ理由でここ。bootstrap に丸ごと載っているので IPC 往復は無い
   // （02.architecture/04-rust-responsibilities.md §5 / 02.architecture/05-startup-sequence.md §1）。テーマ・フォント・本文幅は
@@ -222,7 +226,10 @@ export async function startup(renderShell: () => void): Promise<void> {
  */
 function installInitialEditor(): void {
   if (viewStore.mode !== 'preview') {
-    void mountEditorLazily();
+    // `--mode split` で起動した場合は同期も始める。`setMode` を通らない経路なので、
+    // ここで面倒を見ないと「Split で開いたときだけ追随しない」ことになる。
+    const split = viewStore.mode === 'split';
+    void mountEditorLazily().then(() => (split ? setSplitSyncLazily(true) : undefined));
     return;
   }
   requestIdle(() => void preloadEditor());

@@ -81,6 +81,83 @@ body {
 }
 
 /*
+ * # Split（F-MODE-03 / 03.ux-spec/03-split-mode.md §1）
+ *
+ * ```text
+ * ├────────────┬───────────┬─┬───────────┬─────────────┤
+ * │ leftpane   │ editor    │▏│ preview   │ rightpane   │
+ * ```
+ *
+ * **列を 2 つ増やすだけ。** 上のコメントが予告していたとおり、変わるのは
+ * `grid-template-areas` の定義と `.mx-preview` / `.mx-editor` の行き先だけで、
+ * 要素の付け外しは無い（`EditorView` を壊さない / 03.ux-spec/02-view-modes.md §4）。
+ *
+ * 分割比は `fr` の値そのものを変数で受け取る（`features/view/split.ts` が
+ * `0.3fr` のような**単位まで含んだ文字列**を入れる）。ピクセルで持つと、
+ * ウィンドウの大きさやペインの開閉で左右の比が変わってしまう。
+ *
+ * **`calc(var(--x) * 1fr)` とは書けない。** `<flex>` に `calc()` は通らず、
+ * 宣言ごと捨てられて列が `auto` に潰れる（実測で確認済み。見た目は
+ * それらしく出るので気づきにくい）。
+ *
+ * `minmax(0, ...)` を被せてあるのは、grid の既定の最小幅（`auto` = 中身の最小幅）が
+ * `fr` の指定を押しのけるため。**エディタの長い行が比を無視して列を広げる。**
+ */
+:root[data-mx-mode='split'] body {
+  grid-template-columns:
+    auto
+    minmax(0, var(--mx-split-editor, 1fr))
+    var(--mx-split-divider)
+    minmax(0, var(--mx-split-preview, 1fr))
+    auto;
+  grid-template-areas:
+    'titlebar titlebar titlebar titlebar titlebar'
+    'leftpane editor divider preview rightpane'
+    'statusbar statusbar statusbar statusbar statusbar';
+}
+
+:root[data-mx-mode='split'] .mx-editor {
+  display: block;
+  grid-area: editor;
+}
+
+:root[data-mx-mode='split'] .mx-preview {
+  grid-area: preview;
+}
+
+/*
+ * 分割線（§1「ドラッグでリサイズ（ダブルクリックで 50:50 に戻す）」）。
+ *
+ * 線そのものは 1px に見せて、**掴める幅はその外側に広げる**。
+ * 見た目のために掴みにくくしない（ライトペインの `__resizer` と同じ考え方）。
+ */
+.mx-split-divider {
+  grid-area: divider;
+  position: relative;
+  width: var(--mx-split-divider);
+  border: none;
+  padding: 0;
+  background: var(--mx-color-border-subtle);
+  cursor: col-resize;
+  touch-action: none;
+}
+
+.mx-split-divider::before {
+  content: '';
+  position: absolute;
+  inset: 0 -3px;
+}
+
+.mx-split-divider:hover,
+.mx-split-divider:focus-visible {
+  background: var(--mx-color-accent);
+}
+
+.mx-split-divider:focus-visible {
+  outline: none;
+}
+
+/*
  * プレビュー内検索（F-VIEW-10）。
  *
  * 本文の上に浮かせる。本文を押し下げると、検索を開いた瞬間に読んでいた行が

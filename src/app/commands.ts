@@ -40,7 +40,7 @@ import { toggleRightPane } from '@/features/panes/panes';
 import { zoomIn, zoomOut, zoomReset } from '@/features/preview/zoom';
 import { openSettingsLazily } from '@/features/settings/open-settings';
 import { openFind, openReplace } from '@/features/view/find';
-import { togglePreview } from '@/features/view/mode';
+import { cycleMode, togglePreview, toggleSplit } from '@/features/view/mode';
 import { viewStore } from '@/features/view/store.svelte';
 import { registerCommands, runCommand, type Command, type CommandId } from '@/lib/commands';
 import { toMessage } from '@/lib/error';
@@ -96,13 +96,23 @@ const COMMANDS: Command[] = [
   // **コマンドパレット（`Ctrl+Shift+P` / M3）ではない。** 見出し専用。
   { id: 'outline.jump', run: () => void openJumpLazily(), isListed: hasDocument },
 
-  // 表示モードの切り替え（F-MODE-06 / 03.ux-spec/02-view-modes.md §2）。
+  // 表示モードの切り替え（F-MODE-03, 06 / 03.ux-spec/02-view-modes.md §2）。
   //
-  // **`Ctrl+Shift+M`（順送り）と `Ctrl+\`（Split）はまだ登録しない。**
-  // モードが 2 つしか無いあいだ、順送りはこのトグルと同じ操作になり、
-  // Split は存在しない。押しても同じ / 何も起きないキーを先に置かない
-  // （Principle 3）。どちらも Phase 5 で Split と一緒に入る。
+  // `Ctrl+Shift+V` は「Preview ⇄ 直前の編集モード」、`Ctrl+\` は Split のトグル、
+  // `Ctrl+Shift+M` は順送り。**3 つとも意味が違う**ので別のコマンドにしてある。
   { id: 'view.togglePreview', run: () => void togglePreview(), isListed: hasDocument },
+  { id: 'view.toggleSplit', run: () => void toggleSplit(), isListed: hasDocument },
+  // 順送りは**一覧に出さない。** キーを知っている人のためのもので、
+  // メニューには行き先の分かるトグル 2 つが既に並んでいる。
+  { id: 'view.cycleMode', run: () => void cycleMode() },
+
+  // スクロール同期（F-MODE-05 / 03.ux-spec/03-split-mode.md §2）。**Split のときだけ意味を持つ。**
+  // 実体はステータスバーの `⇄` で、ここはコマンドとしての入口。
+  {
+    id: 'view.toggleScrollSync',
+    run: () => (viewStore.scrollSync = !viewStore.scrollSync),
+    isListed: () => viewStore.mode === 'split',
+  },
 
   // 検索と置換（F-VIEW-10 / F-EDIT-05）。**id が `preview.` でも `editor.` でもない**のは、
   // 見ている面によって実体が変わるため。振り分けは `features/view/find.ts`。
@@ -203,6 +213,12 @@ export const KEY_BINDINGS: KeyBinding[] = [
 
   // Preview ⇄ 直前の編集モード（03.ux-spec/02-view-modes.md §2 の「最も使うトグル」）。
   { key: 'Ctrl+Shift+V', id: 'view.togglePreview' },
+
+  // Split（F-MODE-03 / 03.ux-spec/02-view-modes.md §2）。`Ctrl+\` は VS Code の
+  // 「エディターを分割」に対応する（Familiar）。`Ctrl+Shift+M` は 4 モードの順送りで、
+  // **`keymap.ts` が `vscodeKeymap` の同じキーを外してある**（Phase 3）。
+  { key: 'Ctrl+\\', id: 'view.toggleSplit' },
+  { key: 'Ctrl+Shift+M', id: 'view.cycleMode' },
 
   { key: 'Ctrl+Alt+B', id: 'pane.toggleRight' },
   { key: 'Ctrl+Shift+U', id: 'outline.show' },

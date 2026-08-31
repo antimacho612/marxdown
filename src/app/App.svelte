@@ -19,6 +19,7 @@
   import { documentStore } from '@/features/document/store.svelte';
   import Outline from '@/features/outline/Outline.svelte';
   import RightPane from '@/features/panes/RightPane.svelte';
+  import SplitDivider from '@/features/view/SplitDivider.svelte';
   import { viewStore } from '@/features/view/store.svelte';
   import Welcome from '@/features/workspace/Welcome.svelte';
 
@@ -37,6 +38,16 @@
 
 {#if !meta}
   <Welcome />
+{/if}
+
+<!--
+  Split の分割線（03.ux-spec/03-split-mode.md §1）。**Split のときだけ存在する。**
+
+  `divider` の列は Split の `grid-template-areas` にしか無いので、
+  他のモードで置くと行き場を失う。ペインと同じく「無いときは要素ごと無い」。
+-->
+{#if viewStore.mode === 'split'}
+  <SplitDivider />
 {/if}
 
 <!--

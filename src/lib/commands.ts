@@ -47,6 +47,9 @@ export type CommandId =
   | 'preview.zoomOut'
   | 'preview.zoomReset'
   | 'settings.open'
+  | 'view.cycleMode'
+  | 'view.toggleScrollSync'
+  | 'view.toggleSplit'
   | 'view.togglePreview';
 
 export interface Command {

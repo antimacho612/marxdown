@@ -230,6 +230,7 @@ pub fn run() {
             commands::store_remove_recent,
             commands::store_set_zoom,
             commands::store_set_panes,
+            commands::store_set_split,
             commands::read_settings,
             commands::write_settings,
             commands::open_settings_file,

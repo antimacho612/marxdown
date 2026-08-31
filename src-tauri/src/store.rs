@@ -44,7 +44,23 @@ pub const PANE_WIDTH_MIN: f64 = 180.0;
 /// 手で書いた `state.json` や解像度の違う環境から巨大な幅が来ても本文が潰れないようにする。
 pub const PANE_WIDTH_MAX: f64 = 640.0;
 
+/// Split の分割比（エディタ側の取り分 / 03.ux-spec/03-split-mode.md §1）。
+///
+/// **比で持つ。** ピクセルで記憶すると、解像度やペインの開閉で
+/// 「左右のどちらがどれだけ」が変わってしまう。既定は 50:50。
+pub const SPLIT_DEFAULT: f64 = 0.5;
+/// 端まで寄せて片方を潰せないようにする。**潰せると Split である意味が無くなる**うえ、
+/// 戻す取っ手も同時に消える。
+pub const SPLIT_MIN: f64 = 0.2;
+pub const SPLIT_MAX: f64 = 0.8;
+
 const FILE_NAME: &str = "state.json";
+
+/// `#[serde(default)]` は `f64` に 0.0 を入れてしまう。**0 は「潰れた Split」**なので、
+/// 既定値を明示する。
+fn default_split() -> f64 {
+    SPLIT_DEFAULT
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -136,6 +152,10 @@ pub struct StoreData {
     /// 一緒に捨てることになり、キー 1 つの追加に対して代償が大き過ぎる。
     #[serde(default)]
     pub panes: Panes,
+    /// Split の分割比（03.ux-spec/03-split-mode.md §1）。`panes` と同じく `#[serde(default)]` で、
+    /// この値を持たない古い `state.json` も読める。
+    #[serde(default = "default_split")]
+    pub split: f64,
     /// トレイ常駐の説明を一度でも出したか（ADR-0007 論点 4）。
     ///
     /// **`✕` の意味が OS の慣習と変わる瞬間**にだけモーダルを出す。
@@ -154,6 +174,7 @@ impl Default for StoreData {
             zoom: ZOOM_DEFAULT,
             window: None,
             panes: Panes::default(),
+            split: SPLIT_DEFAULT,
             tray_intro_shown: false,
         }
     }
@@ -171,6 +192,10 @@ impl StoreData {
         }
         self.zoom = self.zoom.clamp(ZOOM_MIN, ZOOM_MAX);
         self.panes = self.panes.sanitized();
+        if !self.split.is_finite() {
+            self.split = SPLIT_DEFAULT;
+        }
+        self.split = self.split.clamp(SPLIT_MIN, SPLIT_MAX);
         self.recent.truncate(RECENT_LIMIT);
         if let Some(w) = self.window {
             let finite =

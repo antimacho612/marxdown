@@ -6,7 +6,7 @@
  * 「この人の見え方の好み」であり、ライフサイクルが違う。
  *
  */
-import { DEFAULT_PANES, type Panes, type ViewMode } from '@/platform';
+import { DEFAULT_PANES, SPLIT_DEFAULT, type Panes, type ViewMode } from '@/platform';
 
 class ViewStore {
   /**
@@ -22,6 +22,24 @@ class ViewStore {
 
   /** 表示倍率（F-VIEW-11）。実際の適用は `zoom.ts` が CSS 変数で行う。 */
   zoom = $state(1);
+
+  /**
+   * Split の分割比（エディタ側の取り分 / 03.ux-spec/03-split-mode.md §1）。
+   *
+   * **列幅そのものは CSS 変数が持つ**（`split.ts`）。ここに置いてあるのは
+   * 分割線の `aria-valuenow` と永続化のためで、UI はこの値では描かれない。
+   * ドラッグ中に Svelte の更新をレイアウトのたびに挟まないための分担である。
+   */
+  split = $state(SPLIT_DEFAULT);
+
+  /**
+   * Split のスクロール同期（03.ux-spec/03-split-mode.md §2）。**既定 ON。**
+   *
+   * ステータスバーの `⇄` が切り替える。**永続化しない。**
+   * 「いまこの作業のあいだ切っておく」ための一時的なもので、
+   * 次に開いたときも切れていると「なぜ追随しないのか」が分からなくなる。
+   */
+  scrollSync = $state(true);
 
   /**
    * ペインの開閉と幅（F-NAV-04 / 03.ux-spec/06-panes.md §3）。

@@ -38,6 +38,7 @@ function bootstrapWith(panes: Panes): Bootstrap {
     unknownArgs: [],
     recent: [],
     zoom: 1,
+    split: 0.5,
     panes,
     settings: DEFAULT_SETTINGS,
     settingsError: null,
