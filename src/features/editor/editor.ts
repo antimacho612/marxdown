@@ -94,7 +94,6 @@ export function mountEditor(host: HTMLElement): monaco.editor.IStandaloneCodeEdi
     renderWhitespace: 'none',
     // 記号の色分けは Markdown の構造に対して意味を持たない。静かにしておく。
     bracketPairColorization: { enabled: false },
-    padding: { top: 32 },
     scrollbar: { horizontal: 'hidden' },
     // 03.ux-spec/09-motion.md の禁則。スクロールに演出を足さない。
     smoothScrolling: false,

@@ -29,31 +29,27 @@
  * `eslint.config.js` の側でこのファイルだけ外してある。
  */
 import 'monaco-editor/nls/lang/ja.js';
-// 入力・カーソル移動・選択の中核。これが無いと文字も打てない。
+import 'monaco-editor/languages/definitions/markdown/register.js';
 import 'monaco-editor/editor/browser/coreCommands.js';
-// 編集の手触り（F-EDIT-04〜07 / 03.ux-spec/04-keybindings.md §3「編集」）
-import 'monaco-editor/features/multicursor/register.js';
+import 'monaco-editor/features/bracketMatching/register.js';
+import 'monaco-editor/features/caretOperations/register.js';
+import 'monaco-editor/features/clipboard/register.js';
+import 'monaco-editor/features/comment/register.js';
+import 'monaco-editor/features/cursorUndo/register.js';
+import 'monaco-editor/features/codicon/register.js';
+import 'monaco-editor/features/contextmenu/register.js';
+import 'monaco-editor/features/dnd/register.js';
+import 'monaco-editor/features/find/register.js';
+import 'monaco-editor/features/folding/register.js';
+import 'monaco-editor/features/gotoLine/register.js';
 import 'monaco-editor/features/linesOperations/register.js';
 import 'monaco-editor/features/lineSelection/register.js';
+import 'monaco-editor/features/longLinesHelper/register.js';
+import 'monaco-editor/features/multicursor/register.js';
+import 'monaco-editor/features/smartSelect/register.js';
+import 'monaco-editor/features/wordHighlighter/register.js';
 import 'monaco-editor/features/wordOperations/register.js';
 import 'monaco-editor/features/wordPartOperations/register.js';
-import 'monaco-editor/features/smartSelect/register.js';
-import 'monaco-editor/features/caretOperations/register.js';
-import 'monaco-editor/features/cursorUndo/register.js';
-import 'monaco-editor/features/comment/register.js';
-import 'monaco-editor/features/clipboard/register.js';
-import 'monaco-editor/features/dnd/register.js';
-// 検索・置換（F-EDIT-05）と指定行へ移動（`Ctrl+G`）
-import 'monaco-editor/features/find/register.js';
-import 'monaco-editor/features/gotoLine/register.js';
-// 読むための補助。`wordHighlighter` は「選択した語と同じもの」を薄く光らせる。
-import 'monaco-editor/features/wordHighlighter/register.js';
-import 'monaco-editor/features/bracketMatching/register.js';
-import 'monaco-editor/features/folding/register.js';
-import 'monaco-editor/features/longLinesHelper/register.js';
-import 'monaco-editor/features/contextmenu/register.js';
-// Markdown の構文着色（Monarch）。**言語はこれ 1 つだけ入れる。**
-import 'monaco-editor/languages/definitions/markdown/register.js';
 
 // 名前空間そのもの。**NLS の直後に置く**（上のコメント）。
 export * as monaco from 'monaco-editor/editor/editor.api.js';
