@@ -610,17 +610,19 @@ pub fn set_dirty(state: State<'_, AppState>, dirty: bool) {
 /// `✕` で閉じられた場合も `Cancel` を返す。**開き直すことはできるが、
 /// 消えた編集内容は取り返せない**（N-REL-01）。
 #[tauri::command]
-pub async fn confirm_discard(app: tauri::AppHandle) -> DiscardChoice {
+pub async fn confirm_discard(window: Window) -> DiscardChoice {
     use tauri_plugin_dialog::{
         DialogExt, MessageDialogButtons, MessageDialogKind, MessageDialogResult,
     };
 
     let (tx, mut rx) = tauri::async_runtime::channel(1);
 
-    app.dialog()
+    window
+        .dialog()
         .message(crate::close::DIRTY_MESSAGE)
         .title("Marxdown")
         .kind(MessageDialogKind::Warning)
+        .parent(&window)
         .buttons(MessageDialogButtons::YesNoCancelCustom(
             "保存する".to_string(),
             "保存しない".to_string(),
