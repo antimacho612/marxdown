@@ -283,6 +283,21 @@ export function openEditorSearch(replace: boolean): void {
 }
 
 /**
+ * 検索・置換を閉じる（Split でプレビュー側の検索へ移るとき / `features/view/find.ts`）。
+ *
+ * **`getAction` では引けない。** 閉じる側は `registerEditorAction` ではなく
+ * `registerEditorCommand` で登録されており（`contrib/find/browser/findController.js`）、
+ * アクション一覧には出てこない。`trigger` はアクションを見たあと
+ * エディタコマンドを見るので、こちらなら引ける。
+ *
+ * ウィジェットが出ていなければ precondition（`CONTEXT_FIND_WIDGET_VISIBLE`）で
+ * 弾かれるので、呼ぶ側が状態を持つ必要はない。
+ */
+export function closeEditorSearch(): void {
+  editor?.trigger('marxdown.find', 'closeFindWidget', null);
+}
+
+/**
  * Split のスクロール同期を始める / やめる（F-MODE-05）。
  *
  * **エディタの実体を外へ渡さないための包み。** 同期の中身は `features/view/scroll-sync.ts`

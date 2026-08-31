@@ -62,6 +62,19 @@ export async function openEditorSearchLazily(replace: boolean): Promise<void> {
 }
 
 /**
+ * 検索・置換パネルを閉じる（Split でプレビュー側の検索へ移るとき）。
+ *
+ * **一度も開いていなければ呼ばないこと。** ここを無条件に通すと、
+ * Preview だけで読んでいる起動でも初めての `Ctrl+F` で `editor` チャンクが落ちてくる。
+ * 閉じる相手が居るのは開いたことがある場合だけで、その判定は `features/view/find.ts` が持つ
+ * （プレビュー側の `closePreviewFind` と同じ形）。
+ */
+export async function closeEditorSearchLazily(): Promise<void> {
+  const { closeEditorSearch } = await import('./editor');
+  closeEditorSearch();
+}
+
+/**
  * Split のスクロール同期を始める / やめる（F-MODE-05 / `features/view/mode.ts` が呼ぶ）。
  *
  * **やめる側もこの入口を通す。** `mode.ts` から `./editor` を import すると、
