@@ -69,6 +69,16 @@ export function mountEditor(host: HTMLElement): EditorView {
         highlightSpecialChars(),
         bracketMatching(),
         EditorState.allowMultipleSelections.of(true),
+        // **既定のまま使う。** `markdown()` は素のパーサだけでなく、
+        // Markdown を書くための拡張を既に抱えている（M2 Phase 4 で気づいた）。
+        //
+        //   addKeymap      Enter でリストを続ける / Backspace で記法を畳む
+        //                  （`insertNewlineContinueMarkup` / `deleteMarkupBackward`）
+        //   pasteURLAsLink 選択したうえで URL を貼ると `[選んだ文字](URL)` になる
+        //
+        // 前者は **`Prec.high` で入る**ので、同じ `Enter` を後から足しても効かない。
+        // どちらも構文木を見て動くぶん、行を正規表現で見る自前の実装より確かで、
+        // F-EDIT-09, 10, 12 はこれで満たされている（06.roadmap/m2-editor.md §5 の Phase 4）。
         markdown({ base: markdownLanguage }),
 
         // マルチカーソルと矩形選択（F-EDIT-06 / 03.ux-spec/04-keybindings.md §3）。
@@ -92,7 +102,8 @@ export function mountEditor(host: HTMLElement): EditorView {
         // **UI 文言は `i18n/ja.ts` に集約する**という決定（OQ-11）の範囲。
         EditorState.phrases.of(ja.editor.phrases),
 
-        // VS Code 互換キーマップ（F-EDIT-04〜07）。外したキーとその理由は `keymap.ts`。
+        // VS Code 互換キーマップ（F-EDIT-04〜07）と Markdown の書式（F-EDIT-08〜10）。
+        // 外したキーとその理由は `keymap.ts`。
         editorKeymap,
         EditorView.lineWrapping,
         // ダーティ状態（F-EDIT-03）。**boolean 1 つだけがリアクティビティを通る。**

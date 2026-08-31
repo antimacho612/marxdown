@@ -30,6 +30,21 @@ import type { Extension } from '@codemirror/state';
 import { keymap, type KeyBinding } from '@codemirror/view';
 import { vscodeKeymap } from '@replit/codemirror-vscode-keymap';
 
+import {
+  insertLink,
+  setHeading,
+  toggleBlockquote,
+  toggleBold,
+  toggleBulletList,
+  toggleCodeBlock,
+  toggleInlineCode,
+  toggleItalic,
+  toggleOrderedList,
+  toggleStrikethrough,
+  toggleTaskCheck,
+} from './format';
+import { indentList, outdentList } from './list';
+
 /**
  * `vscodeKeymap` から外すキー。**綴りはパッケージの `key` そのまま**。
  *
@@ -49,9 +64,8 @@ const DROPPED: Record<string, string> = {
   // 二重に開く（`features/view/find.ts`）。
   'Mod-f': 'アプリの Ctrl+F が面ごとに振り分ける',
 
-  // Phase 4 で Markdown の書式に使う（03.ux-spec/04-keybindings.md §3）。
-  // **いま外しておく。** 後から外すと、一度できた操作を取り上げることになる。
-  'Shift-Mod-l': 'Ctrl+Shift+L は箇条書きの切替（Phase 4）',
+  // Markdown の書式に使う（03.ux-spec/04-keybindings.md §3）。下の `MARKDOWN` が持つ。
+  'Shift-Mod-l': 'Ctrl+Shift+L は箇条書きの切替',
 
   // lint 拡張を入れていないので、開いても空のパネルが出るだけ。
   // `Ctrl+Shift+M` は Phase 5 でモードの順送りに使う。
@@ -70,6 +84,43 @@ const DROPPED: Record<string, string> = {
  * フォーカスがあるときも効かせる**ため。`vscodeKeymap` の `Escape` は
  * scope を持たず、編集面に居るときしか効かない。
  */
+/**
+ * Markdown の書式（F-EDIT-08〜10, 12 / 03.ux-spec/04-keybindings.md §3「Markdown 書式」）。
+ *
+ * **`Tab` は、リストの行でなければ手を引く**（`list.ts`）。
+ * 下の `vscodeKeymap` にある本来の意味（`indentMore`）へそのまま渡るよう、
+ * **この配列を先に置いている**。
+ *
+ * `Ctrl+B` が太字なのは 03.ux-spec/04-keybindings.md §1 の決定
+ * （Markdown First > Familiar）。VS Code のサイドバー切替は `Ctrl+Shift+B` へ移してある。
+ */
+const MARKDOWN: KeyBinding[] = [
+  // `Enter` と `Backspace` は `markdown()` が `Prec.high` で持っている（`list.ts`）。
+  // ここに置いても効かないので、置かない。
+  { key: 'Tab', run: indentList, shift: outdentList },
+
+  { key: 'Mod-b', run: toggleBold, preventDefault: true },
+  { key: 'Mod-i', run: toggleItalic, preventDefault: true },
+  { key: 'Mod-Shift-x', run: toggleStrikethrough, preventDefault: true },
+  { key: 'Mod-`', run: toggleInlineCode, preventDefault: true },
+  { key: 'Mod-Shift-`', run: toggleCodeBlock, preventDefault: true },
+  { key: 'Mod-k', run: insertLink, preventDefault: true },
+
+  { key: 'Mod-Shift-.', run: toggleBlockquote, preventDefault: true },
+  { key: 'Mod-Shift-l', run: toggleBulletList, preventDefault: true },
+  { key: 'Mod-Shift-n', run: toggleOrderedList, preventDefault: true },
+  { key: 'Mod-Enter', run: toggleTaskCheck, preventDefault: true },
+
+  // 見出しは `Ctrl+1`〜`9` がタブ切り替えに要るので `Ctrl+Alt+n`（§3 の但し書き）。
+  // **1〜6 は設定であってトグルではない**（`format.ts`）。
+  ...[1, 2, 3, 4, 5, 6].map((level) => ({
+    key: `Mod-Alt-${level}`,
+    run: setHeading(level),
+    preventDefault: true,
+  })),
+  { key: 'Mod-Alt-0', run: setHeading(0), preventDefault: true },
+];
+
 const ADDED: KeyBinding[] = [
   { key: 'Shift-Alt-ArrowUp', run: copyLineUp, preventDefault: true },
   { key: 'Shift-Alt-ArrowDown', run: copyLineDown, preventDefault: true },
@@ -92,6 +143,7 @@ export const DROPPED_KEYS: readonly string[] = Object.keys(DROPPED);
  * 基本操作（改行のインデントなど）の受け皿として要るため。
  */
 export const editorKeymap: Extension = keymap.of([
+  ...MARKDOWN,
   ...ADDED,
   ...withoutDropped(vscodeKeymap),
   ...historyKeymap,
