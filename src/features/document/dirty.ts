@@ -22,12 +22,13 @@
  * **トレイメニューからの終了はフロントを経由しない**。確認をフロントに置くと
  * その経路だけ黙って捨てることになるので、Rust にも同じ事実を持たせる。
  *
- * エディタは 1 打鍵ごとに `markDirty()` を呼ぶ。**値が変わらなければ何もしない**ので、
- * IPC もストアへの書き込みも打鍵ごとには走らない。
+ * エディタは 1 打鍵ごとに `setDirty()` を呼ぶ（Undo で基準に戻れば `false` も渡る）。
+ * **値が変わらなければ何もしない**ので、IPC もストアへの書き込みも打鍵ごとには走らない。
  */
 import { getPlatform } from '@/platform';
 
 import { documentStore } from './store.svelte';
+import { syncDocumentText } from './text';
 
 export function setDirty(dirty: boolean): void {
   if (documentStore.isDirty === dirty) return;
@@ -40,7 +41,13 @@ export function markDirty(): void {
   setDirty(true);
 }
 
-/** ディスクと一致した。保存の成功と、開く / 読み直しの完了で呼ばれる。 */
+/**
+ * ディスクと一致した。保存の成功と、開く / 読み直しの完了で呼ばれる。
+ *
+ * **ここでダーティ判定の基準も動かす。** 動かさないと、保存した後に Undo で
+ * 保存直前の内容まで戻ってもダーティのままになる。
+ */
 export function markClean(): void {
   setDirty(false);
+  syncDocumentText();
 }

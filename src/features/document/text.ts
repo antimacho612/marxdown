@@ -34,6 +34,11 @@ export interface EditorTextPort {
   read: () => string;
   /** ディスクの内容で置き換える（開き直し / 別のファイルを開く）。 */
   replace: (text: string) => void;
+  /**
+   * いまの内容をダーティ判定の基準にする（`markClean()` から呼ばれる）。
+   * Undo でこの基準まで戻ってきたときにダーティを解除できるようにする。
+   */
+  sync: () => void;
 }
 
 /** エディタが載っていないあいだの控え。載ったら `null` に戻す。 */
@@ -63,6 +68,16 @@ export function setDocumentText(text: string): void {
 export function getDocumentText(): string {
   if (port) return port.read();
   return held ?? '';
+}
+
+/**
+ * いまの内容をダーティ判定の基準にする。`dirty.ts` の `markClean()` から呼ばれる。
+ *
+ * エディタが載っていなければ何もしない。打鍵によるダーティは
+ * エディタ経由でしか起きないため、基準を持つ必要もない。
+ */
+export function syncDocumentText(): void {
+  port?.sync();
 }
 
 /**
