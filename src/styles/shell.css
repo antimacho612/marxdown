@@ -37,14 +37,37 @@ body {
   /* Split はこの grid を 2 列に割る形で足す。そのとき変わるのは grid-template-areas の定義と、ここの 2 行だけで済む。 */
   grid-area: main;
   min-height: 0;
-  /* 検索窓のアイコンのツールチップがページの上端を基準に配置されてしまうため */
-  position: relative;
 }
 
 .mx-editor {
   display: none;
   overflow: hidden;
   background-color: var(--mx-color-bg);
+}
+
+/*
+ * Monaco の overflow widgets（ホバー等）の受け皿（`features/editor/editor.ts`）。
+ *
+ * body 直下に置いた `position: fixed` の要素を Monaco 自身に渡すことで、
+ * ホバー等をエディタコンテナの外・ビューポート全体を基準に配置させる。
+ * これが無いと（あるいは `.mx-editor` に `position: relative` を足すだけだと）
+ * コンテナ自身が絶対配置の基準点になり、ツールバーのようにコンテナ上端に
+ * 近いウィジェットのツールチップが、上に出ようとしてコンテナの外（画面外）
+ * へはみ出す。
+ *
+ * **セレクタは `.monaco-editor` と結合しておくこと。** Monaco 自身の
+ * スタイルシートに `.monaco-editor { position: relative; }` があり、
+ * クラス 1 つのセレクタ同士だと詳細度が同じで、後から注入される Monaco 側の
+ * 定義に負けて `position: fixed` が上書きされる。
+ */
+.monaco-editor.mx-editor-overflow-widgets {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  pointer-events: none;
+  /* `monaco-editor` クラスにテーマが背景色を当てる。`inset: 0` と組み合わさると
+     画面全体を覆う不透明な層になってしまうので、打ち消す。 */
+  background: transparent;
 }
 
 /* ========== Edit モード ========== */

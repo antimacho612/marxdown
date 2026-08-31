@@ -37,12 +37,15 @@ import { scheduleLiveRender } from '@/features/document/live';
 import { attachEditor, getDocumentText } from '@/features/document/text';
 import { startScrollSync, stopScrollSync } from '@/features/view/scroll-sync';
 
+import { installEditorKeymap } from './keymap';
 import { MARKDOWN_LANGUAGE_ID, monaco } from './monaco';
+import { installUrlPaste } from './paste';
 import { createScrollPort } from './scroll-port';
 import { applyEditorAppearance, watchEditorAppearance } from './theme';
 
 let editor: monaco.editor.IStandaloneCodeEditor | null = null;
 let model: monaco.editor.ITextModel | null = null;
+let overflowWidgetsDomNode: HTMLDivElement | null = null;
 
 /**
  * ダーティ判定の基準（F-EDIT-03）。`markClean()` が呼ばれるたびに、
@@ -73,8 +76,23 @@ export function mountEditor(host: HTMLElement): monaco.editor.IStandaloneCodeEdi
   model = monaco.editor.createModel(doc, MARKDOWN_LANGUAGE_ID);
   model.setEOL(monaco.editor.EndOfLineSequence.LF);
 
+  // content widget / overlay widget（パラメータヒントや将来の suggest 等）を
+  // `body` 直下に出す。**指定しないとエディタコンテナ（`.mx-editor`）を
+  // 基準にした `position: absolute` になり、コンテナ上端に近いウィジェットは
+  // 上に出そうとしてコンテナの外（画面外）へはみ出す**（`styles/shell.css` の
+  // `.mx-editor-overflow-widgets`）。`monaco-editor` クラスは、テーマの
+  // 色（CSS 変数）をこのノード配下にも効かせるために要る。
+  //
+  // **find widget のアイコンのようなツールチップ（`IHoverService`）には
+  // 効かない。** そちらは別経路で、コンテナ自身を基準にした絶対配置に
+  // 固定されている（下の `watchHoverOverlapWithTitlebar` を参照）。
+  overflowWidgetsDomNode = document.createElement('div');
+  overflowWidgetsDomNode.className = 'monaco-editor mx-editor-overflow-widgets';
+  document.body.append(overflowWidgetsDomNode);
+
   editor = monaco.editor.create(host, {
     model,
+    overflowWidgetsDomNode,
     // 器の大きさに追随させる（ResizeObserver）。**隠れている間は効かない**ので、
     // 面を出し直したときは `relayoutEditor()` で明示的に測り直す。
     automaticLayout: true,
@@ -145,6 +163,13 @@ export function mountEditor(host: HTMLElement): monaco.editor.IStandaloneCodeEdi
   applyEditorAppearance(editor);
   watchEditorAppearance(editor);
 
+  // Markdown の書式（F-EDIT-08）とリストの継続入力（F-EDIT-09, 10）。
+  // **アプリが握るキーを Monaco から剥がすのもここ**（`keymap.ts`）。
+  installEditorKeymap(editor);
+  // 選択範囲への URL 貼り付け（F-EDIT-12）。
+  installUrlPaste(editor);
+  watchHoverOverlapWithTitlebar(host);
+
   // ここから先、本文の真実は Monaco のモデルにある（ADR-0005）。
   attachEditor({
     read: () => (model ? readText() : doc),
@@ -160,6 +185,62 @@ export function mountEditor(host: HTMLElement): monaco.editor.IStandaloneCodeEdi
   });
 
   return editor;
+}
+
+/**
+ * find widget のアイコンに出る Monaco 標準のツールチップが、
+ * カスタムタイトルバーの領域にはみ出す問題への事後補正。
+ *
+ * Monaco の `HoverWidget` は上下どちらに出すか判定する際、ウィンドウの
+ * 物理的な上端（y=0）だけを基準にしており、アプリ独自のタイトルバーが
+ * 画面上部を占有していることを考慮しない
+ * （`node_modules/monaco-editor/esm/vs/platform/hover/browser/hoverWidget.js`
+ * の `target.top - hoverHeight < 0` 判定）。ツールバーがタイトルバーの
+ * すぐ下にあると「上に十分な余白がある」と誤判定され、タイトルバーに
+ * 重なって表示される。`overflowWidgetsDomNode` を指定しても、この
+ * ホバー（`IHoverService`）は経路が別で、コンテナ（`.mx-editor`）を
+ * 基準にした絶対配置のまま変わらない。
+ *
+ * Monaco 側に回避手段が無いため、描画後にタイトルバーの高さまで
+ * 押し下げる。**Monaco の内部 DOM（`.context-view` / `top` クラス）に
+ * 依存する事後補正。** `.context-view` はホバーのたびに作り直されず
+ * 使い回されるので、`class` / `style` の変化を見張る必要がある。
+ * Monaco の更新でここが変わっても、ツールチップがタイトルバーに
+ * 重なる程度の見た目の崩れに留まり、機能は壊れない。
+ */
+function watchHoverOverlapWithTitlebar(host: HTMLElement): void {
+  const titlebarHeight = (): number => {
+    const value = getComputedStyle(document.documentElement).getPropertyValue('--mx-titlebar-height');
+    // eslint-disable-next-line unicorn/prefer-number-coercion -- `16px` の単位を落とすために必要
+    const parsed = Number.parseFloat(value);
+    return Number.isFinite(parsed) ? parsed : 0;
+  };
+
+  // 自分で `top` を書き換えた結果をまた観測してしまうが、2 回目は
+  // `overlap <= 0` になって早期リターンするので 1 往復で収まる。
+  const adjust = (view: HTMLElement): void => {
+    if (!view.classList.contains('top')) return;
+    const overlap = titlebarHeight() - view.getBoundingClientRect().top;
+    if (overlap <= 0) return;
+    // eslint-disable-next-line unicorn/prefer-number-coercion -- `0px` の単位を落とすために必要
+    view.style.top = `${Number.parseFloat(view.style.top || '0') + overlap}px`;
+  };
+
+  const watchView = (view: HTMLElement): void => {
+    adjust(view);
+    new MutationObserver(() => adjust(view)).observe(view, { attributes: true, attributeFilter: ['class', 'style'] });
+  };
+
+  // `.context-view` は最初の表示時に一度だけ `host` へ追加され、以降は
+  // 使い回される（`class` / `style` の書き換えのみ）ので、子要素の追加は
+  // ここでしか拾えない。
+  new MutationObserver((mutations) => {
+    for (const mutation of mutations) {
+      for (const node of mutation.addedNodes) {
+        if (node instanceof HTMLElement && node.classList.contains('context-view')) watchView(node);
+      }
+    }
+  }).observe(host, { childList: true });
 }
 
 /** 載っているか。モード切り替えの判断に使う。 */

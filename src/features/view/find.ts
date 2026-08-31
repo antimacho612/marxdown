@@ -7,13 +7,13 @@
  *
  * ```text
  * Preview  本文の DOM を Range で探す（CSS Custom Highlight API / preview/search.ts）
- * Edit     CodeMirror のテキストを探す（@codemirror/search）
+ * Edit     エディタのモデルを探す（Monaco の find ウィジェット）
  * ```
  *
  * **同じキーで、見ているほうが開く。** ユーザーから見れば「いま読んでいるものを探す」
  * という 1 つの操作なので、キーを 2 つに分けない。
  *
- * この振り分けがあるので、`features/editor/keymap.ts` は `Mod-f` を外している。
+ * この振り分けがあるので、`features/editor/keymap.ts` は `Ctrl+F` を Monaco から剥がしている。
  * 外さないと、Edit ではエディタが先に受けたあと、ここでもう一度開くことになる。
  *
  * # 置換は Edit だけ

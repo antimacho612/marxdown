@@ -59,12 +59,12 @@ before(async () => {
 
 describe('行操作 (F-EDIT-07)', () => {
   /**
-   * **`@replit/codemirror-vscode-keymap` は行複製を mac にしか割り当てていない。**
-   * `copyLineUp` / `copyLineDown` が `mac:` だけを持ち、`key` が無い
-   * （`features/editor/keymap.ts` の `ADDED` が補っている）。
+   * **CodeMirror のときは、これを自分で補う必要があった。**
+   * `@replit/codemirror-vscode-keymap` が `copyLineUp` / `copyLineDown` を
+   * `mac:` にしか割り当てておらず、Windows で効かなかった。
    *
-   * つまり**パッケージを入れただけでは Windows で効かない。** ここが落ちたら、
-   * 補いが外れたということ。
+   * **Monaco では既定で入っている**（ADR-0009 で補いを畳んだ）。
+   * ここが落ちたら、剥がすキーを増やしたときに巻き添えにしたということ。
    */
   it('Shift+Alt+↓ で行を複製する', async () => {
     await browser.keys([Key.Shift, Key.Alt, Key.ArrowDown]);
@@ -244,9 +244,9 @@ describe('Markdown 書式 (F-EDIT-08)', () => {
 /**
  * リストの継続入力と採番（F-EDIT-09, 10）。
  *
- * **実装は `@codemirror/lang-markdown` が持っている**（`features/editor/list.ts`）。
- * 自前のコードが無いぶん、**効いていることを確かめる場所がここしか無い。**
- * 依存を上げたときに黙って外れるのを、ここで捕まえる。
+ * **実装は自前**（`features/editor/enter.ts`）。組み立ての正しさは
+ * `enter.test.ts` が見ているので、**ここで見るのは「キーが本当に届くか」だけ。**
+ * `Enter` は Monaco の入力経路を横取りしているので、通しでしか確かめられない。
  */
 describe('リストの継続入力 (F-EDIT-09, 10)', () => {
   before(async () => {
