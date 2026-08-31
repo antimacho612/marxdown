@@ -1,0 +1,227 @@
+/**
+ * Split とスクロール同期（F-MODE-03, 05 / 03.ux-spec/03-split-mode.md）。
+ *
+ * # ここでしか確かめられないもの
+ *
+ * 補間の計算は単体テスト（`src/features/view/scroll-sync.test.ts`）が全部見ている。
+ * **ここで見るのは「実際に追随するか」**で、それには次の 3 つが同時に要る。
+ *
+ * ```text
+ * 本物のレイアウト        要素の高さが無いと data-line の位置が全部 0 になる
+ * 本物の scroll イベント   ブラウザペインでは配送されないことがある（実測）
+ * 本物のキー配送          Ctrl+\ は配列によって届き方が変わる
+ * ```
+ *
+ * # 揺り戻しは「動いたこと」だけでは捕まらない
+ *
+ * 片方を動かすと相手が動き、それがまた片方を動かす。**同期が効いていることと、
+ * 輪になっていないことは別の話**なので、動かした側が動かされ返していないかを
+ * 併せて見る。
+ */
+import { Key } from 'webdriverio';
+
+import { enterEditMode, openViaForward } from '../helpers/app';
+import { WORK_DOC } from '../helpers/fixtures';
+
+/** いまの表示モード。 */
+async function currentMode(): Promise<string> {
+  return browser.execute(() => document.documentElement.dataset['mxMode'] ?? '');
+}
+
+/** エディタ / プレビューのスクロール位置。 */
+async function positions(): Promise<{ editor: number; preview: number }> {
+  return browser.execute(() => ({
+    editor: document.querySelector('.cm-scroller')?.scrollTop ?? -1,
+    preview: document.querySelector('#mx-preview')?.scrollTop ?? -1,
+  }));
+}
+
+/** 片方を動かす。**同期は `scroll` イベントで動くので、代入で足りる。** */
+async function scrollTo(side: 'editor' | 'preview', top: number): Promise<void> {
+  await browser.execute(
+    (selector: string, to: number) => {
+      const element = document.querySelector(selector);
+      if (element) element.scrollTop = to;
+    },
+    side === 'editor' ? '.cm-scroller' : '#mx-preview',
+    top,
+  );
+}
+
+/**
+ * 主導権が空くまで待つ（`SUPPRESS_MS` / §2）。
+ *
+ * **反対側を動かす前に必ず挟む。** 直前に片方が主導していると、
+ * そのあいだ反対側からの同期は握り潰される（揺り戻しを防ぐ仕掛けそのもの）。
+ */
+async function releaseLead(): Promise<void> {
+  await browser.pause(400);
+}
+
+/** 反対側が動くまで待つ。 */
+async function waitForFollow(side: 'editor' | 'preview', from: number): Promise<void> {
+  await browser.waitUntil(
+    async () => {
+      const at = await positions();
+      return Math.abs(at[side] - from) > 8;
+    },
+    { timeout: 10_000, timeoutMsg: `${side} が追随しなかった` },
+  );
+}
+
+/**
+ * 本文を、行と高さの対応が崩れる形にしておく。
+ *
+ * **1 行の見出しと長いコードブロックが並んでいないと、補間が効いているか
+ * 分からない。** 素直な段落だけの本文では、行を数えるだけの実装でも通ってしまう。
+ */
+const DOC = ['# 見出し', '', '```', ...Array.from({ length: 60 }, (_, i) => `行 ${i + 1}`), '```', '', '終わり'].join(
+  '\n',
+);
+
+before(async () => {
+  await openViaForward(WORK_DOC, '本文です。');
+  await enterEditMode();
+  await $('.cm-content').click();
+  await browser.keys([Key.Control, 'a']);
+  await browser.keys(DOC);
+});
+
+describe('Split に入る (F-MODE-03)', () => {
+  it('Ctrl+\\ で Split になり、両方の面が出る', async () => {
+    await browser.keys([Key.Control, '\\']);
+
+    await browser.waitUntil(async () => (await currentMode()) === 'split', {
+      timeout: 10_000,
+      timeoutMsg: 'Split へ入らなかった',
+    });
+
+    const visible = await browser.execute(() => ({
+      editor: (document.querySelector('#mx-editor')?.getBoundingClientRect().width ?? 0) > 0,
+      preview: (document.querySelector('#mx-preview')?.getBoundingClientRect().width ?? 0) > 0,
+      divider: document.querySelectorAll('.mx-split-divider').length,
+    }));
+
+    expect(visible).toEqual({ editor: true, preview: true, divider: 1 });
+  });
+
+  /**
+   * **`calc(var(--x) * 1fr)` は通らない**（`styles/shell.css`）。
+   * 宣言ごと捨てられて列が `auto` に潰れるが、**見た目はそれらしく出る**ので
+   * 気づきにくい。比が本当に効いているかをここで固定する。
+   */
+  it('分割比が列幅に効いている', async () => {
+    const ratio = await browser.execute(() => {
+      const editor = document.querySelector('#mx-editor')?.getBoundingClientRect().width ?? 0;
+      const preview = document.querySelector('#mx-preview')?.getBoundingClientRect().width ?? 0;
+      return editor / (editor + preview);
+    });
+
+    expect(ratio).toBeGreaterThan(0.4);
+    expect(ratio).toBeLessThan(0.6);
+  });
+});
+
+describe('スクロール同期 (F-MODE-05 / §2)', () => {
+  it('エディタを動かすとプレビューが追随する', async () => {
+    await scrollTo('preview', 0);
+    await scrollTo('editor', 0);
+    await releaseLead();
+
+    await scrollTo('editor', 600);
+    await waitForFollow('preview', 0);
+  });
+
+  it('プレビューを動かすとエディタが追随する', async () => {
+    await scrollTo('editor', 0);
+    await scrollTo('preview', 0);
+    await releaseLead();
+
+    await scrollTo('preview', 500);
+    await waitForFollow('editor', 0);
+  });
+
+  /**
+   * **揺り戻しが起きていないこと。** 動かした側が動かされ返すと、
+   * 押した位置から離れていく（§2 の「主導権は最後に操作した側」）。
+   */
+  it('動かした側が動かされ返さない', async () => {
+    await scrollTo('editor', 0);
+    await scrollTo('preview', 0);
+    await releaseLead();
+    await scrollTo('editor', 600);
+    await waitForFollow('preview', 0);
+
+    const settled = await positions();
+    expect(Math.abs(settled.editor - 600)).toBeLessThan(20);
+  });
+
+  /** OFF にしたら追随しない（§2 / ステータスバーの `⇄`）。 */
+  it('同期を切ると追随しない', async () => {
+    await browser.execute(() => {
+      const button = [...document.querySelectorAll('.mx-statusbar__button')].find((el) =>
+        (el.textContent ?? '').includes('スクロール同期'),
+      );
+      if (button instanceof HTMLElement) button.click();
+    });
+
+    await scrollTo('editor', 0);
+    await scrollTo('preview', 0);
+    await releaseLead();
+    await scrollTo('editor', 700);
+    await browser.pause(500);
+
+    const at = await positions();
+    expect(at.preview).toBe(0);
+
+    // 次のテストのために戻す。
+    await browser.execute(() => {
+      const button = [...document.querySelectorAll('.mx-statusbar__button')].find((el) =>
+        (el.textContent ?? '').includes('スクロール同期'),
+      );
+      if (button instanceof HTMLElement) button.click();
+    });
+  });
+});
+
+describe('双方向ジャンプ (§3)', () => {
+  /**
+   * プレビューの要素をダブルクリック → エディタの該当行へ。
+   *
+   * 最後の段落（`終わり`）を叩くと、コードブロックより後ろの行へ飛ぶ。
+   * **行を数えるだけの実装では、ここでコードブロックの中を指してしまう。**
+   */
+  it('プレビューをダブルクリックすると、エディタのその行へカーソルが移る', async () => {
+    await scrollTo('preview', 0);
+    await scrollTo('editor', 0);
+
+    await browser.execute(() => {
+      const last = [...document.querySelectorAll('#mx-preview [data-line]')].at(-1);
+      last?.dispatchEvent(new MouseEvent('dblclick', { bubbles: true }));
+    });
+
+    await browser.waitUntil(
+      async () => {
+        const line = await browser.execute(() => {
+          const active = document.querySelector('.cm-line.cm-activeLine');
+          return active?.textContent ?? '';
+        });
+        return line.includes('終わり');
+      },
+      { timeout: 10_000, timeoutMsg: 'エディタの該当行へ移らなかった' },
+    );
+  });
+});
+
+describe('モードの順送り (F-MODE-06)', () => {
+  it('Ctrl+Shift+M で Preview → Edit → Split と回る', async () => {
+    // いまは Split。1 周して戻ってくる。
+    for (const expected of ['preview', 'edit', 'split']) {
+      await browser.keys([Key.Control, Key.Shift, 'm']);
+      await browser.waitUntil(async () => (await currentMode()) === expected, {
+        timeout: 10_000,
+        timeoutMsg: `${expected} へ回らなかった`,
+      });
+    }
+  });
+});

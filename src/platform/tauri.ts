@@ -101,6 +101,10 @@ export const tauriPlatform: Platform = {
     return invoke<void>('store_set_panes', { panes });
   },
 
+  setSplit(split) {
+    return invoke<void>('store_set_split', { split });
+  },
+
   pickFile() {
     return invoke<string | null>('pick_file');
   },

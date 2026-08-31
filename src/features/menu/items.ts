@@ -117,6 +117,13 @@ const MENU: MenuSection[] = [
         label: () => (viewStore.mode === 'preview' ? ja.menu.toEdit : ja.menu.toPreview),
         shortcut: 'Ctrl+Shift+V',
       },
+      // Split（F-MODE-03）。ラベルは行き先を言う（モードのトグルと同じ）。
+      {
+        id: 'split',
+        command: 'view.toggleSplit',
+        label: () => (viewStore.mode === 'split' ? ja.menu.fromSplit : ja.menu.toSplit),
+        shortcut: 'Ctrl+\\',
+      },
       { id: 'reload', command: 'document.reload', label: ja.menu.reload, shortcut: 'F5' },
       // 検索は面によって実体が変わる（`features/view/find.ts`）。ラベルも変える。
       {

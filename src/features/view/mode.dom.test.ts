@@ -12,13 +12,16 @@ import { viewStore } from '@/features/view/store.svelte';
 import type { Bootstrap, DocumentMeta } from '@/platform';
 
 const mountEditorLazily = vi.fn(() => Promise.resolve());
+const setSplitSyncLazily = vi.fn((_on: boolean) => Promise.resolve());
 
 vi.mock('@/features/editor/open-editor', () => ({
   mountEditorLazily: () => mountEditorLazily(),
   preloadEditor: () => Promise.resolve(),
+  setSplitSyncLazily: (on: boolean) => setSplitSyncLazily(on),
 }));
 
-const { decideInitialMode, initMode, resetMode, setMode, togglePreview } = await import('./mode');
+const { cycleMode, decideInitialMode, initMode, resetMode, setMode, togglePreview, toggleSplit } =
+  await import('./mode');
 
 function meta(overrides: Partial<DocumentMeta> = {}): DocumentMeta {
   return {
@@ -95,7 +98,7 @@ describe('Preview とのトグル (Ctrl+Shift+V)', () => {
   });
 
   it('直前の編集モードを覚えている', async () => {
-    // Split（Phase 5）が入ると、ここが 'split' にもなる。
+    // **「直前の編集モード」であって「Edit」ではない。**
     await setMode('split');
     await setMode('preview');
     await togglePreview();
@@ -117,5 +120,67 @@ describe('スクロール位置の保持 (03.ux-spec/02-view-modes.md §4)', () 
 
     await setMode('preview');
     expect(preview.scrollTop).toBe(320);
+  });
+});
+
+describe('Split (F-MODE-03 / 03.ux-spec/03-split-mode.md)', () => {
+  /** Preview へ戻すと「分割を解いた」ではなく「読む側へ移った」ことになる。 */
+  it('Ctrl+\\ は Edit との間で切り替える', async () => {
+    await setMode('edit');
+
+    await toggleSplit();
+    expect(viewStore.mode).toBe('split');
+
+    await toggleSplit();
+    expect(viewStore.mode).toBe('edit');
+  });
+
+  it('Preview から押すと Split に入る', async () => {
+    await toggleSplit();
+    expect(viewStore.mode).toBe('split');
+  });
+
+  it('Ctrl+Shift+M は順送りする', async () => {
+    expect(viewStore.mode).toBe('preview');
+
+    await cycleMode();
+    expect(viewStore.mode).toBe('edit');
+    await cycleMode();
+    expect(viewStore.mode).toBe('split');
+    await cycleMode();
+    expect(viewStore.mode).toBe('preview');
+  });
+
+  /** 片面しか見えていないときに購読を残さない（N-PERF-05）。 */
+  it('同期は Split のときだけ動かす', async () => {
+    setSplitSyncLazily.mockClear();
+
+    await setMode('split');
+    expect(setSplitSyncLazily).toHaveBeenLastCalledWith(true);
+
+    await setMode('edit');
+    expect(setSplitSyncLazily).toHaveBeenLastCalledWith(false);
+  });
+
+  /**
+   * **Split でもプレビューは見えている。**
+   * 「Preview モードか」で判定すると、Split へ移るたびに位置が控えられてしまう。
+   */
+  it('Preview → Split ではスクロール位置を控えない', async () => {
+    const preview = document.querySelector<HTMLElement>('#mx-preview');
+    if (!preview) throw new Error('受け皿が無い');
+
+    preview.scrollTop = 200;
+    await setMode('split');
+    // 控えていないので、戻す処理も走らない（実機では位置がそのまま残る）
+    expect(preview.scrollTop).toBe(200);
+
+    preview.scrollTop = 640;
+    await setMode('edit');
+    preview.scrollTop = 0;
+
+    // Edit で初めて隠れる。そこで控えた 640 が Split へ戻ったときに当たる。
+    await setMode('split');
+    expect(preview.scrollTop).toBe(640);
   });
 });

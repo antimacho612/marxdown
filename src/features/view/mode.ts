@@ -19,7 +19,8 @@
  * 隠す直前に控えて、戻すときに当て直す。行番号ベースの対応付け（Split の
  * スクロール同期）は Phase 5 の担当で、ここは**同じ面へ戻ってきたときの復元**だけを見る。
  */
-import { mountEditorLazily } from '@/features/editor/open-editor';
+import { cancelLiveRender, renderNow } from '@/features/document/live';
+import { mountEditorLazily, setSplitSyncLazily } from '@/features/editor/open-editor';
 import { closePreviewFind } from '@/features/view/find';
 import { viewStore } from '@/features/view/store.svelte';
 import type { Bootstrap, DocumentMeta, ViewMode } from '@/platform';
@@ -29,9 +30,18 @@ const PREVIEW_SELECTOR = '#mx-preview';
 /**
  * `Ctrl+Shift+V` が戻る先（03.ux-spec/02-view-modes.md §2「Preview ⇄ 直前の編集モード」）。
  *
- * Split（Phase 5）が入ると、ここが `'split'` にもなる。
+ * Split から Preview へ抜けて戻ってきたら Split に戻る。
+ * **「直前の編集モード」であって「Edit」ではない。**
  */
 let lastEditingMode: Exclude<ViewMode, 'preview'> = 'edit';
+
+/**
+ * 順送りの並び（`Ctrl+Shift+M` / 03.ux-spec/02-view-modes.md §2 の図）。
+ *
+ * WYSIWYG は M5。**入っていないものを並びに含めない**（押すと何も起きない位置が
+ * できる）。M5 で足すときに 1 語増やすだけで済む。
+ */
+const CYCLE: ViewMode[] = ['preview', 'edit', 'split'];
 
 /** プレビューを離れたときのスクロール位置。 */
 let previewScroll = 0;
@@ -85,7 +95,13 @@ export async function setMode(mode: ViewMode): Promise<void> {
     lastEditingMode = mode;
   }
 
-  if (viewStore.mode === 'preview') {
+  // **Split でもプレビューは見えている。** 判定を「Preview モードか」で書くと、
+  // Split へ移るたびに検索が閉じ、スクロール位置が控えられてしまう。
+  // 見えなくなるのは Edit のときだけ。
+  const wasVisible = isPreviewVisible(viewStore.mode);
+  const willBeVisible = isPreviewVisible(mode);
+
+  if (wasVisible && !willBeVisible) {
     previewScroll = previewScrollTop();
     // プレビュー内検索を閉じる。パネルは `document.body` にあるので、
     // 隠れた面の上に浮いたまま残ってしまう（`features/view/find.ts`）。
@@ -95,7 +111,34 @@ export async function setMode(mode: ViewMode): Promise<void> {
   viewStore.mode = mode;
   applyModeAttribute(mode);
 
-  if (mode === 'preview') restorePreviewScroll();
+  if (!wasVisible && willBeVisible) restorePreviewScroll();
+
+  // スクロール同期は Split でしか意味を持たない（03.ux-spec/03-split-mode.md §2）。
+  // **片面しか見えていないときに購読を残さない**（N-PERF-05）。
+  void setSplitSyncLazily(mode === 'split');
+
+  // Split へ入った時点で 1 回描き直す。**Edit のあいだの編集はプレビューに
+  // 反映されていない**（見えない面のために描き直さないため / `document/live.ts`）。
+  if (mode === 'split') void renderNow();
+  else cancelLiveRender();
+}
+
+/**
+ * Split をトグルする（`Ctrl+\` / 03.ux-spec/02-view-modes.md §2）。
+ *
+ * VS Code の「エディターを分割」に対応する。**Split から抜ける先は Edit。**
+ * Preview へ戻すと「分割を解いた」ではなく「読む側へ移った」ことになり、
+ * もう一度押しても元の面へ帰れない。
+ */
+export async function toggleSplit(): Promise<void> {
+  await setMode(viewStore.mode === 'split' ? 'edit' : 'split');
+}
+
+/** 4 モードを順送りする（`Ctrl+Shift+M` / §2 の図）。 */
+export async function cycleMode(): Promise<void> {
+  const at = CYCLE.indexOf(viewStore.mode);
+  const next = CYCLE[(at + 1) % CYCLE.length] ?? 'preview';
+  await setMode(next);
 }
 
 /**
@@ -116,6 +159,16 @@ export async function togglePreview(): Promise<void> {
  */
 function applyModeAttribute(mode: ViewMode): void {
   document.documentElement.dataset['mxMode'] = mode;
+}
+
+/** プレビューの面が出ているか。**Split でも出ている。** */
+export function isPreviewVisible(mode: ViewMode): boolean {
+  return mode !== 'edit';
+}
+
+/** エディタの面が出ているか。 */
+export function isEditorVisible(mode: ViewMode): boolean {
+  return mode !== 'preview';
 }
 
 function previewScrollTop(): number {

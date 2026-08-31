@@ -94,6 +94,17 @@ export const DEFAULT_PANES: Panes = {
   right: { open: false, width: 240 },
 };
 
+/**
+ * Split の既定の分割比と可動域（03.ux-spec/03-split-mode.md §1）。
+ * `src-tauri/src/store.rs` の `SPLIT_*` と 1:1 で対応する。
+ *
+ * **端まで寄せて片方を潰せないようにする。** 潰せると Split である意味が無くなり、
+ * 戻す取っ手も同時に消える。
+ */
+export const SPLIT_DEFAULT = 0.5;
+export const SPLIT_MIN = 0.2;
+export const SPLIT_MAX = 0.8;
+
 /* ------------------------------------------------------------------ */
 /* ユーザー設定（02.architecture/04-rust-responsibilities.md §5）                               */
 /* ------------------------------------------------------------------ */
@@ -272,6 +283,13 @@ export interface Bootstrap {
    */
   panes: Panes;
   /**
+   * Split の分割比（エディタ側の取り分 / 03.ux-spec/03-split-mode.md §1）。
+   *
+   * **倍率・ペインと同じ理由でここに載る。** 後から当てると、Split で開いたときに
+   * 50:50 で一度描かれてから寄る。
+   */
+  split: number;
+  /**
    * ユーザー設定の**全体**（02.architecture/04-rust-responsibilities.md §5）。
    *
    * 「どの設定が初回フレームに間に合う必要があるか」を毎回考えなくて済むよう、
@@ -360,6 +378,12 @@ export interface Platform {
    * **ドラッグ中に毎フレーム呼ばない**（デバウンスしてから呼ぶこと）。
    */
   setPanes(panes: Panes): Promise<void>;
+  /**
+   * Split の分割比を保存する（03.ux-spec/03-split-mode.md §1）。
+   *
+   * `setPanes` と同じく**ドラッグ中は呼ばない**（離した時点で 1 回だけ）。
+   */
+  setSplit(split: number): Promise<void>;
   /**
    * ファイル選択ダイアログを開く（F-OPEN-07）。
    * 選ばれなければ `null`。返るのは正規化済み絶対パス。

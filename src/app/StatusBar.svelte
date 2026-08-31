@@ -10,9 +10,10 @@
   **押しても何も起きないものをボタンに見せない。**
   カーソル位置は Preview では出ない（§3 の但し書き / Phase 7）。
 
-  モードの表示は**いまの値を出すだけ**で、まだ押せない。§3.1 は「クリックで
-  モード切替メニュー」を M2 の期限としているが、モードが 2 つしか無いあいだは
-  メニューではなくトグルであり、Split が入る Phase 5 まで形が決まらない。
+  モードの表示は**いまの値を出すだけ**で、まだ押せない。§3.1 の「クリックで
+  モード切替メニュー」は Phase 7（ステータスバーの仕上げ）。
+
+  スクロール同期の `⇄` は Split のときだけ出る（03.ux-spec/03-split-mode.md §2）。
 
   計測値（パース / 描画）は開発ビルドでのみ出す。開発中の道具であって、
   製品の画面に居座る理由が説明できない（06.roadmap/invariants.md）。
@@ -39,6 +40,26 @@
       <span>{ja.status.chars(textStats.chars)}</span>
       <span>{ja.status.readingTime(textStats.readingMinutes)}</span>
     {/if}
+  {/if}
+
+  <!--
+    スクロール同期（F-MODE-05 / 03.ux-spec/03-split-mode.md §2）。**Split のときだけ出す。**
+    片面しか見えていないときに押しても意味が無く、押せない項目を並べない
+    （Principle 3 / メニューの `isListed` と同じ判断）。
+
+    ラベルは状態を言い、ツールチップが結果を言う。アイコンだけでは
+    「ON なのか」「押すと ON になるのか」が読めない。
+  -->
+  {#if meta && viewStore.mode === 'split'}
+    <button
+      type="button"
+      class="mx-statusbar__button"
+      aria-pressed={viewStore.scrollSync}
+      onclick={() => (viewStore.scrollSync = !viewStore.scrollSync)}
+      title={ja.split.toggleSync}
+    >
+      ⇄ {viewStore.scrollSync ? ja.split.syncOn : ja.split.syncOff}
+    </button>
   {/if}
 
   <span class="mx-statusbar__spacer"></span>

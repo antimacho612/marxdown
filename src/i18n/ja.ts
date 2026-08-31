@@ -55,6 +55,9 @@ export const ja = {
      */
     toEdit: '編集する',
     toPreview: 'プレビューに戻る',
+    /** Split（F-MODE-03 / 03.ux-spec/03-split-mode.md）。ラベルは行き先を言う。 */
+    toSplit: '左右に並べる',
+    fromSplit: '分割をやめる',
     settings: '設定',
     recent: '最近開いたファイル',
     noRecent: 'まだ何も開いていません',
@@ -191,6 +194,18 @@ export const ja = {
       'replaced match on line $': '$ 行目を置換しました',
       'replaced $ matches': '$ 件を置換しました',
     },
+  },
+  /** Split（F-MODE-03, 05 / 03.ux-spec/03-split-mode.md）。 */
+  split: {
+    resize: '分割の幅を変える',
+    ratio: (percent: number) => `エディタ ${percent}%`,
+    /**
+     * スクロール同期（§2）。**ラベルは状態を言い、ツールチップが結果を言う。**
+     * アイコンだけでは ON なのか「押すと ON になる」のかが読めない。
+     */
+    syncOn: 'スクロール同期: ON',
+    syncOff: 'スクロール同期: OFF',
+    toggleSync: 'クリックでスクロール同期を切り替える',
   },
   /** リンククリックの分岐（02.architecture/09-security.md §2）。 */
   link: {

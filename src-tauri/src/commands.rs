@@ -323,6 +323,20 @@ pub fn store_set_panes(state: State<'_, AppState>, panes: store::Panes) {
     state.update_store(|s| s.panes = sane);
 }
 
+/// Split の分割比を保存する（03.ux-spec/03-split-mode.md §1）。
+///
+/// `store_set_panes` と同じく**ドラッグ中は呼ばれない**。離した時点で 1 回だけ
+/// （`features/view/split.ts`）。丸めは Rust 側でも行う（手で書いた `state.json` 対策）。
+#[tauri::command]
+pub fn store_set_split(state: State<'_, AppState>, split: f64) {
+    let sane = if split.is_finite() {
+        split.clamp(store::SPLIT_MIN, store::SPLIT_MAX)
+    } else {
+        store::SPLIT_DEFAULT
+    };
+    state.update_store(|s| s.split = sane);
+}
+
 /* ------------------------------------------------------------------ */
 /* ユーザー設定（F-CONF-03 / 02.architecture/04-rust-responsibilities.md §5）                    */
 /* ------------------------------------------------------------------ */

@@ -59,6 +59,16 @@ export function configureOpener(next: OpenerConfig): void {
   config = next;
 }
 
+/**
+ * いま注入されているパーサ。**Split の描き直し（`live.ts`）が使う。**
+ *
+ * 開く経路を通さずにパースしたい場面はここだけで、
+ * 他から呼ぶ用途ができたら「開く」の意味を薄めていないか先に疑うこと。
+ */
+export function getParser(): MarkdownParser | null {
+  return config?.parser ?? null;
+}
+
 export interface OpenOptions {
   /**
    * 経過時間の起点。既定は「読み込みを始めた時刻」。

@@ -41,6 +41,7 @@ function bootstrapWith(settings: Partial<Bootstrap>): Bootstrap {
     unknownArgs: [],
     recent: [],
     zoom: 1,
+    split: 0.5,
     panes: DEFAULT_PANES,
     settings: DEFAULT_SETTINGS,
     settingsError: null,

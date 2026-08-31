@@ -9,6 +9,7 @@
  * 02.architecture/06-markdown-rendering-pipeline.md §3 が「アウトラインからのジャンプ」を載せている土台そのもの。
  * `id` は保険として後ろに置く。
  */
+import { jumpToEditorLine } from '@/features/view/scroll-sync';
 import type { OutlineItem } from '@/markdown/plugins/line-map';
 
 const PREVIEW_SELECTOR = '#mx-preview';
@@ -21,6 +22,13 @@ const HEADINGS = 'h1, h2, h3, h4, h5, h6';
  * 通知するほどのことではない（数百 ms 後には入っている）。
  */
 export function jumpToHeading(item: OutlineItem): void {
+  // Split では**両方が該当見出しへ**動く（03.ux-spec/03-split-mode.md §3）。
+  // エディタが載っていなければ何も起きない。
+  //
+  // **フォーカスは移さない。** 続けて次の見出しを選べなくなる。
+  // `item.line` は 0 始まり（`line-map.ts`）、エディタは 1 始まり。
+  jumpToEditorLine(item.line + 1, { focus: false });
+
   const container = document.querySelector<HTMLElement>(PREVIEW_SELECTOR);
   const target = findHeading(container, item);
   if (!target) return;

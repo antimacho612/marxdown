@@ -37,7 +37,9 @@ import {
 } from '@codemirror/view';
 
 import { markDirty } from '@/features/document/dirty';
+import { scheduleLiveRender } from '@/features/document/live';
 import { attachEditor, getDocumentText } from '@/features/document/text';
+import { startScrollSync, stopScrollSync } from '@/features/view/scroll-sync';
 import { ja } from '@/i18n/ja';
 
 import { editorKeymap } from './keymap';
@@ -112,7 +114,11 @@ export function mountEditor(host: HTMLElement): EditorView {
         // `markDirty` は既にダーティなら何もしないので、打鍵ごとに
         // ストアの書き込みや IPC が走ることはない（`document/save.ts`）。
         EditorView.updateListener.of((update) => {
-          if (update.docChanged) markDirty();
+          if (!update.docChanged) return;
+          markDirty();
+          // Split では右のプレビューを追いかけさせる（F-MODE-03）。
+          // 打鍵ごとには描き直さない（`document/live.ts` が待つ）。
+          scheduleLiveRender();
         }),
         editorTheme,
       ],
@@ -160,4 +166,19 @@ export function openEditorSearch(replace: boolean): void {
   const field = view.dom.querySelector<HTMLInputElement>('.cm-search input[name="replace"]');
   field?.focus();
   field?.select();
+}
+
+/**
+ * Split のスクロール同期を始める / やめる（F-MODE-05）。
+ *
+ * **`EditorView` を外へ渡さないための包み。** 同期の中身は `features/view/scroll-sync.ts`
+ * （`main` チャンク）にあり、`EditorView` を型としてしか知らない。
+ * 実体を渡せるのはここだけなので、ここが橋渡しをする。
+ */
+export function setSplitSync(on: boolean): void {
+  if (!on) {
+    stopScrollSync();
+    return;
+  }
+  if (view) startScrollSync(view);
 }
