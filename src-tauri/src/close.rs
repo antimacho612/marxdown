@@ -161,21 +161,27 @@ fn ask_then_quit<R: Runtime>(app: AppHandle<R>) {
         DialogExt, MessageDialogButtons, MessageDialogKind, MessageDialogResult,
     };
 
+    // `YesNoCancelCustom` はラベルをカスタムした時点で、結果は `Yes` / `No` ではなく
+    // 常に `Custom(ラベル文字列)` で返ってくる（tauri-plugin-dialog の仕様）。
+    // ラベルで判定しないと、どちらのボタンを押しても `_` に落ちて無反応になる。
+    const SAVE_AND_QUIT: &str = "保存して終了";
+    const QUIT_WITHOUT_SAVING: &str = "保存せず終了";
+
     let handle = app.clone();
     app.dialog()
         .message(DIRTY_MESSAGE)
         .title("Marxdown")
         .kind(MessageDialogKind::Warning)
         .buttons(MessageDialogButtons::YesNoCancelCustom(
-            "保存して終了".to_string(),
-            "保存せず終了".to_string(),
+            SAVE_AND_QUIT.to_string(),
+            QUIT_WITHOUT_SAVING.to_string(),
             "キャンセル".to_string(),
         ))
         .show_with_result(move |result| match result {
-            MessageDialogResult::Yes => {
+            MessageDialogResult::Custom(label) if label == SAVE_AND_QUIT => {
                 let _ = handle.emit_to(MAIN_LABEL, crate::EVENT_SAVE_AND_QUIT, ());
             }
-            MessageDialogResult::No => quit(&handle),
+            MessageDialogResult::Custom(label) if label == QUIT_WITHOUT_SAVING => quit(&handle),
             // キャンセル / ダイアログを閉じた場合は何もしない。
             // **既定を「終了しない」側に倒す**（N-REL-01）。
             _ => {}
