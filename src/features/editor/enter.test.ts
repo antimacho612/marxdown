@@ -56,6 +56,21 @@ describe('Enter で続ける (F-EDIT-09, 10)', () => {
     expect(run(continueList, '1. a|')).toBe('1. a\n2. |');
   });
 
+  /**
+   * **続きの項目は振り直さない**（`enter.ts` の但し書き）。
+   *
+   * 触れば「編集していない箇所のバイト列が変わる」ことになり、N-CMP-03 に反する。
+   * Markdown は `1.` が並んでいても正しく採番して描くので、実害も無い。
+   *
+   * CodeMirror では `@codemirror/lang-markdown` の `renumberList` が振り直していた。
+   * **依存が持っていた振る舞いであって、Marxdown が決めたことではない**
+   * （[ADR-0009](../../../docs/adr/0009-editor-engine-monaco.md)）。
+   * E2E がこの差で 1 本落ちたので、両方に留めてある。
+   */
+  it('続きの項目の番号は触らない (N-CMP-03)', () => {
+    expect(run(continueList, '1. a|\n2. b')).toBe('1. a\n2. |\n2. b');
+  });
+
   it('入れ子の深さを保つ', () => {
     expect(run(continueList, '  - a|')).toBe('  - a\n  - |');
   });

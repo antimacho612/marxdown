@@ -114,28 +114,40 @@ export async function currentMode(): Promise<string> {
 /* ------------------------------------------------------------------ */
 
 /**
- * エディタが吐く DOM を指すセレクタ。**`.cm-*` が書いてよいのはここだけ。**
+ * エディタが吐く DOM を指すセレクタ。**エンジンの名前が書いてよいのはここだけ。**
  *
- * spec 側にエンジンの名前が散ると、[ADR-0009](../../docs/adr/0009-editor-engine-monaco.md) の
+ * spec 側に散ると、[ADR-0009](../../docs/adr/0009-editor-engine-monaco.md) の
  * 差し替えで 4 ファイルを同時に直すことになる。**この表 1 枚と、下の薄い関数群を
- * 書き換えれば済む**状態にしてある。
+ * 書き換えれば済む**状態にしてある。CodeMirror → Monaco の張り替えで
+ * 書き換えたのはこの範囲だけで、**spec の期待値は 1 つも動かしていない。**
+ *
+ * # すべて `#mx-editor` の内側に閉じる
+ *
+ * **`.monaco-editor` はもう 1 つある。** はみ出すウィジェットの受け皿として
+ * `document.body` 直下にも同じクラスの要素を置いているので
+ * （`features/editor/editor.ts`）、素のクラス名で数えると
+ * **載っていないのに 1 つある**ことになる。
  *
  * `browser.execute` に渡す関数は文字列化されて向こう側で走るので、
  * **セレクタはクロージャで掴まず引数で渡す。**
  */
 export const EDITOR_DOM = {
   /** エディタの外枠。載っているかの判定に使う。 */
-  root: '.cm-editor',
+  root: '#mx-editor .monaco-editor',
   /** 編集面。クリックしてフォーカスを取る先。 */
-  content: '.cm-content',
-  /** 1 行。本文の組み直しに使う。 */
-  line: '.cm-line',
-  /** カーソルがある行。 */
-  activeLine: '.cm-line.cm-activeLine',
-  /** スクロールする器。Split の同期で位置を読み書きする。 */
-  scroller: '.cm-scroller',
-  /** 検索・置換パネル。 */
-  searchPanel: '.cm-panel.cm-search',
+  content: '#mx-editor .view-lines',
+  /** 1 行。**DOM の順は行の順ではない**（`editorText`）。 */
+  line: '#mx-editor .view-line',
+  /** カーソル。どの行に居るかを位置で結ぶのに使う。 */
+  cursor: '#mx-editor .cursors-layer .cursor',
+  /** スクロールする中身。**位置は `style.top` に負で入る**（`editorScrollTop`）。 */
+  linesContent: '#mx-editor .lines-content',
+  /** 検索・置換ウィジェット。**開いているときだけ `visible` が付く。** */
+  findWidget: '#mx-editor .find-widget.visible',
+  /** 検索欄のまとまり。フォーカスがどちらの欄にあるかを見る。 */
+  findPart: '.find-part',
+  /** 置換欄のまとまり。 */
+  replacePart: '.replace-part',
 } as const;
 
 /** 載っているエディタの数。Preview だけで読んでいるときは 0。 */
@@ -146,7 +158,8 @@ export async function mountedEditorCount(): Promise<number> {
 /** 遅延チャンクの取得と評価を待つ。**ここが失敗するなら分割が壊れている。** */
 export async function waitForEditorMounted(): Promise<void> {
   await browser.waitUntil(async () => (await mountedEditorCount()) === 1, {
-    timeout: 20_000,
+    // **Monaco は CodeMirror より待つ。** raw 3.0MB の評価が入る（ADR-0009 の根拠 2）。
+    timeout: 30_000,
     timeoutMsg: 'エディタが載らなかった',
   });
 }
@@ -158,40 +171,135 @@ export async function focusEditorSurface(): Promise<void> {
 
 /** 編集面の素のテキスト。**行区切りは入らない**（載ったことの確認に使う）。 */
 export async function editorContentText(): Promise<string> {
-  return browser.execute((selector: string) => document.querySelector(selector)?.textContent ?? '', EDITOR_DOM.content);
+  return browser.execute(
+    (selector: string) => (document.querySelector(selector)?.textContent ?? '').replaceAll('\u{A0}', ' '),
+    EDITOR_DOM.content,
+  );
 }
 
-/** カーソルがある行の文字列。 */
+/**
+ * エディタが持っている本文。改行はエディタの行区切りから組み直す。
+ *
+ * # DOM の順に読んではいけない
+ *
+ * **Monaco は行の要素を使い回す。** スクロールすると中身だけが差し替わるので、
+ * `querySelectorAll` の順は**画面の上から下の順とは限らない。**
+ * 位置（`style.top`）で並べ直す。CodeMirror では DOM の順がそのまま行の順だったので、
+ * **張り替えで中身が変わったのはこの関数である**（返すものは変えていない）。
+ *
+ * # 空白は元に戻す
+ *
+ * Monaco は空白を `&nbsp;`（U+00A0）で描く。素の `textContent` で突き合わせると
+ * **見た目が同じなのに一致しない**という形で落ちる。
+ * タブは `tabSize` ぶんの空白に展開して描かれるので**元には戻せない**
+ * （spec はタブを打たない。`Tab` が入れるのは空白 / `features/editor/list.ts`）。
+ *
+ * # 見えている行しか無い
+ *
+ * 仮想化されているので、長い本文では画面の外の行が入らない。
+ * この関数を使う spec は短い本文だけを扱っている。
+ */
+export async function editorText(): Promise<string> {
+  return browser.execute(
+    (selector: string) =>
+      [...document.querySelectorAll(selector)]
+        .map((element) => ({
+          // eslint-disable-next-line unicorn/prefer-number-coercion -- `20px` の単位を落とすために必要
+          top: Number.parseFloat((element as HTMLElement).style.top) || 0,
+          text: (element.textContent ?? '').replaceAll('\u{A0}', ' '),
+        }))
+        .toSorted((a, b) => a.top - b.top)
+        .map((entry) => entry.text)
+        .join('\n'),
+    EDITOR_DOM.line,
+  );
+}
+
+/**
+ * カーソルがある行の文字列。
+ *
+ * **カーソルと行は位置で結ぶ。** Monaco の「現在行」は本文とは別の重ね描き
+ * （`.view-overlays`）にあって文字列を持たない。どちらも同じ `style.top` を
+ * 持つので、そこで突き合わせる。
+ */
 export async function activeLineText(): Promise<string> {
   return browser.execute(
-    (selector: string) => document.querySelector(selector)?.textContent ?? '',
-    EDITOR_DOM.activeLine,
-  );
-}
-
-/** 検索・置換パネルが出ているか。 */
-export async function isSearchPanelOpen(): Promise<boolean> {
-  return browser.execute(
-    (selector: string) => document.querySelectorAll(selector).length === 1,
-    EDITOR_DOM.searchPanel,
-  );
-}
-
-/** エディタのスクロール位置。器が無ければ `-1`。 */
-export async function editorScrollTop(): Promise<number> {
-  return browser.execute((selector: string) => document.querySelector(selector)?.scrollTop ?? -1, EDITOR_DOM.scroller);
-}
-
-/** エディタのスクロール位置を動かす。**同期は `scroll` で動くので代入で足りる。** */
-export async function setEditorScrollTop(top: number): Promise<void> {
-  await browser.execute(
-    (selector: string, to: number) => {
-      const element = document.querySelector(selector);
-      if (element) element.scrollTop = to;
+    (lineSelector: string, cursorSelector: string) => {
+      const cursor = document.querySelector(cursorSelector);
+      if (!(cursor instanceof HTMLElement)) return '';
+      const found = [...document.querySelectorAll(lineSelector)].find(
+        (element) => (element as HTMLElement).style.top === cursor.style.top,
+      );
+      return (found?.textContent ?? '').replaceAll('\u{A0}', ' ');
     },
-    EDITOR_DOM.scroller,
-    top,
+    EDITOR_DOM.line,
+    EDITOR_DOM.cursor,
   );
+}
+
+/** 検索・置換ウィジェットが出ているか。 */
+export async function isSearchPanelOpen(): Promise<boolean> {
+  return browser.execute((selector: string) => document.querySelectorAll(selector).length === 1, EDITOR_DOM.findWidget);
+}
+
+/**
+ * 検索ウィジェットの、いまフォーカスがある欄。どちらでもなければ空文字。
+ *
+ * **`name` 属性では引けない。** Monaco の入力欄は素の `<input>` で、
+ * 区別できるのは囲んでいるまとまり（`.find-part` / `.replace-part`）だけである。
+ */
+export async function focusedFindField(): Promise<string> {
+  return browser.execute(
+    (findPart: string, replacePart: string) => {
+      const active = document.activeElement;
+      if (!(active instanceof Element)) return '';
+      if (active.closest(replacePart)) return 'replace';
+      if (active.closest(findPart)) return 'search';
+      return '';
+    },
+    EDITOR_DOM.findPart,
+    EDITOR_DOM.replacePart,
+  );
+}
+
+/**
+ * エディタのスクロール位置。器が無ければ `-1`。
+ *
+ * **`scrollTop` では読めない。** Monaco の器は `overflow: hidden` で、
+ * スクロールは中身を上へずらして表している
+ * （`viewLines.js` の `_linesContent.setTop(-adjustedScrollTop)`）。
+ * **符号を反転して読む。**
+ *
+ * `adjusted` は桁が大きいとき（数百万 px）の丸め対策で、spec が扱う長さでは 0。
+ */
+export async function editorScrollTop(): Promise<number> {
+  return browser.execute((selector: string) => {
+    const element = document.querySelector(selector);
+    if (!(element instanceof HTMLElement)) return -1;
+    // eslint-disable-next-line unicorn/prefer-number-coercion -- `-200px` の単位を落とすために必要
+    return -(Number.parseFloat(element.style.top) || 0);
+  }, EDITOR_DOM.linesContent);
+}
+
+/**
+ * エディタを端まで動かす。**キーで動かす。**
+ *
+ * CodeMirror のときは器の `scrollTop` へ代入していたが、
+ * **Monaco はその値を見ていない**（`editorScrollTop` の但し書き）。
+ * 代入しても画面は動かず `onDidScrollChange` も飛ばないので、同期の検証にならない。
+ *
+ * ここで見たいのは「動かしたら反対側が追随するか」であって「何 px 動いたか」では
+ * ないので、端まで飛ばせば足りる。**本物の打鍵**なので、キーが届くことも同時に通る。
+ */
+export async function scrollEditorToEnd(): Promise<void> {
+  await focusEditorSurface();
+  await browser.keys([Key.Control, Key.End]);
+}
+
+/** エディタを先頭へ戻す。 */
+export async function scrollEditorToTop(): Promise<void> {
+  await focusEditorSurface();
+  await browser.keys([Key.Control, Key.Home]);
 }
 
 /* ------------------------------------------------------------------ */
@@ -215,16 +323,6 @@ export async function typeAtEnd(text: string): Promise<void> {
   await focusEditorSurface();
   await browser.keys([Key.Control, 'End']);
   await browser.keys(text);
-}
-
-/** エディタが持っている本文。改行はエディタの行区切りから組み直す。 */
-export async function editorText(): Promise<string> {
-  return browser.execute(
-    (content: string, line: string) =>
-      [...document.querySelectorAll(`${content} ${line}`)].map((element) => element.textContent ?? '').join('\n'),
-    EDITOR_DOM.content,
-    EDITOR_DOM.line,
-  );
 }
 
 /** 未保存の印（`●` / 03.ux-spec/07-status-and-notifications.md §1）が出ているか。 */

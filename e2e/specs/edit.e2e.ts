@@ -7,7 +7,7 @@
  * 押したときに何が起きるかは見ていない。ここで見るのはその先である。
  *
  * ```text
- * 実際の打鍵 → CodeMirror の keymap → コマンド → 本文
+ * 実際の打鍵 → Monaco のキーバインド → コマンド → 本文
  * 実際の打鍵 → globalThis のリスナ  → アプリのコマンド
  * ```
  *
@@ -22,13 +22,15 @@
  */
 import { Key } from 'webdriverio';
 
-import { editorText, enterEditMode, focusEditorSurface, isSearchPanelOpen, openViaForward } from '../helpers/app';
+import {
+  editorText,
+  enterEditMode,
+  focusedFindField,
+  focusEditorSurface,
+  isSearchPanelOpen,
+  openViaForward,
+} from '../helpers/app';
 import { WORK_DOC } from '../helpers/fixtures';
-
-/** いまフォーカスがある入力欄の `name`。パネルのどの欄に居るかを見る。 */
-async function focusedFieldName(): Promise<string> {
-  return browser.execute(() => document.activeElement?.getAttribute('name') ?? '');
-}
 
 /** エディタの本文を行の配列で。 */
 async function editorLines(): Promise<string[]> {
@@ -59,12 +61,12 @@ before(async () => {
 
 describe('行操作 (F-EDIT-07)', () => {
   /**
-   * **CodeMirror のときは、これを自分で補う必要があった。**
+   * **Monaco では既定で入っている。** CodeMirror のときは
    * `@replit/codemirror-vscode-keymap` が `copyLineUp` / `copyLineDown` を
-   * `mac:` にしか割り当てておらず、Windows で効かなかった。
+   * `mac:` にしか割り当てておらず、Windows 用に自分で補っていた
+   * （[ADR-0009](../../docs/adr/0009-editor-engine-monaco.md) でその補いは畳んだ）。
    *
-   * **Monaco では既定で入っている**（ADR-0009 で補いを畳んだ）。
-   * ここが落ちたら、剥がすキーを増やしたときに巻き添えにしたということ。
+   * ここが落ちたら、**剥がすキーを増やしたときに巻き添えにした**ということ。
    */
   it('Shift+Alt+↓ で行を複製する', async () => {
     await browser.keys([Key.Shift, Key.Alt, Key.ArrowDown]);
@@ -77,10 +79,9 @@ describe('行操作 (F-EDIT-07)', () => {
   /**
    * **複製の直後に取り消す。** 2 つ操作してから 1 回取り消すのでは検証にならない。
    *
-   * `history()` は**直前の変更から 500ms 以内の変更を 1 つのグループにまとめる**
-   * （`newGroupDelay` の既定値）。E2E の打鍵はその間隔を必ず下回るので、
-   * 複製 → 削除 → `Ctrl+Z` は**両方まとめて**取り消され、
-   * 結果が「何も操作していない状態」と一致してしまう。
+   * どのエンジンも、近い時刻の変更を 1 つの取り消し単位にまとめる。
+   * E2E の打鍵はその間隔を必ず下回るので、複製 → 削除 → `Ctrl+Z` と並べると
+   * **両方まとめて**取り消され、結果が「何も操作していない状態」と一致してしまう。
    */
   it('Ctrl+Z で元に戻る (F-EDIT-04)', async () => {
     await browser.keys([Key.Control, 'z']);
@@ -109,21 +110,25 @@ describe('検索と置換 (F-EDIT-05)', () => {
       timeout: 10_000,
       timeoutMsg: 'エディタの検索パネルが開かなかった',
     });
-    expect(await focusedFieldName()).toBe('search');
+    expect(await focusedFindField()).toBe('search');
   });
 
   it('Ctrl+H で置換欄にフォーカスが移る', async () => {
     await browser.keys([Key.Control, 'h']);
 
-    await browser.waitUntil(async () => (await focusedFieldName()) === 'replace', {
+    await browser.waitUntil(async () => (await focusedFindField()) === 'replace', {
       timeout: 10_000,
       timeoutMsg: '置換欄にフォーカスが移らなかった',
     });
   });
 
   /**
-   * **入力欄に居るまま閉じられること**が要点。`vscodeKeymap` の `Escape` は
-   * scope を持たず編集面でしか効かないので、`keymap.ts` が scope 付きで足している。
+   * **入力欄に居るまま閉じられること**が要点。
+   *
+   * CodeMirror のときは `vscodeKeymap` の `Escape` が scope を持たず編集面でしか
+   * 効かなかったので、`keymap.ts` が scope 付きで足していた。
+   * **Monaco の `closeFindWidget` は「エディタにフォーカスがある」ことだけを見る**
+   * （ウィジェットの入力欄もその内側）ので、足すものが無くなった。
    */
   it('置換欄に居るまま Escape で閉じられる', async () => {
     await browser.keys([Key.Escape]);
@@ -265,15 +270,25 @@ describe('リストの継続入力 (F-EDIT-09, 10)', () => {
     });
   });
 
-  /** 途中に挿入すると、続きの番号も振り直される（`renumberList`）。 */
-  it('途中に挿んだら、続きの番号も振り直される', async () => {
+  /**
+   * **続きの項目は振り直さない**（`src/features/editor/enter.ts` の決定）。
+   *
+   * 触れば「編集していない箇所のバイト列が変わる」ことになり、N-CMP-03 に反する。
+   * Markdown は `1.` が並んでいても正しく採番して描くので、実害も無い。
+   *
+   * この 1 本は **CodeMirror の `renumberList` の挙動を書き写していた。**
+   * 依存が既定で持っていた振る舞いであって、Marxdown が決めたことではない
+   * （[ADR-0009](../../docs/adr/0009-editor-engine-monaco.md)）。
+   * **いまは「振り直さないこと」を留めるためにここに居る。**
+   */
+  it('途中に挿んでも、続きの番号は触らない', async () => {
     await browser.keys([Key.Control, Key.Home]);
     await browser.keys([Key.End]);
     await browser.keys([Key.Enter]);
 
-    await browser.waitUntil(async () => (await editorText()) === '1. a\n2. \n3. b', {
+    await browser.waitUntil(async () => (await editorText()) === '1. a\n2. \n2. b', {
       timeout: 10_000,
-      timeoutMsg: '番号が振り直されなかった',
+      timeoutMsg: '次の項目が 2. で始まらなかった',
     });
   });
 
