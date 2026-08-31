@@ -32,7 +32,11 @@ const base = EditorView.theme({
   '&.cm-focused': { outline: 'none' },
   '.cm-scroller': {
     fontFamily: 'var(--mx-font-code)',
-    fontVariantLigatures: 'var(--mx-font-ligatures-code)',
+    // Preview 側（`--mx-font-ligatures-code`）とは揃えず、常に無効にする。
+    // Cascadia Code などのリガチャ付きフォントで `?` `:` `/` `_` 等を連続入力すると、
+    // WebView2/Chromium 側のリガチャ形成キャッシュが再描画されず文字が消えて見える
+    // （選択操作で強制再描画されるまで戻らない）。Preview は打鍵ごとの再描画が無いため影響しない（#39）。
+    fontVariantLigatures: 'none',
     lineHeight: 'var(--mx-line-height)',
   },
   // 本文幅はプレビューと揃える。読む面と書く面で行長が変わると、
