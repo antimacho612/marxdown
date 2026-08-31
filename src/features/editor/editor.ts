@@ -25,7 +25,7 @@ import { history } from '@codemirror/commands';
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown';
 import { bracketMatching } from '@codemirror/language';
 import { highlightSelectionMatches, openSearchPanel, search } from '@codemirror/search';
-import { EditorState } from '@codemirror/state';
+import { EditorState, type Text } from '@codemirror/state';
 import {
   drawSelection,
   dropCursor,
@@ -36,7 +36,7 @@ import {
   rectangularSelection,
 } from '@codemirror/view';
 
-import { markDirty } from '@/features/document/dirty';
+import { setDirty } from '@/features/document/dirty';
 import { scheduleLiveRender } from '@/features/document/live';
 import { attachEditor, getDocumentText } from '@/features/document/text';
 import { startScrollSync, stopScrollSync } from '@/features/view/scroll-sync';
@@ -46,6 +46,17 @@ import { editorKeymap } from './keymap';
 import { editorTheme } from './theme';
 
 let view: EditorView | null = null;
+
+/**
+ * ダーティ判定の基準（F-EDIT-03）。`markClean()` が呼ばれるたびに、
+ * そのときの内容へ動かす（`sync`）。
+ *
+ * 打鍵ごとの `docChanged` だけを見ると、Undo で編集前の内容まで戻っても
+ * ダーティのままになる（#43）。ここと `Text.eq()` で内容そのものを比較する。
+ * `Text` はロープ構造で共有されるので、Undo で戻ったときのように内部ノードを
+ * 使い回すケースは文字列比較よりずっと安い。
+ */
+let cleanDoc: Text | null = null;
 
 /**
  * エディタを載せる。**2 回目以降は何もしない。**
@@ -111,11 +122,12 @@ export function mountEditor(host: HTMLElement): EditorView {
         // ダーティ状態（F-EDIT-03）。**boolean 1 つだけがリアクティビティを通る。**
         // 本文そのものはここを通らない（ADR-0005 / 02.architecture/08-state-management.md §1）。
         //
-        // `markDirty` は既にダーティなら何もしないので、打鍵ごとに
-        // ストアの書き込みや IPC が走ることはない（`document/save.ts`）。
+        // `docChanged` だけで dirty にはしない。Undo で `cleanDoc` まで戻ってきたら
+        // 逆にダーティを解除する（#43）。`setDirty` は値が変わらなければ何もしないので、
+        // 打鍵ごとにストアの書き込みや IPC が走ることはない（`document/save.ts`）。
         EditorView.updateListener.of((update) => {
           if (!update.docChanged) return;
-          markDirty();
+          setDirty(cleanDoc === null || !update.state.doc.eq(cleanDoc));
           // Split では右のプレビューを追いかけさせる（F-MODE-03）。
           // 打鍵ごとには描き直さない（`document/live.ts` が待つ）。
           scheduleLiveRender();
@@ -125,12 +137,18 @@ export function mountEditor(host: HTMLElement): EditorView {
     }),
   });
 
+  // 載せた時点の内容がダーティ判定の基準（マウント前はダーティになりようがない）。
+  cleanDoc = view.state.doc;
+
   // ここから先、本文の真実は `EditorState` にある（ADR-0005）。
   attachEditor({
     read: () => view?.state.doc.toString() ?? doc,
     replace: (text) => {
       if (!view) return;
       view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: text } });
+    },
+    sync: () => {
+      cleanDoc = view?.state.doc ?? null;
     },
   });
 

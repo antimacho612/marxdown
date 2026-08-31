@@ -23,6 +23,7 @@ function fakePort(initial: string): EditorTextPort & { text: string; replace: Re
     replace: vi.fn((next: string) => {
       port.text = next;
     }),
+    sync: vi.fn(),
   };
   return port;
 }
