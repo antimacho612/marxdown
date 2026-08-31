@@ -142,6 +142,10 @@ body {
   grid-area: editor;
 }
 
+:root[data-mx-mode='split'] .mx-editor__frame {
+  max-width: unset;
+}
+
 :root[data-mx-mode='split'] .mx-preview {
   grid-area: preview;
 }
