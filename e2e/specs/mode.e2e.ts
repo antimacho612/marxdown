@@ -3,8 +3,13 @@
  *
  * **ここでしか確かめられないのは「遅延チャンクが本物のビルドで載る」こと。**
  * Vitest では `features/editor/open-editor` をモックしており、`editor` チャンク
- * （178KB）が実際に取得・評価されるかは見ていない。分割の境界を壊すと
+ * が実際に取得・評価されるかは見ていない。分割の境界を壊すと
  * 起動が太るか、切り替えたときに何も出ないかのどちらかになる。
+ *
+ * **Monaco になってから、ここは重くなった。** 792KB（raw 3.0MB）の取得と評価が
+ * 切り替えの瞬間に入るので、待ち時間の上限を広げてある（`waitForEditorMounted`）。
+ * この 1 本が落ちるということは、idle プリロードが効いていないということでもある
+ * （[ADR-0009](../../docs/adr/0009-editor-engine-monaco.md) の根拠 2）。
  */
 import { Key } from 'webdriverio';
 
@@ -32,7 +37,7 @@ describe('Preview と Edit を行き来する', () => {
     expect(await mountedEditorCount()).toBe(0);
   });
 
-  it('Ctrl+Shift+V で Edit に入り、CodeMirror が載る', async () => {
+  it('Ctrl+Shift+V で Edit に入り、エディタが載る', async () => {
     await pressTogglePreview();
 
     await browser.waitUntil(async () => (await mode()) === 'edit', {
