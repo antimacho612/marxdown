@@ -16,15 +16,32 @@
  * この振り分けがあるので、`features/editor/keymap.ts` は `Ctrl+F` を Monaco から剥がしている。
  * 外さないと、Edit ではエディタが先に受けたあと、ここでもう一度開くことになる。
  *
+ * # Split では「見ている面」がモードで決まらない
+ *
+ * 両方が見えているので、`viewStore.mode` では判定にならない。
+ * **フォーカスのある側を探す**（[03.ux-spec > keybindings §4](../../../docs/03.ux-spec/04-keybindings.md)）。
+ * Split に入った直後はエディタにフォーカスがあるので、既定はエディタ検索になる。
+ * プレビューを叩いてから押せば本文検索が開く。
+ *
+ * # 2 つの検索を同時に開かない
+ *
+ * プレビュー検索の `F3` / `Escape` は `bindKeys`（`lib/shortcuts.ts`）でグローバルに置いてある。
+ * **あちらには「入力中は発火しない」が無い**ので、エディタにフォーカスを移しても効き続ける。
+ * Split で両方開けると `F3` が 2 つの検索を同時に進めることになるため、
+ * **開くほうが、もう片方を閉じる。**
+ *
  * # 置換は Edit だけ
  *
  * `Ctrl+H` は Preview では何も起きない。読んでいるものを書き換える経路は無いし、
  * 押した人が期待しているのは編集であって、モードが勝手に変わることではない。
- * メニューには Edit のときしか出さない（`app/commands.ts` の `isListed`）。
+ * メニューには Preview のときだけ出さない（`app/commands.ts` の `isListed`）。
+ * **Split では効く。** 片方はエディタなので、置換の行き先が決まっている。
  */
-import { openEditorSearchLazily } from '@/features/editor/open-editor';
+import { closeEditorSearchLazily, openEditorSearchLazily } from '@/features/editor/open-editor';
 import { openSearchLazily } from '@/features/preview/open-search';
 import { viewStore } from '@/features/view/store.svelte';
+
+const EDITOR_SELECTOR = '#mx-editor';
 
 /**
  * プレビュー内検索を閉じる手段。開いたときに受け取って持っておく。
@@ -35,20 +52,49 @@ import { viewStore } from '@/features/view/store.svelte';
  */
 let closePreview: (() => void) | null = null;
 
+/**
+ * エディタ検索を開いたことがあるか。
+ *
+ * **`editor` チャンクを落とさないための番人。** 閉じにいくのは開いたことがある場合だけで、
+ * そうしないと Preview だけで読んでいる起動の初回 `Ctrl+F` でエディタが落ちてくる
+ * （`closePreview` が `null` のときに何もしないのと同じ理由）。
+ *
+ * ユーザーが `Escape` で自分で閉じた場合は立ったままになるが、
+ * そのときの `closeFindWidget` は precondition で弾かれるだけで害が無い。
+ */
+let editorSearchOpened = false;
+
+/** エディタ側にフォーカスがあるか。Monaco の find ウィジェットも `#mx-editor` の中にある。 */
+function editorHasFocus(): boolean {
+  const host = document.querySelector<HTMLElement>(EDITOR_SELECTOR);
+  const active = document.activeElement;
+  return host !== null && active !== null && host.contains(active);
+}
+
+/** どちらの面を探すか。 */
+function targetOf(): 'preview' | 'editor' {
+  if (viewStore.mode === 'preview') return 'preview';
+  if (viewStore.mode === 'edit') return 'editor';
+  return editorHasFocus() ? 'editor' : 'preview';
+}
+
 /** 検索を開く（`Ctrl+F`）。 */
 export async function openFind(): Promise<void> {
-  // Split（Phase 5）が入ると「どちらの面を見ているか」がフォーカスで決まる。
-  // いまは 2 モードしかないので、モードだけで足りる。
-  if (viewStore.mode === 'preview') {
+  if (targetOf() === 'preview') {
+    await closeEditorFind();
     closePreview = await openSearchLazily();
     return;
   }
+  closePreviewFind();
+  editorSearchOpened = true;
   await openEditorSearchLazily(false);
 }
 
 /** 置換を開く（`Ctrl+H`）。Preview では何もしない。 */
 export async function openReplace(): Promise<void> {
   if (viewStore.mode === 'preview') return;
+  closePreviewFind();
+  editorSearchOpened = true;
   await openEditorSearchLazily(true);
 }
 
@@ -60,9 +106,17 @@ export async function openReplace(): Promise<void> {
  */
 export function closePreviewFind(): void {
   closePreview?.();
+  closePreview = null;
+}
+
+/** エディタ検索を閉じる。開いたことが無ければ `editor` チャンクを触らない。 */
+async function closeEditorFind(): Promise<void> {
+  if (!editorSearchOpened) return;
+  await closeEditorSearchLazily();
 }
 
 /** テスト用。 */
 export function resetFind(): void {
   closePreview = null;
+  editorSearchOpened = false;
 }
