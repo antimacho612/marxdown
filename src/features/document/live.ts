@@ -28,6 +28,8 @@
 import { enhance } from '@/features/preview/enhance';
 import { paint } from '@/features/preview/paint';
 import { viewStore } from '@/features/view/store.svelte';
+import { ja } from '@/i18n/ja';
+import { toMessage } from '@/lib/error';
 import { dirOf } from '@/lib/path';
 
 import { getParser } from './open';
@@ -52,6 +54,59 @@ let running = false;
 let again = false;
 
 /**
+ * 描き直し 1 回ぶんの時刻（`features/bench/input.ts` が読む / 計測専用）。
+ *
+ * OQ-15 の判定基準は「打ち終わってから画面が変わるまで」であり、
+ * そこには debounce・パース・paint が含まれる。**内訳が無いと、
+ * 差が出たときに Worker のせいなのか paint のせいなのかが分からない。**
+ */
+export interface LiveRenderTiming {
+  /** 描き直しを予約した最後の時刻。**打ち終わりの時刻**そのもの。 */
+  scheduledAt: number;
+  /** debounce が明けて描き直しに入った時刻。 */
+  startedAt: number;
+  /**
+   * パースを投げてから結果が返るまで。**そのままメインスレッドの占有時間。**
+   *
+   * `parseMs`（パイプライン自身の申告値）との差が、その外側の仕事
+   * （チャンクの解決 / 文字数の集計）になる。
+   */
+  parseWaitMs: number;
+  /** パイプライン自身が申告したパース時間（`ParseResult.parseMs`）。 */
+  parseMs: number;
+  /** paint と enhance を終えた時刻。**画面に出るのはこの次のフレーム。** */
+  paintedAt: number;
+}
+
+/**
+ * 描き直しの時刻を受け取る先。**計測が付いていないときは時刻を取らない。**
+ *
+ * `scheduleLiveRender` は打鍵ごとに呼ばれるので、無条件に `performance.now()` を
+ * 置くと計測していない普段の入力にも乗る。安くはあるが、**入力レスポンスを
+ * 測るための仕掛けが入力レスポンスを食う**のは筋が悪い。
+ */
+let observer: ((timing: LiveRenderTiming) => void) | null = null;
+let scheduledAt = 0;
+
+/**
+ * 診断用の内訳（`features/bench/input.ts` / 計測専用）。
+ *
+ * **描き直しが起きなかったとき、どこで止まったかが分からない**という問題が
+ * 実際に起きた。予約されていないのか、始まって落ちたのかで原因がまるで違う。
+ */
+const debug = { scheduled: 0, started: 0, finished: 0, lastError: null as string | null };
+
+/** 診断用。**計測専用。** */
+export function liveRenderDebug(): typeof debug {
+  return { ...debug };
+}
+
+/** 計測を付ける / 外す（`features/bench/input.ts` / 計測専用）。 */
+export function observeLiveRender(next: ((timing: LiveRenderTiming) => void) | null): void {
+  observer = next;
+}
+
+/**
  * プレビューを描き直す予約をする。**Split のときだけ働く。**
  *
  * 他のモードではプレビューが見えていないので、描き直す意味が無い
@@ -60,6 +115,9 @@ let again = false;
  */
 export function scheduleLiveRender(): void {
   if (viewStore.mode !== 'split') return;
+
+  debug.scheduled++;
+  if (observer) scheduledAt = performance.now();
 
   if (timer !== null) clearTimeout(timer);
   timer = setTimeout(() => {
@@ -92,8 +150,15 @@ export async function renderNow(): Promise<void> {
   if (!parser || !container || !meta) return;
 
   running = true;
+  debug.started++;
+  // **入った時点の値を控える。** 描いているあいだも打鍵は続き、`scheduledAt` は
+  // そのたびに先へ進む。控えないと「打ち終わってから画面が変わるまで」が
+  // 次の打鍵からの差になり、値が縮む（`huge.md` では負にもなる）。
+  const scheduledFor = scheduledAt;
+  const startedAt = observer ? performance.now() : 0;
   try {
     const parsed = await parser.parse(getDocumentText());
+    const parsedAt = observer ? performance.now() : 0;
 
     // `paint` は中身を差し替える。控えてから当て直す。
     const scrollTop = container.scrollTop;
@@ -107,6 +172,21 @@ export async function renderNow(): Promise<void> {
     enhance(container, { baseDir: dirOf(meta.path) });
     refreshSearch();
     refreshOutline();
+
+    observer?.({
+      scheduledAt: scheduledFor,
+      startedAt,
+      parseWaitMs: parsedAt - startedAt,
+      parseMs: parsed.parseMs,
+      paintedAt: performance.now(),
+    });
+    debug.finished++;
+  } catch (e) {
+    // **黙って止まらないようにする。** ここは `void renderNow()` で呼ばれるので、
+    // 投げた例外は誰にも拾われない。本文は前の内容のまま残るが、**打っても
+    // 右が変わらない**状態になり、原因が読めない（M2 Phase 6 で実際に踏んだ）。
+    debug.lastError = toMessage(e);
+    documentStore.notice = { level: 'error', message: `${ja.error.renderFailed}: ${toMessage(e)}` };
   } finally {
     running = false;
   }
@@ -122,4 +202,5 @@ export function resetLiveRender(): void {
   cancelLiveRender();
   running = false;
   again = false;
+  observer = null;
 }

@@ -56,7 +56,6 @@ export interface RenderStats {
   parseMs: number;
   paintMs: number;
   chunks: number;
-  site: 'worker' | 'main';
 }
 
 class DocumentStore {
@@ -65,7 +64,7 @@ class DocumentStore {
   outline = $state<OutlineItem[]>([]);
   frontMatter = $state<string | null>(null);
   stats = $state<RenderStats | null>(null);
-  /** 文字数と読了時間（03.ux-spec/07-status-and-notifications.md §3）。Worker が数えた派生値。 */
+  /** 文字数と読了時間（03.ux-spec/07-status-and-notifications.md §3）。パイプラインが数えた派生値。 */
   textStats = $state<TextStats | null>(null);
 
   #notice = $state<Notice | null>(null);

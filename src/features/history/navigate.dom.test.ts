@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { configureOpener, openPath, reloadCurrent } from '@/features/document/open';
 import { documentStore } from '@/features/document/store.svelte';
-import type { MarkdownParser } from '@/markdown/worker/client';
+import type { MarkdownParser } from '@/markdown/parser';
 import { getPlatform, setPlatform, type DocumentPayload, type Platform } from '@/platform';
 
 import { canGoBack, canGoForward, resetHistory } from './history';
@@ -29,7 +29,6 @@ function fakeParser(): MarkdownParser {
   return {
     parse: (text) =>
       Promise.resolve({
-        type: 'parsed' as const,
         id: 1,
         chunks: [`<h1>${text.length}</h1>`],
         outline: [],
@@ -77,7 +76,7 @@ beforeEach(() => {
     },
   });
 
-  configureOpener({ parser: fakeParser(), site: 'worker' });
+  configureOpener({ parser: fakeParser() });
   documentStore.meta = null;
   resetHistory();
 });

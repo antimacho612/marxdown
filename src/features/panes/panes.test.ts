@@ -32,7 +32,7 @@ function bootstrapWith(panes: Panes): Bootstrap {
     document: null,
     documentError: null,
     mode: null,
-    spike: { parse: 'worker' },
+    benchInput: false,
     trace: null,
     pendingPaths: [],
     unknownArgs: [],

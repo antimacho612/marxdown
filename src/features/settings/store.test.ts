@@ -35,7 +35,7 @@ function bootstrapWith(settings: Partial<Bootstrap>): Bootstrap {
     document: null,
     documentError: null,
     mode: null,
-    spike: { parse: 'worker' },
+    benchInput: false,
     trace: null,
     pendingPaths: [],
     unknownArgs: [],

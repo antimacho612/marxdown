@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { recentStore } from '@/features/workspace/recent.svelte';
 import { ja } from '@/i18n/ja';
-import type { MarkdownParser } from '@/markdown/worker/client';
+import type { MarkdownParser } from '@/markdown/parser';
 import { getPlatform, setPlatform, type DocumentPayload, type FileChange, type Platform } from '@/platform';
 
 import { configureOpener, openPath } from './open';
@@ -29,7 +29,6 @@ function fakeParser(): MarkdownParser {
   return {
     parse: (text) =>
       Promise.resolve({
-        type: 'parsed' as const,
         id: 1,
         chunks: [`<p>${text.length}</p>`],
         outline: [],
@@ -86,7 +85,7 @@ beforeEach(() => {
   documentStore.isDirty = false;
   recentStore.entries = [];
 
-  configureOpener({ parser: fakeParser(), site: 'worker' });
+  configureOpener({ parser: fakeParser() });
 });
 
 /** F-EDIT-16 / 03.ux-spec/07-status-and-notifications.md §2 の 1 行目。 */

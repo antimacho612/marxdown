@@ -113,7 +113,7 @@ Tauri を起動せずに UI を反復するためのモック環境。ファイ�
 
 ## 確認できること
 
-- Markdown パイプラインと Worker
+- Markdown パイプライン
 - プレビューのタイポグラフィとテーマ
 - 段階的描画
 
@@ -203,7 +203,11 @@ function initialBootstrap(): Bootstrap {
         },
     documentError: null,
     mode: (params.get('mode') as Bootstrap['mode']) ?? null,
-    spike: { parse: (params.get('parse') as 'worker' | 'main') ?? 'worker' },
+    // `?benchInput` で計測経路をブラウザからも起動できるようにしておく。
+    // **数値は当てにならない**（dev サーバはモジュールを 1 つずつ配信し、
+    // Monaco の読み込みだけで数十秒かかる / 06.roadmap/m2-editor.md §5）。
+    // ここに口があるのは、経路が動くことを Tauri のビルドなしで確かめるため。
+    benchInput: params.has('benchInput'),
     trace: { enabled: params.has('trace'), t0EpochMs: Date.now() },
     pendingPaths: [],
     unknownArgs: [],
@@ -564,6 +568,12 @@ export const webPlatform: Platform = {
   async warmDone() {
     // ブラウザには argv 転送が無い
     return null;
+  },
+
+  // ブラウザには書き出し先も終わらせるプロセスも無い。**コンソールに出す。**
+  // `?benchInput` で経路そのものを確かめるためにあり、数値は使わない。
+  async benchInputDone(json) {
+    console.info('[marxdown] benchInputDone', JSON.parse(json));
   },
 
   async openExternal(url) {

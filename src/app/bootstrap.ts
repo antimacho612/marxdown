@@ -7,18 +7,18 @@
  * ```text
  * T4  初期スクリプト評価開始          （Rust の initialization_script が打つ）
  * T5  bootstrap を同期読み取り        （IPC 往復なし）
- * T6  Worker へ parse を送信          （シェル描画より先に投げる）
- * ─── ここでシェルを描く。Worker は並行に働いている ───
- * T7  Worker から HTML 受信
+ * T6  parse を投げる                  （シェル描画より先に投げる）
+ * ─── ここでシェルを描く ───
+ * T7  パース結果を受け取る
  * T8  本文 DOM 挿入完了 + 次の rAF     ← 「読める」瞬間
  * T9  window.show()
  * ```
  *
  * # 順序の理由
  *
- * `parse` の送信を**シェル描画より前**に置いているのが要点。
- * Worker への postMessage はほぼ即座に返るので、送信を先に済ませておけば
- * シェルの描画時間がまるごとパース時間に重なる。
+ * `parse` を投げるのを**シェル描画より前**に置いているのが要点。
+ * `parse` は `pipeline` チャンクの解決を待つ非同期なので、先に投げておけば
+ * その取得と評価にシェルの描画時間が重なる（[ADR-0010](../../docs/adr/0010-parse-on-main-thread.md)）。
  *
  * この重ね合わせは `openDocument` の `betweenParseAndPaint` として表現してある。
  * 開く経路そのものは `features/document/open.ts` に 1 本化されており、
@@ -44,16 +44,13 @@ import { runCommand } from '@/lib/commands';
 import { toMessage } from '@/lib/error';
 import { requestIdle } from '@/lib/idle';
 import { adoptT4, drain, initTrace, isTracing, mark } from '@/lib/trace';
-import { createParser } from '@/markdown/worker/client';
-import { getPlatform, type Bootstrap, type DocumentPayload, type SpikeFlags } from '@/platform';
+import { createParser } from '@/markdown/parser';
+import { getPlatform, type Bootstrap, type DocumentPayload } from '@/platform';
 
 import { installCommands } from './commands';
 import { installWindowState, reportSnapLayoutsTarget } from './window';
 
 const PREVIEW_SELECTOR = '#mx-preview';
-
-/** bootstrap が取れない場合の保険（`dev:web` の初回など）。 */
-const FALLBACK_SPIKE: SpikeFlags = { parse: 'worker' };
 
 /**
  * bootstrap を読む。**同期的に読めることが最重要**（02.architecture/05-startup-sequence.md §1 の要点 2）。
@@ -72,8 +69,6 @@ export async function startup(renderShell: () => void): Promise<void> {
   initTrace(bootstrap?.trace ?? null);
   adoptT4();
   mark('T5', bootstrap?.document ? `${bootstrap.document.size} bytes` : 'no document');
-
-  const spike = bootstrap?.spike ?? FALLBACK_SPIKE;
 
   // 倍率は**本文を描くより前**に当てる（F-VIEW-11）。
   // 後から当てると、既定倍率で 1 フレーム描かれてから跳ねる。
@@ -107,7 +102,7 @@ export async function startup(renderShell: () => void): Promise<void> {
   const customCss = bootstrap?.customCss ?? null;
   const customCssResult = applyCustomCss(customCss?.css ?? null);
 
-  configureOpener({ parser: createParser(spike.parse), site: spike.parse });
+  configureOpener({ parser: createParser() });
 
   // リンクハンドラとキーバインドは**本文を描くより前**に登録する。
   //
@@ -208,6 +203,17 @@ export async function startup(renderShell: () => void): Promise<void> {
     installCustomCss(customCss, customCssResult);
     return null;
   });
+
+  // 入力レスポンスの計測（`--bench-input` / 計測専用 / `features/bench/input.ts`）。
+  //
+  // **`ready()` の後**。エディタが載るのを待つ側であり、起動の経路には一切関与しない。
+  // フラグが立った起動でしかチャンクを取りに行かないので、普段の起動には出てこない。
+  if (bootstrap?.benchInput === true) {
+    void import('@/features/bench/input').then(async ({ runInputBench }) => {
+      await runInputBench();
+      return null;
+    });
+  }
 }
 
 /**

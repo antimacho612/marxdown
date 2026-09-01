@@ -31,7 +31,7 @@ import { ja } from '@/i18n/ja';
 import { toMessage } from '@/lib/error';
 import { dirOf } from '@/lib/path';
 import { mark } from '@/lib/trace';
-import type { MarkdownParser } from '@/markdown/worker/client';
+import type { MarkdownParser } from '@/markdown/parser';
 import { getPlatform, type DocumentPayload } from '@/platform';
 
 import { markClean } from './dirty';
@@ -44,8 +44,6 @@ const PREVIEW_SELECTOR = '#mx-preview';
 
 export interface OpenerConfig {
   parser: MarkdownParser;
-  /** パース場所。開発ビルドのステータスバー表示に使う（OQ-15）。 */
-  site: 'worker' | 'main';
 }
 
 let config: OpenerConfig | null = null;
@@ -198,7 +196,7 @@ export async function openDocument(payload: DocumentPayload, options: OpenOption
       paintMs: result.firstChunkAt - startedAt,
       chunks: parsed.chunks.length,
     };
-    documentStore.stats = { ...outcome, site: config.site };
+    documentStore.stats = outcome;
 
     // 本文に後から手を入れる（画像 / コピーボタン / ハイライト）。
     //

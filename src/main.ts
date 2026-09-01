@@ -10,14 +10,6 @@
  * 150KB の予算計測（size-limit の `main-*.js`）が実態を映さなくなる。
  * **予算を守るためには、予算の計測対象に載っている必要がある。**
  */
-/*
- * **この import が最初にあることが仕様である**（OQ-30 / `markdown/worker/boot.ts`）。
- *
- * Worker のスレッドとグローバルスコープの生成に 32〜35ms かかる。ここで立てておくと、
- * bootstrap の読み取りからシェルの描画までが、まるごとその 35ms に重なる。
- * 下に動かすと、重ならなかったぶんがそのまま「本文が読める」までに乗る。
- */
-import '@/markdown/worker/boot';
 import '@/styles/tokens.css';
 import '@/styles/reset.css';
 import '@/styles/shell.css';

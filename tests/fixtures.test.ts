@@ -22,8 +22,8 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 import { render, renderChunks } from '@/markdown/pipeline';
+import { DEFAULT_CHUNK_BLOCKS, DEFAULT_FIRST_CHUNK_BLOCKS } from '@/markdown/protocol';
 import { measure } from '@/markdown/text-stats';
-import { DEFAULT_CHUNK_BLOCKS, DEFAULT_FIRST_CHUNK_BLOCKS } from '@/markdown/worker/protocol';
 
 const FIXTURES = join(dirname(fileURLToPath(import.meta.url)), '..', 'bench', 'fixtures');
 

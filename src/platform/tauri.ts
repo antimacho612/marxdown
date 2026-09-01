@@ -227,6 +227,10 @@ export const tauriPlatform: Platform = {
     return invoke<number | null>('warm_done', { requestId, path, detail, kind });
   },
 
+  benchInputDone(json) {
+    return invoke<void>('bench_input_done', { json });
+  },
+
   openExternal(url) {
     return invoke<void>('open_external', { url });
   },

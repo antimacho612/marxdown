@@ -15,7 +15,7 @@
 
 use serde::Serialize;
 
-use crate::cli::{CliArgs, SpikeFlags, ViewMode};
+use crate::cli::{CliArgs, ViewMode};
 use crate::custom_css::CustomCss;
 use crate::document::{self, DocumentMeta, INLINE_CONTENT_LIMIT};
 use crate::settings::{Settings, SettingsLoad, SettingsProblem};
@@ -32,7 +32,12 @@ pub struct Bootstrap {
     /// 読み込みに失敗した場合の理由。UI が通知バーに出す。
     pub document_error: Option<BootstrapError>,
     pub mode: Option<ViewMode>,
-    pub spike: SpikeFlags,
+    /// 入力レスポンスの計測を走らせるか（`--bench-input` / 計測専用）。
+    ///
+    /// **書き出し先はフロントへ渡さない。** 任意のパスへ書ける口を作らずに済むよう、
+    /// フロントは結果を `bench_input_done` へ渡すだけで、置き場所は Rust が持つ
+    /// （`open_settings_file` と同じ形）。
+    pub bench_input: bool,
     pub trace: Option<TraceConfig>,
     /// 引数として渡されたが 1 枚目にならなかったパス（M3 のタブで開く）。
     pub pending_paths: Vec<String>,
@@ -137,7 +142,7 @@ pub fn build(
         document,
         document_error,
         mode: args.mode,
-        spike: args.spike,
+        bench_input: args.bench_input.is_some(),
         trace: Some(TraceConfig {
             enabled: trace.enabled(),
             t0_epoch_ms: trace.t0_epoch_ms(),

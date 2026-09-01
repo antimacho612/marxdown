@@ -19,11 +19,10 @@ import {
 import { startup } from './bootstrap';
 
 /** Worker を立てない。パイプラインの中身はこのテストの関心ではない。 */
-vi.mock('@/markdown/worker/client', () => ({
+vi.mock('@/markdown/parser', () => ({
   createParser: () => ({
     parse: (text: string) =>
       Promise.resolve({
-        type: 'parsed' as const,
         id: 1,
         chunks: [`<p>${String(text.length)}</p>`],
         outline: [],
@@ -45,7 +44,7 @@ function bootstrapWith(patch: Partial<Bootstrap>): Bootstrap {
     document: null,
     documentError: null,
     mode: null,
-    spike: { parse: 'worker' },
+    benchInput: false,
     trace: null,
     pendingPaths: [],
     unknownArgs: [],

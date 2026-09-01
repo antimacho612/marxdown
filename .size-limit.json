@@ -1,7 +1,7 @@
 [
   {
-    "name": "critical path (main + shared + md-worker)",
-    "path": ["dist/assets/main-*.js", "dist/assets/shared-*.js", "dist/assets/md-worker-*.js"],
+    "name": "critical path (main + shared + pipeline)",
+    "path": ["dist/assets/main-*.js", "dist/assets/shared-*.js", "dist/assets/pipeline-*.js"],
     "limit": "150 KB",
     "gzip": true
   },
@@ -27,6 +27,12 @@
     "name": "outline jump (見出しジャンプのパレット。Ctrl+Shift+O を押すまでロードしない)",
     "path": ["dist/assets/outline-*.js"],
     "limit": "6 KB",
+    "gzip": true
+  },
+  {
+    "name": "bench input (--bench-input のときだけロードする計測経路)",
+    "path": ["dist/assets/bench-*.js"],
+    "limit": "4 KB",
     "gzip": true
   },
   {

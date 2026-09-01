@@ -9,7 +9,6 @@
  * pnpm build:app                       # release ビルドが必要
  * node scripts/bench-startup.mjs                       # 既定（cold, readme.md）
  * node scripts/bench-startup.mjs --runs 10 --file spec.md
- * node scripts/bench-startup.mjs --sweep               # 比較経路との A/B
  * node scripts/bench-startup.mjs --warm --runs 10      # ウォーム起動
  * node scripts/bench-startup.mjs --json out.json       # 結果を JSON で保存
  * ```
@@ -55,7 +54,6 @@ function parseArgs(argv) {
   const out = {
     runs: 10,
     file: 'readme.md',
-    sweep: false,
     warm: false,
     json: null,
     timeoutMs: 20_000,
@@ -70,9 +68,6 @@ function parseArgs(argv) {
         break;
       case '--file':
         out.file = next();
-        break;
-      case '--sweep':
-        out.sweep = true;
         break;
       case '--warm':
         out.warm = true;
@@ -347,13 +342,8 @@ if (opts.warm) {
   report.results.warm = warm.summary;
   report.results.warmRecords = warm.records;
 } else {
-  // 残っている A/B はパース場所だけ。結論の出た比較経路は撤去してある。
-  const configs = opts.sweep
-    ? [
-        { name: '本命（Worker でパース）', spike: {} },
-        { name: 'メインスレッドでパース（OQ-15）', spike: { parse: 'main' } },
-      ]
-    : [{ name: `既定（${opts.file}）`, spike: opts.spike }];
+  // **A/B の比較経路は全部畳んだ**（OQ-15 / ADR-0010）。残っているのは既定の 1 本だけ。
+  const configs = [{ name: `既定（${opts.file}）`, spike: opts.spike }];
 
   for (const config of configs) {
     const results = [];
