@@ -65,7 +65,7 @@
   <span class="mx-statusbar__spacer"></span>
 
   {#if import.meta.env.DEV && stats}
-    <span>{stats.site}{stats.chunks > 1 ? ` / ${stats.chunks} chunks` : ''}</span>
+    {#if stats.chunks > 1}<span>{stats.chunks} chunks</span>{/if}
     <span>{ja.status.parsedIn(stats.parseMs)}</span>
     <span>{ja.status.paintedIn(stats.paintMs)}</span>
   {/if}

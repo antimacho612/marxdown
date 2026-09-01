@@ -56,6 +56,7 @@ describe('getPlatform', () => {
       'ready',
       'reportTrace',
       'warmDone',
+      'benchInputDone',
       'openExternal',
       'openLocalFile',
       'revealInFileManager',

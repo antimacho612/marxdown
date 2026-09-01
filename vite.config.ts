@@ -8,7 +8,7 @@ const host = process.env.TAURI_DEV_HOST;
 
 /**
  * チャンク境界は 02.architecture.md §5.3 の表がそのまま仕様になっている。
- * `main` + `md-worker` がクリティカルパスであり、size-limit の監視対象。
+ * `main` + `shared` + `pipeline` がクリティカルパスであり、size-limit の監視対象。
  */
 export default defineConfig(({ mode }) => ({
   plugins: [
@@ -24,16 +24,11 @@ export default defineConfig(({ mode }) => ({
     },
   },
 
-  // Worker はクリティカルパスで並行ロードされるため、名前を固定して size-limit から参照する。
-  worker: {
-    format: 'es',
-    rollupOptions: {
-      output: {
-        entryFileNames: 'assets/md-worker-[hash].js',
-        chunkFileNames: 'assets/md-worker-[name]-[hash].js',
-      },
-    },
-  },
+  /*
+   * **Worker の設定は置いていない。** Markdown のパースを Worker へ追い出す構成は
+   * M2 Phase 6 で畳んだ（ADR-0010）。Worker を足すなら、まず出力名を固定して
+   * size-limit の予算に載せること。
+   */
 
   build: {
     target: 'esnext', // WebView2 Evergreen / WKWebView のみを対象にするため
@@ -107,6 +102,28 @@ export default defineConfig(({ mode }) => ({
            */
           const isEditor = /[\\/]src[\\/]features[\\/]editor[\\/]/.test(chunk.facadeModuleId ?? '');
           if (isEditor) return 'assets/editor-[hash].js';
+
+          /*
+           * 入力レスポンスの計測（M2 Phase 6 / `--bench-input`）。他と同じく**名前付けだけ**。
+           *
+           * 名前を固定しているのは size-limit から名指しするためで、
+           * **「計測の道具がクリティカルパスに載っていないこと」を予算として見張る**。
+           * 比較のためだけの経路が本命の予算を食った件
+           * （measurements/07-bundle.md §4）と同じ事故を繰り返さないための番人。
+           */
+          const isBench = /[\\/]src[\\/]features[\\/]bench[\\/]/.test(chunk.facadeModuleId ?? '');
+          if (isBench) return 'assets/bench-[hash].js';
+
+          /*
+           * Markdown パイプライン（markdown-it 一式）。**名前付けだけ。**
+           *
+           * かつては `md-worker` として Worker 側のエントリだった。ADR-0010 で
+           * メインスレッドへ戻したが、**起動直後に必ず要るのでクリティカルパスのまま**である。
+           * 遅延 import にしてあるのは `main` の予算計測を実態に合わせるためで
+           * （`src/markdown/parser.ts`）、size-limit はこの名前で予算に数え入れている。
+           */
+          const isPipeline = /[\\/]src[\\/]markdown[\\/]pipeline\.ts$/.test(chunk.facadeModuleId ?? '');
+          if (isPipeline) return 'assets/pipeline-[hash].js';
 
           /*
            * 共有チャンク（**facade を持たない** = 動的 import の入口ではない）。

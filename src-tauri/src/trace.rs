@@ -41,7 +41,6 @@ pub struct TraceReport {
     pub kind: String,
     pub t0_epoch_ms: f64,
     pub marks: Vec<Mark>,
-    pub spike: crate::cli::SpikeFlags,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub document: Option<TraceDocument>,
 }
@@ -148,7 +147,7 @@ impl Trace {
     }
 
     /// レポートを組み立てる。マーカーは id 順ではなく**時刻順**に並べる。
-    pub fn report(&self, kind: &str, spike: crate::cli::SpikeFlags) -> TraceReport {
+    pub fn report(&self, kind: &str) -> TraceReport {
         let mut marks = self.marks.lock().map(|m| m.clone()).unwrap_or_default();
         marks.sort_by(|a, b| {
             a.at_ms
@@ -160,17 +159,16 @@ impl Trace {
             kind: kind.to_string(),
             t0_epoch_ms: self.t0_epoch_ms,
             marks,
-            spike,
             document: self.document.lock().ok().and_then(|d| d.clone()),
         }
     }
 
     /// JSON を書き出す。`--trace-startup nul` のときは何もしない。
-    pub fn flush(&self, kind: &str, spike: crate::cli::SpikeFlags) {
+    pub fn flush(&self, kind: &str) {
         if !self.enabled {
             return;
         }
-        let report = self.report(kind, spike);
+        let report = self.report(kind);
         let Some(out) = self.out.as_ref() else { return };
         match serde_json::to_string_pretty(&report) {
             Ok(json) => {
@@ -194,7 +192,7 @@ mod tests {
     fn disabled_trace_records_nothing() {
         let t = Trace::start(Instant::now());
         t.mark("T1", None);
-        assert!(t.report("cold", Default::default()).marks.is_empty());
+        assert!(t.report("cold").marks.is_empty());
     }
 
     #[test]
@@ -213,12 +211,7 @@ mod tests {
                 note: None,
             },
         ]);
-        let ids: Vec<_> = t
-            .report("cold", Default::default())
-            .marks
-            .into_iter()
-            .map(|m| m.id)
-            .collect();
+        let ids: Vec<_> = t.report("cold").marks.into_iter().map(|m| m.id).collect();
         assert_eq!(ids, vec!["T9", "T4"]);
     }
 

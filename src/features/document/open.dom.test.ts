@@ -3,8 +3,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { recentStore } from '@/features/workspace/recent.svelte';
 import { ja } from '@/i18n/ja';
-import type { MarkdownParser } from '@/markdown/worker/client';
-import type { ParseResponse } from '@/markdown/worker/protocol';
+import type { MarkdownParser } from '@/markdown/parser';
+import type { ParseResult } from '@/markdown/protocol';
 import { getPlatform, setPlatform, type DocumentPayload, type Platform, type RecentEntry } from '@/platform';
 
 import { configureOpener, openDocument, openDropped, openPath, openViaDialog, reloadCurrent } from './open';
@@ -30,7 +30,6 @@ function fakeParser(): MarkdownParser {
   return {
     parse: (text) =>
       Promise.resolve({
-        type: 'parsed' as const,
         id: 1,
         chunks: [`<p>${text.length}</p>`],
         outline: [{ level: 1, text: 'hello', slug: 'hello', line: 0 }],
@@ -77,7 +76,7 @@ beforeEach(() => {
   documentStore.isDirty = false;
   recentStore.entries = [];
 
-  configureOpener({ parser: fakeParser(), site: 'worker' });
+  configureOpener({ parser: fakeParser() });
 });
 
 afterEach(() => {
@@ -164,8 +163,8 @@ describe('configureOpener', () => {
     const order: string[] = [];
 
     // lib は ES2023 なので Promise.withResolvers は使えない
-    let resolveParse!: (r: ParseResponse) => void;
-    const parsed = new Promise<ParseResponse>((resolve) => {
+    let resolveParse!: (r: ParseResult) => void;
+    const parsed = new Promise<ParseResult>((resolve) => {
       resolveParse = resolve;
     });
     configureOpener({
@@ -176,7 +175,6 @@ describe('configureOpener', () => {
         },
         dispose: () => {},
       },
-      site: 'worker',
     });
 
     const opening = openDocument(payload('C:/work/a.md'), {
@@ -187,7 +185,6 @@ describe('configureOpener', () => {
     expect(order).toEqual(['parse-posted', 'shell']);
 
     resolveParse({
-      type: 'parsed',
       id: 1,
       chunks: ['<p>x</p>'],
       outline: [],

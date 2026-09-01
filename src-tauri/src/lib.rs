@@ -250,6 +250,7 @@ pub fn run() {
             commands::reveal_in_file_manager,
             commands::startup_trace,
             commands::warm_done,
+            commands::bench_input_done,
             commands::app_quit,
         ])
         .setup(move |app| {

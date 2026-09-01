@@ -232,6 +232,41 @@ export function closeEditorSearch(): void {
  * （`EditorScrollPort`）である。座標計算は `scroll-port.ts` にあり、
  * 実体を渡せるのはここだけなので、ここが橋渡しをする。
  */
+/**
+ * 1 文字打つ（`features/bench/input.ts` / **計測専用**）。
+ *
+ * # なぜ合成キーイベントではないのか
+ *
+ * WebView へ外から本物のキーを送れるのは E2E（実キー入力）だけで、そちらは
+ * 1 打 50〜150ms かかる。**それでは「速く打っているあいだの詰まり」を再現できない。**
+ * 合成した `KeyboardEvent` は `keyCode` が 0 で飛ぶので Monaco のキー解決を通らない
+ * （06.roadmap/m2-editor.md §5 の Phase 8）。
+ *
+ * `type` は Monaco 自身のキーハンドラが最終的に呼ぶものと同じ入口で、
+ * モデルの編集とビューの再描画は本番と同じ経路を通る。
+ * **含まれないのはブラウザのキーイベント配送だけ**で、そこは A/B の両側で同じ定数。
+ *
+ * `source` に `'keyboard'` を渡す理由は `enter.ts` と同じ
+ * （`autoIndent: 'keep'` を通すのがこの文字列）。
+ */
+export function typeForBench(text: string): void {
+  editor?.trigger('keyboard', 'type', { text });
+}
+
+/**
+ * カーソルを末尾へ置く（`features/bench/input.ts` / **計測専用**）。
+ *
+ * 打つ場所を決めておかないと、`huge.md` では 1 行目の見出しを延々と伸ばすことになる。
+ * **人は自分が見ているところを打つ**ので、そこへ寄せてから始める。
+ */
+export function moveToEndForBench(): void {
+  const current = model;
+  if (!editor || !current) return;
+  const lineNumber = current.getLineCount();
+  editor.setPosition({ lineNumber, column: current.getLineMaxColumn(lineNumber) });
+  editor.revealLine(lineNumber);
+}
+
 export function setSplitSync(on: boolean): void {
   if (!on) {
     stopScrollSync();

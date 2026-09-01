@@ -222,21 +222,6 @@ export interface FileChange {
   kind: FileChangeKind;
 }
 
-/* ------------------------------------------------------------------ */
-/* 比較経路の切り替え                                                    */
-/* ------------------------------------------------------------------ */
-
-/**
- * 比較経路の切り替え。開発ビルドでのみ意味を持つ。
- *
- * **Worker を維持するかどうか（OQ-15）が未決のため、比較経路を保持している。**
- * 結論が出たら、この enum ごと畳む。
- */
-export interface SpikeFlags {
-  /** Markdown のパース場所 */
-  parse: 'worker' | 'main';
-}
-
 export interface TraceConfig {
   enabled: boolean;
   /** T0 時点の UNIX epoch ミリ秒。performance.timeOrigin をこの軸に載せ替える。 */
@@ -267,7 +252,14 @@ export interface Bootstrap {
   document: BootstrapDocument | null;
   documentError: BootstrapError | null;
   mode: ViewMode | null;
-  spike: SpikeFlags;
+  /**
+   * 入力レスポンスの計測を走らせるか（`--bench-input` / 計測専用）。
+   *
+   * 立っていると `ready()` の後に `features/bench/input.ts`（遅延チャンク）が
+   * 動き出し、打鍵を合成して結果を `benchInputDone` へ渡す。
+   * **書き出し先はここに載らない**（任意のパスへ書ける口を作らないため）。
+   */
+  benchInput: boolean;
   trace: TraceConfig | null;
   pendingPaths: string[];
   unknownArgs: string[];
@@ -544,6 +536,13 @@ export interface Platform {
    * 「本文が読める」までの経過ミリ秒を返す。
    */
   warmDone(requestId: number, path: string, detail: string, kind?: WarmKind): Promise<number | null>;
+  /**
+   * 入力レスポンス計測の結果を渡す（`--bench-input` / 計測専用）。
+   *
+   * **渡したらプロセスが終わる。** 書き出し先は Rust 側が持っており
+   * （`bench_input_done`）、こちらはパスを知らない。
+   */
+  benchInputDone(json: string): Promise<void>;
   /**
    * 終了の確認で「保存して終了」が選ばれたことを購読する（F-EDIT-03）。
    *

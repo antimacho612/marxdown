@@ -26,35 +26,6 @@ pub enum ViewMode {
     Split,
 }
 
-/// Markdown のパース場所。Worker あり / なしの A/B 比較用。
-///
-/// **Worker を維持するかどうか（OQ-15）が未決のため、比較経路を保持している。**
-/// 結論が出たら、この enum ごと `SpikeFlags` を畳む。
-#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
-#[serde(rename_all = "lowercase")]
-pub enum ParseSite {
-    Worker,
-    Main,
-}
-
-/// 比較経路の切り替えフラグ。開発ビルドでのみ意味を持つ。
-///
-/// **比較のためだけに存在する経路は、本命経路の予算を壊す事故の温床になる。**
-/// 結論の出たものは残さない（撤去済みのフラグは下のテストで固定してある）。
-#[derive(Debug, Clone, Copy, serde::Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct SpikeFlags {
-    pub parse: ParseSite,
-}
-
-impl Default for SpikeFlags {
-    fn default() -> Self {
-        Self {
-            parse: ParseSite::Worker,
-        }
-    }
-}
-
 #[derive(Debug, Clone, Default)]
 pub struct CliArgs {
     /// 絶対パスに解決済み。存在確認はまだ行っていない。
@@ -65,7 +36,12 @@ pub struct CliArgs {
     pub trace_startup: Option<PathBuf>,
     /// トレース計測後にプロセスを終了する（`bench-startup.mjs` 用）。
     pub exit_after_trace: bool,
-    pub spike: SpikeFlags,
+    /// `--bench-input <OUT>`。入力レスポンスを計測し、JSON を書き出して終了する。
+    ///
+    /// **計測専用**（`scripts/bench-input.mjs` 用）。M2 の完了条件
+    /// 「キー入力 → 反映が p95 で 16ms 以内」と [OQ-15](../../docs/07.open-questions/oq-15-markdown-worker.md)
+    /// の判定は、どちらもこの経路でしか測れない。
+    pub bench_input: Option<PathBuf>,
     /// `--gc-probe`。WebView2 に `--js-flags=--expose-gc` を渡す（OQ-18）。
     ///
     /// **計測専用。** 「メモリが戻らない」のが本当に到達可能な参照のせいなのか、
@@ -93,9 +69,9 @@ OPTIONS:
     -h, --help                 このヘルプを表示する
     -V, --version              バージョンを表示する
 
-COMPARISON OPTIONS (計測用。開発ビルドでのみ意味を持つ):
-        --spike-parse <worker|main>             Markdown のパース場所 (OQ-15)
+MEASUREMENT OPTIONS (計測用。開発ビルドでのみ意味を持つ):
         --gc-probe                              DevTools から gc() を呼べるようにする (OQ-18)
+        --bench-input <OUT>                     入力レスポンスを計測し JSON を OUT へ書き出して終了する
 ";
 
 /// `argv`（実行ファイル名を含まない）と `cwd` から引数を解析する。
@@ -162,15 +138,9 @@ pub fn parse(argv: &[String], cwd: &Path) -> CliArgs {
                     args.trace_startup = Some(resolve(cwd, &v));
                 }
             }
-            "--spike-parse" => {
-                if let Some(v) = take_value!("--spike-parse") {
-                    match v.as_str() {
-                        "worker" => args.spike.parse = ParseSite::Worker,
-                        "main" => args.spike.parse = ParseSite::Main,
-                        other => args
-                            .unknown
-                            .push(format!("--spike-parse の値が不正: {other}")),
-                    }
+            "--bench-input" => {
+                if let Some(v) = take_value!("--bench-input") {
+                    args.bench_input = Some(resolve(cwd, &v));
                 }
             }
             // WebView2 / Tauri 自身が受け取るフラグは黙って無視する
@@ -281,19 +251,16 @@ mod tests {
         assert_eq!(a.paths, vec![cwd().join("a.md")]);
     }
 
+    /// `--trace-startup` と同じく、出力先は cwd 基準で解決する。
+    /// **既定では立たない**ことが要件の半分（計測経路が普段の起動に混ざらない）。
     #[test]
-    fn spike_defaults_match_designed_path() {
-        assert_eq!(args(&[]).spike.parse, ParseSite::Worker);
-    }
+    fn the_input_bench_is_opt_in_and_resolves_its_output() {
+        assert!(args(&["a.md"]).bench_input.is_none());
 
-    #[test]
-    fn the_parse_site_is_switchable() {
-        let a = args(&["--spike-parse", "main"]);
-        assert_eq!(a.spike.parse, ParseSite::Main);
+        let a = args(&["--bench-input", "out.json", "a.md"]);
+        assert_eq!(a.bench_input, Some(cwd().join("out.json")));
+        assert_eq!(a.paths, vec![cwd().join("a.md")]);
         assert!(a.unknown.is_empty());
-
-        let b = args(&["--spike-parse=main"]);
-        assert_eq!(b.spike.parse, ParseSite::Main);
     }
 
     /// 過去に存在し、結論が出たので撤去したフラグ。
@@ -304,8 +271,9 @@ mod tests {
             "--spike-bootstrap=invoke",
             "--spike-paint=bulk",
             "--spike-render=dom",
+            "--spike-parse=main",
         ]);
-        assert_eq!(a.unknown.len(), 3, "撤去したフラグは未知の引数として扱う");
+        assert_eq!(a.unknown.len(), 4, "撤去したフラグは未知の引数として扱う");
         assert!(a.paths.is_empty());
     }
 

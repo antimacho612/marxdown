@@ -494,7 +494,7 @@ pub fn ready(window: Window, state: State<'_, AppState>) {
         eprintln!("[marxdown] トレイアイコンを作れなかった: {e}");
     }
 
-    state.trace.flush("cold", state.args.spike);
+    state.trace.flush("cold");
     if state.trace.exit_after() {
         let app = window.app_handle().clone();
         // 書き出しを終えてから落とす。即 exit すると WebView 側の後始末が走らない。
@@ -555,7 +555,7 @@ pub fn reveal_in_file_manager(app: tauri::AppHandle, path: String) -> CoreResult
 /// 開発ビルドでのみ意味を持つ。現在のトレースを読み出す。
 #[tauri::command]
 pub fn startup_trace(state: State<'_, AppState>) -> crate::trace::TraceReport {
-    state.trace.report("cold", state.args.spike)
+    state.trace.report("cold")
 }
 
 /// Marxdown を終了する（ADR-0007 論点 3）。
@@ -685,7 +685,6 @@ pub fn warm_done(
             "elapsedMs": elapsed,
             "path": path,
             "detail": detail,
-            "spike": state.args.spike,
         });
         if let Ok(line) = serde_json::to_string(&record) {
             use std::io::Write;
@@ -701,6 +700,37 @@ pub fn warm_done(
     }
 
     Some(elapsed)
+}
+
+/// 入力レスポンス計測の結果を受け取り、書き出して終了する（`--bench-input`）。
+///
+/// **計測専用。** M2 の完了条件「キー入力 → 反映が p95 で 16ms 以内」と
+/// [OQ-15](../../docs/07.open-questions/oq-15-markdown-worker.md) の判定は、
+/// どちらも「実際に打って、実際に描かれるまで」でしか測れない。
+///
+/// 書き出し先はフロントから渡させない（`state.args` が持っている）。
+/// 任意のパスへ書ける口を製品に開けないためで、`open_settings_file` と同じ判断。
+///
+/// 終わり方は `ready()` の `--exit-after-trace` と同じにしてある。
+/// **即 `exit` すると WebView 側の後始末が走らない。**
+#[tauri::command]
+pub fn bench_input_done(window: Window, state: State<'_, AppState>, json: String) {
+    let Some(out) = state.args.bench_input.as_ref() else {
+        return;
+    };
+
+    if let Some(parent) = out.parent() {
+        let _ = std::fs::create_dir_all(parent);
+    }
+    if let Err(e) = std::fs::write(out, json) {
+        eprintln!("[marxdown] 入力レスポンス計測の書き出しに失敗: {e}");
+    }
+
+    let app = window.app_handle().clone();
+    std::thread::spawn(move || {
+        std::thread::sleep(std::time::Duration::from_millis(50));
+        app.exit(0);
+    });
 }
 
 #[cfg(test)]
