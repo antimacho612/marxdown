@@ -146,6 +146,19 @@ function commandFor(editor: monaco.editor.IStandaloneCodeEditor, edit: MarkdownE
 }
 
 /**
+ * `editor.addCommand` の第 3 引数（precondition）。**これが無いと検索ボックスまで奪う**（#54）。
+ *
+ * `addCommand` はデフォルトで無条件（どこにフォーカスがあっても発火）になる。
+ * Find ウィジェットの入力欄は `#mx-editor` の中にある別の `<textarea>` であって、
+ * 本文の入力面ではない（`open-search.ts` の但し書きと同じ理由）。ここを縛らないと、
+ * ウィジェットの中で `Backspace` を押しても文字は消えず、代わりに本文が削れる。
+ *
+ * Monaco 自身の `deleteLeft` 等はこの区別を `textInputFocus`（`_editor.hasTextFocus()`）で
+ * 行っている。`editorTextFocus` はほぼ同じ判定で、こちらの一覧に揃えてある。
+ */
+const EDITOR_TEXT_FOCUS = 'editorTextFocus';
+
+/**
  * キーを載せる。**`mountEditor` から 1 回だけ呼ぶ。**
  *
  * `addKeybindingRules` はグローバル（エディタごとではない）だが、
@@ -155,13 +168,17 @@ export function installEditorKeymap(editor: monaco.editor.IStandaloneCodeEditor)
   monaco.editor.addKeybindingRules(REMOVED.map(({ keybinding }) => ({ keybinding, command: null })));
 
   for (const { keybinding, edit } of MARKDOWN) {
-    editor.addCommand(keybinding, commandFor(editor, edit, 'markdown.format'));
+    editor.addCommand(keybinding, commandFor(editor, edit, 'markdown.format'), EDITOR_TEXT_FOCUS);
   }
 
   for (const { keybinding, edit, handler, payload } of FALLTHROUGH) {
-    editor.addCommand(keybinding, () => {
-      if (runEdit(editor, edit, 'markdown.list')) return;
-      editor.trigger(KEYBOARD_SOURCE, handler, payload ?? null);
-    });
+    editor.addCommand(
+      keybinding,
+      () => {
+        if (runEdit(editor, edit, 'markdown.list')) return;
+        editor.trigger(KEYBOARD_SOURCE, handler, payload ?? null);
+      },
+      EDITOR_TEXT_FOCUS,
+    );
   }
 }
