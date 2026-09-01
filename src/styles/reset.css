@@ -1,4 +1,4 @@
-/** 最小限のリセット。ライブラリは使わない（04.tech-stack/05-frontend.md §2）。 */
+/** 最小限のリセット。ライブラリは使わない。 */
 
 *,
 *::before,
@@ -19,10 +19,8 @@ body {
   font-size: var(--mx-font-size-ui);
   line-height: var(--mx-line-height-tight);
   -webkit-font-smoothing: antialiased;
-
   /* 本文以外でのテキスト選択は UI のノイズになる。プレビュー内では戻す。 */
   user-select: none;
-
   /* WebView 全体のスクロールは禁止。スクロールするのはペインの中だけ。 */
   overflow: hidden;
   overscroll-behavior: none;
@@ -36,14 +34,14 @@ body {
   background: var(--mx-color-selection);
 }
 
-/* WebView 内でのトップレベルナビゲーションを誘発する操作を減らす（02.architecture/09-security.md §1 Layer 5）。 */
+/* WebView 内でのトップレベルナビゲーションを誘発する操作を減らす。 */
 a {
   color: var(--mx-color-accent);
   text-decoration-thickness: 1px;
   text-underline-offset: 2px;
 }
 
-/* スクロールバーをアプリのトーンに合わせる */
+/* スクロールバーをアプリのトーンに合わせる。 */
 * {
   scrollbar-color: var(--mx-color-border) transparent;
   scrollbar-width: thin;

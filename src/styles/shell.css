@@ -184,9 +184,8 @@ body {
 }
 
 /*
- * 一致箇所の塗り（CSS Custom Highlight API）。
- * `<mark>` を挿し込まないので、本文の DOM は検索中も無傷のまま。
- * `search.ts` の冒頭に理由がある。
+ * 一致箇所の塗り（CSS Custom Highlight API）
+ * <mark> を挿し込まないので、本文の DOM は検索中も無傷のまま。
  */
 ::highlight(mx-search) {
   background-color: var(--mx-color-search-match);
@@ -198,9 +197,9 @@ body {
 }
 
 /*
- * ドラッグ中の見た目（F-OPEN-08）。
- * 属性 1 つで表すのは、ドラッグ中 `over` が毎フレーム飛んでくるため。
- * リアクティビティを経由させない（ADR-0005 と同じ判断）。
+ * ドラッグ中の見た目
+ * 属性 1 つで表すのは、ドラッグ中 over が毎フレーム飛んでくるため。
+ * リアクティビティを経由させない。
  */
 :root[data-mx-dragover] body::after {
   content: '';
