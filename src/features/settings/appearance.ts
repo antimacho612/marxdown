@@ -31,13 +31,24 @@
 import { DEFAULT_SETTINGS, type Settings } from '@/platform';
 
 /**
- * 数値の許容範囲。**`src-tauri/src/settings.rs` の `*_RANGE` と揃える**
+ * 数値の許容範囲。**`src-tauri/src/settings/schema.rs` の `*_RANGE` と揃える**
  * （`zoom.ts` の `ZOOM_MIN` / `ZOOM_MAX` と同じ約束）。
  *
  * Rust 側は読んだ時点で潰しているので、ここが効くのは設定 UI から
  * 直接入力された値に対してだけ。**入力欄の `min` / `max` もここから引く。**
+ *
+ * **エディタの項目もここに置く。** 当てる先（CSS か Monaco か）は別々でも、
+ * 「設定 UI から来た数値を潰す」という仕事は 1 つしかない。
+ * 表を 2 枚に割ると、`change.ts` がキーごとにどちらを見るか判断することになる。
  */
 export const LIMITS = {
+  'editor.cursorSurroundingLines': { min: 0, max: 30, step: 1 },
+  'editor.fontSize': { min: 8, max: 72, step: 1 },
+  'editor.letterSpacing': { min: -2, max: 10, step: 0.1 },
+  'editor.lineHeight': { min: 1, max: 3, step: 0.05 },
+  'editor.padding.top': { min: 0, max: 100, step: 1 },
+  'editor.tabSize': { min: 1, max: 8, step: 1 },
+  'editor.wordWrapColumn': { min: 20, max: 500, step: 1 },
   'preview.fontSize': { min: 8, max: 72, step: 1 },
   'preview.lineHeight': { min: 1, max: 3, step: 0.05 },
   'preview.maxWidth': { min: 20, max: 200, step: 1 },

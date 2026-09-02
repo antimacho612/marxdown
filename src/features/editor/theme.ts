@@ -58,12 +58,17 @@ function probeElement(): HTMLElement {
   return element;
 }
 
-/** トークンの生の値（`16px` / `1.75` / フォント名の並びなど）。 */
-function readValue(name: string): string {
+/**
+ * トークンの生の値（`16px` / `1.75` / フォント名の並びなど）。
+ *
+ * **`options.ts` からも使う。** テーマの色と同じで、
+ * トークン層を JS 側へ読み出せる場所はこのファイルにしかない。
+ */
+export function readValue(name: string): string {
   return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 }
 
-function readNumber(name: string, fallback: number): number {
+export function readNumber(name: string, fallback: number): number {
   // **`Number()` では読めない。** トークンには単位が付く（`16px` / `100ch`）。
   // eslint-disable-next-line unicorn/prefer-number-coercion -- 単位を落とすために必要
   const value = Number.parseFloat(readValue(name));
@@ -208,38 +213,24 @@ function buildTheme(): monaco.editor.IStandaloneThemeData {
   };
 }
 
-/**
- * トークンから引くフォント設定。
- *
- * **`--mx-zoom` は `fontSize` に掛ける**（F-VIEW-11）。CodeMirror では
- * `calc(var(--mx-font-size-content) * var(--mx-zoom))` を CSS に書けたが、
- * Monaco の `fontSize` は数値なので、こちらで掛けて渡す。
- *
- * `lineHeight` は **0 より大きく 8 未満なら倍率**として扱われる
- * （Monaco の `EditorLineHeight`）。トークンの `1.75` がそのまま通る。
- */
-function fontOptions(): monaco.editor.IEditorOptions & monaco.editor.IGlobalEditorOptions {
-  const ligatures = readValue('--mx-font-ligatures-code');
-
-  return {
-    fontFamily: readValue('--mx-font-code'),
-    fontSize: readNumber('--mx-font-size-content', 16) * readNumber('--mx-zoom', 1),
-    lineHeight: readNumber('--mx-line-height', 1.75),
-    // Monaco は `font-feature-settings` に渡すので、CSS の
-    // `font-variant-ligatures` の語彙とは互換が無い。ON / OFF だけを移す。
-    fontLigatures: ligatures !== 'none',
-  };
-}
-
 /* ------------------------------------------------------------------ */
 /* 適用と追従                                                          */
 /* ------------------------------------------------------------------ */
 
-/** いまのトークンからテーマとフォントを組み直して当てる。 */
-export function applyEditorAppearance(editor: monaco.editor.IStandaloneCodeEditor): void {
+/**
+ * いまのトークンからテーマを組み直して当てる。
+ *
+ * **フォントはここにない。** 文字サイズ・行間・フォント名は M2 まで
+ * プレビューのトークンをそのまま着ていたが、読む面と書く面で別々に持つようにした
+ * （ADR-0012）。いまは `options.ts` が設定から組む。
+ *
+ * エディタの実体を取らないのは、`defineTheme` / `setTheme` が
+ * **Monaco 全体に対する操作**だから。インスタンスを渡す形にすると、
+ * タブが増えたときに枚数ぶん呼ばれることになる（M3）。
+ */
+export function applyEditorTheme(): void {
   monaco.editor.defineTheme(THEME_NAME, buildTheme());
   monaco.editor.setTheme(THEME_NAME);
-  editor.updateOptions(fontOptions());
 }
 
 /**
@@ -249,18 +240,18 @@ export function applyEditorAppearance(editor: monaco.editor.IStandaloneCodeEdito
  *
  * ```text
  * data-theme  テーマの切り替え（F-CONF-01）
- * style       設定（フォント・文字サイズ・行の高さ）と表示倍率（F-VIEW-11）
+ * style       プレビューの設定（フォント・文字サイズ・行の高さ）と表示倍率（F-VIEW-11）
  * ```
  *
  * `applyAppearance` も `applyZoom` も `documentElement.style` を書き換えるので、
  * **アプリ側に通知の口を足す必要が無い。** `main` チャンクはエディタの存在を
  * 知らないままでいられる。
+ *
+ * > **エディタの設定（`editor.*`）はここを通らない。** 折り返しやタブ幅は CSS に
+ * > 現れないので、属性を見ていても変化に気づけない。そちらは
+ * > `watchEditorSettings`（`watch-settings.svelte.ts`）がストアを直接購読する。
  */
-export function watchEditorAppearance(editor: monaco.editor.IStandaloneCodeEditor): () => void {
-  const reapply = (): void => {
-    applyEditorAppearance(editor);
-  };
-
+export function watchEditorTokens(reapply: () => void): () => void {
   const observer = new MutationObserver(reapply);
   observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme', 'style'] });
 

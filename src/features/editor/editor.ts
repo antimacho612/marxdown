@@ -35,14 +35,17 @@
 import { setDirty } from '@/features/document/dirty';
 import { scheduleLiveRender } from '@/features/document/live';
 import { attachEditor, getDocumentText } from '@/features/document/text';
+import { settingsStore } from '@/features/settings/store.svelte';
 import { attachEditorScrollPort, startScrollSync, stopScrollSync } from '@/features/view/scroll-sync';
 
 import { installCursorReport } from './cursor';
 import { installEditorKeymap } from './keymap';
 import { MARKDOWN_LANGUAGE_ID, monaco } from './monaco';
+import { applyEditorOptions, editorOptions } from './options';
 import { installUrlPaste } from './paste';
 import { createScrollPort } from './scroll-port';
-import { applyEditorAppearance, watchEditorAppearance } from './theme';
+import { applyEditorTheme, watchEditorTokens } from './theme';
+import { watchEditorSettings } from './watch-settings.svelte';
 
 let editor: monaco.editor.IStandaloneCodeEditor | null = null;
 let model: monaco.editor.ITextModel | null = null;
@@ -82,36 +85,35 @@ export function mountEditor(host: HTMLElement): monaco.editor.IStandaloneCodeEdi
     // 面を出し直したときは `relayoutEditor()` で明示的に測り直す。
     automaticLayout: true,
 
-    // 読む面と揃える見た目
-    wordWrap: 'on',
-    lineNumbers: 'on',
-    // Markdown では価値が薄く、画面を狭める（ADR-0001 から引き継ぐ判断）。
-    minimap: { enabled: false },
-    // 概要ルーラも同じ理由で出さない。CodeMirror にも無かったので、
-    // 面の見た目は M2 Phase 5 までと変わらない。
+    // 見た目と編集の挙動は設定から来る（`options.ts` / F-CONF-04）。
+    // 折り返し・行番号・タブ幅・フォント・カーソルなどはすべてそちらにある。
+    ...editorOptions(settingsStore.values),
+
+    /*
+     * ここから下は**設定にしないと決めたもの**。理由は 3 つに分かれる。
+     * 増やすときは `options.ts` の冒頭を読むこと。
+     */
+
+    // 概要ルーラは出さない。Markdown では意味を持つ印がほとんど載らず、
+    // 出すと本文の幅がそのぶん狭くなる（ADR-0001 から引き継ぐ判断）。
     overviewRulerLanes: 0,
     overviewRulerBorder: false,
     hideCursorInOverviewRuler: true,
-    renderLineHighlight: 'line',
-    renderControlCharacters: true,
-    renderWhitespace: 'none',
-    // 記号の色分けは Markdown の構造に対して意味を持たない。静かにしておく。
-    bracketPairColorization: { enabled: false },
-    scrollbar: { horizontal: 'hidden' },
     // 03.ux-spec/09-motion.md の禁則。スクロールに演出を足さない。
+    // **設定に出さない**のは、設定から禁則を破れる形にしないため。
     smoothScrolling: false,
 
     // **触っていない箇所のバイト列を変えない**（N-CMP-03）。
     // 以下はどれも「気を利かせて別の場所を書き換える」機能である。
+    // **不変条件の側にあるので、設定項目にしない。**
     detectIndentation: false,
     trimAutoWhitespace: false,
     formatOnPaste: false,
     formatOnType: false,
     autoIndent: 'keep',
-    tabSize: 2,
-    insertSpaces: true,
 
     // Markdown に補完は要らない。**editor worker を起こす経路でもある。**
+    // Non-goal（IDE）に寄るので設定に出さない。
     quickSuggestions: false,
     suggestOnTriggerCharacters: false,
     wordBasedSuggestions: 'off',
@@ -120,6 +122,7 @@ export function mountEditor(host: HTMLElement): monaco.editor.IStandaloneCodeEdi
     occurrencesHighlight: 'off',
     selectionHighlight: true,
     // 曖昧・不可視文字の警告は、日本語の本文では鳴りっぱなしになる。
+    // 点けられる設定を出す価値が無い。
     unicodeHighlight: { ambiguousCharacters: false, invisibleCharacters: false },
   });
 
@@ -145,8 +148,20 @@ export function mountEditor(host: HTMLElement): monaco.editor.IStandaloneCodeEdi
     scheduleLiveRender();
   });
 
-  applyEditorAppearance(editor);
-  watchEditorAppearance(editor);
+  // テーマ（CSS トークン由来）と設定（`settings.json` 由来）は、当て直す先が同じ
+  // 1 つのインスタンスなので、入口も 1 つにしておく。
+  const instance = editor;
+  const refreshAppearance = (): void => {
+    applyEditorTheme();
+    applyEditorOptions(instance);
+  };
+
+  refreshAppearance();
+  // 見張るものが 2 つあるのは、変化が 2 系統あるため。
+  // トークン（テーマ / プレビューの設定 / 表示倍率）は CSS に現れ、
+  // エディタの設定（折り返し・タブ幅など）は現れない。
+  watchEditorTokens(refreshAppearance);
+  watchEditorSettings(refreshAppearance);
 
   // Markdown の書式（F-EDIT-08）とリストの継続入力（F-EDIT-09, 10）。
   // **アプリが握るキーを Monaco から剥がすのもここ**（`keymap.ts`）。

@@ -1,0 +1,114 @@
+// @vitest-environment jsdom
+/**
+ * 設定 → Monaco オプションの写像（`options.ts` / ADR-0012）。
+ *
+ * **Monaco を載せない。** ここで見たいのは写像だけで、`editorOptions` は
+ * 副作用を持たない純関数として切ってある（`editor.dom.test.ts` が本物を載せる側）。
+ *
+ * トークン（`--mx-zoom` / `--mx-font-code`）は `<html>` の style から読むので、
+ * テスト側で立てる。`tokens.css` は jsdom に読み込まれない。
+ */
+import { afterEach, describe, expect, it } from 'vitest';
+
+import { DEFAULT_SETTINGS, type Settings } from '@/platform';
+
+import { editorOptions } from './options';
+
+function withSettings(patch: Partial<Settings>): Settings {
+  return { ...DEFAULT_SETTINGS, ...patch };
+}
+
+afterEach(() => {
+  document.documentElement.removeAttribute('style');
+});
+
+describe('editorOptions', () => {
+  it('VS Code の綴りをそのまま Monaco へ渡す', () => {
+    const options = editorOptions(
+      withSettings({
+        'editor.wordWrap': 'bounded',
+        'editor.wordWrapColumn': 120,
+        'editor.lineNumbers': 'relative',
+        'editor.renderWhitespace': 'boundary',
+        'editor.cursorStyle': 'line-thin',
+        'editor.cursorBlinking': 'phase',
+        'editor.tabSize': 4,
+        'editor.insertSpaces': false,
+        'editor.rulers': [80, 100],
+      }),
+    );
+
+    expect(options.wordWrap).toBe('bounded');
+    expect(options.wordWrapColumn).toBe(120);
+    expect(options.lineNumbers).toBe('relative');
+    expect(options.renderWhitespace).toBe('boundary');
+    expect(options.cursorStyle).toBe('line-thin');
+    expect(options.cursorBlinking).toBe('phase');
+    expect(options.tabSize).toBe(4);
+    expect(options.insertSpaces).toBe(false);
+    expect(options.rulers).toEqual([80, 100]);
+  });
+
+  it('入れ子のキーは Monaco 側の入れ子オプションへ移す', () => {
+    const options = editorOptions(
+      withSettings({
+        'editor.guides.indentation': false,
+        'editor.minimap.enabled': true,
+        'editor.bracketPairColorization.enabled': true,
+        'editor.padding.top': 24,
+      }),
+    );
+
+    expect(options.guides).toEqual({ indentation: false });
+    expect(options.minimap).toEqual({ enabled: true });
+    expect(options.bracketPairColorization).toEqual({ enabled: true });
+    expect(options.padding).toEqual({ top: 24 });
+  });
+
+  /**
+   * 折り返しを切ったときに、右へはみ出した行へ到達できること。
+   * **横スクロールバーは設定項目ではなく、折り返しの従属物**として決まる。
+   */
+  it('折り返しを切ると横スクロールバーが出る', () => {
+    expect(editorOptions(withSettings({ 'editor.wordWrap': 'on' })).scrollbar?.horizontal).toBe('hidden');
+    expect(editorOptions(withSettings({ 'editor.wordWrap': 'off' })).scrollbar?.horizontal).toBe('auto');
+  });
+
+  /** F-VIEW-11。CSS の `calc()` に書けないぶん、ここで掛ける。 */
+  it('文字サイズに表示倍率が掛かる', () => {
+    document.documentElement.style.setProperty('--mx-zoom', '1.5');
+
+    expect(editorOptions(withSettings({ 'editor.fontSize': 14 })).fontSize).toBe(21);
+  });
+
+  it('倍率が未設定なら等倍で扱う', () => {
+    expect(editorOptions(withSettings({ 'editor.fontSize': 14 })).fontSize).toBe(14);
+  });
+
+  it('フォント名が空ならトークン層のコードフォントに落ちる', () => {
+    document.documentElement.style.setProperty('--mx-font-code', '"Cascadia Code", monospace');
+
+    expect(editorOptions(withSettings({ 'editor.fontFamily': '' })).fontFamily).toBe('"Cascadia Code", monospace');
+  });
+
+  /**
+   * 指定があるときは**既定スタックを後ろへ足す**（F-CONF-04）。
+   * 置き換えてしまうと、そのフォントに無い字（日本語 / 記号）の落とし先が消える。
+   */
+  it('フォント名を指定すると既定スタックの前に足す', () => {
+    document.documentElement.style.setProperty('--mx-font-code-stack', 'Consolas, monospace');
+
+    expect(editorOptions(withSettings({ 'editor.fontFamily': 'Meiryo UI' })).fontFamily).toBe(
+      '"Meiryo UI", Consolas, monospace',
+    );
+  });
+
+  /** 既定値は「M2 の見た目」ではなく「書くための値」（ADR-0012）。 */
+  it('既定でプレビューのタイポグラフィを着ない', () => {
+    const options = editorOptions(DEFAULT_SETTINGS);
+
+    expect(options.fontSize).toBe(DEFAULT_SETTINGS['editor.fontSize']);
+    expect(options.fontSize).not.toBe(DEFAULT_SETTINGS['preview.fontSize']);
+    expect(options.lineHeight).not.toBe(DEFAULT_SETTINGS['preview.lineHeight']);
+  });
+});

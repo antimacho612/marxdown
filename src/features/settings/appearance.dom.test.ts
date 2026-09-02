@@ -123,7 +123,7 @@ describe('formatFontFamily', () => {
   });
 });
 
-describe('clampSetting (src-tauri/src/settings.rs と揃える)', () => {
+describe('clampSetting (src-tauri/src/settings/schema.rs と揃える)', () => {
   it('上下限で潰す', () => {
     expect(clampSetting('preview.fontSize', 0)).toBe(8);
     expect(clampSetting('preview.fontSize', 999)).toBe(72);

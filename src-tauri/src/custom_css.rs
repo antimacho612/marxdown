@@ -71,7 +71,7 @@ pub struct CustomCss {
 #[serde(rename_all = "camelCase")]
 pub struct CustomCssProblem {
     pub kind: ProblemKind,
-    /// 表示用の文字列。`settings.rs` と同じ理由で `PathBuf` にしない
+    /// 表示用の文字列。`settings/mod.rs` と同じ理由で `PathBuf` にしない
     /// （非 UTF-8 のパスで bootstrap のシリアライズごと落とさない）。
     pub path: String,
     pub message: String,

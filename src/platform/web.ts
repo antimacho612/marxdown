@@ -54,7 +54,7 @@ function saveFs(fs: Record<string, VirtualFile>): void {
 }
 
 /**
- * `src-tauri/src/store.rs` の `StoreData` と `settings.rs` の `Settings` に対応するモック。
+ * `src-tauri/src/store.rs` の `StoreData` と `settings/schema.rs` の `Settings` に対応するモック。
  *
  * 実装では 2 ファイルに分かれている（`state.json` / `settings.json`）が、
  * ここで再現したいのは値の往復だけなので 1 つのキーにまとめる。
