@@ -38,7 +38,7 @@ describe('起動後のカスタム CSS (02.architecture/10-theming.md §3)', () 
     const readCustomCss = vi.fn();
     stub({ readCustomCss, onCustomCssChanged: () => () => {} });
 
-    installCustomCss(NO_CUSTOM_CSS, 'empty');
+    installCustomCss('preview', NO_CUSTOM_CSS, 'empty');
 
     expect(readCustomCss).not.toHaveBeenCalled();
     expect(documentStore.notice).toBeNull();
@@ -49,7 +49,7 @@ describe('起動後のカスタム CSS (02.architecture/10-theming.md §3)', () 
     const loaded: CustomCss = { ...NO_CUSTOM_CSS, css: 'h1 { color: red }' };
     stub({ readCustomCss: () => Promise.resolve(loaded), onCustomCssChanged: () => () => {} });
 
-    installCustomCss({ ...NO_CUSTOM_CSS, deferred: true }, 'empty');
+    installCustomCss('preview', { ...NO_CUSTOM_CSS, deferred: true }, 'empty');
     await vi.waitFor(() => expect(injectedCss()).toContain('color: red'));
 
     expect(injectedCss()).toContain('@scope (#mx-preview)');
@@ -60,6 +60,7 @@ describe('起動後のカスタム CSS (02.architecture/10-theming.md §3)', () 
     stub({ onCustomCssChanged: () => () => {} });
 
     installCustomCss(
+      'preview',
       { ...NO_CUSTOM_CSS, problem: { kind: 'too-large', path: 'C:\\conf\\custom.css', message: '' } },
       'empty',
     );
@@ -76,7 +77,7 @@ describe('起動後のカスタム CSS (02.architecture/10-theming.md §3)', () 
   it('本文に閉じ込められなかったことを通知バーで知らせる', () => {
     stub({ onCustomCssChanged: () => () => {} });
 
-    installCustomCss({ ...NO_CUSTOM_CSS, css: 'h1{}\n}\n.mx-titlebar{display:none}' }, 'rejected');
+    installCustomCss('preview', { ...NO_CUSTOM_CSS, css: 'h1{}\n}\n.mx-titlebar{display:none}' }, 'rejected');
 
     expect(documentStore.notice?.message).toBe(ja.customCss.rejected);
   });
@@ -89,7 +90,7 @@ describe('起動後のカスタム CSS (02.architecture/10-theming.md §3)', () 
     documentStore.notice = { level: 'error', message: 'ファイルが見つかりません' };
     stub({ onCustomCssChanged: () => () => {} });
 
-    installCustomCss({ ...NO_CUSTOM_CSS, css: '}\n' }, 'rejected');
+    installCustomCss('preview', { ...NO_CUSTOM_CSS, css: '}\n' }, 'rejected');
 
     expect(documentStore.notice?.message).toBe('ファイルが見つかりません');
   });
@@ -106,7 +107,7 @@ describe('起動後のカスタム CSS (02.architecture/10-theming.md §3)', () 
       },
     });
 
-    installCustomCss(NO_CUSTOM_CSS, 'empty');
+    installCustomCss('preview', NO_CUSTOM_CSS, 'empty');
     current = { ...NO_CUSTOM_CSS, css: 'h1 { color: blue }' };
     notify();
 

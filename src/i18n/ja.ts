@@ -215,20 +215,58 @@ export const ja = {
     openFile: 'ファイルを開く',
 
     /*
-     * 設定 UI（F-CONF-05）。
+     * 設定 UI（F-CONF-05 / ADR-0011）。
      *
      * **「セットアップ」ではなく「調整」の画面**（03.ux-spec/README.md §1「Defaults Matter」）。
-     * 説明文を項目ごとに付けず、既定値のままで完成していることを前提に、
-     * 触ったときだけ意味が要る 2 か所（フォントと本文幅）にだけ補足を置く。
+     * 説明文を項目ごとに付けない。既定値のままで完成していることが前提で、
+     * 補足が要るのは「書いても効かない場合がある」ものと「単位が自明でない」ものだけ。
+     *
+     * **ラベルは VS Code のキー名の直訳にしない。** `settings.json` を読み書きする人には
+     * キー名がそのまま見えている（F-CONF-06）ので、GUI 側は日本語として読める言葉を選ぶ。
      */
     title: '設定',
     close: '設定を閉じる',
     /** 壊れている間は保存を**試みない**。理由をここに出して入力欄を止める（02.architecture/04-rust-responsibilities.md §5）。 */
     readOnly: 'settings.json を読めないため、変更を保存できません。ファイルを直してから開き直してください',
+
+    /** 左のカテゴリ（ADR-0011）。**並びは「触る頻度」ではなく「対象の大きさ」順**。 */
+    categories: {
+      appearance: '外観',
+      preview: 'プレビュー',
+      editor: 'エディタ',
+      window: 'ウィンドウ',
+    },
+    /** エディタの中の節。項目が 22 個あるので、見出し無しでは探せない。 */
+    sections: {
+      font: 'フォント',
+      display: '表示',
+      input: '入力と移動',
+    },
+
     theme: 'テーマ',
     themeSystem: 'OS に合わせる',
     themeLight: 'ライト',
     themeDark: 'ダーク',
+    themeHint: 'ライトとダークの切り替え。配色はプレビューとエディタで別々に選べる',
+
+    /**
+     * 配色（F-CONF-08 / ADR-0013）。**プレビューとエディタで同じカタログ。**
+     *
+     * 名前は本家の綴りをそのまま使う。「GitHub 風」のような言い換えをすると、
+     * 選ぶ前に何が出るか分からなくなる。
+     * **明暗を名前に含めない**（`Dark` を付けない）のは、
+     * どのパレットもライトとダークの両方を持つため。
+     */
+    palette: '配色',
+    paletteOptions: {
+      default: 'Marxdown（既定）',
+      github: 'GitHub',
+      solarized: 'Solarized',
+      nord: 'Nord',
+      gruvbox: 'Gruvbox',
+    },
+    paletteHint: 'ライト / ダークは上の「テーマ」に従う',
+
     fontFamily: '本文のフォント',
     codeFontFamily: 'コードのフォント',
     /** ウェブフォントは CSP（`font-src 'self'`）で読み込めない（02.architecture/10-theming.md §3）。 */
@@ -238,29 +276,126 @@ export const ja = {
     lineHeight: '行間',
     maxWidth: '本文幅',
     maxWidthHint: '1 行に収まる半角文字の数',
+
+    /**
+     * エディタ（ADR-0012）。**プレビューと同じ言葉を使う**（文字サイズ / 行間）。
+     * 同じものを別の名前で呼ぶと、2 か所にあること自体が読み取れなくなる。
+     */
+    editor: {
+      fontFamily: 'フォント名',
+      fontSize: '文字サイズ',
+      lineHeight: '行間',
+      letterSpacing: '字間',
+      fontLigatures: 'リガチャ（合字）を使う',
+
+      lineNumbers: '行番号',
+      lineNumbersOptions: {
+        off: '表示しない',
+        on: '表示する',
+        relative: 'カーソルからの相対',
+        interval: '10 行ごと',
+      },
+      renderWhitespace: '空白文字',
+      renderWhitespaceOptions: {
+        none: '表示しない',
+        boundary: '単語の間以外',
+        selection: '選択範囲だけ',
+        trailing: '行末だけ',
+        all: 'すべて',
+      },
+      renderControlCharacters: '制御文字を表示する',
+      renderLineHighlight: 'カーソル行の強調',
+      renderLineHighlightOptions: {
+        none: 'しない',
+        gutter: '行番号だけ',
+        line: '行全体',
+        all: '両方',
+      },
+      guidesIndentation: 'インデントガイドを表示する',
+      bracketPairColorization: '対応する括弧を色分けする',
+      minimap: 'ミニマップを表示する',
+      rulers: '縦罫線',
+      rulersHint: '引く桁をカンマ区切りで。空欄なら引かない',
+      rulersPlaceholder: '例: 80, 100',
+      paddingTop: '上の余白',
+
+      wordWrap: '折り返し',
+      wordWrapOptions: {
+        off: '折り返さない',
+        on: 'ウィンドウの幅で折り返す',
+        wordWrapColumn: '指定した桁で折り返す',
+        bounded: 'ウィンドウの幅と桁の狭いほう',
+      },
+      wordWrapColumn: '折り返す桁',
+      tabSize: 'タブ幅',
+      insertSpaces: 'タブをスペースで挿入する',
+      cursorStyle: 'カーソルの形',
+      cursorStyleOptions: {
+        line: '縦線',
+        block: 'ブロック',
+        underline: '下線',
+        'line-thin': '細い縦線',
+        'block-outline': 'ブロック（枠だけ）',
+        'underline-thin': '細い下線',
+      },
+      cursorBlinking: 'カーソルの点滅',
+      cursorBlinkingOptions: {
+        blink: '点滅する',
+        smooth: 'なめらかに点滅する',
+        phase: 'フェードする',
+        expand: '伸び縮みする',
+        solid: '点滅しない',
+      },
+      cursorSurroundingLines: 'カーソルの上下に残す行数',
+      scrollBeyondLastLine: '最終行より下へスクロールできる',
+    },
+
+    /** ウィンドウ（ADR-0007）。**`✕` の意味が既定と違う**ので、選べることを見せる。 */
+    window: {
+      closeBehavior: '✕ を押したとき',
+      closeBehaviorTray: 'タスクトレイに格納する',
+      closeBehaviorExit: 'Marxdown を終了する',
+      closeBehaviorHint: '格納しておくと、次に開くときが速い',
+    },
+
+    /**
+     * 見本（ADR-0011）。**モーダルにしたぶん、背後の本文が見えない**ので、
+     * フォントまわりだけはこの場で確かめられるようにする。
+     *
+     * 本文幅（`ch`）と、折り返し・タブ幅などの挙動は見本に出ない。
+     * 出せない範囲を無理に真似ると、実物と違うものを見せることになる。
+     */
+    sampleHeading: '見出し',
+    sampleBody: '本文のサンプル。強調とコードが混ざる。',
+    sampleList: 'リストの項目',
+
     unitPx: 'px',
     unitCh: 'ch',
+    unitLines: '行',
     reset: '既定に戻す',
     resetOf: (label: string) => `${label}を既定に戻す`,
     edit: 'settings.json を開く',
     editHint: 'ここに無い項目は settings.json に直接書ける',
   },
   /**
-   * カスタム CSS（F-CONF-07 / 02.architecture/10-theming.md §3）。
+   * カスタム CSS（F-CONF-07 / 02.architecture/10-theming.md §3 / ADR-0013）。
    *
-   * **設定 UI に置くのはボタン 1 つだけ。** 有効化のスイッチもパスの設定も無い
+   * **設定 UI に置くのは面ごとにボタン 1 つだけ。** 有効化のスイッチもパスの設定も無い
    * （ファイルが存在すれば効く）ので、説明すべきことは
    * 「どこに書くか」と「どこまで効くか」の 2 つに絞られる。
    *
    * 通知の 3 行はいずれも**適用しなかったこと**を伝える。本文は読めているので、
    * 「読み込めませんでした」で止めず、**当たっていない**と言い切る。
+   * **どちらのファイルの話かは、添えるボタンのラベルが言う**（`report`）。
    */
   customCss: {
-    open: 'custom.css を開く',
+    open: 'preview.css を開く',
+    openEditor: 'editor.css を開く',
     hint: '本文にだけ当たる CSS。ファイルが無ければ雛形を作って開く',
+    hintEditor: 'エディタにだけ当たる CSS。配色は変数（--mx-color-*）で上書きする',
     tooLarge: 'カスタム CSS が大きすぎるため適用していません（1MB まで）',
     unreadable: 'カスタム CSS を読み込めなかったため適用していません',
-    rejected: 'カスタム CSS を本文の中に収められないため適用していません。} の対応を確認してください',
+    rejected: 'カスタム CSS を面の中に収められないため適用していません。} の対応を確認してください',
   },
   /** ステータスバー（03.ux-spec/07-status-and-notifications.md §3）。 */
   status: {

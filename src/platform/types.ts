@@ -114,17 +114,70 @@ export type Theme = 'system' | 'light' | 'dark';
 /** ウィンドウを閉じたときの挙動（ADR-0007）。 */
 export type WindowCloseBehavior = 'tray' | 'exit';
 
+/*
+ * エディタの選択肢（VS Code と同じ綴り / `src-tauri/src/settings/schema.rs` の列挙）。
+ *
+ * **値の文字列を Marxdown 独自のものにしない。** VS Code の `settings.json` から
+ * そのまま写して効くことが、この設定群の存在理由そのものである（F-CONF-06）。
+ */
+export type WordWrap = 'off' | 'on' | 'wordWrapColumn' | 'bounded';
+export type LineNumbers = 'off' | 'on' | 'relative' | 'interval';
+export type RenderWhitespace = 'none' | 'boundary' | 'selection' | 'trailing' | 'all';
+export type RenderLineHighlight = 'none' | 'gutter' | 'line' | 'all';
+export type CursorStyle = 'line' | 'block' | 'underline' | 'line-thin' | 'block-outline' | 'underline-thin';
+export type CursorBlinking = 'blink' | 'smooth' | 'phase' | 'expand' | 'solid';
+
 /**
- * `settings.json` の中身（`src-tauri/src/settings.rs` の `Settings`）。
+ * 配色（ADR-0013 / `src/styles/themes.css`）。
+ *
+ * **明暗を含まない。** 明暗を決めるのは `theme` だけで、各パレットは
+ * ライトとダークの両方を持つ。プレビューとエディタは同じカタログから独立に選ぶ。
+ *
+ * `'default'` は**属性を付けない状態**で、`tokens.css` のトークンがそのまま降りてくる。
+ */
+export type Palette = 'default' | 'github' | 'solarized' | 'nord' | 'gruvbox';
+
+/**
+ * `settings.json` の中身（`src-tauri/src/settings/schema.rs` の `Settings`）。
  *
  * **キーは VS Code と同じフラットなドット区切り**（F-CONF-06）。
  * ネストしたオブジェクトにしないのは、手で書く / 部分的に上書きする / 未知のキーを
  * 保持する、のすべてが 1 階層のほうが素直になるため。
+ * `editor.guides.indentation` のように 3 階層に見えるキーも、JSON の上では 1 本の文字列キー。
  *
  * ここに現れないキーもファイルには入りうる（未知のキーは保持される）。
  */
 export interface Settings {
   theme: Theme;
+
+  'editor.bracketPairColorization.enabled': boolean;
+  'editor.cursorBlinking': CursorBlinking;
+  'editor.cursorStyle': CursorStyle;
+  'editor.cursorSurroundingLines': number;
+  /** 空文字は「トークン層のコードスタックを使う」。 */
+  'editor.fontFamily': string;
+  'editor.fontLigatures': boolean;
+  'editor.fontSize': number;
+  'editor.guides.indentation': boolean;
+  'editor.insertSpaces': boolean;
+  'editor.letterSpacing': number;
+  /** 行の高さ。**倍率**（Monaco は 0 より大きく 8 未満なら倍率として解釈する）。 */
+  'editor.lineHeight': number;
+  'editor.lineNumbers': LineNumbers;
+  'editor.minimap.enabled': boolean;
+  'editor.padding.top': number;
+  'editor.renderControlCharacters': boolean;
+  'editor.renderLineHighlight': RenderLineHighlight;
+  'editor.renderWhitespace': RenderWhitespace;
+  /** 縦罫線を引く桁。空なら引かない。`preview.maxWidth` と対で使う。 */
+  'editor.rulers': number[];
+  'editor.scrollBeyondLastLine': boolean;
+  /** エディタの配色。**`preview.theme` とは独立に選べる。** */
+  'editor.theme': Palette;
+  'editor.tabSize': number;
+  'editor.wordWrap': WordWrap;
+  'editor.wordWrapColumn': number;
+
   /** 空文字は「トークン層の既定スタックを使う」。 */
   'preview.codeFontFamily': string;
   'preview.fontFamily': string;
@@ -132,22 +185,55 @@ export interface Settings {
   'preview.lineHeight': number;
   /** 本文幅。単位は `ch`（02.architecture/10-theming.md §2）。 */
   'preview.maxWidth': number;
+  /** 本文の配色。 */
+  'preview.theme': Palette;
+
   'window.closeBehavior': WindowCloseBehavior;
 }
 
 /**
- * 既定値。`src-tauri/src/settings.rs` の `Settings::default()` と 1:1 で対応する。
+ * 既定値。`src-tauri/src/settings/schema.rs` の `Settings::default()` と 1:1 で対応する。
  *
  * 実際に届く値は Rust 側で既定値を埋めた後のものなので、これが要るのは
  * bootstrap を持たない経路（`dev:web` の初回・テスト）だけ。
+ *
+ * **エディタのタイポグラフィはプレビューと別の値**（ADR-0012）。
+ * 16px / 1.75 は読むための値で、書く面では行が離れすぎる。
  */
 export const DEFAULT_SETTINGS: Settings = {
   theme: 'system',
+
+  'editor.bracketPairColorization.enabled': false,
+  'editor.cursorBlinking': 'blink',
+  'editor.cursorStyle': 'line',
+  'editor.cursorSurroundingLines': 0,
+  'editor.fontFamily': '',
+  'editor.fontLigatures': true,
+  'editor.fontSize': 14,
+  'editor.guides.indentation': true,
+  'editor.insertSpaces': true,
+  'editor.letterSpacing': 0,
+  'editor.lineHeight': 1.6,
+  'editor.lineNumbers': 'on',
+  'editor.minimap.enabled': false,
+  'editor.padding.top': 12,
+  'editor.renderControlCharacters': true,
+  'editor.renderLineHighlight': 'line',
+  'editor.renderWhitespace': 'none',
+  'editor.rulers': [],
+  'editor.scrollBeyondLastLine': true,
+  'editor.theme': 'default',
+  'editor.tabSize': 2,
+  'editor.wordWrap': 'on',
+  'editor.wordWrapColumn': 80,
+
   'preview.codeFontFamily': '',
   'preview.fontFamily': '',
   'preview.fontSize': 16,
   'preview.lineHeight': 1.75,
   'preview.maxWidth': 100,
+  'preview.theme': 'default',
+
   'window.closeBehavior': 'tray',
 };
 
@@ -298,6 +384,11 @@ export interface Bootstrap {
    * 超えていれば `deferred` が立ち、`readCustomCss` で取りに行く。
    */
   customCss: CustomCss;
+  /**
+   * エディタ用のカスタム CSS（`editor.css` / ADR-0013）。**本文用と完全に同じ扱い。**
+   * 別のフィールドなのは、当てる先（`@scope` の根）が違うため。
+   */
+  editorCss: CustomCss;
 }
 
 /** 別インスタンスから転送された起動要求（ウォーム起動）。 */
@@ -439,6 +530,9 @@ export interface Platform {
    * 外部エディタで編集された後の読み直しだけ。
    */
   readCustomCss(): Promise<CustomCss>;
+
+  /** `editor.css` を読み直す。`readCustomCss` と 1:1 の対。 */
+  readEditorCss(): Promise<CustomCss>;
   /**
    * `custom.css` を OS の既定アプリで開く（F-CONF-07）。
    *
@@ -446,6 +540,9 @@ export interface Platform {
    * 「どこに書けばよいか」を知る手段がこのボタンしかない。
    */
   openCustomCssFile(): Promise<void>;
+
+  /** `editor.css` を既定のアプリで開く。無ければ雛形を作ってから開く。 */
+  openEditorCssFile(): Promise<void>;
   /**
    * `custom.css` の外部変更を購読する（02.architecture/10-theming.md §3）。
    *
@@ -453,6 +550,9 @@ export interface Platform {
    * `readCustomCss` で読み直して当て直すのが唯一の使い方。
    */
   onCustomCssChanged(handler: () => void): () => void;
+
+  /** `editor.css` の外部変更。**本文用と別のイベント**（片方だけを読み直す）。 */
+  onEditorCssChanged(handler: () => void): () => void;
   /**
    * 開いているファイルの監視を始める（F-EDIT-16 / 02.architecture/04-rust-responsibilities.md §4）。
    *

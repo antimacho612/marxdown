@@ -17,6 +17,14 @@
   font-size: calc(var(--mx-font-size-content) * var(--mx-zoom));
   line-height: var(--mx-line-height);
   color: var(--mx-color-fg);
+  /*
+   * 面を自分で塗る（ADR-0013）。
+   *
+   * 配色（preview.theme）はこの要素にトークンを上書きする形で当たるので、
+   * 背景を body 任せにしていると**文字色だけがテーマの色になって背景が残る**。
+   * 既定の配色では body と同じ値になるため、テーマを使わない人の見た目は変わらない。
+   */
+  background-color: var(--mx-color-bg);
 
   /* 本文は選択できる */
   user-select: text;

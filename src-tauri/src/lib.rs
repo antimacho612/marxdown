@@ -152,11 +152,27 @@ pub fn run() {
     // **64KB 以下なら bootstrap に同梱する。** 後から当てると、ダークな背景を
     // 当てているときに白い初期画面が一瞬見える。読み取りは WebView 初期化と
     // 並行するので、クリティカルパスの時間は実質増えない（02.architecture/05-startup-sequence.md §1）。
-    let custom_css_path = custom_css::custom_css_path(&context.config().identifier);
+    // `custom.css` → `preview.css` の改名（ADR-0013）。**読む前に 1 回だけ。**
+    // 面が 2 つになって「custom」が何を指すか名前から読めなくなったための移行で、
+    // 済んでいれば何もしない。失敗しても起動は止めない。
+    custom_css::migrate_legacy(&context.config().identifier);
+
+    let custom_css_path =
+        custom_css::css_path(&context.config().identifier, custom_css::Surface::Preview);
     let custom_css_data = custom_css::load(custom_css_path.as_deref(), custom_css::INLINE_LIMIT);
+    let editor_css_path =
+        custom_css::css_path(&context.config().identifier, custom_css::Surface::Editor);
+    let editor_css_data = custom_css::load(editor_css_path.as_deref(), custom_css::INLINE_LIMIT);
 
     // T2: ファイル読み込み。ウィンドウ生成の前に行い、WebView 初期化と重ねる。
-    let payload = bootstrap::build(&args, &trace, &store_data, &settings_data, custom_css_data);
+    let payload = bootstrap::build(
+        &args,
+        &trace,
+        &store_data,
+        &settings_data,
+        custom_css_data,
+        editor_css_data,
+    );
     trace.mark(
         "T2",
         payload
@@ -175,6 +191,7 @@ pub fn run() {
             store: store_path,
             settings: settings_path,
             custom_css: custom_css_path,
+            editor_css: editor_css_path,
         },
     );
 
@@ -235,7 +252,9 @@ pub fn run() {
             commands::write_settings,
             commands::open_settings_file,
             commands::read_custom_css,
+            commands::read_editor_css,
             commands::open_custom_css_file,
+            commands::open_editor_css_file,
             commands::watch_path,
             commands::unwatch_path,
             commands::window_minimize,
@@ -305,6 +324,12 @@ pub fn run() {
             if let Some(path) = state.custom_css_path() {
                 app.state::<watch::FileWatcher>()
                     .watch(path, watch::Role::CustomCss);
+            }
+            // `editor.css` も同じ（ADR-0013）。**3 つ目の共有者**になるが、
+            // 監視元は親ディレクトリ 1 つのままで、仕組みは 1 つも増えない。
+            if let Some(path) = state.editor_css_path() {
+                app.state::<watch::FileWatcher>()
+                    .watch(path, watch::Role::EditorCss);
             }
 
             Ok(())

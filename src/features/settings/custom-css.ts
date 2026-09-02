@@ -1,5 +1,8 @@
 /**
- * カスタム CSS の適用（F-CONF-07 / 02.architecture/10-theming.md §3 / ADR-0006）。
+ * カスタム CSS の適用（F-CONF-07 / 02.architecture/10-theming.md §3 / ADR-0006 / ADR-0013）。
+ *
+ * 当てる面は 2 つある（本文 = `preview.css` / エディタ = `editor.css`）。
+ * **閉じ込めの仕組みは 1 つで、根が違うだけ**である。
  *
  * # このファイルだけが `main` に載る
  *
@@ -45,14 +48,26 @@
  * 外に出た規則が 1 つでもあれば**丸ごと適用しない**（部分適用は、
  * どこまで効いたのかがユーザーに見えない）。
  */
+import { bumpStyleEpoch } from './style-epoch.svelte';
 
-/** 本文の受け皿。`index.html` にあり、コンポーネントツリーの外にある（ADR-0005）。 */
-const SCOPE_ROOT = '#mx-preview';
+/**
+ * カスタム CSS が当たる面（ADR-0013 / `src-tauri/src/custom_css.rs` の `Surface`）。
+ *
+ * **どちらも `index.html` にあり、コンポーネントツリーの外にある**（ADR-0005）。
+ * 面が 2 つになっても仕組みは 1 つのままで、変わるのは
+ * 「`@scope` の根」と「どの `<style>` に入れるか」だけである。
+ */
+export type CssSurface = 'preview' | 'editor';
+
+const SURFACES = {
+  preview: { root: '#mx-preview', styleId: 'mx-custom-css' },
+  editor: { root: '#mx-editor', styleId: 'mx-editor-css' },
+} as const;
 
 /** 包んだ後の前置き。判定でも使うので、組み立てと同じ文字列を 1 か所に置く。 */
-const SCOPE_PRELUDE = `@scope (${SCOPE_ROOT})`;
-
-const STYLE_ID = 'mx-custom-css';
+function prelude(surface: CssSurface): string {
+  return `@scope (${SURFACES[surface].root})`;
+}
 
 /**
  * 適用の結果。
@@ -63,22 +78,26 @@ const STYLE_ID = 'mx-custom-css';
 export type CustomCssResult = 'applied' | 'empty' | 'rejected';
 
 /**
- * カスタム CSS を本文に適用する。`null` / 空文字は「無い」（＝当てていたものを外す）。
+ * カスタム CSS を面に適用する。`null` / 空文字は「無い」（＝当てていたものを外す）。
  *
  * **同期的に完了する。** bootstrap 経路では本文を描く前に呼ばれるため、
  * ここで待つものがあってはいけない。
  */
-export function applyCustomCss(css: string | null): CustomCssResult {
-  const style = styleElement();
+export function applyCustomCss(css: string | null, surface: CssSurface = 'preview'): CustomCssResult {
+  const style = styleElement(surface);
+  // **エディタ側だけ合図を出す。** Monaco はトークンを JS で読み出しており、
+  // `<style>` が増えたことに自分では気づけない（`style-epoch.svelte.ts`）。
+  // 本文側は CSS がそのまま効くので、知らせる相手がいない。
+  if (surface === 'editor') bumpStyleEpoch();
 
   if (css === null || css.trim() === '') {
     style.textContent = '';
     return 'empty';
   }
 
-  style.textContent = `${SCOPE_PRELUDE} {\n${css}\n}\n`;
+  style.textContent = `${prelude(surface)} {\n${css}\n}\n`;
 
-  if (contained(style.sheet)) return 'applied';
+  if (contained(style.sheet, surface)) return 'applied';
 
   // 包めなかったものは**残さない**。直前のカスタム CSS を残す手もあるが、
   // 画面に出ているものとファイルの中身が食い違ったままになる。
@@ -97,12 +116,13 @@ export function applyCustomCss(css: string | null): CustomCssResult {
  * `h1 { … }` のような素のセレクタでも `.mx-preview h1 { … }` に負けない。
  * ユーザーがプレーンなセレクタのまま書ける（§3）のはこの性質による。
  */
-function styleElement(): HTMLStyleElement {
-  const existing = document.querySelector<HTMLStyleElement>(`style#${STYLE_ID}`);
+function styleElement(surface: CssSurface): HTMLStyleElement {
+  const id = SURFACES[surface].styleId;
+  const existing = document.querySelector<HTMLStyleElement>(`style#${id}`);
   if (existing) return existing;
 
   const style = document.createElement('style');
-  style.id = STYLE_ID;
+  style.id = id;
   document.head.append(style);
   return style;
 }
@@ -117,7 +137,7 @@ function styleElement(): HTMLStyleElement {
  * 包んだ規則ごと落ちて 0 個になるが、**それでよい**。閉じ込められない CSS を
  * 当てるくらいなら当てないほうが安全側に倒れている（ADR-0006）。
  */
-function contained(sheet: CSSStyleSheet | null): boolean {
+function contained(sheet: CSSStyleSheet | null, surface: CssSurface): boolean {
   if (!sheet) return false;
 
   let rules: CSSRuleList;
@@ -135,7 +155,7 @@ function contained(sheet: CSSStyleSheet | null): boolean {
   // `CSSScopeRule` が無い環境では `instanceof` が投げるので、存在を先に見る。
   if (typeof CSSScopeRule !== 'function' || !(rule instanceof CSSScopeRule)) return false;
 
-  // スコープの根が `#mx-preview` のままであること。ここを見ないと、
+  // スコープの根が当てようとした面のままであること。ここを見ないと、
   // 「`@scope` 規則ではあるが根が違う」ものを通してしまう。
-  return rule.cssText.startsWith(SCOPE_PRELUDE);
+  return rule.cssText.startsWith(prelude(surface));
 }

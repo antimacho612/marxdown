@@ -11,6 +11,7 @@
  * **予算を守るためには、予算の計測対象に載っている必要がある。**
  */
 import '@/styles/tokens.css';
+import '@/styles/themes.css';
 import '@/styles/reset.css';
 import '@/styles/shell.css';
 import '@/styles/preview/preview.css';

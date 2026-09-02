@@ -101,6 +101,11 @@ export async function startup(renderShell: () => void): Promise<void> {
   // 包めなかった場合は当てずに結果だけ返る（通知は `ready()` の後）。
   const customCss = bootstrap?.customCss ?? null;
   const customCssResult = applyCustomCss(customCss?.css ?? null);
+  // エディタ用も同じ扱い（ADR-0013）。**エディタが載っていなくても当てておく。**
+  // 当たっているのはトークンで、Monaco はマウント時にそれを読み出す。
+  // ここを遅らせると、Edit で開いた 1 フレームだけ既定の配色で出る。
+  const editorCss = bootstrap?.editorCss ?? null;
+  const editorCssResult = applyCustomCss(editorCss?.css ?? null, 'editor');
 
   configureOpener({ parser: createParser() });
 
@@ -200,7 +205,8 @@ export async function startup(renderShell: () => void): Promise<void> {
   // （06.roadmap/m1.5-shell-and-settings.md §3）。`main` に残っているのは適用そのものだけ。
   // ここで待たないのは、いずれも本文の表示に関与しないため。
   void import('@/features/settings/custom-css-late').then(({ installCustomCss }) => {
-    installCustomCss(customCss, customCssResult);
+    installCustomCss('preview', customCss, customCssResult);
+    installCustomCss('editor', editorCss, editorCssResult);
     return null;
   });
 

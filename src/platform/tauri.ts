@@ -31,6 +31,7 @@ const EVENT_TRAY_OPEN = 'marxdown://tray-open';
 const EVENT_TRAY_RESUME = 'marxdown://tray-resume';
 const EVENT_SAVE_AND_QUIT = 'marxdown://save-and-quit';
 const EVENT_CUSTOM_CSS_CHANGED = 'marxdown://custom-css-changed';
+const EVENT_EDITOR_CSS_CHANGED = 'marxdown://editor-css-changed';
 const EVENT_WINDOW_MAXIMIZED = 'marxdown://window-maximized';
 const EVENT_MAXIMIZE_HOVER = 'marxdown://maximize-hover';
 
@@ -138,12 +139,24 @@ export const tauriPlatform: Platform = {
     return invoke<CustomCss>('read_custom_css');
   },
 
+  readEditorCss() {
+    return invoke<CustomCss>('read_editor_css');
+  },
+
   openCustomCssFile() {
     return invoke<void>('open_custom_css_file');
   },
 
+  openEditorCssFile() {
+    return invoke<void>('open_editor_css_file');
+  },
+
   onCustomCssChanged(handler) {
     return subscribe(() => listen(EVENT_CUSTOM_CSS_CHANGED, () => handler()));
+  },
+
+  onEditorCssChanged(handler) {
+    return subscribe(() => listen(EVENT_EDITOR_CSS_CHANGED, () => handler()));
   },
 
   watchPath(path) {

@@ -34,6 +34,7 @@ pub struct ConfigPaths {
     pub store: Option<PathBuf>,
     pub settings: Option<PathBuf>,
     pub custom_css: Option<PathBuf>,
+    pub editor_css: Option<PathBuf>,
 }
 
 pub struct AppState {
@@ -209,6 +210,11 @@ impl AppState {
         self.paths.custom_css.as_deref()
     }
 
+    /// エディタ用カスタム CSS（`editor.css`）。本文用と同じ扱い。
+    pub fn editor_css_path(&self) -> Option<&std::path::Path> {
+        self.paths.editor_css.as_deref()
+    }
+
     /// argv 転送を受けた瞬間に呼ぶ。返した ID をフロントへ渡す。
     ///
     /// これが 02.architecture/05-startup-sequence.md §2 のウォーム起動の起点（W0）。
@@ -280,6 +286,7 @@ mod tests {
             &trace,
             &StoreData::default(),
             &loaded,
+            crate::custom_css::CustomCss::default(),
             crate::custom_css::CustomCss::default(),
         );
         AppState::new(

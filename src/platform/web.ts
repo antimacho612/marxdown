@@ -54,7 +54,7 @@ function saveFs(fs: Record<string, VirtualFile>): void {
 }
 
 /**
- * `src-tauri/src/store.rs` の `StoreData` と `settings.rs` の `Settings` に対応するモック。
+ * `src-tauri/src/store.rs` の `StoreData` と `settings/schema.rs` の `Settings` に対応するモック。
  *
  * 実装では 2 ファイルに分かれている（`state.json` / `settings.json`）が、
  * ここで再現したいのは値の往復だけなので 1 つのキーにまとめる。
@@ -69,8 +69,10 @@ interface WebState {
   /** Split の分割比（03.ux-spec/03-split-mode.md §1）。 */
   split: number;
   settings: Settings;
-  /** `custom.css` の中身（02.architecture/10-theming.md §3）。空文字は「ファイルが無い」。 */
+  /** `preview.css` の中身（02.architecture/10-theming.md §3）。空文字は「ファイルが無い」。 */
   customCss: string;
+  /** `editor.css` の中身（ADR-0013）。空文字は「ファイルが無い」。 */
+  editorCss: string;
 }
 
 function loadState(): WebState {
@@ -85,6 +87,7 @@ function loadState(): WebState {
       // 欠けたキーは既定値。実装（Rust）と同じく、読んだ時点で埋める
       settings: { ...DEFAULT_SETTINGS, ...raw.settings },
       customCss: raw.customCss ?? '',
+      editorCss: raw.editorCss ?? '',
     };
   } catch {
     return {
@@ -94,6 +97,7 @@ function loadState(): WebState {
       split: SPLIT_DEFAULT,
       settings: DEFAULT_SETTINGS,
       customCss: '',
+      editorCss: '',
     };
   }
 }
@@ -226,6 +230,7 @@ function initialBootstrap(): Bootstrap {
     // 実装と同じく**同梱して届く**（02.architecture/10-theming.md §3）。
     // 後から当てる形にすると、dev:web でだけ FOUC が見えない。
     customCss: customCssNow(),
+    editorCss: editorCssNow(),
   };
 }
 
@@ -253,6 +258,18 @@ function customCssNow(): CustomCss {
   return { ...NO_CUSTOM_CSS, css: css === '' ? null : css };
 }
 
+/**
+ * dev:web のエディタ用カスタム CSS（ADR-0013）。
+ *
+ * `?editorCss` を付けると見本が入る。**エディタの配色はトークン経由でしか変えられない**
+ * ことを見本自身が示すため、色ではなく変数を上書きしてある。
+ */
+function editorCssNow(): CustomCss {
+  const params = new URLSearchParams(globalThis.location?.search ?? '');
+  const css = params.has('editorCss') ? SAMPLE_EDITOR_CSS : loadState().editorCss;
+  return { ...NO_CUSTOM_CSS, css: css === '' ? null : css };
+}
+
 /** 見本。**本文にしか当たらない**ことが分かるよう、見出しと本文幅の両方を触る。 */
 const SAMPLE_CUSTOM_CSS = `:scope {
   --mx-content-width: 70ch;
@@ -265,6 +282,15 @@ h1 {
 
 blockquote {
   border-inline-start-width: 6px;
+}
+`;
+
+/** エディタ用の見本。**変数の上書きだけ**で配色が変わることを示す。 */
+const SAMPLE_EDITOR_CSS = `:scope {
+  --mx-color-bg: #1a1b26;
+  --mx-color-fg: #c0caf5;
+  --mx-color-code-string: #9ece6a;
+  --mx-color-code-keyword: #bb9af7;
 }
 `;
 
@@ -404,9 +430,13 @@ export const webPlatform: Platform = {
     return customCssNow();
   },
 
+  async readEditorCss() {
+    return editorCssNow();
+  },
+
   async openCustomCssFile() {
     // 実装では「無ければ雛形を作ってから開く」。ブラウザには開く先が無いので、
-    // 見本を仮想の `custom.css` に置いて、次の読み直しから効くようにする。
+    // 見本を仮想の `preview.css` に置いて、次の読み直しから効くようにする。
     const state = loadState();
     if (state.customCss === '') {
       state.customCss = SAMPLE_CUSTOM_CSS;
@@ -415,8 +445,21 @@ export const webPlatform: Platform = {
     console.info('[marxdown] openCustomCssFile');
   },
 
+  async openEditorCssFile() {
+    const state = loadState();
+    if (state.editorCss === '') {
+      state.editorCss = SAMPLE_EDITOR_CSS;
+      saveState(state);
+    }
+    console.info('[marxdown] openEditorCssFile');
+  },
+
   onCustomCssChanged() {
-    // 仮想の `custom.css` を外から書き換える経路が無い（`onSettingsChanged` と同じ）
+    // 仮想の `preview.css` を外から書き換える経路が無い（`onSettingsChanged` と同じ）
+    return () => {};
+  },
+
+  onEditorCssChanged() {
     return () => {};
   },
 
