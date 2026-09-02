@@ -21,6 +21,11 @@
  * prefers-color-scheme  theme が system のとき、OS 側の切り替えを拾う
  * ```
  *
+ * # 読み出す位置は `#mx-editor`
+ *
+ * エディタの配色は面そのものに乗る（ADR-0013）。`:root` から読むと拾えない。
+ * 詳しくは `tokenRoot()` を参照。
+ *
  * **どちらもイベント駆動で、ポーリングではない**（05.performance-budget/04-targets.md §5）。
  * 購読が生きるのはエディタが載っているあいだだけで、Preview だけで読んでいる起動では
  * このファイル自体がロードされない。
@@ -41,19 +46,41 @@ const THEME_NAME = 'marxdown';
 /* ------------------------------------------------------------------ */
 
 /**
+ * トークンを読み出す起点（ADR-0013）。
+ *
+ * **`#mx-editor` から読む。`documentElement` からではない。**
+ *
+ * エディタの配色（`editor.theme` / `editor.css`）は、面そのものに
+ * カスタムプロパティを上書きする形で当たっている。`:root` から読むと、
+ * **そこには何も乗っていない**ので、テーマを選んでも Monaco に届かない。
+ *
+ * `--mx-zoom` や `--mx-font-code` は `:root` にあるが、
+ * カスタムプロパティは継承で降りてくるので、読み出し位置を下げても値は同じ。
+ * **下げて失うものは無く、拾えるものだけが増える。**
+ *
+ * 面がまだ無い（テストの一部）ときは `documentElement` に落ちる。
+ */
+function tokenRoot(): HTMLElement {
+  return document.querySelector<HTMLElement>('#mx-editor') ?? document.documentElement;
+}
+
+/**
  * `var()` を解決するための当て板。
  *
- * **`document.documentElement` の子でなければならない。** カスタムプロパティは
+ * **トークンの起点の子でなければならない。** カスタムプロパティは
  * 継承で降りてくるので、切り離した要素では解決できない。
+ *
+ * `display: none` の中に置くことになる（Preview モードのあいだ `#mx-editor` は
+ * 隠れている）が、**計算値としての色は解決される**ので読み出せる。
  */
 let probe: HTMLElement | null = null;
 
 function probeElement(): HTMLElement {
-  if (probe) return probe;
+  if (probe?.isConnected) return probe;
 
   const element = document.createElement('div');
   element.style.display = 'none';
-  document.documentElement.append(element);
+  tokenRoot().append(element);
   probe = element;
   return element;
 }
@@ -65,7 +92,7 @@ function probeElement(): HTMLElement {
  * トークン層を JS 側へ読み出せる場所はこのファイルにしかない。
  */
 export function readValue(name: string): string {
-  return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  return getComputedStyle(tokenRoot()).getPropertyValue(name).trim();
 }
 
 export function readNumber(name: string, fallback: number): number {

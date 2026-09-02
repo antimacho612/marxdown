@@ -44,8 +44,11 @@ use crate::document;
 pub const EVENT_FILE_CHANGED: &str = "marxdown://file-changed";
 /// `settings.json` の外部変更（02.architecture/04-rust-responsibilities.md §5）。フロントは受け取ったら `read_settings` で読み直す。
 pub const EVENT_SETTINGS_CHANGED: &str = "marxdown://settings-changed";
-/// `custom.css` の外部変更（02.architecture/10-theming.md §3）。フロントは `read_custom_css` で読み直して当て直す。
+/// `preview.css` の外部変更（02.architecture/10-theming.md §3）。フロントは `read_custom_css` で読み直して当て直す。
 pub const EVENT_CUSTOM_CSS_CHANGED: &str = "marxdown://custom-css-changed";
+/// `editor.css` の外部変更（同上）。**本文用と別のイベントにする。**
+/// 片方を書き換えたときに、もう片方まで読み直す理由がない。
+pub const EVENT_EDITOR_CSS_CHANGED: &str = "marxdown://editor-css-changed";
 
 /// 変更が落ち着いたと見なすまでの時間（02.architecture/04-rust-responsibilities.md §4）。
 ///
@@ -72,10 +75,12 @@ pub enum Role {
     Document,
     /// `settings.json`（02.architecture/04-rust-responsibilities.md §5）。
     Settings,
-    /// `custom.css`（02.architecture/10-theming.md §3）。`settings.json` と同じディレクトリにあるので、
+    /// `preview.css`（02.architecture/10-theming.md §3）。`settings.json` と同じディレクトリにあるので、
     /// **どちらもまだ存在しないときは同じ親ディレクトリを共有して見る**
     /// （`Registry::roots` がその対応を持っている）。
     CustomCss,
+    /// `editor.css`（同上）。3 つ目の共有者になるが、仕組みは 1 つも増えない。
+    EditorCss,
 }
 
 impl Role {
@@ -84,6 +89,7 @@ impl Role {
             Self::Document => EVENT_FILE_CHANGED,
             Self::Settings => EVENT_SETTINGS_CHANGED,
             Self::CustomCss => EVENT_CUSTOM_CSS_CHANGED,
+            Self::EditorCss => EVENT_EDITOR_CSS_CHANGED,
         }
     }
 }
@@ -501,6 +507,7 @@ mod tests {
         assert_eq!(Role::Document.event(), EVENT_FILE_CHANGED);
         assert_eq!(Role::Settings.event(), EVENT_SETTINGS_CHANGED);
         assert_eq!(Role::CustomCss.event(), EVENT_CUSTOM_CSS_CHANGED);
+        assert_eq!(Role::EditorCss.event(), EVENT_EDITOR_CSS_CHANGED);
     }
 
     /// 02.architecture/10-theming.md §3 と 02.architecture/04-rust-responsibilities.md §5 が**同じディレクトリ**にあることの帰結。

@@ -1,7 +1,12 @@
 [
   {
-    "name": "critical path (main + shared + pipeline)",
-    "path": ["dist/assets/main-*.js", "dist/assets/shared-*.js", "dist/assets/pipeline-*.js"],
+    "name": "critical path (main + shared + pipeline + app css)",
+    "path": [
+      "dist/assets/main-*.js",
+      "dist/assets/shared-*.js",
+      "dist/assets/pipeline-*.js",
+      "dist/assets/index-*.css"
+    ],
     "limit": "150 KB",
     "gzip": true
   },

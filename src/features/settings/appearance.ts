@@ -28,7 +28,7 @@
  * 拡縮しているのと同じ作法で、ユーザーのカスタム CSS（F-CONF-07）からも
  * 同じ変数として見える（§1）。
  */
-import { DEFAULT_SETTINGS, type Settings } from '@/platform';
+import { DEFAULT_SETTINGS, type Palette, type Settings } from '@/platform';
 
 /**
  * 数値の許容範囲。**`src-tauri/src/settings/schema.rs` の `*_RANGE` と揃える**
@@ -65,13 +65,16 @@ export function clampSetting(key: NumericKey, value: number): number {
 /**
  * 設定の全体を見た目に当てる。**差分は取らない。**
  *
- * 当てる対象は 5 つしかなく、差分を計算するほうが高くつく。
+ * 当てる対象は少なく、差分を計算するほうが高くつく。
  * 外部エディタでの編集も設定 UI の操作も、同じこの 1 本を通る。
  */
 export function applyAppearance(values: Settings): void {
   const root = document.documentElement;
 
   applyTheme(root, values.theme);
+  // 配色（F-CONF-08 / ADR-0013）。**面ごとに、面そのものへ属性を付ける。**
+  applyPalette(document.querySelector(PREVIEW_ROOT), values['preview.theme']);
+  applyPalette(document.querySelector(EDITOR_ROOT), values['editor.theme']);
 
   // フォント名は**既定スタックの前に足す**（F-CONF-04）。置き換えてしまうと、そのフォントに無い字（日本語 / 記号）の落とし先が消える。
   const family = formatFontFamily(values['preview.fontFamily']);
@@ -84,6 +87,29 @@ export function applyAppearance(values: Settings): void {
   setVar(root, '--mx-line-height', numeric(values, 'preview.lineHeight', ''));
   // 単位は `ch`。px にすると、文字サイズを変えたときに列幅が揺れる（02.architecture/10-theming.md §2）。
   setVar(root, '--mx-content-width', numeric(values, 'preview.maxWidth', 'ch'));
+}
+
+/**
+ * 配色の受け皿（ADR-0013）。**`index.html` にあり、起動時から存在する。**
+ * ここが `null` になるのはテストの一部だけで、そのときは何もしない。
+ */
+const PREVIEW_ROOT = '#mx-preview';
+const EDITOR_ROOT = '#mx-editor';
+
+/**
+ * 配色を当てる（F-CONF-08 / ADR-0013 / `styles/themes.css`）。
+ *
+ * **`:root` には決して付けない。** クロームの配色はテーマで動かさない。
+ * 付ける先は面そのもの（`#mx-preview` / `#mx-editor`）で、
+ * カスタムプロパティの継承で配下に降りていく。
+ *
+ * **`default` は属性ごと外す。** `applyTheme` が `system` で属性を外すのと
+ * 同じ理由で、設定を触っていない状態の DOM を M2 と同一に保つ（F-CONF-02）。
+ */
+function applyPalette(element: HTMLElement | null, palette: Palette): void {
+  if (!element) return;
+  if (palette === 'default') delete element.dataset['mxTheme'];
+  else element.dataset['mxTheme'] = palette;
 }
 
 /**

@@ -1,5 +1,5 @@
 /**
- * 設定 UI の出し入れ（F-CONF-05）。
+ * 設定 UI の出し入れ（F-CONF-05 / ADR-0011）。
  *
  * **このモジュールから先が遅延チャンク**（`assets/settings-*.js`）。
  * 起動時には存在せず、`Ctrl+,` かハンバーガーメニューの「設定」で初めてロードされる
@@ -14,7 +14,7 @@
  */
 import { mount, unmount } from 'svelte';
 
-import SettingsPanel from './SettingsPanel.svelte';
+import SettingsDialog from './SettingsDialog.svelte';
 
 let host: HTMLElement | null = null;
 let instance: Record<string, unknown> | null = null;
@@ -38,11 +38,11 @@ export function openSettings(): void {
 
   host = document.createElement('div');
   // body は 3 行の grid（`shell.css`）。**空の要素でも行が増えない**よう
-  // `#root` と同じく contents にしておく。パネル自身は fixed で浮いている。
+  // `#root` と同じく contents にしておく。ダイアログ自身はトップレイヤに乗る。
   host.style.display = 'contents';
   document.body.append(host);
 
-  instance = mount(SettingsPanel, { target: host, props: { onclose: closeSettings } });
+  instance = mount(SettingsDialog, { target: host, props: { onclose: closeSettings } });
 }
 
 export function closeSettings(): void {
@@ -64,5 +64,5 @@ export function isSettingsOpen(): boolean {
 }
 
 function focusPanel(): void {
-  host?.querySelector<HTMLElement>('[role="dialog"]')?.focus();
+  host?.querySelector('dialog')?.focus();
 }

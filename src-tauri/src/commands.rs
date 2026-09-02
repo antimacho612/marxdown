@@ -412,6 +412,12 @@ pub fn read_custom_css(state: State<'_, AppState>) -> custom_css::CustomCss {
     custom_css::load(state.custom_css_path(), custom_css::MAX_BYTES)
 }
 
+/// エディタ用カスタム CSS を読む。**本文用と 1:1 の対**（`read_custom_css`）。
+#[tauri::command]
+pub fn read_editor_css(state: State<'_, AppState>) -> custom_css::CustomCss {
+    custom_css::load(state.editor_css_path(), custom_css::MAX_BYTES)
+}
+
 /// `custom.css` を OS の既定アプリで開く（F-CONF-07 / 設定 UI のボタン）。
 ///
 /// **無ければ雛形を作ってから開く。** 仕様（02.architecture/10-theming.md §3）は「ファイルが存在すれば効く」
@@ -429,8 +435,29 @@ pub fn open_custom_css_file(
         .custom_css_path()
         .ok_or_else(|| CoreError::Io("カスタム CSS の置き場所が決まらない".into()))?;
 
-    custom_css::ensure_exists(path)?;
+    custom_css::ensure_exists(path, custom_css::Surface::Preview)?;
     // 雛形を作ったのは自分なので、続くイベントは外部変更ではない（02.architecture/04-rust-responsibilities.md §4）。
+    watcher.note_self_write(path);
+
+    tauri_plugin_opener::OpenerExt::opener(&app)
+        .open_path(path.display().to_string(), None::<&str>)
+        .map_err(|e| CoreError::Io(e.to_string()))
+}
+
+/// `editor.css` を OS の既定アプリで開く。**`open_custom_css_file` と 1:1 の対。**
+///
+/// 雛形の中身だけが違う（どちらに何を書くかを、ファイル自身が説明する）。
+#[tauri::command]
+pub fn open_editor_css_file(
+    app: tauri::AppHandle,
+    state: State<'_, AppState>,
+    watcher: State<'_, FileWatcher>,
+) -> CoreResult<()> {
+    let path = state
+        .editor_css_path()
+        .ok_or_else(|| CoreError::Io("カスタム CSS の置き場所が決まらない".into()))?;
+
+    custom_css::ensure_exists(path, custom_css::Surface::Editor)?;
     watcher.note_self_write(path);
 
     tauri_plugin_opener::OpenerExt::opener(&app)

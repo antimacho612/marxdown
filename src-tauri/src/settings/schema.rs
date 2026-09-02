@@ -50,6 +50,7 @@ pub const KEY_EDITOR_RENDER_LINE_HIGHLIGHT: &str = "editor.renderLineHighlight";
 pub const KEY_EDITOR_RENDER_WHITESPACE: &str = "editor.renderWhitespace";
 pub const KEY_EDITOR_RULERS: &str = "editor.rulers";
 pub const KEY_EDITOR_SCROLL_BEYOND_LAST_LINE: &str = "editor.scrollBeyondLastLine";
+pub const KEY_EDITOR_THEME: &str = "editor.theme";
 pub const KEY_EDITOR_TAB_SIZE: &str = "editor.tabSize";
 pub const KEY_EDITOR_WORD_WRAP: &str = "editor.wordWrap";
 pub const KEY_EDITOR_WORD_WRAP_COLUMN: &str = "editor.wordWrapColumn";
@@ -59,6 +60,7 @@ pub const KEY_PREVIEW_FONT_FAMILY: &str = "preview.fontFamily";
 pub const KEY_PREVIEW_FONT_SIZE: &str = "preview.fontSize";
 pub const KEY_PREVIEW_LINE_HEIGHT: &str = "preview.lineHeight";
 pub const KEY_PREVIEW_MAX_WIDTH: &str = "preview.maxWidth";
+pub const KEY_PREVIEW_THEME: &str = "preview.theme";
 
 pub const KEY_WINDOW_CLOSE_BEHAVIOR: &str = "window.closeBehavior";
 
@@ -190,6 +192,27 @@ pub enum CursorStyle {
     UnderlineThin,
 }
 
+/// 配色（[ADR-0013](../../docs/adr/0013-surface-themes.md)）。
+///
+/// **明暗を含まない。** 明暗を決めるのは `theme`（`system` / `light` / `dark`）だけで、
+/// 各パレットはライトとダークの両方を持つ（CSS 側の `light-dark()`）。
+/// テーマ自身に明暗を持たせると、明暗の真実が 3 か所に増える。
+///
+/// **プレビューとエディタで同じカタログを使う。** どちらも同じトークン
+/// （`--mx-color-*` / `--mx-color-code-*`）の上書きでしかなく、
+/// 面ごとにカタログを分ける理由が無い。
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum Palette {
+    /// `tokens.css` のトークンをそのまま使う。**属性を付けない状態。**
+    #[default]
+    Default,
+    Github,
+    Solarized,
+    Nord,
+    Gruvbox,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum CursorBlinking {
@@ -257,6 +280,9 @@ pub struct Settings {
     pub editor_rulers: Vec<f64>,
     #[serde(rename = "editor.scrollBeyondLastLine")]
     pub editor_scroll_beyond_last_line: bool,
+    /// エディタの配色。**`preview.theme` とは独立に選べる。**
+    #[serde(rename = "editor.theme")]
+    pub editor_theme: Palette,
     #[serde(rename = "editor.tabSize")]
     pub editor_tab_size: f64,
     #[serde(rename = "editor.wordWrap")]
@@ -277,6 +303,9 @@ pub struct Settings {
     /// px ではないのは、フォントサイズを変えても列幅が揺れないようにするため。
     #[serde(rename = "preview.maxWidth")]
     pub preview_max_width: f64,
+    /// 本文の配色。
+    #[serde(rename = "preview.theme")]
+    pub preview_theme: Palette,
 
     #[serde(rename = "window.closeBehavior")]
     pub window_close_behavior: CloseBehavior,
@@ -314,6 +343,7 @@ impl Default for Settings {
             editor_render_whitespace: RenderWhitespace::default(),
             editor_rulers: Vec::new(),
             editor_scroll_beyond_last_line: true,
+            editor_theme: Palette::default(),
             editor_tab_size: DEFAULT_EDITOR_TAB_SIZE,
             editor_word_wrap: WordWrap::default(),
             editor_word_wrap_column: DEFAULT_EDITOR_WORD_WRAP_COLUMN,
@@ -325,6 +355,7 @@ impl Default for Settings {
             preview_font_size: DEFAULT_FONT_SIZE,
             preview_line_height: DEFAULT_LINE_HEIGHT,
             preview_max_width: DEFAULT_MAX_WIDTH,
+            preview_theme: Palette::default(),
 
             window_close_behavior: CloseBehavior::default(),
 
@@ -391,6 +422,7 @@ impl Settings {
             editor_rulers: take_rulers(&mut map).unwrap_or(d.editor_rulers),
             editor_scroll_beyond_last_line: take(&mut map, KEY_EDITOR_SCROLL_BEYOND_LAST_LINE)
                 .unwrap_or(d.editor_scroll_beyond_last_line),
+            editor_theme: take(&mut map, KEY_EDITOR_THEME).unwrap_or(d.editor_theme),
             editor_tab_size: take_int(&mut map, KEY_EDITOR_TAB_SIZE, TAB_SIZE_RANGE)
                 .unwrap_or(d.editor_tab_size),
             editor_word_wrap: take(&mut map, KEY_EDITOR_WORD_WRAP).unwrap_or(d.editor_word_wrap),
@@ -411,6 +443,7 @@ impl Settings {
                 .unwrap_or(d.preview_line_height),
             preview_max_width: take_number(&mut map, KEY_PREVIEW_MAX_WIDTH, MAX_WIDTH_RANGE)
                 .unwrap_or(d.preview_max_width),
+            preview_theme: take(&mut map, KEY_PREVIEW_THEME).unwrap_or(d.preview_theme),
 
             window_close_behavior: take(&mut map, KEY_WINDOW_CLOSE_BEHAVIOR)
                 .unwrap_or(d.window_close_behavior),
@@ -564,6 +597,30 @@ mod tests {
         assert_eq!(map[KEY_EDITOR_CURSOR_STYLE], Value::from("block-outline"));
         assert_eq!(map[KEY_EDITOR_WORD_WRAP], Value::from("bounded"));
         assert_eq!(Settings::from_map(map), s);
+    }
+
+    /// ADR-0013。**面ごとに独立して選べること**と、既定が「属性なし」であること。
+    #[test]
+    fn the_two_surfaces_pick_palettes_independently() {
+        let d = Settings::default();
+        assert_eq!(d.preview_theme, Palette::Default);
+        assert_eq!(d.editor_theme, Palette::Default);
+
+        let s = Settings::from_map(
+            serde_json::from_str(r#"{"preview.theme":"solarized","editor.theme":"nord"}"#).unwrap(),
+        );
+        assert_eq!(s.preview_theme, Palette::Solarized);
+        assert_eq!(s.editor_theme, Palette::Nord);
+    }
+
+    /// 知らないパレット名は既定に落ちる。**ファイル全体は壊さない。**
+    #[test]
+    fn an_unknown_palette_falls_back_to_default() {
+        let s = Settings::from_map(
+            serde_json::from_str(r#"{"preview.theme":"dracula","theme":"dark"}"#).unwrap(),
+        );
+        assert_eq!(s.preview_theme, Palette::Default);
+        assert_eq!(s.theme, Theme::Dark);
     }
 
     #[test]

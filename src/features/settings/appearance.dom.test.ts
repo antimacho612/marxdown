@@ -19,9 +19,21 @@ function withSettings(patch: Partial<Settings>): Settings {
   return { ...DEFAULT_SETTINGS, ...patch };
 }
 
+function surface(id: string): HTMLElement {
+  return document.querySelector<HTMLElement>(`#${id}`) as HTMLElement;
+}
+
 beforeEach(() => {
   root().removeAttribute('style');
   delete root().dataset['theme'];
+
+  // 配色の受け皿（ADR-0013）。実アプリでは `index.html` にあり、起動時から存在する。
+  document.body.replaceChildren();
+  for (const id of ['mx-preview', 'mx-editor']) {
+    const element = document.createElement('div');
+    element.id = id;
+    document.body.append(element);
+  }
 });
 
 describe('applyAppearance', () => {
@@ -133,5 +145,51 @@ describe('clampSetting (src-tauri/src/settings/schema.rs と揃える)', () => {
 
   it('数値でない値は既定に落とす', () => {
     expect(clampSetting('preview.fontSize', Number.NaN)).toBe(DEFAULT_SETTINGS['preview.fontSize']);
+  });
+});
+
+/**
+ * 配色（F-CONF-08 / ADR-0013）。
+ *
+ * 見張るのは 3 つ。**面ごとに独立していること**、**既定では属性が付かないこと**、
+ * **`:root` には決して付かないこと**（クロームの配色をテーマで動かさない）。
+ */
+describe('applyPalette (ADR-0013)', () => {
+  it('既定では属性を付けない', () => {
+    applyAppearance(DEFAULT_SETTINGS);
+
+    expect(surface('mx-preview').dataset['mxTheme']).toBeUndefined();
+    expect(surface('mx-editor').dataset['mxTheme']).toBeUndefined();
+  });
+
+  it('面ごとに独立して当たる', () => {
+    applyAppearance(withSettings({ 'preview.theme': 'solarized', 'editor.theme': 'nord' }));
+
+    expect(surface('mx-preview').dataset['mxTheme']).toBe('solarized');
+    expect(surface('mx-editor').dataset['mxTheme']).toBe('nord');
+  });
+
+  it('既定に戻すと属性ごと外れる', () => {
+    applyAppearance(withSettings({ 'preview.theme': 'gruvbox' }));
+    applyAppearance(DEFAULT_SETTINGS);
+
+    expect(surface('mx-preview').dataset['mxTheme']).toBeUndefined();
+  });
+
+  /**
+   * **クロームの配色はテーマで動かさない**（ADR-0013）。
+   * `:root` に付いた瞬間、タイトルバーもステータスバーも通知バーも巻き込まれる。
+   */
+  it(':root には決して付けない', () => {
+    applyAppearance(withSettings({ 'preview.theme': 'github', 'editor.theme': 'github' }));
+
+    expect(root().dataset['mxTheme']).toBeUndefined();
+  });
+
+  /** 面がまだ無い経路（テストの一部）で落ちないこと。 */
+  it('面が無ければ何もしない', () => {
+    document.body.replaceChildren();
+
+    expect(() => applyAppearance(withSettings({ 'preview.theme': 'nord' }))).not.toThrow();
   });
 });

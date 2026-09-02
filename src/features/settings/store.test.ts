@@ -46,6 +46,7 @@ function bootstrapWith(settings: Partial<Bootstrap>): Bootstrap {
     settings: DEFAULT_SETTINGS,
     settingsError: null,
     customCss: NO_CUSTOM_CSS,
+    editorCss: NO_CUSTOM_CSS,
     ...settings,
   };
 }

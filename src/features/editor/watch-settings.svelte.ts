@@ -6,6 +6,7 @@
  * ここには Monaco も設定の意味も持ち込まない。
  */
 import { settingsStore } from '@/features/settings/store.svelte';
+import { styleEpoch } from '@/features/settings/style-epoch.svelte';
 
 /**
  * 設定の変化に追従する。**解除する関数を返す。**
@@ -14,6 +15,7 @@ import { settingsStore } from '@/features/settings/store.svelte';
  *
  * あちらが見ているのは `<html>` の属性で、拾えるのは**CSS に現れる変化**だけ。
  * 折り返し・タブ幅・行番号はトークン層に出ないので、ストアを直接見るしかない。
+ * `editor.css` の注入も `<html>` には映らないので、同じ理由でここが拾う。
  *
  * # `$effect.root` を使う
  *
@@ -29,6 +31,8 @@ export function watchEditorSettings(reapply: () => void): () => void {
       // 依存を明示的に読む。`reapply` の中で読まれることに頼ると、
       // 呼び出し側を差し替えたときに黙って追従しなくなる。
       void settingsStore.values;
+      // `editor.css` の差し替え（ADR-0013）。**設定ではないので別の合図で来る。**
+      void styleEpoch.value;
       reapply();
     });
   });

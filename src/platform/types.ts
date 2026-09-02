@@ -128,6 +128,16 @@ export type CursorStyle = 'line' | 'block' | 'underline' | 'line-thin' | 'block-
 export type CursorBlinking = 'blink' | 'smooth' | 'phase' | 'expand' | 'solid';
 
 /**
+ * 配色（ADR-0013 / `src/styles/themes.css`）。
+ *
+ * **明暗を含まない。** 明暗を決めるのは `theme` だけで、各パレットは
+ * ライトとダークの両方を持つ。プレビューとエディタは同じカタログから独立に選ぶ。
+ *
+ * `'default'` は**属性を付けない状態**で、`tokens.css` のトークンがそのまま降りてくる。
+ */
+export type Palette = 'default' | 'github' | 'solarized' | 'nord' | 'gruvbox';
+
+/**
  * `settings.json` の中身（`src-tauri/src/settings/schema.rs` の `Settings`）。
  *
  * **キーは VS Code と同じフラットなドット区切り**（F-CONF-06）。
@@ -162,6 +172,8 @@ export interface Settings {
   /** 縦罫線を引く桁。空なら引かない。`preview.maxWidth` と対で使う。 */
   'editor.rulers': number[];
   'editor.scrollBeyondLastLine': boolean;
+  /** エディタの配色。**`preview.theme` とは独立に選べる。** */
+  'editor.theme': Palette;
   'editor.tabSize': number;
   'editor.wordWrap': WordWrap;
   'editor.wordWrapColumn': number;
@@ -173,6 +185,8 @@ export interface Settings {
   'preview.lineHeight': number;
   /** 本文幅。単位は `ch`（02.architecture/10-theming.md §2）。 */
   'preview.maxWidth': number;
+  /** 本文の配色。 */
+  'preview.theme': Palette;
 
   'window.closeBehavior': WindowCloseBehavior;
 }
@@ -208,6 +222,7 @@ export const DEFAULT_SETTINGS: Settings = {
   'editor.renderWhitespace': 'none',
   'editor.rulers': [],
   'editor.scrollBeyondLastLine': true,
+  'editor.theme': 'default',
   'editor.tabSize': 2,
   'editor.wordWrap': 'on',
   'editor.wordWrapColumn': 80,
@@ -217,6 +232,7 @@ export const DEFAULT_SETTINGS: Settings = {
   'preview.fontSize': 16,
   'preview.lineHeight': 1.75,
   'preview.maxWidth': 100,
+  'preview.theme': 'default',
 
   'window.closeBehavior': 'tray',
 };
@@ -368,6 +384,11 @@ export interface Bootstrap {
    * 超えていれば `deferred` が立ち、`readCustomCss` で取りに行く。
    */
   customCss: CustomCss;
+  /**
+   * エディタ用のカスタム CSS（`editor.css` / ADR-0013）。**本文用と完全に同じ扱い。**
+   * 別のフィールドなのは、当てる先（`@scope` の根）が違うため。
+   */
+  editorCss: CustomCss;
 }
 
 /** 別インスタンスから転送された起動要求（ウォーム起動）。 */
@@ -509,6 +530,9 @@ export interface Platform {
    * 外部エディタで編集された後の読み直しだけ。
    */
   readCustomCss(): Promise<CustomCss>;
+
+  /** `editor.css` を読み直す。`readCustomCss` と 1:1 の対。 */
+  readEditorCss(): Promise<CustomCss>;
   /**
    * `custom.css` を OS の既定アプリで開く（F-CONF-07）。
    *
@@ -516,6 +540,9 @@ export interface Platform {
    * 「どこに書けばよいか」を知る手段がこのボタンしかない。
    */
   openCustomCssFile(): Promise<void>;
+
+  /** `editor.css` を既定のアプリで開く。無ければ雛形を作ってから開く。 */
+  openEditorCssFile(): Promise<void>;
   /**
    * `custom.css` の外部変更を購読する（02.architecture/10-theming.md §3）。
    *
@@ -523,6 +550,9 @@ export interface Platform {
    * `readCustomCss` で読み直して当て直すのが唯一の使い方。
    */
   onCustomCssChanged(handler: () => void): () => void;
+
+  /** `editor.css` の外部変更。**本文用と別のイベント**（片方だけを読み直す）。 */
+  onEditorCssChanged(handler: () => void): () => void;
   /**
    * 開いているファイルの監視を始める（F-EDIT-16 / 02.architecture/04-rust-responsibilities.md §4）。
    *

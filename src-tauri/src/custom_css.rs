@@ -1,8 +1,15 @@
 //! カスタム CSS の読み込み（F-CONF-07 / 02.architecture/10-theming.md §3）。
 //!
 //! ```text
-//! %APPDATA%\com.antimacho612.marxdown\custom.css
+//! %APPDATA%\com.antimacho612.marxdown\preview.css   本文にだけ当たる
+//! %APPDATA%\com.antimacho612.marxdown\editor.css    エディタにだけ当たる
 //! ```
+//!
+//! # 2 面あるが、扱いは 1 つ
+//!
+//! 読み方・上限・監視・「無いのは正常」まですべて同じで、違うのは**ファイル名と雛形**だけ。
+//! 面ごとに関数を分けず、[`Surface`] を引数に取る形にしてある。
+//! 閉じ込め先（`@scope` の根）が違うことはフロント側の関心であり、ここには出てこない。
 //!
 //! # 設定項目は無い
 //!
@@ -34,7 +41,37 @@ use serde::Serialize;
 use crate::document::atomic;
 use crate::error::CoreResult;
 
-const FILE_NAME: &str = "custom.css";
+/// カスタム CSS が当たる面。**ファイル名と雛形だけを決める。**
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Surface {
+    /// 本文（`@scope (#mx-preview)`）。
+    Preview,
+    /// エディタ（`@scope (#mx-editor)`）。
+    Editor,
+}
+
+impl Surface {
+    fn file_name(self) -> &'static str {
+        match self {
+            Self::Preview => "preview.css",
+            Self::Editor => "editor.css",
+        }
+    }
+
+    fn template(self) -> &'static str {
+        match self {
+            Self::Preview => TEMPLATE_PREVIEW,
+            Self::Editor => TEMPLATE_EDITOR,
+        }
+    }
+}
+
+/// M1.5〜M3 のあいだ本文用カスタム CSS が名乗っていた名前。
+///
+/// **エディタ用が増えて `custom.css` が何に当たるのか名前から読めなくなった**ため、
+/// `preview.css` へ改名した（[ADR-0013](../../docs/adr/0013-surface-themes.md)）。
+/// 移行は起動時に 1 回だけ行う（[`migrate_legacy`]）。
+const LEGACY_FILE_NAME: &str = "custom.css";
 
 /// bootstrap へ同梱する上限（02.architecture/10-theming.md §3 の表）。
 ///
@@ -87,8 +124,30 @@ pub enum ProblemKind {
 }
 
 /// カスタム CSS の置き場所。`settings.json` / `state.json` と同じディレクトリ。
-pub fn custom_css_path(identifier: &str) -> Option<PathBuf> {
-    Some(crate::store::config_dir(identifier)?.join(FILE_NAME))
+pub fn css_path(identifier: &str, surface: Surface) -> Option<PathBuf> {
+    Some(crate::store::config_dir(identifier)?.join(surface.file_name()))
+}
+
+/// `custom.css` を `preview.css` へ改名する。**起動時に 1 回だけ呼ぶ。**
+///
+/// - `preview.css` が既にあるなら何もしない（**新しい側を正とする**）
+/// - `custom.css` が無いなら何もしない（初回起動が常にこれ）
+/// - 失敗しても起動は止めない。改名できなければ、旧ファイルが残って
+///   カスタム CSS が当たらないだけで、**ユーザーの書いたものは消えない**
+///
+/// コピーではなく `rename` にしてあるのは、2 枚残すと
+/// 「どちらを編集すればよいか」がユーザーから見て決められなくなるため。
+pub fn migrate_legacy(identifier: &str) {
+    let Some(dir) = crate::store::config_dir(identifier) else {
+        return;
+    };
+    let legacy = dir.join(LEGACY_FILE_NAME);
+    let current = dir.join(Surface::Preview.file_name());
+
+    if current.exists() || !legacy.exists() {
+        return;
+    }
+    let _ = std::fs::rename(&legacy, &current);
 }
 
 /// 読む。**「無い」を失敗にしない**（02.architecture/10-theming.md §3）。
@@ -152,31 +211,60 @@ fn unreadable(path: &Path, message: String) -> CustomCss {
 /// 設定 UI の「カスタム CSS を開く」から呼ぶ。空のファイルではなく雛形にしてあるのは、
 /// 開いた人が最初に知る必要のあること（**本文にしか当たらない** / 変数は `:scope` に書く）が
 /// ファイルの中にしか書けないため。設定 UI に説明を並べる代わりにここへ置く。
-pub fn ensure_exists(path: &Path) -> CoreResult<()> {
+pub fn ensure_exists(path: &Path, surface: Surface) -> CoreResult<()> {
     if path.exists() {
         return Ok(());
     }
     if let Some(dir) = path.parent() {
         std::fs::create_dir_all(dir)?;
     }
-    atomic::write(path, TEMPLATE.as_bytes())
+    atomic::write(path, surface.template().as_bytes())
 }
 
 /// 雛形。**説明だけで、有効な宣言を 1 つも含めない。**
 /// 既定の見た目は既定のままであるべきで（F-CONF-02）、
 /// ここに例を「効く形」で書くと、開いた瞬間に見た目が変わる。
-const TEMPLATE: &str = "\
+const TEMPLATE_PREVIEW: &str = "\
 /*
- * Marxdown のカスタム CSS。
+ * Marxdown のカスタム CSS（本文）。
  *
  * ここに書いた CSS は **本文（プレビュー）にだけ** 当たります。
  * タイトルバー・ステータスバー・通知バーには効きません。
+ * エディタに当てたいものは editor.css へ書きます。
  *
  * 変数を上書きするときは :scope に書きます。
  *
  *   :scope { --mx-content-width: 90ch }
  *   h1 { border-bottom: 1px solid }
  *
+ * 設定の「テーマ」で選んだ配色より、ここに書いたものが優先されます。
+ * 保存すると、アプリを再起動しなくてもすぐ反映されます。
+ */
+";
+
+/// エディタ用の雛形。
+///
+/// **本文用と決定的に違うのは、色の届き方を説明する必要があること。**
+/// エディタの配色は Monaco が描いており、CSS の色をそのまま読んではいない。
+/// 効かせる手段はトークンの上書き（`:scope { --mx-color-* }`）であって、
+/// `.monaco-editor` を直接狙うことではない、と最初に書いておく。
+const TEMPLATE_EDITOR: &str = "\
+/*
+ * Marxdown のカスタム CSS（エディタ）。
+ *
+ * ここに書いた CSS は **エディタにだけ** 当たります。
+ * 本文（プレビュー）に当てたいものは preview.css へ書きます。
+ *
+ * 配色を変えるときは、色そのものではなく :scope の変数を上書きします。
+ * エディタの色は Monaco が描いており、変数から色を読み出しています。
+ *
+ *   :scope {
+ *     --mx-color-bg: #1a1b26;
+ *     --mx-color-fg: #c0caf5;
+ *     --mx-color-code-string: #9ece6a;
+ *   }
+ *
+ * 設定の「テーマ」で選んだ配色より、ここに書いたものが優先されます。
  * 保存すると、アプリを再起動しなくてもすぐ反映されます。
  */
 ";
@@ -282,13 +370,13 @@ mod tests {
         let d = temp_dir("ensure");
         let p = d.join("custom.css");
 
-        ensure_exists(&p).unwrap();
+        ensure_exists(&p, Surface::Preview).unwrap();
         let created = std::fs::read_to_string(&p).unwrap();
         assert!(created.contains("本文（プレビュー）にだけ"), "{created}");
 
         // 既にあるファイルは書き換えない。ユーザーが書いた CSS が消えたら最悪。
         std::fs::write(&p, "h1 { color: red }").unwrap();
-        ensure_exists(&p).unwrap();
+        ensure_exists(&p, Surface::Preview).unwrap();
         assert_eq!(std::fs::read_to_string(&p).unwrap(), "h1 { color: red }");
         std::fs::remove_dir_all(&d).ok();
     }
@@ -296,11 +384,32 @@ mod tests {
     /// 雛形は**読み込んでも何も起きない**（全体が 1 つのコメント）。
     /// 開いた瞬間に見た目が変わると、F-CONF-02「既定のままで完成している」に反する。
     #[test]
-    fn the_template_is_one_comment_and_nothing_else() {
-        let trimmed = TEMPLATE.trim();
-        assert!(trimmed.starts_with("/*"), "{TEMPLATE}");
-        assert!(trimmed.ends_with("*/"), "{TEMPLATE}");
-        // コメントが途中で閉じていれば、その後ろは有効な CSS になる。
-        assert_eq!(trimmed.matches("*/").count(), 1, "{TEMPLATE}");
+    fn every_template_is_one_comment_and_nothing_else() {
+        for surface in [Surface::Preview, Surface::Editor] {
+            let template = surface.template();
+            let trimmed = template.trim();
+            assert!(trimmed.starts_with("/*"), "{template}");
+            assert!(trimmed.ends_with("*/"), "{template}");
+            // コメントが途中で閉じていれば、その後ろは有効な CSS になる。
+            assert_eq!(trimmed.matches("*/").count(), 1, "{template}");
+        }
+    }
+
+    /// 面ごとに違う雛形が出ること。**どちらに書けばよいかを雛形自身が言う。**
+    #[test]
+    fn each_surface_gets_its_own_template() {
+        let editor = Surface::Editor.template();
+        assert!(editor.contains("エディタにだけ"), "{editor}");
+        assert!(
+            editor.contains("preview.css"),
+            "もう一方の行き先を書いてある: {editor}"
+        );
+        assert!(Surface::Preview.template().contains("editor.css"));
+    }
+
+    #[test]
+    fn the_surfaces_use_the_new_file_names() {
+        assert_eq!(Surface::Preview.file_name(), "preview.css");
+        assert_eq!(Surface::Editor.file_name(), "editor.css");
     }
 }
