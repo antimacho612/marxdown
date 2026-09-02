@@ -622,6 +622,13 @@ pub async fn confirm_discard(window: Window) -> DiscardChoice {
         DialogExt, MessageDialogButtons, MessageDialogKind, MessageDialogResult,
     };
 
+    // `YesNoCancelCustom` はラベルをカスタムした時点で、結果は `Yes` / `No` ではなく
+    // 常に `Custom(ラベル文字列)` で返ってくる（tauri-plugin-dialog の仕様。`close.rs`
+    // の `ask_then_quit` と同じ罠）。ラベルで判定しないと、どちらのボタンを押しても
+    // `_` に落ちて「保存しない」が常にキャンセル扱いになる。
+    const SAVE: &str = "保存する";
+    const DISCARD: &str = "保存しない";
+
     let (tx, mut rx) = tauri::async_runtime::channel(1);
 
     window
@@ -631,14 +638,14 @@ pub async fn confirm_discard(window: Window) -> DiscardChoice {
         .kind(MessageDialogKind::Warning)
         .parent(&window)
         .buttons(MessageDialogButtons::YesNoCancelCustom(
-            "保存する".to_string(),
-            "保存しない".to_string(),
+            SAVE.to_string(),
+            DISCARD.to_string(),
             "キャンセル".to_string(),
         ))
         .show_with_result(move |result| {
             let choice = match result {
-                MessageDialogResult::Yes => DiscardChoice::Save,
-                MessageDialogResult::No => DiscardChoice::Discard,
+                MessageDialogResult::Custom(label) if label == SAVE => DiscardChoice::Save,
+                MessageDialogResult::Custom(label) if label == DISCARD => DiscardChoice::Discard,
                 _ => DiscardChoice::Cancel,
             };
             let _ = tx.try_send(choice);
