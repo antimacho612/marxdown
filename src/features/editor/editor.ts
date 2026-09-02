@@ -35,7 +35,7 @@
 import { setDirty } from '@/features/document/dirty';
 import { scheduleLiveRender } from '@/features/document/live';
 import { attachEditor, getDocumentText } from '@/features/document/text';
-import { startScrollSync, stopScrollSync } from '@/features/view/scroll-sync';
+import { attachEditorScrollPort, startScrollSync, stopScrollSync } from '@/features/view/scroll-sync';
 
 import { installCursorReport } from './cursor';
 import { installEditorKeymap } from './keymap';
@@ -156,6 +156,11 @@ export function mountEditor(host: HTMLElement): monaco.editor.IStandaloneCodeEdi
   // カーソル位置をステータスバーへ（03.ux-spec/07-status-and-notifications.md §3）。**rAF で間引く**（`cursor.ts`）。
   installCursorReport(editor);
 
+  // 行番号だけの窓口を渡す（`features/view/scroll-sync.ts`）。
+  // **Split に入る前から渡しておく。** アウトラインからのジャンプは Edit でも
+  // 効かなければならず、あれが要求するのは同期ではなく窓口そのものである（#59）。
+  attachEditorScrollPort(createScrollPort(editor));
+
   // ここから先、本文の真実は Monaco のモデルにある（ADR-0005）。
   attachEditor({
     read: () => (model ? readText() : doc),
@@ -271,9 +276,6 @@ export function moveToEndForBench(): void {
 }
 
 export function setSplitSync(on: boolean): void {
-  if (!on) {
-    stopScrollSync();
-    return;
-  }
-  if (editor) startScrollSync(createScrollPort(editor));
+  if (on) startScrollSync();
+  else stopScrollSync();
 }

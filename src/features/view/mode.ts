@@ -122,10 +122,18 @@ export async function setMode(mode: ViewMode): Promise<void> {
   // **片面しか見えていないときに購読を残さない**（N-PERF-05）。
   void setSplitSyncLazily(mode === 'split');
 
-  // Split へ入った時点で 1 回描き直す。**Edit のあいだの編集はプレビューに
-  // 反映されていない**（見えない面のために描き直さないため / `document/live.ts`）。
-  if (mode === 'split') void renderNow();
-  else cancelLiveRender();
+  // **Edit のあいだ、プレビューの DOM は作り直していない**（見えない面のために
+  // paint しないため / `document/live.ts`）。出す側へ戻ってきたところで 1 回だけ描く。
+  //
+  // Preview / Split どうしの行き来では描き直さない。どちらでも面は見えており、
+  // 打った内容はその都度反映されている。
+  //
+  // ここへ来るまでに予約が残っていることがある（打った直後に切り替えた場合）。
+  // **いま描き直すのだから、そのぶんは要らない。**
+  if (!wasVisible && willBeVisible) {
+    cancelLiveRender();
+    void renderNow();
+  }
 }
 
 /**

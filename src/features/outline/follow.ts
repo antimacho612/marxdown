@@ -31,7 +31,15 @@
  * 判定に必要な座標は**交差が起きた瞬間にブラウザが渡してくる**
  * （`boundingClientRect` / `rootBounds`）ので、こちらから測りに行かない。
  * つまりレイアウトを強制する箇所が 1 つも無い。
+ *
+ * # Edit では追う相手が違う
+ *
+ * 本文の面が `display: none` にあるあいだ、交差は一度も起きない。**観測しても
+ * 現在位置は分からない**（隠れた要素の矩形は全部 0 で届き、「全部が検出線を
+ * 越えている」と読めてしまう / #59）。見えているのはエディタのほうなので、
+ * そちらではカーソル行から引く（`headingAtLine`）。
  */
+import type { OutlineItem } from '@/markdown/plugins/line-map';
 
 /** 検出線の位置。本文の上端から何割か。 */
 const DETECTION_LINE = 0.15;
@@ -126,4 +134,25 @@ export function followHeadings(container: HTMLElement, onActive: (index: number)
     refresh,
     stop: () => observer.disconnect(),
   };
+}
+
+/**
+ * その行を含む見出しの添字（Edit の現在位置 / #59）。
+ *
+ * **行番号より手前にある最後の見出し**が答えになる。見出しより前
+ * （Front Matter / 前書き）に居るあいだは `-1`。そこはどの見出しの中でもない。
+ *
+ * カーソル行を使うのは、Edit で見えているのがエディタだからで、
+ * VS Code のアウトラインが現在位置を示す基準と同じである。
+ *
+ * @param items アウトラインの項目。`line` は 0 始まり（`markdown/plugins/line-map.ts`）
+ * @param line エディタのカーソル行。**1 始まり**
+ */
+export function headingAtLine(items: readonly OutlineItem[], line: number): number {
+  let found = -1;
+  for (const [index, item] of items.entries()) {
+    if (item.line + 1 > line) break;
+    found = index;
+  }
+  return found;
 }

@@ -33,7 +33,7 @@ import { toMessage } from '@/lib/error';
 import { dirOf } from '@/lib/path';
 
 import { getParser } from './open';
-import { refreshOutline, refreshSearch } from './refresh';
+import { isOutlineOnScreen, refreshOutline, refreshSearch } from './refresh';
 import { documentStore } from './store.svelte';
 import { getDocumentText } from './text';
 
@@ -107,14 +107,22 @@ export function observeLiveRender(next: ((timing: LiveRenderTiming) => void) | n
 }
 
 /**
- * プレビューを描き直す予約をする。**Split のときだけ働く。**
+ * 描き直す（あるいはパースし直す）予約をする。
  *
- * 他のモードではプレビューが見えていないので、描き直す意味が無い
- * （N-PERF-05 / 見えない面のために CPU を使わない）。Split へ入る時点で
- * 1 回描き直すので、Edit のあいだに打った内容も取りこぼさない。
+ * # 打った内容を追いかける相手が居るときだけ働く
+ *
+ * | モード | 追う相手 | やること |
+ * | --- | --- | --- |
+ * | Split | 右のプレビュー（F-MODE-03） | パース + paint |
+ * | Edit | アウトライン（出ていれば） | **パースだけ** |
+ * | Preview | 居ない（エディタが見えていない） | 何もしない |
+ *
+ * Edit で paint しないのは N-PERF-05（見えない面のために CPU を使わない）。
+ * **見出しは見えている**ので、そちらだけは取り直す（#59）。アウトラインが
+ * 閉じていれば、そのパースも要らない。
  */
 export function scheduleLiveRender(): void {
-  if (viewStore.mode !== 'split') return;
+  if (!wantsRender()) return;
 
   debug.scheduled++;
   if (observer) scheduledAt = performance.now();
@@ -126,6 +134,30 @@ export function scheduleLiveRender(): void {
   }, DEBOUNCE_MS);
 }
 
+/**
+ * いま打った内容を追いかける相手が居るか（上の表）。
+ *
+ * **ペインの開閉を直接見に行かない。** アウトラインが出ているかどうかは
+ * あちらから名乗ってもらう（`document/refresh.ts`）。
+ */
+function wantsRender(): boolean {
+  const mode = viewStore.mode;
+  if (mode === 'split') return true;
+  return mode === 'edit' && isOutlineOnScreen();
+}
+
+/**
+ * アウトラインが出た時点で見出しを取り直す（`Outline.svelte` がマウント時に呼ぶ）。
+ *
+ * **Edit のあいだだけ意味がある。** 閉じているアウトラインのためにパースは
+ * していないので、開いた時点の見出しは打鍵ぶんだけ古い。プレビューの面が
+ * 見えているモードでは描き直しの経路を通っているので、取り直すものは無い。
+ */
+export async function refreshOutlineOnOpen(): Promise<void> {
+  if (viewStore.mode !== 'edit') return;
+  await renderNow();
+}
+
 /** 予約を取り消す。Split を抜けるときに呼ぶ。 */
 export function cancelLiveRender(): void {
   if (timer !== null) clearTimeout(timer);
@@ -133,7 +165,10 @@ export function cancelLiveRender(): void {
 }
 
 /**
- * いますぐ描き直す。Split へ入った直後に 1 回だけ呼ぶ。
+ * いますぐ描き直す。プレビューの面へ戻った直後に 1 回だけ呼ぶ（`features/view/mode.ts`）。
+ *
+ * **Edit では paint まで行かない。** 見えない面の DOM は作り直さず、
+ * パースの結果（見出し・文字数）だけをストアへ入れる。
  *
  * 走っている最中にもう一度来たら、**いまのぶんが終わってから 1 回だけやり直す。**
  * パースは非同期なので、重ねると古い結果があとから届いて本文が巻き戻る。
@@ -160,20 +195,28 @@ export async function renderNow(): Promise<void> {
     const parsed = await parser.parse(getDocumentText());
     const parsedAt = observer ? performance.now() : 0;
 
-    // `paint` は中身を差し替える。控えてから当て直す。
-    const scrollTop = container.scrollTop;
-    paint(container, parsed.chunks, parsed.frontMatter);
-    container.scrollTop = scrollTop;
+    // **見えていない面の DOM は作り直さない**（N-PERF-05）。Edit で要るのは
+    // パースの結果だけで、本文は Preview へ戻るときに 1 回だけ描く（`features/view/mode.ts`）。
+    const visible = viewStore.mode !== 'edit';
+
+    if (visible) {
+      // `paint` は中身を差し替える。控えてから当て直す。
+      const scrollTop = container.scrollTop;
+      paint(container, parsed.chunks, parsed.frontMatter);
+      container.scrollTop = scrollTop;
+    }
 
     documentStore.frontMatter = parsed.frontMatter;
     documentStore.textStats = parsed.textStats;
     documentStore.outline = parsed.outline;
 
-    // 無題の文書（`Ctrl+N`）には基点が無い。相対パスの画像は解決できないので、
-    // `enhance` はスコープ外として扱う（`preview/enhance.ts`）。
-    enhance(container, { baseDir: dirOf(meta.path ?? '') });
-    refreshSearch();
-    refreshOutline();
+    if (visible) {
+      // 無題の文書（`Ctrl+N`）には基点が無い。相対パスの画像は解決できないので、
+      // `enhance` はスコープ外として扱う（`preview/enhance.ts`）。
+      enhance(container, { baseDir: dirOf(meta.path ?? '') });
+      refreshSearch();
+      refreshOutline();
+    }
 
     observer?.({
       scheduledAt: scheduledFor,

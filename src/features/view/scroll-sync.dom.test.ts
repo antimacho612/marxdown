@@ -22,6 +22,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { viewStore } from '@/features/view/store.svelte';
 
 import {
+  attachEditorScrollPort,
   isScrollSyncActive,
   jumpToEditorLine,
   jumpToPreviewLine,
@@ -83,13 +84,16 @@ beforeEach(() => {
   topLine = 1;
 
   stopScrollSync();
+  // **エディタが載っている状態から始める。** 窓口はスクロール同期とは別で、
+  // Split でなくても在る（`attachEditorScrollPort`）。
+  attachEditorScrollPort(port);
   document.body.innerHTML = '<div id="mx-preview"></div>';
   viewStore.scrollSync = true;
 });
 
 describe('開始と終了', () => {
   it('Split に入ると同期が始まり、抜けると外れる', () => {
-    startScrollSync(port);
+    startScrollSync();
     expect(isScrollSyncActive()).toBe(true);
 
     stopScrollSync();
@@ -98,15 +102,15 @@ describe('開始と終了', () => {
   });
 
   it('2 回呼んでも二重に始まらない', () => {
-    startScrollSync(port);
+    startScrollSync();
     const first = notifyEditorScroll;
-    startScrollSync(port);
+    startScrollSync();
     expect(notifyEditorScroll).toBe(first);
   });
 
   it('抜けたあとはダブルクリックが効かない', () => {
     const preview = stubRects();
-    startScrollSync(port);
+    startScrollSync();
     stopScrollSync();
 
     preview.querySelector('[data-line="9"]')?.dispatchEvent(new MouseEvent('dblclick', { bubbles: true }));
@@ -117,7 +121,7 @@ describe('開始と終了', () => {
 describe('主導権 (§2)', () => {
   it('エディタが動くとプレビューが追随する', () => {
     const preview = stubRects();
-    startScrollSync(port);
+    startScrollSync();
 
     topLine = 10;
     notifyEditorScroll?.();
@@ -126,7 +130,7 @@ describe('主導権 (§2)', () => {
 
   it('プレビューが動くとエディタが追随する', () => {
     const preview = stubRects();
-    startScrollSync(port);
+    startScrollSync();
 
     preview.scrollTop = 400;
     preview.dispatchEvent(new Event('scroll'));
@@ -135,7 +139,7 @@ describe('主導権 (§2)', () => {
 
   it('動かされた側からは戻さない（揺り戻しを止める）', () => {
     const preview = stubRects();
-    startScrollSync(port);
+    startScrollSync();
 
     // エディタが主導 → その結果として飛ぶプレビューの scroll は無視される。
     topLine = 10;
@@ -147,7 +151,7 @@ describe('主導権 (§2)', () => {
 
   it('同期が OFF なら、どちらも追随しない', () => {
     const preview = stubRects();
-    startScrollSync(port);
+    startScrollSync();
     viewStore.scrollSync = false;
 
     topLine = 10;
@@ -162,7 +166,7 @@ describe('主導権 (§2)', () => {
 describe('双方向ジャンプ (§3)', () => {
   it('プレビューのダブルクリックで、その行へ飛ぶ', () => {
     const preview = stubRects();
-    startScrollSync(port);
+    startScrollSync();
 
     // `data-line` は 0 始まり、エディタは 1 始まり。
     preview.querySelector('[data-line="9"]')?.dispatchEvent(new MouseEvent('dblclick', { bubbles: true }));
@@ -173,7 +177,7 @@ describe('双方向ジャンプ (§3)', () => {
     const preview = stubRects();
     const paragraph = preview.querySelector('[data-line="19"]');
     paragraph?.append(Object.assign(document.createElement('code'), { textContent: 'x' }));
-    startScrollSync(port);
+    startScrollSync();
 
     paragraph?.querySelector('code')?.dispatchEvent(new MouseEvent('dblclick', { bubbles: true }));
     expect(revealLine).toHaveBeenCalledWith(20, { focus: true });
@@ -181,7 +185,7 @@ describe('双方向ジャンプ (§3)', () => {
 
   it('`data-line` を持たない場所では何も起きない', () => {
     const preview = stubRects();
-    startScrollSync(port);
+    startScrollSync();
 
     preview.dispatchEvent(new MouseEvent('dblclick', { bubbles: true }));
     expect(revealLine).not.toHaveBeenCalled();
@@ -189,7 +193,7 @@ describe('双方向ジャンプ (§3)', () => {
 
   it('同期が OFF でもジャンプは効く（§2 の但し書き）', () => {
     const preview = stubRects();
-    startScrollSync(port);
+    startScrollSync();
     viewStore.scrollSync = false;
 
     preview.querySelector('[data-line="9"]')?.dispatchEvent(new MouseEvent('dblclick', { bubbles: true }));
@@ -198,7 +202,7 @@ describe('双方向ジャンプ (§3)', () => {
 
   it('アウトラインからはフォーカスを移さない', () => {
     stubRects();
-    startScrollSync(port);
+    startScrollSync();
 
     jumpToEditorLine(10, { focus: false });
     expect(revealLine).toHaveBeenCalledWith(10, { focus: false });
@@ -206,18 +210,34 @@ describe('双方向ジャンプ (§3)', () => {
 
   it('エディタ側からプレビューへも飛べる', () => {
     const preview = stubRects();
-    startScrollSync(port);
+    startScrollSync();
 
     jumpToPreviewLine(20);
     expect(preview.scrollTop).toBe(400);
   });
 
-  it('Split でなければ、どちらのジャンプも何もしない', () => {
+  it('Split でなくてもエディタへは飛べる（Edit のアウトライン / #59）', () => {
+    stubRects();
+
+    jumpToEditorLine(10, { focus: false });
+    expect(revealLine).toHaveBeenCalledWith(10, { focus: false });
+  });
+
+  it('エディタが載っていなければ、どちらのジャンプも何もしない', () => {
     const preview = stubRects();
+    attachEditorScrollPort(null);
+
     jumpToEditorLine(10);
     jumpToPreviewLine(20);
 
     expect(revealLine).not.toHaveBeenCalled();
+    expect(preview.scrollTop).toBe(0);
+  });
+
+  it('プレビューへのジャンプは Split のあいだだけ効く', () => {
+    const preview = stubRects();
+
+    jumpToPreviewLine(20);
     expect(preview.scrollTop).toBe(0);
   });
 });
