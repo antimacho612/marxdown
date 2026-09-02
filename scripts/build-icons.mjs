@@ -3,14 +3,14 @@
  * アプリアイコンを 2 枚のマスター SVG から組み立てる。
  *
  * `tauri icon` は 1 枚のソースを縮小して全サイズを吐くので、
- * 「小さいときは透過 / 大きいときは墨の円」を 1 コマンドでは作れない。
+ * 「小さいときは透過 / 大きいときは台座つき」を 1 コマンドでは作れない。
  * このスクリプトは 2 回走らせて、サイズごとにどちらを採るか振り分ける。
  *
  *   64px 以下  → src-tauri/icons/source.svg（透過）
- *   128px 以上 → src-tauri/icons/source-disc.svg（墨の円）
+ *   128px 以上 → src-tauri/icons/source-plate.svg（squircle の台座つき）
  *
  * 境界を 64 / 128 の間に置いたのは ICO の標準サイズに合わせたため。
- * 円を敷くとマークの実効サイズが 74% に落ちるので、小さい側では割に合わない。
+ * 台座を敷くとマークの実効サイズが落ちるので、小さい側では割に合わない。
  *
  * `icon.ico` は Windows が実際に参照する唯一のアイコンで、
  * 中に複数解像度を抱える。混在させるにはコンテナを自前で組む必要があるため、
@@ -30,25 +30,25 @@ const ICONS = join(ROOT, 'src-tauri', 'icons');
 const CLI = join(ROOT, 'node_modules', '@tauri-apps', 'cli', 'tauri.js');
 
 const FLAT = join(ICONS, 'source.svg');
-const DISC = join(ICONS, 'source-disc.svg');
+const PLATE = join(ICONS, 'source-plate.svg');
 
 /** `icon.ico` に詰める解像度と、それぞれどちらのマスターから採るか。 */
 const ICO_SIZES = [
-  { size: 16, disc: false },
-  { size: 24, disc: false },
-  { size: 32, disc: false },
-  { size: 48, disc: false },
-  { size: 64, disc: false },
-  { size: 128, disc: true },
-  { size: 256, disc: true },
+  { size: 16, plate: false },
+  { size: 24, plate: false },
+  { size: 32, plate: false },
+  { size: 48, plate: false },
+  { size: 64, plate: false },
+  { size: 128, plate: true },
+  { size: 256, plate: true },
 ];
 
 /**
- * `tauri icon` の既定セットのうち、円版で上書きするもの。
+ * `tauri icon` の既定セットのうち、台座版で上書きするもの。
  * ここに無いものは透過版のまま残る。
  * Square*Logo は MSIX 用のタイル画像で、107 以下は透過側に倒している。
  */
-const DISC_FILES = [
+const PLATE_FILES = [
   '128x128.png',
   '128x128@2x.png',
   'icon.png',
@@ -113,24 +113,24 @@ function buildIco(entries) {
 }
 
 const flatDir = mkdtempSync(join(tmpdir(), 'mx-icon-flat-'));
-const discDir = mkdtempSync(join(tmpdir(), 'mx-icon-disc-'));
+const plateDir = mkdtempSync(join(tmpdir(), 'mx-icon-plate-'));
 const flatExtra = mkdtempSync(join(tmpdir(), 'mx-icon-flat-p-'));
-const discExtra = mkdtempSync(join(tmpdir(), 'mx-icon-disc-p-'));
+const plateExtra = mkdtempSync(join(tmpdir(), 'mx-icon-plate-p-'));
 
 try {
   // 既定セット（png 各サイズ / ico / icns / Square*）
   run(FLAT, flatDir);
-  run(DISC, discDir);
+  run(PLATE, plateDir);
 
   // ICO に要るが既定セットに無い解像度
   run(FLAT, flatExtra, [16, 24, 48]);
-  run(DISC, discExtra, [256]);
+  run(PLATE, plateExtra, [256]);
 
   for (const name of FLAT_FILES) copyFileSync(join(flatDir, name), join(ICONS, name));
-  for (const name of DISC_FILES) copyFileSync(join(discDir, name), join(ICONS, name));
+  for (const name of PLATE_FILES) copyFileSync(join(plateDir, name), join(ICONS, name));
 
-  const pick = ({ size, disc }) => {
-    const dirs = disc ? [discDir, discExtra] : [flatDir, flatExtra];
+  const pick = ({ size, plate }) => {
+    const dirs = plate ? [plateDir, plateExtra] : [flatDir, flatExtra];
     for (const d of dirs) {
       try {
         return readFileSync(join(d, `${size}x${size}.png`));
@@ -144,10 +144,10 @@ try {
   const ico = buildIco(ICO_SIZES.map((e) => ({ size: e.size, png: pick(e) })));
   writeFileSync(join(ICONS, 'icon.ico'), ico);
 
-  const flat = ICO_SIZES.filter((e) => !e.disc).map((e) => e.size);
-  const disc = ICO_SIZES.filter((e) => e.disc).map((e) => e.size);
-  console.log(`icon.ico: 透過 ${flat.join('/')} + 円 ${disc.join('/')} (${ico.length} bytes)`);
-  console.log(`png/icns: 透過 ${FLAT_FILES.length} 件 / 円 ${DISC_FILES.length} 件`);
+  const flat = ICO_SIZES.filter((e) => !e.plate).map((e) => e.size);
+  const plate = ICO_SIZES.filter((e) => e.plate).map((e) => e.size);
+  console.log(`icon.ico: 透過 ${flat.join('/')} + 台座 ${plate.join('/')} (${ico.length} bytes)`);
+  console.log(`png/icns: 透過 ${FLAT_FILES.length} 件 / 台座 ${PLATE_FILES.length} 件`);
 } finally {
-  for (const d of [flatDir, discDir, flatExtra, discExtra]) rmSync(d, { recursive: true, force: true });
+  for (const d of [flatDir, plateDir, flatExtra, plateExtra]) rmSync(d, { recursive: true, force: true });
 }

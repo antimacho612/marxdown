@@ -7,34 +7,62 @@
     ワードマークの色が片方で読めなくなる。`<picture>` で 2 枚出し分けている。
     SVG 内部の prefers-color-scheme は <img> 経由だと効かない環境がある。
 
-    マークは透過版。墨の円版はこの表示サイズ（高さ 48px）では中身が潰れる。
+    マークは透過版。台座版（`source-plate.svg`）はこの表示サイズ（高さ 48px）では中身が潰れる。
+    ハイライト（`spec`）だけはマスターから落としてある。48px では 1px 未満にしかならない。
 
     ワードマークは <text> のまま置いてある。アウトライン化していないので、
     環境によって字形と幅が変わる。厳密な再現が要る用途では使わないこと。
   -->
   <defs>
-    <linearGradient id="b" gradientUnits="userSpaceOnUse" x1="86" y1="48" x2="52" y2="212">
-      <stop offset="0" stop-color="#5b7bf0" />
-      <stop offset="1" stop-color="#2b45b4" />
+    <clipPath id="cw"><path d="M185 -241 L 87 553 L -500 553 L -500 -241 Z" /></clipPath>
+    <clipPath id="ce"><path d="M185 -241 L 87 553 L 700 553 L 700 -241 Z" /></clipPath>
+    <linearGradient id="b" gradientUnits="userSpaceOnUse" x1="92" y1="40" x2="46" y2="215">
+      <stop offset="0" stop-color="#7f97ff" />
+      <stop offset="0.42" stop-color="#4a64e8" />
+      <stop offset="1" stop-color="#2938ae" />
     </linearGradient>
-    <linearGradient id="r" gradientUnits="userSpaceOnUse" x1="192" y1="84" x2="210" y2="210">
-      <stop offset="0" stop-color="#f4626a" />
-      <stop offset="1" stop-color="#c62630" />
+    <linearGradient id="r" gradientUnits="userSpaceOnUse" x1="182" y1="78" x2="216" y2="212">
+      <stop offset="0" stop-color="#ff8189" />
+      <stop offset="0.42" stop-color="#ee4753" />
+      <stop offset="1" stop-color="#c31f2f" />
     </linearGradient>
-    <radialGradient id="y" cx="0.36" cy="0.3" r="0.82">
-      <stop offset="0" stop-color="#ffe694" />
-      <stop offset="1" stop-color="#f2ac12" />
+    <radialGradient id="y" cx="0.32" cy="0.24" r="0.9">
+      <stop offset="0" stop-color="#fff3cd" />
+      <stop offset="0.4" stop-color="#ffcf5e" />
+      <stop offset="1" stop-color="#dd9410" />
+    </radialGradient>
+    <radialGradient id="ysh" cx="0.33" cy="0.27" r="0.92">
+      <stop offset="0.55" stop-color="#6b3200" stop-opacity="0" />
+      <stop offset="1" stop-color="#6b3200" stop-opacity="0.42" />
     </radialGradient>
   </defs>
 
-  <!-- 0.2233 = 48 / 215（マークの実描画高）。左端に高さ 48 で置く -->
-  <g transform="translate(0 12) scale(0.2233) translate(-29 -8)">
-    <g fill="none" stroke-width="46" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M52 200 C 70 176, 92 132, 86 58 L 136 156" stroke="url(#b)" />
-      <path d="M136 156 L 192 92 C 196 124, 202 164, 210 196" stroke="url(#r)" />
+  <!-- 0.2254 = 48 / 213（マークの実描画高）。左端に高さ 48 で置く -->
+  <g transform="translate(0 12) scale(0.2254) translate(-29 -10)">
+    <g clip-path="url(#cw)">
+      <path
+        d="M52 200 C 70 176, 92 132, 86 58 L 163.3 209.5"
+        fill="none"
+        stroke="url(#b)"
+        stroke-width="46"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      />
     </g>
-    <circle cx="74" cy="42" r="34" fill="url(#y)" />
-    <circle cx="200" cy="72" r="29" fill="url(#y)" />
+    <g clip-path="url(#ce)">
+      <path
+        d="M96.5 201.1 L 192 92 C 196 124, 202 164, 210 196"
+        fill="none"
+        stroke="url(#r)"
+        stroke-width="46"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      />
+    </g>
+    <circle cx="74" cy="42" r="32" fill="url(#y)" />
+    <circle cx="74" cy="42" r="32" fill="url(#ysh)" />
+    <circle cx="200" cy="72" r="27" fill="url(#y)" />
+    <circle cx="200" cy="72" r="27" fill="url(#ysh)" />
   </g>
 
   <text

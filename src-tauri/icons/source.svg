@@ -1,7 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256" role="img" aria-label="Marxdown">
   <!--
     Marxdown アプリアイコンのマスター（透過版 / 64px 以下で使う）。
-    大サイズで使う墨の円版は `source-disc.svg`。**形を直すときは両方直す。**
+    台座つきの版は `source-plate.svg`。**形を直すときは両方直す。**（パス・線幅・玉の径は 2 ファイルで同一）
+    同じ形を `src/lib/Mark.svelte`（画面内）と `assets/logo-*.svg`（README）も持っている。
     生成は `pnpm icons`（`scripts/build-icons.mjs`）。手で `tauri icon` を叩かないこと。
 
     形の由来: マルクのジェスターハット。二股が上に立ち、その先端の玉が M の 2 つの山に乗る。
@@ -10,46 +11,102 @@
 
       - 山の高さ: 左 58 / 右 92（左が高い）
       - 足: 左だけ外へ開く（つばの広がり）。右はほぼ直線
-      - 玉: 左 r34 / 右 r29。どちらも先端から外へずらして、垂れて見えるようにしてある
+      - 玉: 左 r32 / 右 r27。どちらも先端から外へずらして、垂れて見えるようにしてある
 
-    中央の三画（山→谷→山）は直線のまま保つ。ここを曲げると 16px で M が読めなくなる。
+    ## 谷を尖らせる仕掛け（`cw` / `ce`）
+
+    2 本のストロークを谷（136 156）で単純に突き合わせると、丸キャップ同士がぶつかって
+    団子になる。文字ではなく風船に見えていたのはここが原因。
+
+    そこで **2 本とも谷を越えて伸ばし、角の二等分線でクリップしている。**
+    外側の輪郭の交点（131 196.7 付近）と内側の交点（141 115.3 付近）がそのまま尖点になり、
+    線幅を一定に保ったまま M の V が出る。
+
+      - 二等分線は (136 156) を通り、方向 (-0.1226 0.9924)。`cw` が西側 = 青、`ce` が東側 = 赤
+      - 伸ばした先（163.3 209.5 / 96.5 201.1）は二等分線から 33.6 離れている。
+        線の半幅 23 より大きいので、丸キャップごとクリップで消える
+      - **線幅を変えたら伸ばし量とクリップも引き直す。** 半幅が 33.6 を超えるとキャップの縁が出る
 
     線幅 46 は 16px で潰れない上限。52 まで太らせると M の内側の隙間が閉じ、
     玉が茎に融合して「太った塊」になる。玉の半径は線幅に比例させること。
     比例させないと、太い線に埋もれて先端の出っ張りが消える。
 
-    背景は敷かない。16px で出る頻度が高く、円で囲うと実効サイズが落ちるため。
+    ## 光源
+
+    左上から 1 方向。青・赤の 3 停止点グラデーションと、玉のハイライト（`spec`）・
+    暗端（`ysh`）・下からの反射（`yrim`）が全部この向きに揃っている。**片方だけ動かさないこと。**
+
+    背景は敷かない。16px で出る頻度が高く、地を敷くと実効サイズが落ちるため。
+    影も落とさない。明るい地の上では灰色の汚れに見える（台座版だけが影を持つ）。
     グラデーションは 32px 以下では消えてフラットに退化するが、形は壊れない。
   -->
   <defs>
-    <linearGradient id="b" gradientUnits="userSpaceOnUse" x1="86" y1="48" x2="52" y2="212">
-      <stop offset="0" stop-color="#5b7bf0" />
-      <stop offset="1" stop-color="#2b45b4" />
+    <clipPath id="cw"><path d="M185 -241 L 87 553 L -500 553 L -500 -241 Z" /></clipPath>
+    <clipPath id="ce"><path d="M185 -241 L 87 553 L 700 553 L 700 -241 Z" /></clipPath>
+    <linearGradient id="b" gradientUnits="userSpaceOnUse" x1="92" y1="40" x2="46" y2="215">
+      <stop offset="0" stop-color="#7f97ff" />
+      <stop offset="0.42" stop-color="#4a64e8" />
+      <stop offset="1" stop-color="#2938ae" />
     </linearGradient>
-    <linearGradient id="r" gradientUnits="userSpaceOnUse" x1="192" y1="84" x2="210" y2="210">
-      <stop offset="0" stop-color="#f4626a" />
-      <stop offset="1" stop-color="#c62630" />
+    <linearGradient id="r" gradientUnits="userSpaceOnUse" x1="182" y1="78" x2="216" y2="212">
+      <stop offset="0" stop-color="#ff8189" />
+      <stop offset="0.42" stop-color="#ee4753" />
+      <stop offset="1" stop-color="#c31f2f" />
     </linearGradient>
-    <radialGradient id="y" cx="0.36" cy="0.3" r="0.82">
-      <stop offset="0" stop-color="#ffe694" />
-      <stop offset="1" stop-color="#f2ac12" />
+    <radialGradient id="y" cx="0.32" cy="0.24" r="0.9">
+      <stop offset="0" stop-color="#fff3cd" />
+      <stop offset="0.4" stop-color="#ffcf5e" />
+      <stop offset="1" stop-color="#dd9410" />
     </radialGradient>
+    <radialGradient id="ysh" cx="0.33" cy="0.27" r="0.92">
+      <stop offset="0.55" stop-color="#6b3200" stop-opacity="0" />
+      <stop offset="1" stop-color="#6b3200" stop-opacity="0.42" />
+    </radialGradient>
+    <linearGradient id="yrim" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="0" y2="256">
+      <stop offset="0" stop-color="#fff8e0" stop-opacity="0.5" />
+      <stop offset="0.5" stop-color="#ffffff" stop-opacity="0" />
+      <stop offset="1" stop-color="#ffd98a" stop-opacity="0.42" />
+    </linearGradient>
+    <filter id="spec" x="-90%" y="-90%" width="280%" height="280%"><feGaussianBlur stdDeviation="2.6" /></filter>
   </defs>
 
   <!--
-    図形の外接矩形は x 29..233 / y 8..223（204 x 215）。
-    1.125 倍して 256 角の上下に 7px だけ残す。これ以上は縁で
-    アンチエイリアスが切れる。
+    図形の外接矩形は x 29..233 / y 10..223（204 x 213）。
+    1.125 倍して 256 角の上下に 8px だけ残す。これ以上は縁でアンチエイリアスが切れる。
 
     中心を x=131 に置いているのは光学補正。左の方が重い（玉が大きく足が開く）ので、
     幾何中心より 3px 右がちょうど釣り合う。
   -->
-  <g transform="translate(131 128) scale(1.125) translate(-131 -115.5)">
-    <g fill="none" stroke-width="46" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M52 200 C 70 176, 92 132, 86 58 L 136 156" stroke="url(#b)" />
-      <path d="M136 156 L 192 92 C 196 124, 202 164, 210 196" stroke="url(#r)" />
+  <g transform="translate(131 128) scale(1.125) translate(-131 -116.5)">
+    <g clip-path="url(#cw)">
+      <path
+        d="M52 200 C 70 176, 92 132, 86 58 L 163.3 209.5"
+        fill="none"
+        stroke="url(#b)"
+        stroke-width="46"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      />
     </g>
-    <circle cx="74" cy="42" r="34" fill="url(#y)" />
-    <circle cx="200" cy="72" r="29" fill="url(#y)" />
+    <g clip-path="url(#ce)">
+      <path
+        d="M96.5 201.1 L 192 92 C 196 124, 202 164, 210 196"
+        fill="none"
+        stroke="url(#r)"
+        stroke-width="46"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      />
+    </g>
+
+    <circle cx="74" cy="42" r="32" fill="url(#y)" />
+    <circle cx="74" cy="42" r="32" fill="url(#ysh)" />
+    <circle cx="74" cy="42" r="32" fill="none" stroke="url(#yrim)" stroke-width="1.6" />
+    <ellipse cx="63" cy="30" rx="11" ry="7.5" fill="#fffaea" opacity="0.62" filter="url(#spec)" transform="rotate(-32 63 30)" />
+
+    <circle cx="200" cy="72" r="27" fill="url(#y)" />
+    <circle cx="200" cy="72" r="27" fill="url(#ysh)" />
+    <circle cx="200" cy="72" r="27" fill="none" stroke="url(#yrim)" stroke-width="1.6" />
+    <ellipse cx="191" cy="62" rx="9.5" ry="6" fill="#fffaea" opacity="0.62" filter="url(#spec)" transform="rotate(-32 191 62)" />
   </g>
 </svg>
