@@ -30,6 +30,12 @@
     "gzip": true
   },
   {
+    "name": "status menu (ステータスバーの選択肢。押されるまでロードしない)",
+    "path": ["dist/assets/status-*.js"],
+    "limit": "4 KB",
+    "gzip": true
+  },
+  {
     "name": "bench input (--bench-input のときだけロードする計測経路)",
     "path": ["dist/assets/bench-*.js"],
     "limit": "4 KB",

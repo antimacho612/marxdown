@@ -347,7 +347,14 @@ export interface Platform {
   readonly kind: 'tauri' | 'web';
   /** 同期的に読める初期ペイロード。IPC 往復を挟まないことが最重要。 */
   getBootstrap(): Bootstrap | null;
-  readDocument(path: string): Promise<DocumentPayload>;
+  /**
+   * ファイルを読む。
+   *
+   * `encoding` はエンコーディングの**指定**（03.ux-spec/07-status-and-notifications.md §3
+   * 「クリックでエンコーディング再解釈」）。**省略が通常の経路**で、
+   * そのときだけ Rust 側の推定が走る。
+   */
+  readDocument(path: string, encoding?: Encoding): Promise<DocumentPayload>;
   writeDocument(req: WriteRequest): Promise<SaveResult>;
   /**
    * 相対パスの画像を、許可ディレクトリ配下であることを検証したうえで

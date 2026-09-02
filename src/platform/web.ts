@@ -300,7 +300,7 @@ export const webPlatform: Platform = {
     return bootstrap;
   },
 
-  async readDocument(path): Promise<DocumentPayload> {
+  async readDocument(path, encoding): Promise<DocumentPayload> {
     const fs = loadFs();
     const file = fs[path];
     if (!file) throw { kind: 'not-found', message: path };
@@ -309,7 +309,9 @@ export const webPlatform: Platform = {
       content: file.content,
       eol: 'lf',
       bom: false,
-      encoding: 'utf8',
+      // モックのファイルは常に UTF-8。**指定はそのまま名乗り返す**ので、
+      // 再解釈の UI（03.ux-spec/07-status-and-notifications.md §3）は `dev:web` でも動いて見える。
+      encoding: encoding ?? 'utf8',
       mtimeMs: file.mtimeMs,
       size: new TextEncoder().encode(file.content).length,
       readonly: false,

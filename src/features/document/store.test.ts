@@ -25,6 +25,8 @@ beforeEach(() => {
   documentStore.frontMatter = null;
   documentStore.stats = null;
   documentStore.textStats = null;
+  documentStore.cursor = null;
+  documentStore.eolOverride = null;
   // 代入すると自動消滅のタイマーも解除される
   documentStore.notice = null;
 });
@@ -42,6 +44,8 @@ describe('documentStore', () => {
 
   it('派生値だけを持つ', () => {
     expect(stateKeys().toSorted()).toEqual([
+      'cursor',
+      'eolOverride',
       'frontMatter',
       'isDirty',
       'meta',

@@ -122,7 +122,10 @@ pub fn mtime_ms(meta: &std::fs::Metadata) -> i64 {
 ///
 /// この関数は**起動シーケンスのクリティカルパス上で、WebView 初期化と並行に**
 /// 呼ばれる（02.architecture/05-startup-sequence.md §1）。余計な仕事をしない。
-pub fn read(path: &Path) -> CoreResult<DocumentPayload> {
+///
+/// `forced` はエンコーディングの指定（03.ux-spec/07-status-and-notifications.md §3 の「再解釈」）。
+/// **`None` が通常の経路**で、そのときだけ推定が走る。
+pub fn read(path: &Path, forced: Option<Encoding>) -> CoreResult<DocumentPayload> {
     let path = canonicalize(path)?;
     let fs_meta = std::fs::metadata(&path)?;
 
@@ -142,7 +145,10 @@ pub fn read(path: &Path) -> CoreResult<DocumentPayload> {
     }
 
     let bytes = std::fs::read(&path)?;
-    let detected = encoding::detect(&bytes);
+    let detected = match forced {
+        Some(encoding) => encoding::force(&bytes, encoding),
+        None => encoding::detect(&bytes),
+    };
     let raw = encoding::decode(&bytes, detected);
     let detected_eol = eol::detect(&raw);
     let content = eol::normalize(&raw);
@@ -255,11 +261,33 @@ mod tests {
         let dir = temp_dir("lf");
         let p = dir.join("a.md");
         std::fs::write(&p, "# 見出し\n本文\n").unwrap();
-        let doc = read(&p).unwrap();
+        let doc = read(&p, None).unwrap();
         assert_eq!(doc.content, "# 見出し\n本文\n");
         assert_eq!(doc.meta.eol, Eol::Lf);
         assert!(!doc.meta.bom);
         assert_eq!(doc.meta.encoding, Encoding::Utf8);
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    /// エンコーディングの再解釈（03.ux-spec/07-status-and-notifications.md §3）。
+    ///
+    /// 推定は当てにいかない。**指定したエンコーディングで読み、そう名乗る。**
+    /// 名乗りが変わらないと、次の保存が推定側のエンコーディングで書き戻してしまう。
+    #[test]
+    fn reading_with_a_forced_encoding_reports_that_encoding() {
+        let dir = temp_dir("forced");
+        let p = dir.join("c.md");
+        // UTF-8 として妥当なので、推定に任せれば必ず UTF-8 になるバイト列。
+        std::fs::write(&p, "日本語\n").unwrap();
+
+        let guessed = read(&p, None).unwrap();
+        assert_eq!(guessed.meta.encoding, Encoding::Utf8);
+        assert_eq!(guessed.content, "日本語\n");
+
+        let forced = read(&p, Some(Encoding::ShiftJis)).unwrap();
+        assert_eq!(forced.meta.encoding, Encoding::ShiftJis);
+        assert_ne!(forced.content, "日本語\n", "指定したほうで読み直している");
+
         std::fs::remove_dir_all(&dir).ok();
     }
 
@@ -268,7 +296,7 @@ mod tests {
         let dir = temp_dir("crlf");
         let p = dir.join("b.md");
         std::fs::write(&p, "a\r\nb\r\n").unwrap();
-        let doc = read(&p).unwrap();
+        let doc = read(&p, None).unwrap();
         assert_eq!(doc.content, "a\nb\n", "メモリ上は LF");
         assert_eq!(doc.meta.eol, Eol::Crlf, "ディスク上の EOL を覚えている");
         std::fs::remove_dir_all(&dir).ok();
@@ -291,7 +319,7 @@ mod tests {
         for (name, original) in cases {
             let p = dir.join(name);
             std::fs::write(&p, &original).unwrap();
-            let doc = read(&p).unwrap();
+            let doc = read(&p, None).unwrap();
             let result = write(&WriteRequest {
                 path: doc.meta.path.clone(),
                 content: doc.content.clone(),
@@ -319,7 +347,7 @@ mod tests {
         let dir = temp_dir("conflict");
         let p = dir.join("c.md");
         std::fs::write(&p, "original\n").unwrap();
-        let doc = read(&p).unwrap();
+        let doc = read(&p, None).unwrap();
 
         // 外部から書き換えられたことにする
         std::thread::sleep(std::time::Duration::from_millis(20));
@@ -347,7 +375,7 @@ mod tests {
     #[test]
     fn reading_a_missing_file_is_not_found() {
         let dir = temp_dir("missing");
-        let err = read(&dir.join("nope.md")).unwrap_err();
+        let err = read(&dir.join("nope.md"), None).unwrap_err();
         assert_eq!(err.kind(), "not-found");
         std::fs::remove_dir_all(&dir).ok();
     }
@@ -355,7 +383,7 @@ mod tests {
     #[test]
     fn reading_a_directory_is_rejected() {
         let dir = temp_dir("isdir");
-        let err = read(&dir).unwrap_err();
+        let err = read(&dir, None).unwrap_err();
         assert_eq!(err.kind(), "invalid-argument");
         std::fs::remove_dir_all(&dir).ok();
     }

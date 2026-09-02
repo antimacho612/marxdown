@@ -37,6 +37,7 @@ import { scheduleLiveRender } from '@/features/document/live';
 import { attachEditor, getDocumentText } from '@/features/document/text';
 import { startScrollSync, stopScrollSync } from '@/features/view/scroll-sync';
 
+import { installCursorReport } from './cursor';
 import { installEditorKeymap } from './keymap';
 import { MARKDOWN_LANGUAGE_ID, monaco } from './monaco';
 import { installUrlPaste } from './paste';
@@ -152,6 +153,8 @@ export function mountEditor(host: HTMLElement): monaco.editor.IStandaloneCodeEdi
   installEditorKeymap(editor);
   // 選択範囲への URL 貼り付け（F-EDIT-12）。
   installUrlPaste(editor);
+  // カーソル位置をステータスバーへ（03.ux-spec/07-status-and-notifications.md §3）。**rAF で間引く**（`cursor.ts`）。
+  installCursorReport(editor);
 
   // ここから先、本文の真実は Monaco のモデルにある（ADR-0005）。
   attachEditor({

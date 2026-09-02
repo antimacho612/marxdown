@@ -21,7 +21,27 @@
  */
 import type { OutlineItem } from '@/markdown/plugins/line-map';
 import type { TextStats } from '@/markdown/text-stats';
-import type { DocumentMeta } from '@/platform';
+import type { DocumentMeta, DocumentPayload, Eol } from '@/platform';
+
+/**
+ * ストアが持つメタ情報。
+ *
+ * **`path` が `null` なのは、まだ一度も保存していない文書だけ**
+ * （`Ctrl+N` / 03.ux-spec/04-keybindings.md §3 / `document/new.ts`）。
+ * Rust から届く `DocumentMeta` は必ずパスを持つので、`null` を作れるのは
+ * フロント側の 1 か所しかない。
+ *
+ * # 型で広げてある理由
+ *
+ * パスの有無で振る舞いが変わる場所は多い（監視・最近開いたファイル・履歴・
+ * 相対パスの画像・保存先）。**どれも「忘れると静かに壊れる」側**である。
+ * ここを `string | null` にしておけば、`path` を使う場所が
+ * コンパイル時に全部名指しされる。
+ */
+export type StoredMeta = Omit<DocumentMeta, 'path'> & { path: string | null };
+
+/** 本文つき。無題の文書（`Ctrl+N`）も同じ形で開く経路に渡せる。 */
+export type StoredPayload = Omit<DocumentPayload, 'path'> & { path: string | null };
 
 /** 通知バーの選択肢（03.ux-spec/07-status-and-notifications.md §2 の「再読み込み / 無視」など）。 */
 export interface NoticeAction {
@@ -51,6 +71,16 @@ export interface Notice {
 /** 情報通知の既定寿命（03.ux-spec/07-status-and-notifications.md §2「3 秒で自動消滅」）。 */
 export const INFO_NOTICE_MS = 3000;
 
+/**
+ * カーソル位置（03.ux-spec/07-status-and-notifications.md §3）。**1 始まり**（Monaco と同じ）。
+ *
+ * 列は**桁**であってバイト数でも文字数でもない。Monaco の `column` をそのまま出す。
+ */
+export interface CursorPosition {
+  line: number;
+  column: number;
+}
+
 /** 描画の計測結果。開発ビルドのステータスバーに出す。 */
 export interface RenderStats {
   parseMs: number;
@@ -59,13 +89,38 @@ export interface RenderStats {
 }
 
 class DocumentStore {
-  meta = $state<DocumentMeta | null>(null);
+  meta = $state<StoredMeta | null>(null);
   isDirty = $state(false);
   outline = $state<OutlineItem[]>([]);
   frontMatter = $state<string | null>(null);
   stats = $state<RenderStats | null>(null);
   /** 文字数と読了時間（03.ux-spec/07-status-and-notifications.md §3）。パイプラインが数えた派生値。 */
   textStats = $state<TextStats | null>(null);
+  /**
+   * カーソル位置（03.ux-spec/07-status-and-notifications.md §3）。
+   *
+   * **エディタが載っていないあいだは `null`。** Preview だけで読んでいるときに
+   * カーソルは存在しない（§3 の但し書き「Preview では非表示」の実体はこれ）。
+   *
+   * 更新は **rAF で間引く**（ADR-0005 / 02.architecture/08-state-management.md §1）。
+   * 押しっぱなしの矢印キーは 1 フレームに何度も位置を動かすが、
+   * 画面に出るのはフレームに 1 回でよい。間引きは `features/editor/cursor.ts`。
+   */
+  cursor = $state<CursorPosition | null>(null);
+  /**
+   * 保存するときに書き戻す EOL の希望（F-EDIT-14 / 03.ux-spec/07-status-and-notifications.md §3 の「クリックで EOL 変換」）。
+   * **`null` はディスクのまま。**
+   *
+   * # なぜ `meta.eol` を書き換えないのか
+   *
+   * `meta` は**ディスクの姿**である。`mtimeMs` で衝突を見張り、`readonly` で
+   * 書けるかを判断している一枚に、「これから変えたい値」を混ぜると、
+   * どちらの意味で読んでいるのかが場所ごとに変わる。
+   *
+   * 分けておくと**戻したことも分かる**。`LF → CRLF → LF` と押したとき、
+   * ここが `null` に戻るのでダーティも自然に外れる（`document/eol.ts`）。
+   */
+  eolOverride = $state<Eol | null>(null);
 
   #notice = $state<Notice | null>(null);
 

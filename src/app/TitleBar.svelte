@@ -58,6 +58,15 @@
   const meta = $derived(documentStore.meta);
   const split = $derived(splitPath(meta?.path ?? ''));
   const dirty = $derived(documentStore.isDirty);
+
+  /**
+   * ファイル名の位置に出す文字列。
+   *
+   * まだ一度も保存していない文書（`Ctrl+N`）にはパスが無いので、
+   * 名前として「無題」を出す（`features/document/new.ts`）。
+   * 何も開いていないときはアプリ名。
+   */
+  const name = $derived(meta === null ? ja.app.name : meta.path === null ? ja.titlebar.untitled : split.name);
 </script>
 
 <header class="mx-titlebar" data-tauri-drag-region="deep">
@@ -67,7 +76,7 @@
     {#if center}
       {@render center()}
     {:else}
-      <span class="mx-titlebar__name">{meta ? split.name : ja.app.name}</span>
+      <span class="mx-titlebar__name">{name}</span>
       <!--
         未保存の印（03.ux-spec/07-status-and-notifications.md §1）。**ファイル名の右に `●`。**
 
@@ -77,7 +86,8 @@
       {#if meta && dirty}
         <span class="mx-titlebar__dirty" title={ja.save.dirtyLabel} aria-label={ja.save.dirtyLabel}>●</span>
       {/if}
-      {#if meta}
+      <!-- ディレクトリは保存してから出る。無題の文書には置き場所が無い。 -->
+      {#if meta && meta.path !== null}
         <span class="mx-titlebar__dir">{split.dir}</span>
       {/if}
     {/if}

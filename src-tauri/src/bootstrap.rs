@@ -114,7 +114,7 @@ pub fn build(
     let mut document_error = None;
 
     if let Some(first) = args.paths.first() {
-        match document::read(first) {
+        match document::read(first, None) {
             Ok(payload) => {
                 let inline = payload.meta.size <= INLINE_CONTENT_LIMIT;
                 trace.set_document(crate::trace::TraceDocument {

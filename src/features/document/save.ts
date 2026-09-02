@@ -23,10 +23,11 @@
  */
 import { ja } from '@/i18n/ja';
 import { toMessage } from '@/lib/error';
-import { getPlatform, type SaveResult, type WriteRequest } from '@/platform';
+import { getPlatform, type Eol, type SaveResult, type WriteRequest } from '@/platform';
 
 import { markClean } from './dirty';
 import { registerSaver } from './discard';
+import { effectiveEol } from './eol';
 import { describeOpenError, openPath } from './open';
 import { documentStore, notifyInfo } from './store.svelte';
 import { getDocumentText } from './text';
@@ -45,6 +46,10 @@ export async function saveCurrent(): Promise<boolean> {
   const meta = documentStore.meta;
   if (meta === null) return false;
 
+  // まだ一度も保存していない文書（`Ctrl+N` / `document/new.ts`）には保存先が無い。
+  // **`Ctrl+S` で名前を訊く**のが、どのエディタでも同じ振る舞いである（Familiar）。
+  if (meta.path === null) return saveAs();
+
   return writeTo(meta.path, meta.mtimeMs);
 }
 
@@ -60,7 +65,8 @@ export async function saveAs(): Promise<boolean> {
   const meta = documentStore.meta;
   if (meta === null) return false;
 
-  const target = await getPlatform().pickSavePath(meta.path);
+  // 無題の文書には既定の保存先が無い。プラットフォーム側が既定の場所を選ぶ。
+  const target = await getPlatform().pickSavePath(meta.path ?? '');
   if (target === null) return false;
 
   const saved = await writeTo(target, null);
@@ -82,11 +88,15 @@ async function writeTo(path: string, expected: number | null): Promise<boolean> 
   const meta = documentStore.meta;
   if (meta === null) return false;
 
+  // ステータスバーで変換を選んでいれば、そちらで書き戻す（`document/eol.ts`）。
+  // **選んでいなければ読み込み時のまま**（N-CMP-03）。
+  const eol = effectiveEol() ?? meta.eol;
+
   const request: WriteRequest = {
     path,
     // **メモリ上は LF。** ディスクへ戻すときに `eol` と `bom` が使われる（F-EDIT-14）。
     content: getDocumentText(),
-    eol: meta.eol,
+    eol,
     bom: meta.bom,
     encoding: meta.encoding,
     expectedMtimeMs: expected,
@@ -105,7 +115,7 @@ async function writeTo(path: string, expected: number | null): Promise<boolean> 
     return false;
   }
 
-  applySaved(path, result.mtimeMs, result.size);
+  applySaved(path, result.mtimeMs, result.size, eol);
   return true;
 }
 
@@ -115,11 +125,14 @@ async function writeTo(path: string, expected: number | null): Promise<boolean> 
  * **`mtimeMs` の更新が要点**（このモジュールのコメント参照）。`size` も併せて直すのは、
  * ステータスバーが古い値を出したままにならないようにするため。
  */
-function applySaved(path: string, mtimeMs: number, size: number): void {
+function applySaved(path: string, mtimeMs: number, size: number, eol: Eol): void {
   const meta = documentStore.meta;
   if (meta === null) return;
 
-  documentStore.meta = { ...meta, path, mtimeMs, size };
+  // **`eol` も書き戻す。** 変換して保存したなら、ディスクの姿はもう新しいほうである。
+  // ここを直さないと、次に `markClean()` が希望を落とした瞬間に
+  // ステータスバーの表示が古い改行コードへ戻る。
+  documentStore.meta = { ...meta, path, mtimeMs, size, eol };
   markClean();
 }
 

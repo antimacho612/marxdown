@@ -32,12 +32,12 @@ import { toMessage } from '@/lib/error';
 import { dirOf } from '@/lib/path';
 import { mark } from '@/lib/trace';
 import type { MarkdownParser } from '@/markdown/parser';
-import { getPlatform, type DocumentPayload } from '@/platform';
+import { getPlatform, type DocumentPayload, type Encoding } from '@/platform';
 
 import { markClean } from './dirty';
 import { confirmDiscard } from './discard';
 import { refreshOutline, refreshSearch } from './refresh';
-import { documentStore, INFO_NOTICE_MS, notifyInfo } from './store.svelte';
+import { documentStore, INFO_NOTICE_MS, notifyInfo, type StoredPayload } from './store.svelte';
 import { setDocumentText } from './text';
 
 const PREVIEW_SELECTOR = '#mx-preview';
@@ -99,6 +99,13 @@ export interface OpenOptions {
   /** 起動計測の T6 / T7 / T8 を打つか。コールド起動だけが true。 */
   trace?: boolean;
   /**
+   * エンコーディングの**指定**（03.ux-spec/07-status-and-notifications.md §3「クリックで
+   * エンコーディング再解釈」）。省略すると Rust 側の推定に任せる。
+   *
+   * 渡すのは `reinterpret()` だけ（`document/encoding.ts`）。
+   */
+  encoding?: Encoding;
+  /**
    * パースを投げた**直後**、結果を待つ前に呼ばれる。
    *
    * 起動シーケンス（02.architecture/05-startup-sequence.md §1）がシェルを描くための穴。
@@ -109,6 +116,14 @@ export interface OpenOptions {
 }
 
 export interface ReloadOptions {
+  /**
+   * エンコーディングを指定して読み直す（再解釈 / `document/encoding.ts`）。
+   *
+   * **外部変更による自動再読み込みでは渡さない。** あちらはファイルの中身が
+   * 変わったので、推定もやり直すのが正しい。指定が残り続けると、
+   * 書き換えられて別のエンコーディングになったファイルを、古い指定で読み続ける。
+   */
+  encoding?: Encoding;
   /**
    * 読み直した後に出す情報通知の文言。既定は「再読み込みしました」（`F5`）。
    *
@@ -131,7 +146,7 @@ export interface OpenOutcome {
  * 起動時の bootstrap 経路がこれを使う。**ファイルを読み直さない**ことが要点で、
  * Rust が WebView 初期化と並行して読んでおいたものを、そのまま使い切る。
  */
-export async function openDocument(payload: DocumentPayload, options: OpenOptions = {}): Promise<OpenOutcome | null> {
+export async function openDocument(payload: StoredPayload, options: OpenOptions = {}): Promise<OpenOutcome | null> {
   if (!config) throw new Error('configureOpener が呼ばれていない');
 
   const startedAt = options.startedAt ?? performance.now();
@@ -142,7 +157,10 @@ export async function openDocument(payload: DocumentPayload, options: OpenOption
   // 履歴（F-NAV-07）。**本文を差し替える前**に、いま読んでいた位置を控える。
   // ここを過ぎると `documentStore.meta` は新しいファイルのものになり、
   // 「どのファイルのどこを読んでいたか」が失われる。
-  if (options.history !== false) pushHistory(payload.path, previewScrollTop());
+  //
+  // 無題の文書（`Ctrl+N`）は積まない。**戻り先として指せない**からで、
+  // `Alt+←` で辿り着いても、そこにあった本文はもうどこにも無い。
+  if (options.history !== false && payload.path !== null) pushHistory(payload.path, previewScrollTop());
 
   documentStore.meta = payload;
 
@@ -205,7 +223,9 @@ export async function openDocument(payload: DocumentPayload, options: OpenOption
     //
     // 段階的描画では最初のチャンクしかまだ DOM に無い。まず見えているぶんを
     // 直し、残りが入り終わったらもう一度呼ぶ（`enhance` は処理済みを飛ばす）。
-    const enhanceOptions = { baseDir: dirOf(payload.path) };
+    // 無題の文書には基点が無い。相対パスの画像は解決できず、
+    // スコープ外として扱われる（`preview/enhance.ts`）。
+    const enhanceOptions = { baseDir: dirOf(payload.path ?? '') };
     enhance(container, enhanceOptions);
 
     // 検索が開いていれば、新しい本文で引き直す（閉じない理由は `search.ts`）。
@@ -236,12 +256,17 @@ export async function openDocument(payload: DocumentPayload, options: OpenOption
     });
 
     // 履歴への記録は本文が見えた**後**。IPC 1 回ぶんでも T8 の手前に置かない。
-    if (options.remember !== false) void rememberRecent(payload.path);
+    //
+    // **無題の文書は、履歴にも監視にも載らない。** ディスクに実体が無いので、
+    // 一覧から開き直すこともできなければ、外から書き換わることもない。
+    if (payload.path !== null) {
+      if (options.remember !== false) void rememberRecent(payload.path);
 
-    // 監視の付け替え（F-EDIT-16）。**開いているファイルだけを見る**（N-PERF-05）。
-    // 前のファイルの監視は Rust 側で外れるので、ここに解除は要らない。
-    // 履歴と同じ理由で T8 の後に置く。失敗しても本文はもう画面に出ている。
-    void watch(payload.path);
+      // 監視の付け替え（F-EDIT-16）。**開いているファイルだけを見る**（N-PERF-05）。
+      // 前のファイルの監視は Rust 側で外れるので、ここに解除は要らない。
+      // 履歴と同じ理由で T8 の後に置く。失敗しても本文はもう画面に出ている。
+      void watch(payload.path);
+    }
 
     return outcome;
   } catch (e) {
@@ -265,7 +290,7 @@ export async function openPath(path: string, options: OpenOptions = {}): Promise
 
   let payload: DocumentPayload;
   try {
-    payload = await getPlatform().readDocument(path);
+    payload = await getPlatform().readDocument(path, options.encoding);
   } catch (e) {
     documentStore.notice = { level: 'error', message: describeOpenError(e, path) };
     if (kindOf(e) === 'not-found') void forgetRecent(path);
@@ -329,10 +354,16 @@ export async function openDropped(paths: string[]): Promise<OpenOutcome | null> 
 export async function reloadCurrent(options: ReloadOptions = {}): Promise<OpenOutcome | null> {
   const meta = documentStore.meta;
   if (meta === null) return null;
+  // まだ一度も保存していない文書（`Ctrl+N`）には読み直す先が無い。
+  // **`F5` を押しても何も起きない**のが正しい（捨てるものしか無い）。
+  if (meta.path === null) return null;
 
   const container = document.querySelector<HTMLElement>(PREVIEW_SELECTOR);
 
   const outcome = await openPath(meta.path, {
+    // **キーごと省く。** `exactOptionalPropertyTypes` の下では
+    // `encoding: undefined` と「指定なし」は別物で、前者は型が通らない。
+    ...(options.encoding && { encoding: options.encoding }),
     resetScroll: false,
     restoreScroll: container?.scrollTop ?? 0,
     // 既に一覧の先頭にあるファイルを開き直すだけ。順序は変わらないので IPC を省く。

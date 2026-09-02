@@ -1,0 +1,223 @@
+<!--
+  ステータスバーから上に開く小さなメニュー（03.ux-spec/07-status-and-notifications.md §3）。
+
+  ```text
+  ┌──────────────┐
+  │ ✓ UTF-8      │
+  │   UTF-16 LE  │
+  │   Shift_JIS  │
+  └──────────────┘
+   Preview  UTF-8  LF
+  ```
+
+  **このコンポーネントは遅延チャンクにある**（`status`）。ステータスバーの項目が
+  押されるまでロードされない。クリティカルパスに載るのはボタン 1 つ分だけ、
+  という分け方はハンバーガーメニュー（`features/menu/`）と同じ。
+
+  # 上に開く
+
+  ステータスバーは画面の最下段にあるので、下に開く場所が無い。
+
+  **`position: fixed` で置く。** ステータスバーは `overflow: hidden` なので、
+  中に `absolute` で置くと丸ごと切り落とされる（DOM にはあるのに何も見えない）。
+  座標は押した瞬間にボタンが測って渡す（`app/StatusMenuButton.svelte`）。
+
+  # キーボードだけで完結させる
+
+  `Esc` で閉じてボタンへ戻る / `↑↓` で移動 / `Home` `End` で端へ / `Tab` は循環。
+  **AppMenu と同じ規則にしてある。** 同じ見た目のものが 2 つの流儀で動くと、
+  どちらかを覚え直すことになる。
+-->
+<script lang="ts">
+  import { onMount } from 'svelte';
+
+  import { statusMenuItems } from './items';
+  import type { StatusMenuItem, StatusMenuProps } from './props';
+
+  const { kind, anchor, onclose }: StatusMenuProps = $props();
+
+  /**
+   * 並べる項目（`items.ts` / 同じチャンク）。
+   *
+   * **開いているあいだに増減するものは無い。** それでも `$derived` にしてあるのは、
+   * `statusMenuItems` がストア（`documentStore.meta` / `viewStore.mode`）を読むためで、
+   * 素の定数にすると「初期値しか見ていない」ことになる。
+   */
+  const items: StatusMenuItem[] = $derived(statusMenuItems(kind));
+
+  let panel: HTMLElement;
+
+  function buttons(): HTMLButtonElement[] {
+    return [...panel.querySelectorAll<HTMLButtonElement>('[role="menuitemradio"]')];
+  }
+
+  /** `step` だけ動かして循環させる。 */
+  function move(step: number): void {
+    const list = buttons();
+    if (list.length === 0) return;
+    const index = list.indexOf(document.activeElement as HTMLButtonElement);
+    const next = (index + step + list.length) % list.length;
+    list[next]?.focus();
+  }
+
+  function focusEdge(last: boolean): void {
+    const list = buttons();
+    (last ? list.at(-1) : list[0])?.focus();
+  }
+
+  /**
+   * 開いた直後は**いま選ばれている行**に着地する。
+   *
+   * 先頭に着地させると、`↓` を押した回数と行き先が現在地に依存しない代わりに、
+   * 「いまどれなのか」を目で探すことになる。選択式のメニューでは現在地から始めるほうが速い。
+   */
+  onMount(() => {
+    const list = buttons();
+    const current = items.findIndex((item) => item.checked);
+    (list[current] ?? list[0])?.focus();
+  });
+
+  function activate(item: StatusMenuItem): void {
+    // 先に閉じる。読み直しのように非同期に終わるものでも、
+    // 押した瞬間に消えるほうが「効いた」ことが伝わる（AppMenu と同じ判断）。
+    onclose(false);
+    item.run();
+  }
+
+  function onKeydown(event: KeyboardEvent): void {
+    switch (event.key) {
+      case 'Escape': {
+        // グローバルに Escape を握っている機能（検索パネル）へ渡さない。
+        event.stopPropagation();
+        onclose();
+        break;
+      }
+      case 'ArrowDown': {
+        move(1);
+        break;
+      }
+      case 'ArrowUp': {
+        move(-1);
+        break;
+      }
+      case 'Home': {
+        focusEdge(false);
+        break;
+      }
+      case 'End': {
+        focusEdge(true);
+        break;
+      }
+      case 'Tab': {
+        move(event.shiftKey ? -1 : 1);
+        break;
+      }
+      default: {
+        return;
+      }
+    }
+    event.preventDefault();
+  }
+
+  /**
+   * 外側を押したら閉じる。「外側」は**パネルの親**を基準にする
+   * （ボタン自身を含めないと、開いた直後に閉じてしまう / AppMenu と同じ）。
+   */
+  onMount(() => {
+    const onPointerDown = (event: PointerEvent) => {
+      const target = event.target;
+      if (!(target instanceof Node)) return;
+      if (panel.parentElement?.contains(target)) return;
+      onclose(false);
+    };
+    document.addEventListener('pointerdown', onPointerDown, { capture: true });
+    return () => document.removeEventListener('pointerdown', onPointerDown, { capture: true });
+  });
+</script>
+
+<div
+  class="mx-statusmenu"
+  role="menu"
+  tabindex="-1"
+  style="left: {anchor.left}px; bottom: {anchor.bottom}px"
+  bind:this={panel}
+  onkeydown={onKeydown}
+>
+  {#each items as item (item.id)}
+    <button
+      type="button"
+      role="menuitemradio"
+      aria-checked={item.checked}
+      tabindex="-1"
+      class="mx-statusmenu__item"
+      onclick={() => activate(item)}
+    >
+      <!-- 印は装飾。読み上げには `aria-checked` が伝わるので、記号は隠す。 -->
+      <span class="mx-statusmenu__check" aria-hidden="true">{item.checked ? '✓' : ''}</span>
+      {item.label}
+    </button>
+  {/each}
+</div>
+
+<style>
+  /*
+   * ステータスバーの項目から**上に**開く（下に場所が無い）。
+   *
+   * `fixed` なのは、ステータスバーが `overflow: hidden` だから
+   * （`styles/shell.css`）。`left` / `bottom` はボタンが測って渡す。
+   */
+  .mx-statusmenu {
+    position: fixed;
+    z-index: 40;
+
+    min-width: 10rem;
+    max-height: 60vh;
+    overflow-y: auto;
+
+    padding: var(--mx-space-1) 0;
+    border: 1px solid var(--mx-color-border);
+    border-radius: var(--mx-radius);
+    background: var(--mx-color-bg-subtle);
+    box-shadow: var(--mx-shadow-1);
+    font-size: var(--mx-font-size-ui);
+    color: var(--mx-color-fg);
+  }
+
+  .mx-statusmenu:focus {
+    outline: none;
+  }
+
+  .mx-statusmenu__item {
+    display: flex;
+    align-items: baseline;
+    gap: var(--mx-space-2);
+    width: 100%;
+    padding: var(--mx-space-1) var(--mx-space-3);
+    border: none;
+    background: none;
+    color: inherit;
+    font: inherit;
+    font-size: var(--mx-font-size-ui);
+    text-align: start;
+    white-space: nowrap;
+    cursor: default;
+  }
+
+  /* 印の桁を固定する。付いている行だけ字下げがずれると、一覧として読めない。 */
+  .mx-statusmenu__check {
+    flex: none;
+    width: 1em;
+    color: var(--mx-color-accent);
+  }
+
+  .mx-statusmenu__item:hover {
+    background: var(--mx-color-bg-hover);
+  }
+
+  /* `:focus-visible` ではない理由は AppMenu と同じ（`tabindex="-1"` のため）。 */
+  .mx-statusmenu__item:focus {
+    outline: none;
+    background: var(--mx-color-bg-hover);
+    box-shadow: inset 2px 0 0 var(--mx-color-accent);
+  }
+</style>

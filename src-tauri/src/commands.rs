@@ -9,6 +9,7 @@ use serde::Serialize;
 use tauri::{Manager, State, Window};
 
 use crate::custom_css;
+use crate::document::encoding::Encoding;
 use crate::document::{self, DocumentPayload, SaveResult, WriteRequest};
 use crate::error::{CoreError, CoreResult};
 use crate::scope;
@@ -18,13 +19,19 @@ use crate::store::{self, RecentEntry};
 use crate::trace::Mark;
 use crate::watch::FileWatcher;
 
+/// ファイルを読む。
+///
+/// `encoding` はエンコーディングの指定（03.ux-spec/07-status-and-notifications.md §3
+/// 「クリックでエンコーディング再解釈」）。**省略が通常の経路**で、
+/// そのときだけ推定が走る。
 #[tauri::command]
 pub fn read_document(
     app: tauri::AppHandle,
     state: State<'_, AppState>,
     path: String,
+    encoding: Option<Encoding>,
 ) -> CoreResult<DocumentPayload> {
-    let payload = document::read(Path::new(&path))?;
+    let payload = document::read(Path::new(&path), encoding)?;
     // 開いたファイルの親ディレクトリをアセットの許可スコープに加える。
     // 自前の検証（scope.rs）だけでなく、Tauri 本体の asset プロトコルスコープにも
     // 反映しないと、resolve_asset の検証を通っても実際の asset:// 配信が 403 になる。
