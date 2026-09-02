@@ -21,12 +21,16 @@
   `role="tree"` + `aria-level` で伝わるので、支援技術から見た構造は失われない。
 -->
 <script lang="ts">
-  import { registerOutlineRefresher } from '@/features/document/refresh';
+  import { untrack } from 'svelte';
+
+  import { refreshOutlineOnOpen } from '@/features/document/live';
+  import { registerOutlineRefresher, setOutlineOnScreen } from '@/features/document/refresh';
   import { documentStore } from '@/features/document/store.svelte';
+  import { viewStore } from '@/features/view/store.svelte';
   import { ja } from '@/i18n/ja';
   import type { OutlineItem } from '@/markdown/plugins/line-map';
 
-  import { followHeadings } from './follow';
+  import { followHeadings, headingAtLine } from './follow';
   import { jumpToHeading } from './jump';
   import { registerOutlineFocus } from './show';
 
@@ -42,6 +46,16 @@
 
   const items = $derived(documentStore.outline);
   const depths = $derived(toDepths(items));
+
+  /**
+   * 追う相手がプレビューではなくエディタか（#59）。
+   *
+   * Edit では本文の面が `display: none` にある。**隠れた要素の交差は起きない**ので、
+   * `IntersectionObserver` は現在位置を教えてくれない（`rootBounds` も
+   * `boundingClientRect` も全部 0 で届き、全部の見出しが「越えた」と読めてしまう）。
+   * 見えているのはエディタのほうなので、そちらのカーソル行から引く。
+   */
+  const followsCursor = $derived(viewStore.mode === 'edit');
 
   /** 現在位置（`items` の添字）。本文のスクロールに追従する。 */
   let activeIndex = $state(-1);
@@ -78,6 +92,8 @@
   $effect(() => {
     // `items` を読むこと自体が依存の宣言になる。別の本文になったら張り直す。
     const total = items.length;
+    // Edit ではプレビューが隠れている。**観測しても嘘の答えしか返らない。**
+    if (followsCursor) return;
 
     activeIndex = -1;
     const container = document.querySelector<HTMLElement>(PREVIEW_SELECTOR);
@@ -95,6 +111,35 @@
       registerOutlineRefresher(null);
       follower.stop();
     };
+  });
+
+  /**
+   * Edit での現在位置。**カーソルのある行を含む見出し**（VS Code のアウトラインと同じ）。
+   *
+   * カーソル位置は既にストアに来ている（`features/editor/cursor.ts` が rAF で
+   * 間引いて入れる / ADR-0005）。**購読を新しく増やさずに済む**のが要点で、
+   * ペインを閉じてもエディタ側に外し忘れが残らない。
+   */
+  $effect(() => {
+    if (!followsCursor) return;
+    // 1 始まり。`OutlineItem.line` は 0 始まり（`line-map.ts`）。
+    const line = documentStore.cursor?.line ?? 1;
+    activeIndex = headingAtLine(items, line);
+  });
+
+  /**
+   * アウトラインが画面に出ていることを名乗る（`document/refresh.ts`）。
+   *
+   * Edit では、これが出ているあいだだけ見出しを取り直すためのパースが回る。
+   * 開いた時点の見出しは打鍵ぶんだけ古いので、1 回取り直してから始める。
+   */
+  $effect(() => {
+    setOutlineOnScreen(true);
+    // **`untrack` を外さないこと。** この先で `viewStore.mode` を読むので、
+    // 素で呼ぶとモードを切り替えるたびにこの効果ごと張り直される
+    // （＝ 変わっていない見出しのためにパースが 1 回走る）。
+    untrack(() => void refreshOutlineOnOpen());
+    return () => setOutlineOnScreen(false);
   });
 
   /** `Ctrl+Shift+U` の着地点（§4）。現在位置があればそこ、無ければ先頭。 */

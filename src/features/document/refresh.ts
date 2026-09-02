@@ -51,3 +51,24 @@ export function registerOutlineRefresher(refresh: (() => void) | null): void {
 export function refreshOutline(): void {
   outlineRefresher?.();
 }
+
+/**
+ * アウトラインが画面に出ているか（`Outline.svelte` が名乗る）。
+ *
+ * Edit ではプレビューの面が見えていないので、本文の DOM は作り直さない。
+ * **それでもアウトラインは出ていることがあり**、見出しだけは打鍵のたびに
+ * 古くなる。そのぶんのパースを回すかどうかの判断がこれ（`document/live.ts`）。
+ *
+ * 上の 2 つと同じ「聞く側が名乗り出る」形にしてある。`live.ts` から
+ * `viewStore.panes.right.open` を見に行くと、**アウトラインを左ペインへ移した日に
+ * `live.ts` が壊れる**（ペインは中身を知らない / `features/panes/panes.ts`）。
+ */
+let outlineOnScreen = false;
+
+export function setOutlineOnScreen(on: boolean): void {
+  outlineOnScreen = on;
+}
+
+export function isOutlineOnScreen(): boolean {
+  return outlineOnScreen;
+}

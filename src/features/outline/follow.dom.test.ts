@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { followHeadings } from './follow';
+import { followHeadings, headingAtLine } from './follow';
 
 /**
  * jsdom に `IntersectionObserver` は無い。
@@ -192,5 +192,36 @@ describe('アウトラインのスクロール追従 (03.ux-spec/06-panes.md §2
     expect(FakeObserver.latest?.observed).toHaveLength(400);
     // **観測者は 1 つ。** 見出しごとに作ると、その数だけコールバックが走る
     expect(FakeObserver.latest?.disconnectCount).toBe(1);
+  });
+});
+
+describe('Edit の現在位置（カーソル行 / #59）', () => {
+  /** `## a` が 3 行目、`## b` が 10 行目、`## c` が 20 行目（`line` は 0 始まり）。 */
+  const items = [
+    { line: 2, level: 2, text: 'a', slug: 'a' },
+    { line: 9, level: 2, text: 'b', slug: 'b' },
+    { line: 19, level: 2, text: 'c', slug: 'c' },
+  ];
+
+  it('見出しより前は、どの見出しの中でもない', () => {
+    expect(headingAtLine(items, 1)).toBe(-1);
+  });
+
+  it('見出しの行そのものは、その見出し', () => {
+    expect(headingAtLine(items, 3)).toBe(0);
+    expect(headingAtLine(items, 10)).toBe(1);
+  });
+
+  it('見出しと見出しのあいだは、手前の見出し', () => {
+    expect(headingAtLine(items, 9)).toBe(0);
+    expect(headingAtLine(items, 19)).toBe(1);
+  });
+
+  it('最後の見出しより後ろは、最後の見出し', () => {
+    expect(headingAtLine(items, 9999)).toBe(2);
+  });
+
+  it('見出しが 1 つも無ければ -1', () => {
+    expect(headingAtLine([], 1)).toBe(-1);
   });
 });

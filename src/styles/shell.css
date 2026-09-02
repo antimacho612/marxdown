@@ -21,7 +21,9 @@ body {
     'leftpane main rightpane'
     'statusbar statusbar statusbar';
   /* leftpane / rightpane の列は auto にしてある。要素を置かなければ 0 幅に潰れるので、既定でペインが存在しないことを表現するために変数もフラグも要らない。 */
-  grid-template-columns: auto 1fr auto;
+  /* main に minmax(0, ...) を被せてあるのは Split の 2 列と同じ理由。grid の既定の最小幅（auto = 中身の最小幅）は fr の指定を押しのける。 */
+  /* Monaco は自分の器に px の幅を書き込むので、これが無いとペインを開いた側へ列が縮まず、エディタが画面外へはみ出してライトペインを viewport の外へ押し出す（#59）。 */
+  grid-template-columns: auto minmax(0, 1fr) auto;
   grid-template-rows: var(--mx-titlebar-height) 1fr var(--mx-statusbar-height);
 }
 
@@ -37,6 +39,8 @@ body {
   /* Split はこの grid を 2 列に割る形で足す。そのとき変わるのは grid-template-areas の定義と、ここの 2 行だけで済む。 */
   grid-area: main;
   min-height: 0;
+  /* 中身（Monaco が px で書き込む幅）に列を広げさせない。列側の minmax(0, ...) と対で効く。 */
+  min-width: 0;
 }
 
 .mx-editor {

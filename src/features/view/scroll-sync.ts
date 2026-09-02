@@ -77,12 +77,35 @@ interface Anchor {
 }
 
 interface Sync {
-  port: EditorScrollPort;
   preview: HTMLElement;
   dispose: () => void;
 }
 
 let active: Sync | null = null;
+
+/**
+ * エディタ側の窓口。**載っているあいだずっと在る。**
+ *
+ * # スクロール同期の在り無しとは別
+ *
+ * 以前はここが `active`（Split のあいだだけ在るもの）の中に居た。その形だと
+ * **Edit ではジャンプの飛び先が無い**ことになり、アウトラインの見出しを押しても
+ * 何も起きなかった（#59）。同期（両者を追随させる購読）とジャンプ（行を指す
+ * 明示的な操作）は別の機能で、後者はエディタが載っていれば成立する。
+ *
+ * 登録するのは `mountEditor`、外すのはエディタを破棄するとき（M3 / N-PERF-06）。
+ */
+let port: EditorScrollPort | null = null;
+
+/**
+ * エディタが自分の窓口を登録する口（`features/editor/editor.ts` が呼ぶ）。
+ * 破棄するときに `null` を渡す。
+ */
+export function attachEditorScrollPort(next: EditorScrollPort | null): void {
+  port = next;
+  // 窓口が無くなったのに購読だけ残ると、動かせない相手を呼び続けることになる。
+  if (next === null) stopScrollSync();
+}
 
 /** どちら側が主導しているか。`null` は「どちらでもない（受け付ける）」。 */
 let leader: 'editor' | 'preview' | null = null;
@@ -92,21 +115,23 @@ let leaderUntil = 0;
  * 同期を始める。**Split に入ったときに呼ぶ。**
  *
  * 2 回目以降は何もしない。抜けるときは `stopScrollSync`。
+ * 窓口（`attachEditorScrollPort`）が登録されていなければ何もしない。
  */
-export function startScrollSync(port: EditorScrollPort): void {
+export function startScrollSync(): void {
   if (active) return;
 
+  const target = port;
   const preview = document.querySelector<HTMLElement>(PREVIEW_SELECTOR);
-  if (!preview) return;
+  if (!target || !preview) return;
 
-  const offEditorScroll = port.onScroll(() => {
+  const offEditorScroll = target.onScroll(() => {
     if (!take('editor')) return;
-    syncPreviewToEditor(port, preview);
+    syncPreviewToEditor(target, preview);
   });
 
   const onPreviewScroll = (): void => {
     if (!take('preview')) return;
-    syncEditorToPreview(port, preview);
+    syncEditorToPreview(target, preview);
   };
 
   // プレビューの要素をダブルクリック → エディタの該当行へ（§3）。
@@ -121,7 +146,6 @@ export function startScrollSync(port: EditorScrollPort): void {
   preview.addEventListener('dblclick', onPreviewDoubleClick);
 
   active = {
-    port,
     preview,
     dispose: () => {
       offEditorScroll();
@@ -272,11 +296,12 @@ function lineAtEvent(event: MouseEvent): number | null {
 /**
  * プレビューの位置からエディタの行へ飛ぶ（プレビューのダブルクリック / §3）。
  *
- * **同期が OFF でも効く。** §2 の但し書きどおり、これは明示的な操作である。
+ * **同期が OFF でも、Split で無くても効く。** §2 の但し書きどおり、これは
+ * 明示的な操作である。アウトラインからのジャンプ（`features/outline/jump.ts`）は
+ * Edit でも同じ経路を通るので、**必要なのはエディタが載っていることだけ**。
  * 飛んだあとはエディタが主導権を持つ（そのまま打ち始められる）。
  */
 export function jumpToEditorLine(line: number, options: { focus?: boolean } = {}): void {
-  const port = active?.port;
   if (!port) return;
 
   leader = 'editor';
