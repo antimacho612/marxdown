@@ -14,11 +14,12 @@ export const ja = {
    * Welcome 画面（03.ux-spec/08-empty-states.md §1）。
    *
    * チュートリアルもツアーも出さない。**ショートカットを併記することが唯一の教育**。
-   * 「フォルダを開く」（M3）「新規ファイル」（M2）は、まだ動かないので並べない。
+   * 「フォルダを開く」（M3）は、まだ動かないので並べない。
    * 押せない項目を並べるのは Principle 3「Simple Means Low Cognitive Load」に反する。
    */
   welcome: {
     title: 'Marxdown',
+    newFile: '新規ファイル',
     openFile: 'ファイルを開く',
     recent: '最近開いたファイル',
     noRecent: 'まだ何も開いていません',
@@ -34,6 +35,13 @@ export const ja = {
    */
   titlebar: {
     menu: 'メニュー',
+    /**
+     * まだ一度も保存していない文書の名前（`Ctrl+N` / `features/document/new.ts`）。
+     *
+     * **ファイル名の位置に出す。** 「無題」は名前であって状態の説明ではないので、
+     * 未保存の印（`●`）とは別物である。両方同時に出る。
+     */
+    untitled: '無題',
     minimize: '最小化',
     maximize: '最大化',
     restore: '元のサイズに戻す',
@@ -46,6 +54,7 @@ export const ja = {
    * 並べるのは**いま押せるものだけ**。
    */
   menu: {
+    new: '新規ファイル',
     open: 'ファイルを開く',
     save: '保存',
     saveAs: '名前を付けて保存',
@@ -267,7 +276,42 @@ export const ja = {
     bytes: (n: number) => `${formatBytes(n)}`,
     chars: (n: number) => `${n.toLocaleString('ja-JP')} 文字`,
     readingTime: (minutes: number) => `約 ${minutes} 分`,
+    /**
+     * カーソル位置（§3 の図）。**英語のまま**で、モード名と同じ扱い（OQ-11 とは別）。
+     * VS Code / Sublime と同じ綴りであることが、そのまま読み方の説明になる。
+     *
+     * 桁区切りは入れない。行番号は**位置**であって量ではないので、
+     * `12,345 行目` のような数え上げの見た目にしない。
+     */
+    cursor: (line: number, column: number) => `Ln ${line}, Col ${column}`,
     readonly: '読み取り専用',
+    /**
+     * EOL の変換（§3「クリックで EOL 変換」/ `features/document/eol.ts`）。
+     *
+     * **行き先を名乗る。** ラベル（`LF`）は現在の状態を出しているので、
+     * ツールチップまで状態を繰り返すと「押すと何になるか」がどこにも無くなる。
+     */
+    eolConvert: (next: string) => `クリックで ${next.toUpperCase()} に変換（保存時に書き戻す）`,
+    /**
+     * エンコーディングの表示名（`src-tauri/src/document/encoding.rs` の `Encoding`）。
+     *
+     * **綴りは各エンコーディングの通り名に合わせる。** 値をそのまま大文字にすると
+     * `SHIFT-JIS` / `UTF16-LE` になり、どちらも本来の綴りではない。
+     * 選び直す UI に並ぶ以上、見慣れた形でないと選べない。
+     */
+    encoding: {
+      // eslint-disable-next-line unicorn/text-encoding-identifier-case -- 画面に出す通り名であって、識別子ではない
+      utf8: 'UTF-8',
+      'utf16-le': 'UTF-16 LE',
+      'utf16-be': 'UTF-16 BE',
+      'shift-jis': 'Shift_JIS',
+      'euc-jp': 'EUC-JP',
+    } as const,
+    /** エンコーディングの再解釈（§3 / `features/document/encoding.ts`）。**読み直しを伴う。** */
+    encodingReinterpret: 'クリックでエンコーディングを選び直す（読み直す）',
+    reinterpreted: (name: string) => `${name} として読み直しました`,
+    /** モードの切り替え（§3「クリックでモード切替メニュー」）。 */
+    modeSwitch: 'クリックで表示モードを切り替える',
     zoomReset: 'クリックで等倍に戻す',
     parsedIn: (ms: number) => `パース ${ms.toFixed(1)}ms`,
     paintedIn: (ms: number) => `描画 ${ms.toFixed(1)}ms`,

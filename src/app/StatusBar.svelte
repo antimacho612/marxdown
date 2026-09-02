@@ -5,13 +5,17 @@
   Preview   UTF-8  LF   12,345 文字   約 4 分            100%
   ```
 
-  押せるのは倍率だけ（§3.1 の表）。エンコーディングの再解釈も EOL の変換も
-  ドキュメントの書き戻しに触るので、押せるようにするのは Phase 7。
-  **押しても何も起きないものをボタンに見せない。**
-  カーソル位置は Preview では出ない（§3 の但し書き / Phase 7）。
+  **押しても何も起きないものをボタンに見せない**（§3.1 の表）。
+  押せるのはモード・エンコーディング・EOL・倍率、そして Split のときの `⇄`。
 
-  モードの表示は**いまの値を出すだけ**で、まだ押せない。§3.1 の「クリックで
-  モード切替メニュー」は Phase 7（ステータスバーの仕上げ）。
+  ```text
+  モード         押すと選択肢が出る（Preview / Edit / Split）
+  エンコーディング  押すと選び直せる。**読み直しを伴う**（`document/encoding.ts`）
+  EOL           押すと変換する。**次の保存で書き戻す**（`document/eol.ts`）
+  カーソル位置    表示だけ。Preview では出ない（§3 の但し書き）
+  文字数 / 読了時間  表示だけ。詳細の置き場所はコマンドパレット（M3）
+  倍率           押すと等倍に戻る
+  ```
 
   スクロール同期の `⇄` は Split のときだけ出る（03.ux-spec/03-split-mode.md §2）。
 
@@ -19,23 +23,63 @@
   製品の画面に居座る理由が説明できない（06.roadmap/invariants.md）。
 -->
 <script lang="ts">
+  import { effectiveEol, nextEol as nextEolOf, toggleEol } from '@/features/document/eol';
   import { documentStore } from '@/features/document/store.svelte';
   import { formatZoom, zoomReset } from '@/features/preview/zoom';
   import { viewStore } from '@/features/view/store.svelte';
   import { ja } from '@/i18n/ja';
 
+  import StatusMenuButton from './StatusMenuButton.svelte';
+
   const meta = $derived(documentStore.meta);
   const textStats = $derived(documentStore.textStats);
   const stats = $derived(documentStore.stats);
+
+  /**
+   * カーソル位置（§3 の但し書き「Preview では非表示」）。
+   *
+   * 条件が 2 つあるのは、**隠れる理由が 2 つあるから**である。
+   * Preview では「カーソルという概念が画面に無い」、エディタが載る前は
+   * 「まだ誰も位置を知らない」。前者はモードで、後者はストアの `null` で決まる。
+   */
+  const cursor = $derived(viewStore.mode === 'preview' ? null : documentStore.cursor);
+
+  /** 表示する改行コードと、押したときの行き先（`features/document/eol.ts`）。 */
+  const eol = $derived(effectiveEol());
+  const nextEol = $derived(nextEolOf());
 </script>
 
 <footer class="mx-statusbar">
   {#if meta}
-    <span>{ja.status.mode[viewStore.mode]}</span>
-    <span>{meta.encoding.toUpperCase()}</span>
-    <span>{meta.eol.toUpperCase()}</span>
+    <!--
+      モードとエンコーディング（§3.1 の「クリックでモード切替メニュー」/「再解釈」）。
+      **選択肢は押されるまでロードしない**（`app/StatusMenuButton.svelte`）。
+    -->
+    <StatusMenuButton kind="mode" label={ja.status.mode[viewStore.mode]} title={ja.status.modeSwitch} />
+    <StatusMenuButton kind="encoding" label={ja.status.encoding[meta.encoding]} title={ja.status.encodingReinterpret} />
+    <!--
+      EOL（§3「クリックで EOL 変換」）。**押した時点ではディスクを変えない。**
+      次の保存で書き戻す改行コードが変わり、未保存の印が付く（`document/eol.ts`）。
+      出しているのは希望を含んだ現在値で、`meta.eol`（ディスクの姿）ではない。
+    -->
+    {#if eol && nextEol}
+      <button
+        type="button"
+        class="mx-statusbar__button"
+        onclick={() => toggleEol()}
+        title={ja.status.eolConvert(nextEol)}
+      >
+        {eol.toUpperCase()}
+      </button>
+    {/if}
     {#if meta.bom}<span>BOM</span>{/if}
     {#if meta.readonly}<span>{ja.status.readonly}</span>{/if}
+    <!--
+      カーソル位置（§3）。**押せない。** §3.1 の表で行き先が決まっているのは
+      倍率・EOL・エンコーディング・文字数・モードで、ここは表示だけである。
+      行ジャンプ（`Ctrl+G`）はコマンドパレットに乗る（M3）。
+    -->
+    {#if cursor}<span class="mx-statusbar__cursor">{ja.status.cursor(cursor.line, cursor.column)}</span>{/if}
     {#if textStats}
       <span>{ja.status.chars(textStats.chars)}</span>
       <span>{ja.status.readingTime(textStats.readingMinutes)}</span>
@@ -104,29 +148,12 @@
   }
 
   /*
-   * 押せる項目（03.ux-spec/07-status-and-notifications.md §3.1）。
-   *
-   * 押せるものだけがこの見た目になる。いま押せるのは倍率だけ。
-   * 押しても何も起きない項目をボタンに見せない。
+   * カーソル位置。**桁を揃える。** 打つたびに桁幅が変わると、
+   * 右にある項目が 1 文字ずつ揺れる（03.ux-spec/09-motion.md の禁則に触れる）。
+   * 数字の幅が揃うだけでは足りず、`Ln 9` → `Ln 10` の桁数の増減は残るが、
+   * そちらは行をまたぐときにしか起きない。
    */
-  .mx-statusbar__button {
-    padding: 0 var(--mx-space-2);
-    border: none;
-    border-radius: var(--mx-radius-sm);
-    background: none;
-    color: inherit;
-    font: inherit;
+  .mx-statusbar__cursor {
     font-variant-numeric: tabular-nums;
-    cursor: pointer;
-  }
-
-  .mx-statusbar__button:hover {
-    background: var(--mx-color-bg-hover);
-    color: var(--mx-color-fg);
-  }
-
-  .mx-statusbar__button:focus-visible {
-    outline: 2px solid var(--mx-color-accent);
-    outline-offset: -2px;
   }
 </style>

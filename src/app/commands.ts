@@ -30,6 +30,8 @@
  * 実体も、遅延チャンクのものは `open*Lazily` の形を維持している
  * （動的 import 一行だけのモジュールを経由するので、押されるまで何もロードされない）。
  */
+import { toggleEol } from '@/features/document/eol';
+import { newDocument } from '@/features/document/new';
 import { openPath, openViaDialog, reloadCurrent } from '@/features/document/open';
 import { saveAsSafely, saveSafely } from '@/features/document/save';
 import { documentStore } from '@/features/document/store.svelte';
@@ -59,6 +61,9 @@ function hasDocument(): boolean {
  * （`lib/commands.ts` の `Command` を参照）。キーは一覧に出ていなくても効く。
  */
 const COMMANDS: Command[] = [
+  // 新規ファイル（`Ctrl+N` / 03.ux-spec/04-keybindings.md §3）。**何も開いていなくても押せる。**
+  { id: 'document.new', run: () => void newDocument() },
+
   { id: 'document.open', run: () => void openViaDialogSafely() },
 
   // 一覧（メニュー）には出さない。対象を指定して開く経路で、
@@ -78,6 +83,11 @@ const COMMANDS: Command[] = [
   // 「押したのに何も起きない」を避けるためで、内容が同じならディスクは変わらない。
   { id: 'document.save', run: () => void saveSafely(), isListed: hasDocument },
   { id: 'document.saveAs', run: () => void saveAsSafely(), isListed: hasDocument },
+
+  // 改行コードの変換（F-EDIT-14 / 03.ux-spec/07-status-and-notifications.md §3）。
+  // 実体はステータスバーの `LF` / `CRLF` で、ここはコマンドとしての入口。
+  // **キーは割り当てない。** 押す頻度が低く、覚えるキーを増やす価値が無い。
+  { id: 'document.toggleEol', run: () => toggleEol(), isListed: hasDocument },
 
   // 戻る / 進む（F-NAV-07）。**辿れるときにしか一覧に出さない。**
   { id: 'history.back', run: () => void goBack(), isListed: canGoBack },
@@ -191,6 +201,9 @@ const RELOAD_KEYS = ['F5', 'Ctrl+R', 'Ctrl+Shift+R', 'Ctrl+F5', 'Shift+F5'];
  * するために `keymap.ts` が `Mod-f` などを外している。
  */
 export const KEY_BINDINGS: KeyBinding[] = [
+  // 新規ファイル（03.ux-spec/04-keybindings.md §3）。素通りさせると WebView 自身の
+  // 「新しいウィンドウ」に当たる（`Ctrl+O` や `Ctrl+S` と同じ理由で必ず飲み込む）。
+  { key: 'Ctrl+N', id: 'document.new' },
   { key: 'Ctrl+O', id: 'document.open' },
 
   // 保存（F-EDIT-02）。素通りさせると WebView 自身の「名前を付けて保存」が開き、

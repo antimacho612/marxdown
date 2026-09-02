@@ -78,6 +78,7 @@ beforeEach(() => {
   resetDocumentText();
   documentStore.meta = { ...META };
   documentStore.isDirty = false;
+  documentStore.eolOverride = null;
   documentStore.notice = null;
   stubPlatform();
 });
@@ -96,6 +97,20 @@ describe('WriteRequest の組み立て (F-EDIT-14)', () => {
       encoding: 'shift-jis',
       expectedMtimeMs: 1000,
     });
+  });
+
+  it('EOL の変換を選んでいれば、そちらで書き戻す', async () => {
+    // ステータスバーで CRLF → LF を選んだ状態（`document/eol.ts`）。
+    setDocumentText('本文\n');
+    documentStore.eolOverride = 'lf';
+    await saveCurrent();
+
+    expect(writes[0]?.eol).toBe('lf');
+    // **ディスクの姿も新しいほうへ動かす。** ここを直さないと、保存の直後に
+    // 希望が落ちた瞬間、ステータスバーの表示が CRLF へ戻る。
+    expect(documentStore.meta?.eol).toBe('lf');
+    expect(documentStore.eolOverride).toBeNull();
+    expect(documentStore.isDirty).toBe(false);
   });
 
   it('いまの本文を送る（控えではなくエディタの内容）', async () => {
@@ -217,6 +232,33 @@ describe('名前を付けて保存 (F-EDIT-02)', () => {
     result = { status: 'conflict', diskMtimeMs: 1 };
     await saveAs();
     expect(openPath).not.toHaveBeenCalled();
+  });
+
+  /**
+   * 無題の文書（`Ctrl+N` / `document/new.ts`）には保存先が無い。
+   * **`Ctrl+S` が名前を訊く**のが、どのエディタでも同じ振る舞いである（Familiar）。
+   */
+  it('まだ保存していない文書では、Ctrl+S が名前を訊きに行く', async () => {
+    documentStore.meta = { ...META, path: null, mtimeMs: 0, size: 0 };
+    picked = 'C:/notes/新規.md';
+    setDocumentText('打った本文\n');
+
+    expect(await saveCurrent()).toBe(true);
+
+    expect(writes[0]?.path).toBe('C:/notes/新規.md');
+    // 新規作成として書く。**既存ファイルを選んだ場合は衝突として返ってくる。**
+    expect(writes[0]?.expectedMtimeMs).toBeNull();
+    expect(writes[0]?.content).toBe('打った本文\n');
+  });
+
+  it('保存先を取り消したら、無題のままで何も書かない', async () => {
+    documentStore.meta = { ...META, path: null, mtimeMs: 0, size: 0 };
+    picked = null;
+
+    expect(await saveCurrent()).toBe(false);
+
+    expect(writes).toHaveLength(0);
+    expect(documentStore.meta?.path).toBeNull();
   });
 });
 

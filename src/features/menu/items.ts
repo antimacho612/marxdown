@@ -92,6 +92,10 @@ const MENU: MenuSection[] = [
     id: 'file',
     entries: [
       { id: 'open', command: 'document.open', label: ja.menu.open, shortcut: 'Ctrl+O' },
+      // 新規ファイル（`Ctrl+N`）。**開いていなくても押せる。**
+      // 並びは Welcome 画面と揃える（03.ux-spec/08-empty-states.md §1 は開く → 新規）。
+      // 同じ 2 つが場所によって違う順で並ぶと、位置で覚えられない。
+      { id: 'new', command: 'document.new', label: ja.menu.new, shortcut: 'Ctrl+N' },
       // 保存（F-EDIT-02）。**キーを知る場所が他に無い**（パレットは M3）。
       { id: 'save', command: 'document.save', label: ja.menu.save, shortcut: 'Ctrl+S' },
       { id: 'save-as', command: 'document.saveAs', label: ja.menu.saveAs, shortcut: 'Ctrl+Shift+S' },

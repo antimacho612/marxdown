@@ -5,6 +5,7 @@
   Marxdown
 
   ファイルを開く          Ctrl+O
+  新規ファイル            Ctrl+N
 
   最近開いたファイル
     README.md            ~/repos/marxdown
@@ -15,7 +16,7 @@
 
   チュートリアルもツアーも出さない。**ショートカットを併記することが唯一の教育**。
 
-  「フォルダを開く」（M3）と「新規ファイル」（M2）はまだ並べていない。
+  「フォルダを開く」（M3）はまだ並べていない。
   押しても何も起きない項目を置くのは Principle 3 に反する。
 -->
 <script lang="ts">
@@ -44,9 +45,19 @@
       {ja.welcome.title}
     </h1>
 
+    <!--
+      並びは 03.ux-spec/08-empty-states.md §1 のスケッチどおり（開く → 新規）。
+      **読むほうが先**なのは、そういう道具だからである（Principle 2）。
+      「フォルダを開く」（M3）はこの 2 つの間に入る。
+    -->
     <button type="button" class="mx-welcome__action" onclick={() => runCommand('document.open')}>
       <span>{ja.welcome.openFile}</span>
       <kbd>Ctrl+O</kbd>
+    </button>
+
+    <button type="button" class="mx-welcome__action" onclick={() => runCommand('document.new')}>
+      <span>{ja.welcome.newFile}</span>
+      <kbd>Ctrl+N</kbd>
     </button>
 
     <section class="mx-welcome__recent">

@@ -31,11 +31,13 @@
  */
 export type CommandId =
   | 'app.quit'
+  | 'document.new'
   | 'document.open'
   | 'document.openPath'
   | 'document.reload'
   | 'document.save'
   | 'document.saveAs'
+  | 'document.toggleEol'
   | 'find.open'
   | 'find.replace'
   | 'history.back'

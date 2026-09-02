@@ -9,7 +9,7 @@
 
   import { documentStore } from '@/features/document/store.svelte';
   import { viewStore } from '@/features/view/store.svelte';
-  import type { DocumentMeta } from '@/platform';
+  import type { DocumentMeta, ViewMode } from '@/platform';
 
   import StatusBar from './StatusBar.svelte';
 
@@ -33,11 +33,15 @@
    * ストアはモジュールの singleton なので、story ごとに入れ直す。
    * `loaders` を使う理由は Welcome.stories.svelte と同じ。
    */
-  function seed(meta: DocumentMeta | null, zoom = 1) {
+  function seed(meta: DocumentMeta | null, zoom = 1, mode: ViewMode = 'preview') {
     return () => {
       documentStore.meta = meta;
       documentStore.textStats = meta ? { chars: 12_345, words: 2100, readingMinutes: 4 } : null;
       viewStore.zoom = zoom;
+      viewStore.mode = mode;
+      // Preview では出ない（03.ux-spec/07-status-and-notifications.md §3）。
+      // **ストアは story をまたいで残る**ので、出さない story でも必ず入れ直す。
+      documentStore.cursor = mode === 'preview' ? null : { line: 42, column: 8 };
     };
   }
 </script>
@@ -48,6 +52,12 @@
 <Story name="CRLF + BOM" loaders={[seed({ ...BASE, eol: 'crlf', bom: true })]} />
 
 <Story name="読み取り専用" loaders={[seed({ ...BASE, readonly: true })]} />
+
+<!--
+  Edit モード。**カーソル位置はここで初めて出る**（Preview では概念が無い /
+  03.ux-spec/07-status-and-notifications.md §3）。
+-->
+<Story name="Edit（カーソル位置）" loaders={[seed(BASE, 1, 'edit')]} />
 
 <!-- 倍率は 100% でも出す（押せる場所を動かさないため / 03.ux-spec/07-status-and-notifications.md §3）。 -->
 <Story name="拡大中" loaders={[seed(BASE, 1.5)]} />

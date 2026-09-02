@@ -59,8 +59,8 @@ describe('ハンバーガーメニューの項目 (03.ux-spec/01-screen-layout.m
   it('ファイルを開いていないときは、押しても何も起きない項目を並べない', () => {
     const groups = buildMenu();
 
-    // 「設定」と「終了」は文書に依存しないので、ここでも押せる。
-    expect(ids(groups)).toEqual(['open', 'settings', 'quit']);
+    // 「新規ファイル」「設定」「終了」は文書に依存しないので、ここでも押せる。
+    expect(ids(groups)).toEqual(['open', 'new', 'settings', 'quit']);
     expect(group(groups, 'document')).toBeUndefined();
     expect(group(groups, 'zoom')).toBeUndefined();
   });
@@ -70,6 +70,7 @@ describe('ハンバーガーメニューの項目 (03.ux-spec/01-screen-layout.m
 
     expect(ids(buildMenu())).toEqual([
       'open',
+      'new',
       'save',
       'save-as',
       'mode',

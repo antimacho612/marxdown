@@ -105,7 +105,7 @@ describe('外部変更の自動反映', () => {
       }),
     );
 
-    expect(h.readDocument).toHaveBeenCalledWith('C:/work/a.md');
+    expect(h.readDocument).toHaveBeenCalledWith('C:/work/a.md', undefined);
   });
 
   it('開いていないファイルの変更は無視する', async () => {
@@ -207,7 +207,7 @@ describe('編集中に外部変更が来たとき', () => {
     await vi.waitFor(() => expect(documentStore.notice?.actions).toHaveLength(2));
 
     documentStore.notice?.actions?.[0]?.run();
-    await vi.waitFor(() => expect(h.readDocument).toHaveBeenCalledWith('C:/work/a.md'));
+    await vi.waitFor(() => expect(h.readDocument).toHaveBeenCalledWith('C:/work/a.md', undefined));
     expect(documentStore.isDirty).toBe(false);
   });
 

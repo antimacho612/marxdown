@@ -169,7 +169,9 @@ export async function renderNow(): Promise<void> {
     documentStore.textStats = parsed.textStats;
     documentStore.outline = parsed.outline;
 
-    enhance(container, { baseDir: dirOf(meta.path) });
+    // 無題の文書（`Ctrl+N`）には基点が無い。相対パスの画像は解決できないので、
+    // `enhance` はスコープ外として扱う（`preview/enhance.ts`）。
+    enhance(container, { baseDir: dirOf(meta.path ?? '') });
     refreshSearch();
     refreshOutline();
 

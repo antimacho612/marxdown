@@ -71,8 +71,9 @@ export const tauriPlatform: Platform = {
     return globalThis.__MARXDOWN_BOOTSTRAP__ ?? null;
   },
 
-  readDocument(path) {
-    return invoke<DocumentPayload>('read_document', { path });
+  readDocument(path, encoding) {
+    // `encoding` が undefined のときは Rust 側で `None` になる（推定に任せる）。
+    return invoke<DocumentPayload>('read_document', { path, encoding });
   },
 
   writeDocument(req: WriteRequest) {

@@ -25,9 +25,11 @@ describe('起動して本文が読める', () => {
   it('ステータスバーが EOL とエンコーディングを表示している', async () => {
     // メタ情報が Rust から届いて派生状態に入っていることの確認。
     // 保存時の `WriteRequest` はこの値をそのまま返す（F-EDIT-14）。
-    // 正規表現で見るのは、表示が大文字だから（`meta.encoding.toUpperCase()`）。
-    // 文字列リテラルで書くと、エンコーディング名の大小を揃える lint と衝突する。
-    await expect($('.mx-statusbar')).toHaveText(/UTF8[\s\S]*\bLF\b/);
+    //
+    // 綴りは `i18n/ja.ts` の `status.encoding` が持つ**通り名**である
+    // （M2 Phase 7 以前は `meta.encoding.toUpperCase()` で `UTF8` と出ていた）。
+    // 正規表現で書くのは、エンコーディング名の大小を揃える lint と衝突しないため。
+    await expect($('.mx-statusbar')).toHaveText(/UTF-8[\s\S]*\bLF\b/);
   });
 
   it('開いただけではディスクのバイト列が変わらない', () => {

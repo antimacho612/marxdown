@@ -232,7 +232,7 @@ describe('openViaDialog', () => {
 
     await openViaDialog();
 
-    expect(spies.readDocument).toHaveBeenCalledWith('C:/work/picked.md');
+    expect(spies.readDocument).toHaveBeenCalledWith('C:/work/picked.md', undefined);
     expect(documentStore.meta?.path).toBe('C:/work/picked.md');
   });
 
@@ -273,7 +273,9 @@ describe('reloadCurrent', () => {
     const outcome = await reloadCurrent();
 
     expect(outcome).not.toBeNull();
-    expect(spies.readDocument).toHaveBeenCalledWith('C:/work/b.md');
+    // 第 2 引数はエンコーディングの**指定**。通常の経路では渡さず、
+    // Rust 側の推定に任せる（03.ux-spec/07-status-and-notifications.md §3 の再解釈だけが渡す）。
+    expect(spies.readDocument).toHaveBeenCalledWith('C:/work/b.md', undefined);
     expect(documentStore.meta?.path).toBe('C:/work/b.md');
     // 既に一覧の先頭にあるファイル。順序は変わらないので積み直さない
     expect(spies.pushRecent).not.toHaveBeenCalled();
@@ -314,6 +316,22 @@ describe('reloadCurrent', () => {
     expect(outcome).toBeNull();
     expect(spies.readDocument).not.toHaveBeenCalled();
     expect(documentStore.notice).toBeNull();
+  });
+
+  /**
+   * エンコーディングの再解釈（03.ux-spec/07-status-and-notifications.md §3 / `document/encoding.ts`）。
+   *
+   * **読み直しの経路は増やさない。** スクロールを保つことも履歴に積まないことも
+   * `F5` と同じでよく、違うのは指定を 1 つ渡すことだけである。
+   */
+  it('エンコーディングを指定して読み直せる', async () => {
+    const spies = install();
+    await openPath('C:/work/b.md');
+    spies.readDocument.mockClear();
+
+    await reloadCurrent({ encoding: 'shift-jis' });
+
+    expect(spies.readDocument).toHaveBeenCalledWith('C:/work/b.md', 'shift-jis');
   });
 
   it('読み直せなくなっていたら通知を出し、本文はそのまま残す', async () => {
