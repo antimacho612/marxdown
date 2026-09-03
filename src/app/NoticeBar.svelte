@@ -1,9 +1,11 @@
 <!--
-  通知バー（03.ux-spec/07-status-and-notifications.md §2）。
+@component
+通知バー（03.ux-spec/07-status-and-notifications.md §2）。
 
-  `role` を種別で分けているのは、支援技術に割り込ませるかどうかが変わるため。
-  情報は `status`（穏やかに読み上げる）、警告とエラーは `alert`（割り込む）。
+`role` を種別で分けているのは、支援技術に割り込ませるかどうかが変わるため。  
+情報は `status`（穏やかに読み上げる）、警告とエラーは `alert`（割り込む）。
 -->
+
 <script lang="ts">
   import { documentStore, type Notice, type NoticeAction } from '@/features/document/store.svelte';
   import { ja } from '@/i18n/ja';
@@ -14,12 +16,6 @@
     documentStore.notice = null;
   }
 
-  /**
-   * 選択肢を押したら、まず通知を閉じてから実行する。
-   *
-   * 実行が非同期に終わる（再読み込みなど）場合でも、押した瞬間にバーが消えるほうが
-   * 「効いた」ことが伝わる。結果は必要なら新しい通知として出せばよい。
-   */
   function runAction(action: NoticeAction): void {
     dismiss();
     action.run();
@@ -35,7 +31,7 @@
     </button>
   {/each}
 
-  <button type="button" class="mx-notice__close" aria-label={ja.notice.dismiss} onclick={dismiss}> ✕ </button>
+  <button type="button" class="mx-notice__close" aria-label={ja.notice.dismiss} onclick={dismiss}>✕</button>
 </div>
 
 <style>
@@ -52,16 +48,13 @@
     background: var(--mx-color-bg-inset);
     font-size: var(--mx-font-size-ui);
     box-shadow: var(--mx-shadow-1);
+    /* 出現に 150ms（03.ux-spec/09-motion.md） */
     animation: mx-notice-in 150ms ease-out;
   }
 
   /*
-   * 出現に 150ms（03.ux-spec/09-motion.md）。
-   *
-   * 動かすのは `opacity` と `translate` だけで、**本文のレイアウトには触らない**。
    * このバーは本文の上に重なっているので、動かしても再レイアウトが走らない。
-   * サイドバー（`width` の遷移）を 0ms にしてあるのと、ここが 150ms なのは
-   * 同じ基準の裏表である（07.open-questions/oq-26-motion-rules.md の推奨 B）。
+   * サイドバー（`width` の遷移）を 0ms にしてあるのと、ここが 150ms なのは同じ基準の裏表である（07.open-questions/oq-26-motion-rules.md の推奨 B）。
    */
   @keyframes mx-notice-in {
     from {
@@ -83,9 +76,7 @@
 
   /*
    * 通知内のボタン。
-   *
-   * §2 が「自動で消えるものと、操作が必要なものを見分けられるように」と
-   * 求めているので、選択肢は枠付き、閉じるだけは枠なしにして重みを変える。
+   * §2 が「自動で消えるものと、操作が必要なものを見分けられるように」と求めているので、選択肢は枠付き、閉じるだけは枠なしにして重みを変える。
    */
   .mx-notice__action,
   .mx-notice__close {
