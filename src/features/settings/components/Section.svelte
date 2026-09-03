@@ -21,9 +21,9 @@
     font-size: var(--mx-font-size-ui);
     font-weight: 600;
     color: var(--mx-color-fg-muted);
-  }
 
-  .mx-settings__section:first-child {
-    margin-top: 0;
+    &:first-child {
+      margin-top: 0;
+    }
   }
 </style>
