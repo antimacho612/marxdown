@@ -12,6 +12,7 @@
   import { viewStore } from '@/features/view/store.svelte';
   import { ja } from '@/i18n/ja';
 
+  import StatusBarButton from './StatusBarButton.svelte';
   import StatusMenuButton from './StatusMenuButton.svelte';
 
   const meta = $derived(documentStore.meta);
@@ -46,14 +47,9 @@
       出しているのは希望を含んだ現在値で、`meta.eol`（ディスクの姿）ではない。
     -->
     {#if eol && nextEol}
-      <button
-        type="button"
-        class="mx-statusbar__button"
-        onclick={() => toggleEol()}
-        title={ja.status.eolConvert(nextEol)}
-      >
+      <StatusBarButton onclick={() => toggleEol()} title={ja.status.eolConvert(nextEol)}>
         {eol.toUpperCase()}
-      </button>
+      </StatusBarButton>
     {/if}
     {#if meta.bom}<span>BOM</span>{/if}
     {#if meta.readonly}<span>{ja.status.readonly}</span>{/if}
@@ -78,15 +74,13 @@
     「ON なのか」「押すと ON になるのか」が読めない。
   -->
   {#if meta && viewStore.mode === 'split'}
-    <button
-      type="button"
-      class="mx-statusbar__button"
+    <StatusBarButton
       aria-pressed={viewStore.scrollSync}
       onclick={() => (viewStore.scrollSync = !viewStore.scrollSync)}
       title={ja.split.toggleSync}
     >
       ⇄ {viewStore.scrollSync ? ja.split.syncOn : ja.split.syncOff}
-    </button>
+    </StatusBarButton>
   {/if}
 
   <span class="mx-statusbar__spacer"></span>
@@ -104,9 +98,9 @@
     押せる場所がいつも同じ位置にあることのほうが、1 項目減らすより価値がある。
   -->
   {#if meta}
-    <button type="button" class="mx-statusbar__button" onclick={() => void zoomReset()} title={ja.status.zoomReset}>
+    <StatusBarButton onclick={() => void zoomReset()} title={ja.status.zoomReset}>
       {formatZoom(viewStore.zoom)}
-    </button>
+    </StatusBarButton>
   {/if}
 </footer>
 

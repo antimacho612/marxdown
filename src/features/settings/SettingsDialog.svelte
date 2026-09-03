@@ -27,16 +27,24 @@ Rust 側も拒否するが、UI が「保存できたように見せる」のを
   import { onMount } from 'svelte';
 
   import { ja } from '@/i18n/ja';
-  import { DEFAULT_SETTINGS, getPlatform, type Palette, type Settings, type SettingsProblem } from '@/platform';
+  import { DEFAULT_SETTINGS, getPlatform, type Settings, type SettingsProblem } from '@/platform';
 
-  import { formatFontFamily, LIMITS, type NumericKey } from './appearance';
+  import { LIMITS, type NumericKey } from './appearance';
   import { changeSetting } from './change';
-  import { ResetButton, Section } from './components';
+  import {
+    ContentSample,
+    EditorSample,
+    NumberField,
+    RadioGroup,
+    Section,
+    SelectField,
+    TextField,
+    ToggleField,
+    type Choice,
+  } from './components';
   import { settingsStore } from './store.svelte';
 
   const { onclose }: { onclose: () => void } = $props();
-
-  const uid = $props.id();
 
   const values = $derived(settingsStore.values);
 
@@ -46,11 +54,6 @@ Rust 側も拒否するが、UI が「保存できたように見せる」のを
   type ChoiceKey = { [K in keyof Settings]: Settings[K] extends string ? K : never }[keyof Settings];
   /** 値が真偽のキー。チェックボックスが該当する。 */
   type ToggleKey = { [K in keyof Settings]: Settings[K] extends boolean ? K : never }[keyof Settings];
-
-  interface Choice {
-    value: string;
-    label: string;
-  }
 
   /**
    * `settings.json` を読めていない事実。**ストアには置かない。**
@@ -99,11 +102,6 @@ Rust 側も拒否するが、UI が「保存できたように見せる」のを
   const CURSOR_STYLE = choices(ja.settings.editor.cursorStyleOptions);
   const CURSOR_BLINKING = choices(ja.settings.editor.cursorBlinkingOptions);
   const PALETTES = choices(ja.settings.paletteOptions);
-
-  /** 見本に着せる配色。`default` は属性ごと外す（`applyPalette` と同じ判断）。 */
-  function paletteAttr(palette: Palette): string | undefined {
-    return palette === 'default' ? undefined : palette;
-  }
 
   async function reload(): Promise<void> {
     try {
@@ -169,16 +167,6 @@ Rust 側も拒否するが、UI が「保存できたように見せる」のを
     if (event.target === dialog) close();
   }
 
-  /** 数値の入力。**空欄や範囲外では当てない**（打っている途中の状態を潰さない）。 */
-  function onNumberInput(key: NumericKey, event: Event): void {
-    const input = event.currentTarget as HTMLInputElement;
-    const value = input.valueAsNumber;
-    if (Number.isNaN(value)) return;
-    const { min, max } = LIMITS[key];
-    if (value < min || value > max) return;
-    changeSetting(key, value);
-  }
-
   /**
    * 選択肢の変更。
    *
@@ -203,6 +191,17 @@ Rust 側も拒否するが、UI が「保存できたように見せる」のを
       return current.length !== initial.length || current.some((value, index) => value !== initial[index]);
     }
     return current !== initial;
+  }
+
+  /**
+   * 「既定に戻す」の押し先。**既定のままなら `undefined`** を返す。
+   *
+   * 出すか出さないかの判断はここ 1 か所にしかない。部品の側は
+   * 「渡されたら出す」だけを知っていればよく、設定の既定値を知らずに済む。
+   */
+  function resetOf(key: keyof Settings): (() => void) | undefined {
+    if (!customized(key)) return undefined;
+    return () => changeSetting(key, null);
   }
 
   /* ---------------------------------------------------------------- */
@@ -231,8 +230,7 @@ Rust 側も拒否するが、UI が「保存できたように見せる」のを
     pushedRulers = next;
   });
 
-  function onRulersInput(event: Event): void {
-    const raw = (event.currentTarget as HTMLInputElement).value;
+  function onRulersInput(raw: string): void {
     rulersText = raw;
 
     const parts = raw
@@ -245,35 +243,6 @@ Rust 側も拒否するが、UI が「保存できたように見せる」のを
     const next = parts.map(Number);
     pushedRulers = next.join(', ');
     changeSetting('editor.rulers', next);
-  }
-
-  /* ---------------------------------------------------------------- */
-  /* 見本                                                              */
-  /* ---------------------------------------------------------------- */
-
-  /**
-   * エディタの見本に当てるスタイル。
-   *
-   * **エディタの設定はトークン層（CSS 変数）に出ない**ので、ここで組む。
-   * 空欄のときの落とし先は `options.ts` と同じ `--mx-font-code`。
-   *
-   * **表示倍率は掛けない。** プレビューの見本（`--mx-font-size-content`）も
-   * 掛けていないので、2 つの見本の縮尺が揃う。倍率は本文にしか掛からない。
-   */
-  const editorSampleStyle = $derived(
-    [
-      `font-family:${editorSampleFont()}`,
-      `font-size:${String(values['editor.fontSize'])}px`,
-      `line-height:${String(values['editor.lineHeight'])}`,
-      `letter-spacing:${String(values['editor.letterSpacing'])}px`,
-      `font-variant-ligatures:${values['editor.fontLigatures'] ? 'normal' : 'none'}`,
-    ].join(';'),
-  );
-
-  function editorSampleFont(): string {
-    const family = formatFontFamily(values['editor.fontFamily']);
-    if (family === null) return 'var(--mx-font-code)';
-    return `${family}, var(--mx-font-code-stack)`;
   }
 </script>
 
@@ -339,10 +308,18 @@ Rust 側も拒否するが、UI が「保存できたように見せる」のを
         {@render numberField('preview.fontSize', ja.settings.fontSize, ja.settings.unitPx, '')}
         {@render numberField('preview.lineHeight', ja.settings.lineHeight, '', '')}
         {@render numberField('preview.maxWidth', ja.settings.maxWidth, ja.settings.unitCh, ja.settings.maxWidthHint)}
-        {@render contentSample()}
+        <ContentSample palette={values['preview.theme']} />
       {:else if category === 'editor'}
         {@render selectField('editor.theme', ja.settings.palette, PALETTES, ja.settings.paletteHint)}
-        {@render editorSample()}
+        <EditorSample
+          palette={values['editor.theme']}
+          fontFamily={values['editor.fontFamily']}
+          fontSize={values['editor.fontSize']}
+          lineHeight={values['editor.lineHeight']}
+          letterSpacing={values['editor.letterSpacing']}
+          ligatures={values['editor.fontLigatures']}
+          showLineNumbers={values['editor.lineNumbers'] !== 'off'}
+        />
 
         <Section label={ja.settings.sections.font} />
         {@render textField('editor.fontFamily', ja.settings.editor.fontFamily, ja.settings.fontFamilyHint)}
@@ -419,191 +396,79 @@ Rust 側も拒否するが、UI が「保存できたように見せる」のを
 </dialog>
 
 <!-- MARK: Snippets -->
-{#snippet resetButton(key: keyof Settings, label: string)}
-  {#if customized(key)}
-    <ResetButton title={ja.settings.resetOf(label)} onClick={() => changeSetting(key, null)} />
-  {/if}
-{/snippet}
-
-{#snippet textField(key: ChoiceKey, label: string, hint: string)}
-  <div class="mx-settings__field">
-    <label class="mx-settings__label" for="{uid}-{key}">{label}</label>
-    <div class="mx-settings__control">
-      <div class="mx-settings__row">
-        <input
-          id="{uid}-{key}"
-          type="text"
-          class="mx-settings__text"
-          spellcheck="false"
-          autocomplete="off"
-          placeholder={ja.settings.fontFamilyPlaceholder}
-          value={values[key]}
-          oninput={(e) => changeChoice(key, e.currentTarget.value)}
-        />
-        {@render resetButton(key, label)}
-      </div>
-      {#if hint}<p class="mx-settings__hint">{hint}</p>{/if}
-    </div>
-  </div>
-{/snippet}
-
 <!--
-  数値。単位と補足だけが違うので 1 つにまとめる。
-  **行間には単位を書かない**（`preview.lineHeight` / `editor.lineHeight`）。
-  倍率（無次元）なので、`px` と並べると誤解を招く。
+  設定のキーと部品（`components/`）をつなぐだけの層。**見た目はここに書かない。**
+
+  1 項目を足すのに要るのが呼び出し側の 1 行だけ、という状態を保つためにある。
+  ここを畳んで呼び出し側に部品を直接並べると、`values[...]` と `changeSetting(...)` の
+  組が 22 回ぶん写経されることになる。
 -->
+{#snippet textField(key: ChoiceKey, label: string, hint: string)}
+  <TextField
+    {label}
+    {hint}
+    value={values[key]}
+    placeholder={ja.settings.fontFamilyPlaceholder}
+    onInput={(value) => changeChoice(key, value)}
+    onReset={resetOf(key)}
+  />
+{/snippet}
+
 {#snippet numberField(key: NumericKey, label: string, unit: string, hint: string)}
-  <div class="mx-settings__field">
-    <label class="mx-settings__label" for="{uid}-{key}">{label}</label>
-    <div class="mx-settings__control">
-      <div class="mx-settings__row">
-        <input
-          id="{uid}-{key}"
-          type="number"
-          class="mx-settings__number"
-          min={LIMITS[key].min}
-          max={LIMITS[key].max}
-          step={LIMITS[key].step}
-          value={values[key]}
-          oninput={(e) => onNumberInput(key, e)}
-        />
-        {#if unit}<span class="mx-settings__unit">{unit}</span>{/if}
-        {@render resetButton(key, label)}
-      </div>
-      {#if hint}<p class="mx-settings__hint">{hint}</p>{/if}
-    </div>
-  </div>
+  <NumberField
+    {label}
+    {unit}
+    {hint}
+    value={values[key]}
+    min={LIMITS[key].min}
+    max={LIMITS[key].max}
+    step={LIMITS[key].step}
+    onInput={(value) => changeSetting(key, value)}
+    onReset={resetOf(key)}
+  />
 {/snippet}
 
 {#snippet selectField(key: ChoiceKey, label: string, options: Choice[], hint: string)}
-  <div class="mx-settings__field">
-    <label class="mx-settings__label" for="{uid}-{key}">{label}</label>
-    <div class="mx-settings__control">
-      <div class="mx-settings__row">
-        <select
-          id="{uid}-{key}"
-          class="mx-settings__select"
-          value={values[key]}
-          onchange={(e) => changeChoice(key, e.currentTarget.value)}
-        >
-          {#each options as option (option.value)}
-            <option value={option.value}>{option.label}</option>
-          {/each}
-        </select>
-        {@render resetButton(key, label)}
-      </div>
-      {#if hint}<p class="mx-settings__hint">{hint}</p>{/if}
-    </div>
-  </div>
+  <SelectField
+    {label}
+    {options}
+    {hint}
+    value={values[key]}
+    onChange={(value) => changeChoice(key, value)}
+    onReset={resetOf(key)}
+  />
 {/snippet}
 
-<!--
-  真偽値。**ラベルを「〜する」の形にして、チェックの意味を文にする。**
-  「ミニマップ [✓]」だと、チェックが「表示」なのか「有効」なのか読めない。
-
-  ラベル列を使わず 1 列に伸ばすのは、チェックボックスが**自分で自分を説明する**ため。
-  左に名前、右に四角、では同じ言葉を 2 回書くことになる。
--->
 {#snippet toggleField(key: ToggleKey, label: string)}
-  <div class="mx-settings__field mx-settings__field--full">
-    <div class="mx-settings__row">
-      <label class="mx-settings__toggle">
-        <input type="checkbox" checked={values[key]} onchange={(e) => changeSetting(key, e.currentTarget.checked)} />
-        <span>{label}</span>
-      </label>
-      {@render resetButton(key, label)}
-    </div>
-  </div>
+  <ToggleField
+    {label}
+    checked={values[key]}
+    onChange={(checked) => changeSetting(key, checked)}
+    onReset={resetOf(key)}
+  />
 {/snippet}
 
-<!--
-  素のラジオボタンにしてある。同じ `name` を持つラジオは、矢印キーでの移動も
-  Tab の扱い（グループ全体で 1 つ）も**ブラウザ側が実装している**。
-  見た目のためにボタンで組み直すと、それを自分で書き直すことになる。
-
-  `fieldset` / `legend` のままにしているのは、グループ名を読み上げに載せる方法として
-  いちばん確実だから。**grid の 2 列に載せない**のは `legend` の配置がブラウザ差を持つため。
--->
 {#snippet radioGroup(key: ChoiceKey, label: string, options: Choice[])}
-  <fieldset class="mx-settings__field mx-settings__field--full mx-settings__group">
-    <div class="mx-settings__row">
-      <legend class="mx-settings__label">{label}</legend>
-      {@render resetButton(key, label)}
-    </div>
-    <div class="mx-settings__choices">
-      {#each options as option (option.value)}
-        <label class="mx-settings__choice">
-          <input
-            type="radio"
-            name="{uid}-{key}"
-            value={option.value}
-            checked={values[key] === option.value}
-            onchange={() => changeChoice(key, option.value)}
-          />
-          <span>{option.label}</span>
-        </label>
-      {/each}
-    </div>
-  </fieldset>
+  <RadioGroup
+    {label}
+    {options}
+    value={values[key]}
+    onChange={(value) => changeChoice(key, value)}
+    onReset={resetOf(key)}
+  />
 {/snippet}
 
+<!-- 縦罫線だけは**打っている途中の文字列**を渡す（上の `rulersText` を参照）。 -->
 {#snippet rulersField()}
-  <div class="mx-settings__field">
-    <label class="mx-settings__label" for="{uid}-rulers">{ja.settings.editor.rulers}</label>
-    <div class="mx-settings__control">
-      <div class="mx-settings__row">
-        <input
-          id="{uid}-rulers"
-          type="text"
-          class="mx-settings__text"
-          spellcheck="false"
-          autocomplete="off"
-          inputmode="numeric"
-          placeholder={ja.settings.editor.rulersPlaceholder}
-          value={rulersText}
-          oninput={onRulersInput}
-        />
-        {@render resetButton('editor.rulers', ja.settings.editor.rulers)}
-      </div>
-      <p class="mx-settings__hint">{ja.settings.editor.rulersHint}</p>
-    </div>
-  </div>
-{/snippet}
-
-<!-- 本文の見本。トークン層をそのまま着るので、当てる値は書かない。 -->
-{#snippet contentSample()}
-  <div class="mx-settings__sample mx-settings__sample--content" data-mx-theme={paletteAttr(values['preview.theme'])}>
-    <strong class="mx-settings__sample-heading">{ja.settings.sampleHeading}</strong>
-    <p class="mx-settings__sample-body">
-      {ja.settings.sampleBody}
-      <code class="mx-settings__sample-code-chip">code</code>
-    </p>
-  </div>
-{/snippet}
-
-<!-- エディタの見本。**設定は CSS 変数に出ない**ので、組んだスタイルを当てる。 -->
-{#snippet editorSample()}
-  <!--
-    記法の色は **`theme.ts` の `tokenRules()` と同じ対応**で塗る。
-    見出しとリストの記号は Monarch では 1 つのトークン（`keyword.md`）になり、
-    `--mx-color-code-function` が当たっている。ここで別の色を使うと、
-    見本と実物が食い違う。
-  -->
-  <div
-    class="mx-settings__sample mx-settings__sample--code"
-    style={editorSampleStyle}
-    data-mx-theme={paletteAttr(values['editor.theme'])}
-  >
-    {#if values['editor.lineNumbers'] !== 'off'}
-      <span class="mx-settings__sample-gutter" aria-hidden="true">1<br />2<br />3<br />4</span>
-    {/if}
-    <pre class="mx-settings__sample-code"><span class="mx-settings__syntax-structure"
-        ># {ja.settings.sampleHeading}</span
-      >
-
-{ja.settings.sampleBody}<span class="mx-settings__syntax-inline">`code`</span>
-<span class="mx-settings__syntax-structure">-</span> {ja.settings.sampleList}</pre>
-  </div>
+  <TextField
+    label={ja.settings.editor.rulers}
+    hint={ja.settings.editor.rulersHint}
+    value={rulersText}
+    placeholder={ja.settings.editor.rulersPlaceholder}
+    inputmode="numeric"
+    onInput={onRulersInput}
+    onReset={resetOf('editor.rulers')}
+  />
 {/snippet}
 
 <style>
@@ -756,187 +621,16 @@ Rust 側も拒否するが、UI が「保存できたように見せる」のを
     gap: var(--mx-space-3);
   }
 
-  /* **縮ませない。** 縦に積んだ flex の子は既定で縮むので、
-     器（見本）が中身より小さくなって内側にスクロールバーが生える。 */
+  /* **縮ませない。** 縦に積んだ flex の子は既定で縮む。
+     項目そのものは部品の側が同じ指定を持っている（スコープが跨がらないため）。 */
   .mx-settings__pane > * {
     flex: none;
-  }
-
-  /*
-   * 項目は**ラベル列 + 操作列の 2 列**。
-   *
-   * 1 列に積むと 22 項目でスクロールが長くなりすぎ、
-   * 「どこに何があるか」を覚えられなくなる（M1.5 の 6 項目では成立していた）。
-   */
-  .mx-settings__field {
-    margin: 0;
-    padding: 0;
-    border: none;
-    min-inline-size: 0;
-    display: grid;
-    grid-template-columns: 10rem minmax(0, 1fr);
-    align-items: start;
-    gap: var(--mx-space-1) var(--mx-space-3);
-  }
-
-  /* チェックボックスとラジオのグループ。**ラベル列を使わない**（部品の側を参照）。 */
-  .mx-settings__field--full {
-    display: flex;
-    flex-direction: column;
-    gap: var(--mx-space-2);
-  }
-
-  .mx-settings__control {
-    min-width: 0;
-    display: flex;
-    flex-direction: column;
-    gap: var(--mx-space-1);
-  }
-
-  .mx-settings__row {
-    display: flex;
-    align-items: center;
-    gap: var(--mx-space-2);
-  }
-
-  /* 入力欄の 1 行目と高さを揃える。`align-items: center` にすると、
-     補足が付いた項目でラベルが下がって隣とずれる。 */
-  .mx-settings__label {
-    padding: 5px 0 0;
-    color: var(--mx-color-fg-muted);
-  }
-
-  .mx-settings__field--full .mx-settings__label {
-    flex: 1;
-    padding: 0;
-    color: var(--mx-color-fg);
-    font-weight: 600;
-  }
-
-  .mx-settings__choices {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--mx-space-1) var(--mx-space-4);
-  }
-
-  .mx-settings__choice,
-  .mx-settings__toggle {
-    display: flex;
-    align-items: center;
-    gap: var(--mx-space-2);
-  }
-
-  .mx-settings__toggle {
-    flex: 1;
-  }
-
-  .mx-settings__text {
-    flex: 1;
-  }
-
-  .mx-settings__text,
-  .mx-settings__number,
-  .mx-settings__select {
-    padding: var(--mx-space-1) var(--mx-space-2);
-    border: 1px solid var(--mx-color-border);
-    border-radius: var(--mx-radius-sm);
-    background: var(--mx-color-bg);
-    color: var(--mx-color-fg);
-    font: inherit;
-  }
-
-  .mx-settings__select {
-    min-width: 14rem;
-  }
-
-  /* **スピナーのぶんを含めて幅を取る。** `7ch` だと `100` が最後の桁で切れる。 */
-  .mx-settings__number {
-    width: 5.5rem;
-    font-variant-numeric: tabular-nums;
-  }
-
-  .mx-settings__unit {
-    color: var(--mx-color-fg-subtle);
   }
 
   .mx-settings__hint {
     margin: 0;
     color: var(--mx-color-fg-subtle);
     font-size: 11px;
-  }
-
-  /*
-   * 見本（ADR-0011）。**器はプレビューの面を真似ない。**
-   * ここで見せたいのは文字の並びだけで、背景や余白まで似せると
-   * 「これが本文の見た目そのもの」に読めてしまう。
-   */
-  .mx-settings__sample {
-    padding: var(--mx-space-3);
-    border: 1px solid var(--mx-color-border-subtle);
-    border-radius: var(--mx-radius-sm);
-    /*
-     * **配色は見本自身に乗る**（`data-mx-theme` / ADR-0013）。
-     * 背景と文字色をここで明示しないと、上書きしたトークンが誰にも読まれず、
-     * ダイアログ（＝クロームの配色）のままになる。
-     */
-    background: var(--mx-color-bg);
-    color: var(--mx-color-fg);
-    overflow-x: auto;
-  }
-
-  .mx-settings__sample--content {
-    font-family: var(--mx-font-content);
-    font-size: var(--mx-font-size-content);
-    line-height: var(--mx-line-height);
-  }
-
-  .mx-settings__sample-heading {
-    display: block;
-    font-size: 1.25em;
-  }
-
-  .mx-settings__sample-body {
-    margin: var(--mx-space-2) 0 0;
-  }
-
-  .mx-settings__sample--code {
-    display: flex;
-    gap: var(--mx-space-3);
-  }
-
-  .mx-settings__sample-gutter {
-    flex: none;
-    color: var(--mx-color-fg-subtle);
-    text-align: end;
-    font-variant-numeric: tabular-nums;
-  }
-
-  .mx-settings__sample-code {
-    margin: 0;
-    font: inherit;
-    letter-spacing: inherit;
-    white-space: pre;
-  }
-
-  /* 見出し / リストの記号。`theme.ts` の `keyword.md` と同じトークン。 */
-  .mx-settings__syntax-structure {
-    color: var(--mx-color-code-function);
-    font-weight: bold;
-  }
-
-  /* インラインコード。`theme.ts` の `variable.md` と同じトークン。 */
-  .mx-settings__syntax-inline {
-    color: var(--mx-color-code-builtin);
-  }
-
-  /* 本文の見本に混ぜるコード。**面の色が変わったことが分かる印**になる。 */
-  .mx-settings__sample-code-chip {
-    padding: 0 0.3em;
-    border-radius: var(--mx-radius-sm);
-    background: var(--mx-color-bg-subtle);
-    color: var(--mx-color-code-builtin);
-    font-family: var(--mx-font-code);
-    font-size: 0.9em;
   }
 
   .mx-settings__footer {
@@ -971,7 +665,8 @@ Rust 側も拒否するが、UI が「保存できたように見せる」のを
     background: var(--mx-color-bg-hover);
   }
 
-  .mx-settings :is(input, button, select):focus-visible {
+  /* 残っているのはクロームのボタンだけ（入力欄は部品の側が自分で持つ）。 */
+  .mx-settings button:focus-visible {
     outline: 2px solid var(--mx-color-accent);
     outline-offset: 1px;
   }

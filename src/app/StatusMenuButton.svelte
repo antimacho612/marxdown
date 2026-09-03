@@ -8,6 +8,8 @@
 <script lang="ts">
   import type { StatusMenu, StatusMenuAnchor, StatusMenuKind } from '@/features/status/props';
 
+  import StatusBarButton from './StatusBarButton.svelte';
+
   interface Props {
     kind: StatusMenuKind;
     /** いまの値。**ボタンの見た目そのもの**なので、`main` 側が持っている。 */
@@ -21,12 +23,13 @@
   /** ロード済みのメニュー本体。**`null` のうちはチャンクを取りに行っていない。** */
   let menu = $state<StatusMenu | null>(null);
   let open = $state(false);
-  let button: HTMLButtonElement;
+  let button = $state<HTMLButtonElement>();
 
   /** パネルを置く位置（ビューポート基準）。**押した瞬間の値**で固定する。 */
   let anchor = $state<StatusMenuAnchor | null>(null);
 
   async function show(): Promise<void> {
+    if (!button) return;
     const rect = button.getBoundingClientRect();
     // 下端をボタンの上端に合わせる（ステータスバーの上に開く）。
     anchor = { left: rect.left, bottom: globalThis.innerHeight - rect.top };
@@ -41,7 +44,7 @@
   /** 閉じる。**既定でボタンへフォーカスを戻す**（`app/MenuButton.svelte` と同じ理由）。 */
   function hide(refocus = true): void {
     open = false;
-    if (refocus) button.focus();
+    if (refocus) button?.focus();
   }
 
   function toggle(): void {
@@ -60,10 +63,8 @@
 </script>
 
 <span class="mx-statusmenubutton">
-  <button
-    type="button"
-    class="mx-statusbar__button"
-    bind:this={button}
+  <StatusBarButton
+    bind:element={button}
     {title}
     aria-haspopup="menu"
     aria-expanded={open}
@@ -71,7 +72,7 @@
     onkeydown={onKeydown}
   >
     {label}
-  </button>
+  </StatusBarButton>
 
   {#if open && menu && anchor}
     {@const Menu = menu}

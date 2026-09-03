@@ -91,6 +91,16 @@ function applyPalette(element: HTMLElement | null, palette: Palette): void {
 }
 
 /**
+ * 見本に着せる配色（`data-mx-theme` の値）。
+ *
+ * **`default` は属性ごと外す**（`applyPalette` と同じ判断）。
+ * 面ではなく設定ダイアログの中の見本に当てるので、DOM を触らず値だけ返す。
+ */
+export function paletteAttr(palette: Palette): string | undefined {
+  return palette === 'default' ? undefined : palette;
+}
+
+/**
  * テーマ（F-CONF-01）。
  *
  * **`system` は属性ごと外す。** `tokens.css` の
