@@ -1,31 +1,13 @@
 /**
  * ハンバーガーメニューに並べるもの（03.ux-spec/01-screen-layout.md §3）。
+ * 遅延チャンクでメニューが開かれるまでロードされない。
  *
- * **このモジュールは遅延チャンク。** メニューが開かれるまでロードされない
- * （06.roadmap/m1.5-shell-and-settings.md §3 の完了条件）。
+ * 並べるのは `CommandId` とラベルの対応だけで、実行内容は知らない（実体の表は `app/commands.ts`）。
+ * 以前は 8 つの feature を名指しで import していたが、この形なら M3 のコマンドパレットが同じ表を別の見せ方で並べるだけで済む。
+ * `AppMenu.svelte` はこの配列を描くだけで項目を知らないため、項目を足すのは `MENU` への 1 行で終わる。
  *
- * # 実体を知らない
- *
- * 並べるのは **`CommandId` とラベルの対応**だけで、押したときに何が起きるかは
- * 知らない（06.roadmap/m2-editor.md §1.2 / 実体の表は `app/commands.ts`）。
- * 以前は 8 つの feature を名指しで import しており、メニューに項目を足すたびに
- * **メニューと feature の間に参照が 1 本増えていた**。
- *
- * この形にすると、M3 のコマンドパレットが同じ表を別の見せ方で並べるだけで済む。
- *
- * # 見た目と切り離す理由
- *
- * 項目は今後も増える。**足す作業が `MENU` に 1 行加えるだけで終わる**ようにしてある。
- * `AppMenu.svelte` はこの配列を描くだけで、どんな項目があるかを知らない。
- *
- * # 押せないものを並べない
- *
- * Principle 3「Simple Means Low Cognitive Load」。ファイルを開いていないときの
- * 再読み込み・倍率・検索は、押しても何も起きない。**存在ごと消す。**
- * Welcome 画面（03.ux-spec/08-empty-states.md §1）が「フォルダを開く」を並べないのと同じ判断。
- *
- * 判定そのものはここには無い。**`app/commands.ts` の `isListed` が唯一の根拠**で、
- * ここはそれを引くだけ。メニューとパレットで結論がずれない形にしてある。
+ * 押せない項目（例: ファイル未オープン時の再読み込み・倍率・検索）は存在ごと消す（Principle 3）。
+ * 判定は `app/commands.ts` の `isListed` が唯一の根拠で、メニューとパレットで結論がずれない。
  */
 import { viewStore } from '@/features/view/store.svelte';
 import { recentStore } from '@/features/workspace/recent.svelte';

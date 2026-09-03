@@ -1,29 +1,10 @@
 /**
  * 未保存の変更があるか（F-EDIT-03 / 03.ux-spec/07-status-and-notifications.md §1）。
  *
- * # なぜ `save.ts` から分けてあるのか
+ * `save.ts` から分けてあるのは依存の向きが逆だからである（open/editor/watch はダーティを触るだけで保存を知らず、save はダーティを clean にしつつ open を使う）。
+ * ここに置くと `save.ts` ⇄ `open.ts` の循環になる。
  *
- * ダーティ状態を触る側と、保存そのものは**依存の向きが逆**になる。
- *
- * ```text
- * open.ts    → 開いたら clean にする        （保存は知らない）
- * editor.ts  → 打鍵したら dirty にする      （保存は知らない）
- * watch.ts   → dirty かどうかで分岐する      （保存は知らない）
- * save.ts    → 保存できたら clean にする + open.ts を使う
- * ```
- *
- * ここを `save.ts` に置くと `save.ts` ⇄ `open.ts` の循環になる。
- * **状態と操作を分けるのは、循環を避けるための都合ではなく、
- * 「誰が何を知っている必要があるか」がもともと違うから**である。
- *
- * # 変わり目だけ Rust へ知らせる
- *
- * 終了の 3 経路は Rust 側で合流しており（`src-tauri/src/close.rs`）、
- * **トレイメニューからの終了はフロントを経由しない**。確認をフロントに置くと
- * その経路だけ黙って捨てることになるので、Rust にも同じ事実を持たせる。
- *
- * エディタは 1 打鍵ごとに `setDirty()` を呼ぶ（Undo で基準に戻れば `false` も渡る）。
- * **値が変わらなければ何もしない**ので、IPC もストアへの書き込みも打鍵ごとには走らない。
+ * トレイメニューからの終了はフロントを経由しないため（`src-tauri/src/close.rs`）、変わり目だけ Rust へも知らせる。
  */
 import { getPlatform } from '@/platform';
 
@@ -33,17 +14,10 @@ import { syncDocumentText } from './text';
 /**
  * 本文がディスクと違うか。
  *
- * **ダーティの源は 1 つではない。** 本文の他に、改行コードの変換
- * （`document/eol.ts` / 03.ux-spec/07-status-and-notifications.md §3）がある。両方を 1 つの
- * boolean に潰してしまうと、**打鍵で相手が消える**。
- *
- * ```text
- * 1. LF → CRLF に変換した        → ダーティ
- * 2. 何か打って、Undo で戻した    → 本文は基準と同じ
- * 3. そこで false を代入すると…  → CRLF の希望が残っているのにダーティが外れる
- * ```
- *
- * 源ごとに持ち、**出すときに合成する**。
+ * ダーティの源は 1 つではない。
+ * 本文の他に、改行コードの変換（`document/eol.ts` / 03.ux-spec/07-status-and-notifications.md §3）がある。
+ * 両方を 1 つの boolean に統合すると、例えば「LF → CRLF に変換してダーティが立った後、何か打って Undo で本文だけ基準に戻す」場合、そこで false を代入したときに CRLF の希望が残っているのにダーティが外れてしまう。
+ * 源ごとに持ち、出力時に合成する。
  */
 let textDirty = false;
 

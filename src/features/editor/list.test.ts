@@ -2,18 +2,10 @@
 /**
  * リストのインデントの回帰テスト（F-EDIT-09 の `Tab` / `Shift+Tab`）。
  *
- * # `null`（＝手を引いた）が期待値になる場面がある
- *
- * `Tab` は**本来別の意味を持つキーを横取りしている**（`list.ts`）。
- * リストでない場所で握り潰すと、ただのインデントができなくなる。
- * したがって「何も起きない」ではなく **「次のバインドへ渡した」ことを確かめる**
- * 必要があり、`run` は手を引いたときだけ `null` を返す。
- *
- * # `Enter` の継続入力は隣（`enter.test.ts`）
- *
- * F-EDIT-09 の `Enter` と F-EDIT-10（自動採番）は、CodeMirror では
- * `@codemirror/lang-markdown` が持っていたのでテストしていなかった。
- * **Monaco では自作なので、`enter.test.ts` で見ている**（ADR-0009）。
+ * `Tab` は本来別の意味を持つキーを横取りしている（`list.ts`）ため、リストでない場所で握り潰すとただのインデントができなくなる。
+ * したがって「何も起きない」ではなく「次のバインドへ渡した」ことを確かめる必要があり、`run` は手を引いたときだけ `null` を返す。
+ * `Enter` の継続入力は隣（`enter.test.ts`）で扱う。
+ * F-EDIT-09 の `Enter` と F-EDIT-10（自動採番）は、CodeMirror では `@codemirror/lang-markdown` が持っていたのでテストしていなかったが、Monaco では自作なので `enter.test.ts` で見ている（ADR-0009）。
  */
 import { describe, expect, it } from 'vitest';
 

@@ -1,36 +1,14 @@
 /**
- * Monaco の生成と保持（F-EDIT-01 / `editor` チャンク / [ADR-0009](../../../docs/adr/0009-editor-engine-monaco.md)）。
+ * Monaco の生成と保持（F-EDIT-01 / `editor` チャンク / ADR-0009）。
  *
- * # 1 インスタンスしか作らない
+ * Edit / Split / WYSIWYG は単一のエディタ・単一のモデルを共有し、置き場所だけが違う（02.architecture/07-editor-wysiwyg.md §1）。
+ * これにより Undo 履歴・カーソル・IME の挙動がモード間で揃う。
+ * Preview へ切り替えても `dispose()` しない（Undo 履歴を保持するため / §4）。
+ * ただし Monaco は非表示のあいだ寸法を失うので、表示を戻したら `relayoutEditor()` を呼ぶこと。
+ * 破棄するのはタブを閉じるとき（M3 / N-PERF-06）のみである。
  *
- * 02.architecture/07-editor-wysiwyg.md §1 の単一エンジン方針。Edit / Split / WYSIWYG は
- * **同一のエディタと同一のモデル**で、違うのはどこに置くかだけ。
- * これにより Undo 履歴・カーソル・IME の挙動がモード間で揃う
- * （03.ux-spec/02-view-modes.md §4）。
- *
- * # Preview へ戻っても壊さない
- *
- * モードを Preview に切り替えても `dispose()` しない。**Undo 履歴が消えるため。**
- * §4 は「モードを切り替えても Undo 履歴を保持する」を要求している。
- * 隠すのは CSS の担当（`styles/shell.css` の `data-mx-mode`）。
- *
- * **ただし Monaco は隠れているあいだ寸法を失う。** `display: none` から戻したら
- * `relayoutEditor()` を呼ぶこと（`features/view/mode.ts` がプレビューの
- * スクロール位置を戻すのと同じ場所・同じ理由）。
- *
- * 破棄するのはタブを閉じるときだけで、それは M3（N-PERF-06）。
- *
- * # 本文の受け皿はコンポーネントツリーの外
- *
- * `#mx-editor` は `index.html` にあり、Svelte の管理下に無い。
- * `#mx-preview` と同じ理由で、**ここを Svelte に移さないこと**（ADR-0005）。
- *
- * # 改行は必ず LF で読み書きする
- *
- * メモリ上の本文は LF に正規化されており、CRLF / BOM の復元は Rust 側の境界が持つ
- * （N-CMP-03 / 02.architecture/04-rust-responsibilities.md）。
- * Monaco のモデルは**自分で EOL を推定して保持する**ので、
- * 明示的に LF を指定して読み書きしないと、ここで CRLF が混ざる。
+ * `#mx-editor` は `index.html` にあり Svelte 管理下に無い（`#mx-preview` と同じ理由 / ADR-0005）。
+ * Monaco はモデルの EOL を自分で推定するため、明示的に LF を指定して読み書きしないと CRLF が混ざる（N-CMP-03）。
  */
 import { setDirty } from '@/features/document/dirty';
 import { scheduleLiveRender } from '@/features/document/live';
@@ -129,18 +107,11 @@ export function mountEditor(host: HTMLElement): monaco.editor.IStandaloneCodeEdi
   // 載せた時点の内容がダーティ判定の基準（マウント前はダーティになりようがない）。
   cleanVersionId = model.getAlternativeVersionId();
 
-  // ダーティ状態（F-EDIT-03）。**boolean 1 つだけがリアクティビティを通る。**
-  // 本文そのものはここを通らない（ADR-0005 / 02.architecture/08-state-management.md §1）。
+  // ダーティ状態（F-EDIT-03）。boolean 1 つだけがリアクティビティを通り、本文そのものは通らない（ADR-0005）。
+  // `setDirty` は値が変わらなければ何もしない。
   //
-  // `setDirty` は値が変わらなければ何もしないので、打鍵ごとにストアの書き込みや
-  // IPC が走ることはない（`document/save.ts`）。
-  //
-  // > **`editor.onDidChangeModelContent` ではなく、モデル側を購読する。**
-  // > Monaco の変更通知は 2 本ある。エディタが購読しているのは編集と同時に飛ぶ
-  // > 「速い」ほうで、**そちらは Undo で版を巻き戻す前に飛ぶ**
-  // > （`textModel.js` の `_applyUndoRedoEdits` は `_overwriteAlternativeVersionId` を
-  // > 呼んでから `endDeferredEmit()` する）。速いほうで判定すると、Undo で
-  // > 基準まで戻ってもダーティが外れない（#43 の再来）。実測で確認済み。
+  // `editor.onDidChangeModelContent` ではなくモデル側を購読する。
+  // エディタの通知は Undo で版を巻き戻す前に飛ぶ「速い」ほうで、それで判定すると Undo で基準まで戻ってもダーティが外れない（#43 の再来。実測で確認済み）。
   model.onDidChangeContent(() => {
     setDirty(model?.getAlternativeVersionId() !== cleanVersionId);
     // Split では右のプレビューを追いかけさせる（F-MODE-03）。
@@ -248,29 +219,11 @@ export function closeEditorSearch(): void {
 }
 
 /**
- * Split のスクロール同期を始める / やめる（F-MODE-05）。
+ * 1 文字打つ（`features/bench/input.ts` / 計測専用）。
  *
- * **エディタの実体を外へ渡さないための包み。** 同期の中身は `features/view/scroll-sync.ts`
- * （`main` チャンク）にあり、そちらが知っているのは **行番号だけの窓口**
- * （`EditorScrollPort`）である。座標計算は `scroll-port.ts` にあり、
- * 実体を渡せるのはここだけなので、ここが橋渡しをする。
- */
-/**
- * 1 文字打つ（`features/bench/input.ts` / **計測専用**）。
- *
- * # なぜ合成キーイベントではないのか
- *
- * WebView へ外から本物のキーを送れるのは E2E（実キー入力）だけで、そちらは
- * 1 打 50〜150ms かかる。**それでは「速く打っているあいだの詰まり」を再現できない。**
- * 合成した `KeyboardEvent` は `keyCode` が 0 で飛ぶので Monaco のキー解決を通らない
- * （06.roadmap/m2-editor.md §5 の Phase 8）。
- *
- * `type` は Monaco 自身のキーハンドラが最終的に呼ぶものと同じ入口で、
- * モデルの編集とビューの再描画は本番と同じ経路を通る。
- * **含まれないのはブラウザのキーイベント配送だけ**で、そこは A/B の両側で同じ定数。
- *
- * `source` に `'keyboard'` を渡す理由は `enter.ts` と同じ
- * （`autoIndent: 'keep'` を通すのがこの文字列）。
+ * 合成した `KeyboardEvent` は `keyCode` が 0 で Monaco のキー解決を通らないため、E2E の実キー入力（1 打 50〜150ms）では「速く打っているあいだの反応の遅れ」を再現できない。
+ * `type` は Monaco 自身のキーハンドラが最終的に呼ぶ入口と同じで、ブラウザのキー配送だけが本番と異なる。
+ * `source` に `'keyboard'` を渡すのは `enter.ts` と同じ理由である（`autoIndent: 'keep'` を通す文字列）。
  */
 export function typeForBench(text: string): void {
   editor?.trigger('keyboard', 'type', { text });
@@ -290,6 +243,12 @@ export function moveToEndForBench(): void {
   editor.revealLine(lineNumber);
 }
 
+/**
+ * Split のスクロール同期を始める / やめる（F-MODE-05）。
+ *
+ * エディタの実体を外へ渡さないための包みである。
+ * 同期の中身（`features/view/scroll-sync.ts`）は行番号だけの窓口（`EditorScrollPort`）しか知らず、座標計算は `scroll-port.ts` にある。
+ */
 export function setSplitSync(on: boolean): void {
   if (on) startScrollSync();
   else stopScrollSync();

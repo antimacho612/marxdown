@@ -8,24 +8,18 @@
 //! 直接渡せるので、「既定位置に出てから復元先へ動く」ちらつきが起きない。
 //! `visible: false` から本文ごと見せる設計（04.tech-stack/09-tauri-config.md §1）と噛み合う。
 //!
-//! # タイトルバーは自前で描く（03.ux-spec/01-screen-layout.md §1）
-//!
+//! タイトルバーは自前で描く（03.ux-spec/01-screen-layout.md §1）。
 //! `decorations(false)` にして、`─ □ ✕` もファイル名も Svelte 側が描く。
-//! OS 標準のタイトルバーとタブが二段になるのを避け、縦 30px を本文に返すため。
+//! OS 標準のタイトルバーとタブが二段になることを避け、縦 30px を本文に割り当てるためである。
 //!
-//! **Windows で何が失われるかは、tao の実装を読んで確かめてある**（tao 0.35.3）。
+//! Windows で何が失われるかは、tao の実装を読んで確認してある（tao 0.35.3）。
+//! リサイズ縁は失われない（`to_window_styles()` は装飾の有無に関わらず `WS_SIZEBOX` を付け、縁の当たり判定は tao が `WM_NCHITTEST` で自前に返す）。
+//! `Win+←` / Aero Snap も失われない（同上。`WS_MAXIMIZEBOX` も残るため、シェルから見ると通常のウィンドウと同じ扱いになる）。
+//! 最大化時の矩形も壊れない（tao が `WM_NCCALCSIZE` でモニタの作業領域に切り詰めるため、borderless でよくある「タスクバーを覆う / 画面からはみ出す」という問題が起きない）。
+//! 影と角丸だけは `shadow(true)` が必要になる（下で明示している。これが無いと影も Windows 11 の角丸も表示されなくなる）。
 //!
-//! | | 失われるか | 根拠 |
-//! | --- | --- | --- |
-//! | リサイズ縁 | 失われない | `to_window_styles()` は装飾の有無に関わらず `WS_SIZEBOX` を付ける。縁の当たり判定は tao が `WM_NCHITTEST` で自前に返す |
-//! | `Win+←` / Aero Snap | 失われない | 同上。`WS_MAXIMIZEBOX` も残るので、シェルから見ると普通のウィンドウのまま |
-//! | 最大化時の矩形 | 壊れない | tao が `WM_NCCALCSIZE` でモニタの**作業領域**に切り詰める。borderless でよくある「タスクバーを覆う / 画面からはみ出す」が起きない |
-//! | 影と角丸 | **`shadow(true)` が要る** | 下で明示している。これが無いと影も Windows 11 の角丸も消える |
-//!
-//! 自分たちで実装しなおす必要があるのは、**ドラッグ・ダブルクリック・
-//! ウィンドウ操作ボタン・Snap Layouts** の 4 つだけ。前の 2 つは Tauri 本体が
-//! 注入する `data-tauri-drag-region` の処理が担い、残りはフロントと
-//! `snap_layouts.rs` が担う。
+//! 自分たちで実装しなおす必要があるのは、ドラッグ・ダブルクリック・ウィンドウ操作ボタン・Snap Layouts の 4 つだけである。
+//! 前の 2 つは Tauri 本体が注入する `data-tauri-drag-region` の処理が担い、残りはフロントと `snap_layouts.rs` が担う。
 
 use tauri::{Manager, WebviewUrl, WebviewWindow, WebviewWindowBuilder};
 

@@ -1,22 +1,10 @@
 /**
  * 設定 UI からの変更（F-CONF-05 / 02.architecture/04-rust-responsibilities.md §5）。
+ * 遅延チャンク側にあり、`main` には見た目適用（`appearance.ts`）とストアだけが残る。
  *
- * **このモジュールは遅延チャンク側にある。** 設定を開くまでロードされない。
- * `main` に残るのは「値を見た目に当てる」`appearance.ts` とストアだけで、
- * 書き戻しの経路はここに寄せてある（06.roadmap/m1.5-shell-and-settings.md §3 の完了条件）。
- *
- * # 見た目は即座に、ファイルは遅れて
- *
- * 入力欄を 1 文字打つたびにファイルを書くと、`preview.fontFamily` を
- * 「N」「o」「t」…と打つ間じゅう `settings.json` が書き換わる。
- * `zoom.ts` と同じく、**当てるのは即座・保存はデバウンス**に分ける。
- * 設定を試行錯誤しながら使えること自体が目的なので、
- * 遅らせてよいのは保存だけである。
- *
- * # 楽観的に当てる
- *
- * 書き戻しの結果を待たずにストアへ入れる。Rust 側は範囲外の数値を潰して返すが、
- * こちらも同じ範囲（`LIMITS`）で潰してから当てているので、返ってくる値は一致する。
+ * 見た目は即座に当て、保存はデバウンスする（`zoom.ts` と同じ）。
+ * 1 文字ごとに `settings.json` を書かないためである。
+ * 書き戻しの結果を待たずに楽観的にストアへ入れるのは、Rust 側も同じ範囲（`LIMITS`）で潰すため返り値が一致するからである。
  */
 import { describeOpenError } from '@/features/document/open';
 import { documentStore } from '@/features/document/store.svelte';

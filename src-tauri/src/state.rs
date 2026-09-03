@@ -17,18 +17,11 @@ use crate::settings::{Settings, SettingsLoad};
 use crate::store::{RecentEntry, StoreData};
 use crate::trace::Trace;
 
-/// アプリデータ領域に置く 3 ファイルの場所（02.architecture/04-rust-responsibilities.md §5 / 02.architecture/10-theming.md §3）。
+/// アプリデータ領域（`%APPDATA%\com.antimacho612.marxdown\`）に置く 3 ファイル（`state.json`: アプリが自動的に書く、`settings.json` / `custom.css`: 人が書く（F-CONF-07））の場所（02.architecture/04-rust-responsibilities.md §5 / 02.architecture/10-theming.md §3）。
 ///
-/// ```text
-/// %APPDATA%\com.antimacho612.marxdown\
-///   ├─ state.json    ← アプリが自動的に書く
-///   ├─ settings.json ← 人が書く
-///   └─ custom.css    ← 人が書く（F-CONF-07）
-/// ```
-///
-/// **1 つの構造体にまとめてある。** どれも `identifier` から同じ規則で決まり、
-/// `AppState::new` に個別の `Option<PathBuf>` を並べると引数が際限なく増える。
-/// `None` は「置き場所が決まらなかった」で、その機能を諦める合図。
+/// 1 つの構造体にまとめてある。
+/// どれも `identifier` から同じ規則で決まり、`AppState::new` に個別の `Option<PathBuf>` を並べると引数が際限なく増える。
+/// `None` は「置き場所が決まらなかった」ことを示し、その機能を諦める合図になる。
 #[derive(Debug, Clone, Default)]
 pub struct ConfigPaths {
     pub store: Option<PathBuf>,

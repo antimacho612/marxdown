@@ -1,16 +1,11 @@
 /**
  * ウィンドウ操作（03.ux-spec/01-screen-layout.md §1）。
  *
- * `decorations: false` にしたので、`─ □ ✕` は自分たちの `<button>` である。
- * ここはその押し下げを Platform 層へ渡すだけの薄い層で、
- * コンポーネント（`WindowControls.svelte`）から Tauri が見えないようにするためにある。
+ * `decorations: false` にしたので `─ □ ✕` は自分たちの `<button>` である。
+ * ここはその押下を Platform 層へ渡すだけの薄い層である。
  *
- * # 状態を押した側で持たない
- *
- * 最大化は、ボタン以外にも `Win+↑` / タイトルバーのダブルクリック /
- * 画面上端へのドラッグで切り替わる。押した側でフラグを反転させると、
- * OS 由来の変化を取りこぼして絵柄（□ / ❐）がずれる。
- * **真実は OS にあり**、Rust 側が変化したときだけ流してくるものを写す。
+ * 最大化状態はボタン以外（`Win+↑` / ダブルクリック / 画面端ドラッグ）でも変わる。
+ * そのため押した側でフラグを反転させず、OS 側の変化を Rust 経由で受け取って反映する。
  */
 import { viewStore } from '@/features/view/store.svelte';
 import { getPlatform } from '@/platform';
@@ -73,29 +68,12 @@ const SNAP_REPORT_DEBOUNCE_MS = 120;
 let target: HTMLElement | null = null;
 
 /**
- * 最大化ボタンの居場所を Rust へ知らせ続ける（Windows の Snap Layouts）。
+ * 最大化ボタンの位置を Rust へ通知し続ける（Windows の Snap Layouts）。
+ * `ResizeObserver` は位置の変化を検知できないため、`resize` イベントを監視する（Windows 以外は Rust 側で無視する）。
  *
- * ボタンは右端に張り付いているので、**位置が変わるのはウィンドウ幅が変わったときだけ**。
- * `ResizeObserver` では位置の変化を拾えないので、`resize` を見る。
- *
- * Windows 以外では Rust 側が受け取って捨てる。分岐をここに持ち込まないのは、
- * Domain 層がプラットフォームを知らない状態を保つため（02.architecture/03-layers.md §1）。
- *
- * # ここで矩形を測らない（OQ-30）
- *
- * この関数はボタンがマウントされた直後（`WindowControls.svelte` の `$effect`）に
- * 呼ばれる。**その場で `getBoundingClientRect()` を呼んではいけない。**
- *
- * シェルを描いた直後はスタイルが未計算で、矩形を要求すると全体のスタイル再計算と
- * レイアウトが同期的に走る。**実測 32〜35ms。** しかも本文（`#mx-preview`）はまだ
- * 空なので、そこで作ったレイアウトは本文を入れた時点で捨てられる。
- *
- * 悪いのは捨てられることだけではない。この 32〜35ms のあいだ **Worker のスクリプト
- * 評価も進まない。** 「パースの送信をシェルの描画より前に置き、両者を重ねる」という
- * 起動シーケンスの前提（02.architecture/05-startup-sequence.md §1）が、ここで壊れる。
- *
- * だから**ここでは相手を控えて `resize` を見張るだけ**にして、初回の報告は
- * `reportSnapLayoutsTarget()` が `ready()` の後に行う。
+ * ここでは矩形を測定しない（OQ-30）。
+ * マウント直後の `getBoundingClientRect()` は強制的な同期レイアウト計算を発生させ（実測 32〜35ms）、その間はシェル描画とパース評価を並行させる起動シーケンスの前提（02.architecture/05-startup-sequence.md §1）が成立しなくなる。
+ * ここでは対象の要素を保持して `resize` を監視するだけにとどめ、初回の通知は `reportSnapLayoutsTarget()` が `ready()` の後に行う。
  */
 export function trackSnapLayoutsTarget(element: HTMLElement): () => void {
   let timer: ReturnType<typeof setTimeout> | null = null;

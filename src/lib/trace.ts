@@ -1,20 +1,8 @@
 /**
- * フロント側の起動計測（05.performance-budget/05-operations.md §2）。
+ * フロント側の起動計測（T4〜T9 / 05.performance-budget/05-operations.md §2）。
  *
- * ```text
- * T4  初期スクリプト評価開始   (bootstrap.rs が initialization_script で打つ)
- * T5  bootstrap 読み取り完了
- * T6  Worker への parse 送信
- * T7  Worker から HTML 受信
- * T8  本文の DOM 挿入完了 + 次の rAF   ← これが「読める」瞬間
- * T9  window.show() 呼び出し           (Rust 側の ready コマンドで打つ)
- * ```
- *
- * # T0 起点への載せ替え
- *
- * `performance.now()` は `performance.timeOrigin` からの経過。
- * Rust の T0 は UNIX epoch で渡されているので、
- * `timeOrigin + now - t0EpochMs` で「T0 からの経過ミリ秒」になる。
+ * `performance.now()` は `performance.timeOrigin` からの経過時間である。
+ * Rust の T0 は UNIX epoch で渡されるため、`timeOrigin + now - t0EpochMs` で同じ基準の値に変換する。
  */
 import type { TraceConfig, TraceMark } from '@/platform';
 

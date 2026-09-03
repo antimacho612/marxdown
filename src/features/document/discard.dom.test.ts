@@ -2,13 +2,10 @@
 /**
  * 未保存のまま別の文書へ移る前の確認（F-EDIT-03 / N-REL-01）。
  *
- * # ここで見るもの
+ * ダイアログの見た目は Rust 側（`commands::confirm_discard`）で、通しの確認は E2E（`e2e/specs/edit.e2e.ts`）が担当する。
+ * この層が担うのは「尋ねたかどうか」と「答えをどう解釈したか」である。
  *
- * ダイアログの見た目は Rust 側（`commands::confirm_discard`）で、通しの確認は
- * E2E（`e2e/specs/edit.e2e.ts`）。**この層が担うのは「尋ねたかどうか」と
- * 「答えをどう解釈したか」**である。
- *
- * とりわけ **「保存する」を選んだのに保存が失敗したとき、進んではいけない**。
+ * とりわけ「保存する」を選んだのに保存が失敗したとき、進んではいけない。
  * ここを取り違えると、確認したうえで編集内容が消えることになる。
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -68,7 +65,7 @@ describe('confirmDiscard', () => {
     expect(await confirmDiscard()).toBe(false);
   });
 
-  /** 保存する手段が名乗り出ていない状態でも、**進まない側に倒す**。 */
+  /** 保存する手段が登録されていない状態でも、進まない側に倒す。 */
   it('保存の実体が登録されていなければ、進まない', async () => {
     documentStore.isDirty = true;
     choice = 'save';

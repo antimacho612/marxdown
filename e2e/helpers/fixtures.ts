@@ -1,17 +1,11 @@
 /**
- * E2E が読み書きする対象ファイルの用意と、**バイト列の照合**。
+ * E2E が読み書きする対象ファイルの用意と、バイト列の照合。
  *
- * # なぜバイト列で見るのか
+ * バイト列で見るのは、N-CMP-03「編集・保存によって、触っていない箇所のバイト列が変化しないこと」が M2 で最も重い要件だからである（01.requirements/03-non-functional-requirements.md）。
+ * 文字列で比べると、CRLF が LF に潰れたことも BOM が落ちたことも通ってしまうため、ここでは常に `Buffer` を突き合わせる。
  *
- * N-CMP-03「編集・保存によって、触っていない箇所のバイト列が変化しないこと」が
- * M2 で最も重い要件だから（01.requirements/03-non-functional-requirements.md）。
- * 文字列で比べると、CRLF が LF に潰れたことも BOM が落ちたことも通ってしまう。
- * **ここでは常に `Buffer` を突き合わせる。**
- *
- * # 固定パスに置く理由
- *
- * 対象ファイルは argv で渡す（`tauri:options.args`）。WebdriverIO の capabilities は
- * セッションを張る前に確定するので、**テストごとに違うパスを渡せない**。
+ * 固定パスに置くのは、対象ファイルを argv で渡す（`tauri:options.args`）ためである。
+ * WebdriverIO の capabilities はセッションを張る前に確定するので、テストごとに違うパスを渡せない。
  * 1 枚の作業ファイルを `onPrepare` で作り直し、テストはその中身を入れ替えて使う。
  */
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';

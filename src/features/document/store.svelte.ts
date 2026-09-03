@@ -1,23 +1,9 @@
 /**
  * ドキュメントの派生状態（02.architecture/08-state-management.md §1 / ADR-0005）。
  *
- * # ここに本文を置いてはいけない
- *
- * CodeMirror の `EditorState` と Preview の HTML 文字列は、このストアに複製しない。
- * 1 打鍵ごとに巨大な文字列がリアクティビティを通過すると、入力レスポンス 16ms を満たせない。
- *
- * UI が購読するのは以下の**派生値だけ**。
- * - ダーティかどうか（boolean）
- * - カーソル位置（rAF スロットル）
- * - アウトライン（デバウンス）
- * - メタ情報（パス / EOL / エンコーディング / サイズ）
- *
- * # なぜ `.svelte.ts` なのか
- *
- * ルーン（`$state`）はコンパイラが変換する構文であり、拡張子で対象を判別する。
- * ストアを `.svelte.ts` に置くことで、**UI の外**（`open.ts` / `bootstrap.ts` /
- * リンクハンドラ）からも同じオブジェクトを素の代入で読み書きできる。
- * ADR-0005 D2 が状態管理に求めている性質であり、ルーンはこれを依存ゼロで満たす。
+ * 本文（CodeMirror の `EditorState` / Preview の HTML 文字列）はここに複製しない。
+ * UI が購読するのはダーティ・カーソル位置・アウトライン・メタ情報などの派生値だけである。
+ * `.svelte.ts` にしてあるのは、ルーンの対象判定が拡張子ベースのためであり、これにより UI の外（`open.ts` / `bootstrap.ts` など）からも同じオブジェクトを素の代入で読み書きできる（ADR-0005 D2）。
  */
 import type { OutlineItem } from '@/markdown/plugins/line-map';
 import type { TextStats } from '@/markdown/text-stats';
@@ -26,17 +12,9 @@ import type { DocumentMeta, DocumentPayload, Eol } from '@/platform';
 /**
  * ストアが持つメタ情報。
  *
- * **`path` が `null` なのは、まだ一度も保存していない文書だけ**
- * （`Ctrl+N` / 03.ux-spec/04-keybindings.md §3 / `document/new.ts`）。
- * Rust から届く `DocumentMeta` は必ずパスを持つので、`null` を作れるのは
- * フロント側の 1 か所しかない。
- *
- * # 型で広げてある理由
- *
- * パスの有無で振る舞いが変わる場所は多い（監視・最近開いたファイル・履歴・
- * 相対パスの画像・保存先）。**どれも「忘れると静かに壊れる」側**である。
- * ここを `string | null` にしておけば、`path` を使う場所が
- * コンパイル時に全部名指しされる。
+ * `path` が `null` なのは、まだ一度も保存していない文書だけである（`Ctrl+N` / `document/new.ts`）。
+ * Rust から届く `DocumentMeta` は必ずパスを持つため、`null` を作れるのはフロント側の 1 か所のみである。
+ * パスの有無で振る舞いが変わる場所（監視・履歴・相対パスの画像・保存先など）は「対応を忘れると静かに壊れる」側なので、`string | null` にすることで使う場所をコンパイル時に全部洗い出せるようにしてある。
  */
 export type StoredMeta = Omit<DocumentMeta, 'path'> & { path: string | null };
 
@@ -109,16 +87,11 @@ class DocumentStore {
   cursor = $state<CursorPosition | null>(null);
   /**
    * 保存するときに書き戻す EOL の希望（F-EDIT-14 / 03.ux-spec/07-status-and-notifications.md §3 の「クリックで EOL 変換」）。
-   * **`null` はディスクのまま。**
+   * `null` はディスクのまま。
    *
-   * # なぜ `meta.eol` を書き換えないのか
-   *
-   * `meta` は**ディスクの姿**である。`mtimeMs` で衝突を見張り、`readonly` で
-   * 書けるかを判断している一枚に、「これから変えたい値」を混ぜると、
-   * どちらの意味で読んでいるのかが場所ごとに変わる。
-   *
-   * 分けておくと**戻したことも分かる**。`LF → CRLF → LF` と押したとき、
-   * ここが `null` に戻るのでダーティも自然に外れる（`document/eol.ts`）。
+   * `meta` はディスクの姿そのもの（`mtimeMs` で衝突を検知し、`readonly` で書き込み可否を判断する）であり、これから変えたい値を混ぜると意味が場所ごとに変わるため分けてある。
+   * 分けておくことで戻したことも表現できる。
+   * `LF → CRLF → LF` と押すとここが `null` に戻り、ダーティも自然に外れる（`document/eol.ts`）。
    */
   eolOverride = $state<Eol | null>(null);
 

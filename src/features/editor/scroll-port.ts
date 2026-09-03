@@ -1,23 +1,9 @@
 /**
  * スクロール同期の窓口の、Monaco 側の実装（`editor` チャンク）。
  *
- * # ここが engine 固有の座標計算を全部引き受ける
- *
- * 同期のアルゴリズム（`data-line` の線形補間・主導権の受け渡し）は
- * `features/view/scroll-sync.ts` にあり、そちらは **行番号しか知らない。**
- * 「スクロール量と行番号をどう換算するか」はエンジンごとに違うので、
- * その知識をこのファイルに閉じ込める（[ADR-0009](../../../docs/adr/0009-editor-engine-monaco.md)）。
- *
- * `document/text.ts` の `EditorTextPort` と同じ形である。あちらは本文の読み書き、
- * こちらはスクロールとカーソル。どちらも **`main` 側が interface を持ち、
- * `editor` 側が実装を渡す。**
- *
- * # CodeMirror にあったズレは、ここには無い
- *
- * CodeMirror では `scrollDOM.scrollTop` と `lineBlockAt*` の座標系が
- * 本文のパディングぶんズレており、`documentTop` で補正する必要があった。
- * **Monaco の `getTopForLineNumber` と `getScrollTop` は同じ座標系**
- * （どちらも上パディングを含んだスクロール内容の先頭からの高さ）なので、補正は要らない。
+ * 同期アルゴリズム（`features/view/scroll-sync.ts`）は行番号しか知らず、スクロール量との換算はエンジンごとに違うためここに閉じ込める（ADR-0009）。
+ * `document/text.ts` の `EditorTextPort` と同じ形で、`main` 側が interface を持ち `editor` 側が実装を渡す。
+ * CodeMirror では `scrollDOM.scrollTop` と `lineBlockAt*` の座標系がパディング分ズレていたが、Monaco の `getTopForLineNumber` / `getScrollTop` は同じ座標系なので補正が要らない。
  */
 import type { EditorScrollPort } from '@/features/view/scroll-sync';
 
@@ -76,8 +62,8 @@ export function createScrollPort(editor: Editor): EditorScrollPort {
     revealLine(line, options = {}) {
       const target = clampLine(editor, line);
       editor.setPosition({ lineNumber: target, column: 1 });
-      // **画面の外にあるときだけ動かす。** 既に見えている行へ飛んだときに
-      // 画面が跳ねると、どこへ飛んだのか分からなくなる。
+      // 画面の外にあるときだけ動かす。既に見えている行へ飛んだときに
+      // 画面表示が急に変わると、どこへ飛んだのか分からなくなる。
       editor.revealLineInCenterIfOutsideViewport(target);
       if (options.focus !== false) editor.focus();
     },

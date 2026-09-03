@@ -1,40 +1,12 @@
 /**
  * エディタの見た目（`editor` チャンク）。
  *
- * # CSS 変数を JS 側へ読み出す層が要る
+ * CodeMirror ではテーマ値に `var(--mx-*)` をそのまま書けたが、Monaco の `IStandaloneThemeData.colors` は実際の色（hex）しか受け付けないため、トークンを読み出して反映する層が要る（ADR-0009 の受け入れコスト 2）。
+ * 同じ理由で `<html>` の属性（`data-theme` / `style`）と `prefers-color-scheme` をイベント駆動で監視し、変化のたびに反映し直す。
+ * エディタの配色は面（`#mx-editor`）そのものに乗るため `:root` からは読めない（`tokenRoot()` / ADR-0013）。
  *
- * トークン層（`styles/tokens.css` / 02.architecture/10-theming.md）は CSS カスタムプロパティで、
- * テーマは実行中に変わる（OS 追従 / F-CONF-01）。**CodeMirror ではテーマの値に
- * `var(--mx-*)` をそのまま書けたので、CSS 側が切り替わるだけで追従していた。**
- *
- * **Monaco では書けない。** `IStandaloneThemeData.colors` は
- * `{[colorId: string]: string}` で、受け付けるのは実際の色（hex）だけ。
- * したがって「トークンを読み出して流し込む」層がここに要る
- * （[ADR-0009](../../../docs/adr/0009-editor-engine-monaco.md) の受け入れコスト 2）。
- *
- * # 変わったことに気づく手段も要る
- *
- * 同じ理由で、**変化を検知して流し込み直す**必要がある。見張るのは 2 つだけ。
- *
- * ```text
- * <html> の属性        data-theme（F-CONF-01）と style（設定・倍率）の両方がここに乗る
- * prefers-color-scheme  theme が system のとき、OS 側の切り替えを拾う
- * ```
- *
- * # 読み出す位置は `#mx-editor`
- *
- * エディタの配色は面そのものに乗る（ADR-0013）。`:root` から読むと拾えない。
- * 詳しくは `tokenRoot()` を参照。
- *
- * **どちらもイベント駆動で、ポーリングではない**（05.performance-budget/04-targets.md §5）。
- * 購読が生きるのはエディタが載っているあいだだけで、Preview だけで読んでいる起動では
- * このファイル自体がロードされない。
- *
- * # ライトかダークかを、テーマ名から判定しない
- *
- * `data-theme` を見て分岐すると、`system` のときに OS の設定をもう一度解決することになり、
- * カスタム CSS（F-CONF-07）でトークンを上書きされた場合にも外れる。
- * **解決後の背景色の明度で決める。** 実際に描かれる色が唯一の真実になる。
+ * ライト/ダークの判定は `data-theme` ではなく解決後の背景色の明度で行う。
+ * `system` やカスタム CSS によるトークン上書きでもテーマ名だけを見る分岐は外れるためである。
  */
 import { monaco } from './monaco';
 
@@ -261,22 +233,15 @@ export function applyEditorTheme(): void {
 }
 
 /**
- * トークンの変化に追従する。**解除する関数を返す。**
+ * トークンの変化に追従する。解除する関数を返す。
  *
- * `<html>` の属性 1 本で 3 つとも拾える。
+ * `<html>` の `data-theme`（テーマの切り替え、F-CONF-01）と `style`（プレビューのフォント・文字サイズ・行の高さと表示倍率、F-VIEW-11）の属性 2 本で全部拾える。
+ * `applyAppearance` も `applyZoom` も `documentElement.style` を書き換えるので、アプリ側に通知の口を足す必要が無い。
+ * `main` チャンクはエディタの存在を知らないままでいられる。
  *
- * ```text
- * data-theme  テーマの切り替え（F-CONF-01）
- * style       プレビューの設定（フォント・文字サイズ・行の高さ）と表示倍率（F-VIEW-11）
- * ```
- *
- * `applyAppearance` も `applyZoom` も `documentElement.style` を書き換えるので、
- * **アプリ側に通知の口を足す必要が無い。** `main` チャンクはエディタの存在を
- * 知らないままでいられる。
- *
- * > **エディタの設定（`editor.*`）はここを通らない。** 折り返しやタブ幅は CSS に
- * > 現れないので、属性を見ていても変化に気づけない。そちらは
- * > `watchEditorSettings`（`watch-settings.svelte.ts`）がストアを直接購読する。
+ * エディタの設定（`editor.*`）はここを通らない。
+ * 折り返しやタブ幅は CSS に現れないため、属性を見ていても変化に気づけない。
+ * そちらは `watchEditorSettings`（`watch-settings.svelte.ts`）がストアを直接購読する。
  */
 export function watchEditorTokens(reapply: () => void): () => void {
   const observer = new MutationObserver(reapply);

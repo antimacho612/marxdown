@@ -1,26 +1,8 @@
 /**
  * 「ファイルを開く」の唯一の経路。
  *
- * # なぜ 1 本にまとめるのか
- *
- * 開く入口は 5 つある。
- *
- * ```text
- * 起動時の bootstrap            → openDocument（本文が既に手元にある）
- * 別インスタンスからの argv 転送 → openPath
- * ファイルダイアログ (Ctrl+O)   → openPath
- * ドラッグ＆ドロップ            → openPath
- * 本文中の相対リンク            → openPath
- * ```
- *
- * 入口ごとに「読む → パース → 描く → 派生状態を更新する」を書くと、
- * 最近開いたファイルへの記録漏れ、スクロール位置の戻し忘れ、通知の消し忘れが
- * 入口の数だけ起きる。**振る舞いの差は引数で表す**。
- *
- * # ここに本文を残さない
- *
- * 描き終えた HTML も Markdown テキストも、この層は保持しない（ADR-0005）。
- * ストアへ渡すのはメタ情報・アウトライン・計測値といった派生値だけ。
+ * 開く入口は 5 つ（起動時の bootstrap / argv 転送 / ダイアログ / D&D / 相対リンク）あり、個別に実装すると記録漏れやスクロール位置の戻し忘れが入口ごとに起きるため、振る舞いの差はすべて引数で表す。
+ * 描いた HTML も Markdown テキストもこの層は保持せず（ADR-0005）、ストアへ渡すのはメタ情報・アウトライン・計測値などの派生値だけである。
  */
 import { pushHistory } from '@/features/history/history';
 import { scrollToAnchor } from '@/features/preview/anchor';
@@ -150,29 +132,22 @@ export async function openDocument(payload: StoredPayload, options: OpenOptions 
   if (!config) throw new Error('configureOpener が呼ばれていない');
 
   const startedAt = options.startedAt ?? performance.now();
-  // パースを先に投げる。待つのは後。
+  // パースを先に投げてから待つ（シェル描画と重ねるため）。
   traceMark(options, 'T6', `${payload.content.length} chars`);
   const parsing = config.parser.parse(payload.content);
 
-  // 履歴（F-NAV-07）。**本文を差し替える前**に、いま読んでいた位置を控える。
-  // ここを過ぎると `documentStore.meta` は新しいファイルのものになり、
-  // 「どのファイルのどこを読んでいたか」が失われる。
-  //
-  // 無題の文書（`Ctrl+N`）は積まない。**戻り先として指せない**からで、
-  // `Alt+←` で辿り着いても、そこにあった本文はもうどこにも無い。
+  // 本文を差し替える前に、いま読んでいた位置を履歴へ控える（F-NAV-07）。
+  // 無題の文書は戻り先として指せないので積まない。
   if (options.history !== false && payload.path !== null) pushHistory(payload.path, previewScrollTop());
 
   documentStore.meta = payload;
 
-  // 本文のテキストを渡す（F-EDIT-01）。**ストアではなく素のモジュールへ**（ADR-0005）。
-  // エディタが載っていればそちらの内容も差し替わる（`document/text.ts`）。
-  //
-  // パースを投げた**後**に置いてある。ここは代入 1 つだが、`editor` が載っていると
-  // CodeMirror の dispatch を伴う。T6→T7 の重ね合わせを崩さない位置に置く。
+  // 本文はストアではなく素のモジュールへ（ADR-0005 / `document/text.ts`）。
+  // エディタが載っていれば CodeMirror の dispatch を伴うため、T6→T7 の並行処理を崩さないようパース送信の後に置く。
   setDocumentText(payload.content);
 
-  // ディスクと一致した状態から始まる（F-EDIT-03）。
-  // **開き直しでもここを通る**ので、再読み込みの後にダーティが残らない。
+  // ディスクと一致した状態から始める。開き直しでもここを通るので
+  // 再読み込み後にダーティが残らない（F-EDIT-03）。
   markClean();
 
   options.betweenParseAndPaint?.();
@@ -192,21 +167,13 @@ export async function openDocument(payload: StoredPayload, options: OpenOptions 
     documentStore.textStats = parsed.textStats;
     documentStore.notice = null;
 
-    // 「読める」瞬間は DOM 挿入の完了ではなく**次のフレーム**。
-    // DOM に入れただけでは、まだ一度も描かれていない（05.performance-budget/05-operations.md §2）。
+    // 「読める」瞬間は DOM 挿入ではなく次のフレーム（05.performance-budget/05-operations.md §2）。
     await nextFrame();
     traceMark(options, 'T8');
 
-    // アウトラインの差し替えは **T8 の後**（F-VIEW-02）。
-    //
-    // ライトペインが開いていると、この代入が 1 見出し 1 要素の再描画を起こす。
-    // `huge.md`（2MB / 見出し 1249 個）で実測 70〜110ms かかり、**手前に置くと
-    // それが丸ごと T3→T8 に乗る**（Svelte の更新はマイクロタスクで走るので、
-    // 上の `nextFrame()` を待つあいだに終わってしまう）。
-    //
-    // 本文を読み始めるのにアウトラインは要らない。1 フレーム遅れて出て構わない。
-    // ステータスバーの派生値（文字数 / Front Matter）を手前に残しているのは、
-    // あちらが数個のテキストノードで済み、遅れると数字が一瞬変わって見えるため。
+    // アウトラインの差し替えは T8 の後（F-VIEW-02）。
+    // ライトペインが開いていると 1 見出し 1 要素の再描画が走り、`huge.md`（見出し 1249 個）で実測 70〜110ms かかる。
+    // 手前に置くとそれが丸ごと T3→T8 に加算されてしまう。
     documentStore.outline = parsed.outline;
 
     const outcome: OpenOutcome = {
@@ -216,38 +183,25 @@ export async function openDocument(payload: StoredPayload, options: OpenOptions 
     };
     documentStore.stats = outcome;
 
-    // 本文に後から手を入れる（画像 / コピーボタン / ハイライト）。
-    //
-    // T8 の**後**に置くのが要点。どれも読み始めるのに要らない仕事であり、
-    // 手前に置くと「本文が読める」までの時間がそのぶん伸びる。
-    //
-    // 段階的描画では最初のチャンクしかまだ DOM に無い。まず見えているぶんを
-    // 直し、残りが入り終わったらもう一度呼ぶ（`enhance` は処理済みを飛ばす）。
-    // 無題の文書には基点が無い。相対パスの画像は解決できず、
-    // スコープ外として扱われる（`preview/enhance.ts`）。
+    // 画像解決・コピーボタン・ハイライトは T8 の後に行う（読むのに不要な処理のため）。
+    // 段階的描画では最初のチャンクしかまだ DOM に無いので、残りが入り終わったらもう一度呼ぶ（`enhance` は処理済みを飛ばす）。
+    // 無題の文書は基点が無いため、相対パスの画像はスコープ外として扱われる（`preview/enhance.ts`）。
     const enhanceOptions = { baseDir: dirOf(payload.path ?? '') };
     enhance(container, enhanceOptions);
 
-    // 検索が開いていれば、新しい本文で引き直す（閉じない理由は `search.ts`）。
     refreshSearch();
 
-    // `./other.md#section` で開かれた場合の着地点（F-VIEW-05 / F-VIEW-07）。
-    // 段階的描画では、飛び先がまだ DOM に入っていないことがある。
-    // **見つからなかったときだけ**、全部入り終わってからもう一度試す
-    // （見つかっているのに繰り返すと、その後のスクロールを奪い返してしまう）。
+    // `./other.md#section` の着地点（F-VIEW-05 / F-VIEW-07）。段階的描画では飛び先がまだ無いことがあるため、見つからなかったときだけ全チャンク投入後に再試行する。
     let anchorPending = options.anchor !== undefined && !scrollToAnchor(container, options.anchor);
 
-    // 残りのチャンクは idle で入る。ここでは待たない。
+    // 残りのチャンクは idle で入る（待たない）。
     void result.done.then((at) => {
       enhance(container, enhanceOptions);
-      // 後から入ったチャンクの見出しを、アウトラインの追従に拾わせる
-      // （`IntersectionObserver` の観測対象を足す / `features/outline/follow.ts`）。
       refreshOutline();
       if (anchorPending && options.anchor !== undefined) {
         anchorPending = !scrollToAnchor(container, options.anchor);
       }
-      // 段階的描画では、まだ入っていないチャンクのぶん scrollHeight が足りず、
-      // 復元位置が頭打ちになる。全部入ったところでもう一度当てる。
+      // 段階的描画中は scrollHeight が足りず復元位置が頭打ちになるため、全部入ったら当て直す。
       if (options.restoreScroll !== undefined && container.scrollTop < options.restoreScroll) {
         container.scrollTop = options.restoreScroll;
       }
@@ -255,16 +209,10 @@ export async function openDocument(payload: StoredPayload, options: OpenOptions 
       return at;
     });
 
-    // 履歴への記録は本文が見えた**後**。IPC 1 回ぶんでも T8 の手前に置かない。
-    //
-    // **無題の文書は、履歴にも監視にも載らない。** ディスクに実体が無いので、
-    // 一覧から開き直すこともできなければ、外から書き換わることもない。
+    // 無題の文書は履歴にも監視にも載らない（ディスクに実体が無いため）。
     if (payload.path !== null) {
       if (options.remember !== false) void rememberRecent(payload.path);
-
-      // 監視の付け替え（F-EDIT-16）。**開いているファイルだけを見る**（N-PERF-05）。
-      // 前のファイルの監視は Rust 側で外れるので、ここに解除は要らない。
-      // 履歴と同じ理由で T8 の後に置く。失敗しても本文はもう画面に出ている。
+      // 開いているファイルだけを監視する（N-PERF-05）。前のファイルの監視は Rust 側で外れる。
       void watch(payload.path);
     }
 
@@ -282,8 +230,7 @@ export async function openDocument(payload: StoredPayload, options: OpenOptions 
  * 次の起動でも同じ失敗を踏むことになる（03.ux-spec/08-empty-states.md §1 の一覧は道具であって記録ではない）。
  */
 export async function openPath(path: string, options: OpenOptions = {}): Promise<OpenOutcome | null> {
-  // 編集中の内容を捨てる前に尋ねる（F-EDIT-03 / `discard.ts`）。
-  // **読み込みより前**に置く。開くと決まっていないのに I/O を始めない。
+  // 編集中の内容を捨てる前に尋ねる（F-EDIT-03）。開くと決まっていないので I/O より前に置く。
   if (!(await confirmDiscard())) return null;
 
   const startedAt = options.startedAt ?? performance.now();
@@ -331,60 +278,41 @@ export async function openDropped(paths: string[]): Promise<OpenOutcome | null> 
 /**
  * いま開いているファイルを、ディスクの最新の内容で開き直す（F5）。
  *
- * # なぜアプリ側の仕事なのか
- *
- * F5 は WebView 自身の「再読み込み」に割り当たっている。そのまま通すと
- * ページごと再評価され、`initialization_script` に載っている**起動時の**
- * bootstrap がもう一度適用される。つまりコマンドラインで指定したファイルが、
- * その後に開いたファイルを押しのけて戻ってくる。
- *
- * ページを作り直させないのが前提なので、「再読み込み」の意味はここで与える。
- * WebView の再読み込みは 6MB のバンドル評価と WebView 内部の作り直しを伴うが、
- * こちらは読み直しとパースだけで済む（ウォーム起動と同じ経路）。
- *
- * スクロール位置は保つ。同じファイルを見続けているのだから、
- * 先頭に飛ばされるのは「更新」ではなく「開き直し」になってしまう。
- *
- * 何も開いていなければ何もしない。編集（M2）が入ったら、
- * ダーティな本文を捨てないための確認をここに足すこと。
- *
- * 外部変更を検知したときの自動再読み込み（`watch.ts`）もここを通る。
- * **スクロール位置を保つ理由がそちらでは一層強い**（自分では何も操作していない）。
+ * F5 は WebView 自身の「再読み込み」に割り当たっているため、素通しすると `initialization_script` の起動時 bootstrap が再適用され、指定ファイルが再読み込みされてその後に開いたファイルの内容が上書きされてしまう。
+ * ここで意味を上書きし、読み直しとパースだけで済ませる（ウォーム起動と同じ経路）。
+ * スクロール位置は保つ（先頭に戻ると「更新」ではなく「開き直し」になる）。
+ * 外部変更の自動再読み込み（`watch.ts`）もここを通る。
  */
 export async function reloadCurrent(options: ReloadOptions = {}): Promise<OpenOutcome | null> {
   const meta = documentStore.meta;
   if (meta === null) return null;
-  // まだ一度も保存していない文書（`Ctrl+N`）には読み直す先が無い。
-  // **`F5` を押しても何も起きない**のが正しい（捨てるものしか無い）。
+  // 無題の文書（`Ctrl+N`）には読み直す先が無い。F5 は何もしないのが正しい。
   if (meta.path === null) return null;
 
   const container = document.querySelector<HTMLElement>(PREVIEW_SELECTOR);
 
   const outcome = await openPath(meta.path, {
-    // **キーごと省く。** `exactOptionalPropertyTypes` の下では
-    // `encoding: undefined` と「指定なし」は別物で、前者は型が通らない。
+    // キーごと省く（`exactOptionalPropertyTypes` では `encoding: undefined` と
+    // 「指定なし」が別物になる）。
     ...(options.encoding && { encoding: options.encoding }),
     resetScroll: false,
     restoreScroll: container?.scrollTop ?? 0,
-    // 既に一覧の先頭にあるファイルを開き直すだけ。順序は変わらないので IPC を省く。
     remember: false,
-    // **同じ場所に居続ける操作**なので履歴に積まない（F-NAV-07）。
-    // 積むと、外部変更が来るたびに `Alt+←` が 1 段ずつ効かなくなる。
+    // 同じ場所に居続ける操作なので履歴に積まない（積むと `Alt+←` が段階的に効かなくなる）。
     history: false,
   });
 
-  // 内容が変わっていないと画面は 1 ピクセルも動かない。押した操作が
-  // 届いたことは伝える（03.ux-spec/07-status-and-notifications.md §2 の情報通知。3 秒で消える）。
+  // 内容が同じで画面が動かなくても、操作が届いたことは伝える（3 秒で消える情報通知）。
   if (outcome) notifyInfo(options.notice ?? ja.open.reloaded);
   return outcome;
 }
 
-/** 監視の付け替え。失敗しても開く操作は成功しているので、握り潰す。 */
+/** 監視の付け替え。失敗しても開く操作は成功しているので握り潰す（`F5` で読み直せる）。 */
 async function watch(path: string): Promise<void> {
   try {
     await getPlatform().watchPath(path);
   } catch {
-    // 監視できなくても `F5` で読み直せる
+    // 監視できなくても致命的ではない
   }
 }
 

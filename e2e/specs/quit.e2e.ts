@@ -1,21 +1,11 @@
 /**
  * 終了時の確認（F-EDIT-03 / 03.ux-spec/07-status-and-notifications.md §1）。
  *
- * # ここで確かめられること / られないこと
- *
- * 確認は**ネイティブのモーダルダイアログ**（`src-tauri/src/close.rs`）で、
- * WebDriver からはボタンを押せない。3 択のどれを押すとどうなるかは、
- * ここでは確かめられない。
- *
- * **確かめられるのは、その手前の一番危ない継ぎ目である。**
- *
- * ```text
- * フロントの isDirty → set_dirty（IPC）→ AppState → request_quit の分岐
- * ```
- *
- * ここが繋がっていないと、**未保存のまま黙って終了する**。
- * 単体テストはフロント側の `setDirty` が呼ばれたことしか見ておらず、
- * Rust に届いているかは見ていない。
+ * 確認はネイティブのモーダルダイアログ（`src-tauri/src/close.rs`）で、WebDriver からはボタンを押せない。
+ * 3 択のどれを押すとどうなるかは、ここでは確かめられない。
+ * 確かめられるのは、その手前の一番危ない継ぎ目、フロントの `isDirty` → `set_dirty`（IPC）→ `AppState` → `request_quit` の分岐である。
+ * ここが繋がっていないと、未保存のまま黙って終了する。
+ * 単体テストはフロント側の `setDirty` が呼ばれたことしか見ておらず、Rust に届いているかは見ていない。
  */
 import { Key } from 'webdriverio';
 

@@ -1,30 +1,12 @@
 /**
  * リストの継続入力と自動採番（F-EDIT-09 の `Enter` / F-EDIT-10 / `editor` チャンク）。
  *
- * # ここは CodeMirror では書かなくてよかった
+ * CodeMirror では `@codemirror/lang-markdown` が既定で持っていたが Monaco には無いため自作した（ADR-0009 の受け入れコスト 1）。
+ * Monaco の `onEnterRules` は固定文字列しか足せず、番号付きリストの次の番号は計算が要るため使えない。
+ * リストでも引用でもない行では `null` を返し、Monaco の既定の改行へ渡す（`keymap.ts`）。
  *
- * `@codemirror/lang-markdown` が `insertNewlineContinueMarkup` と
- * `deleteMarkupBackward` を既定で持っていた（M2 Phase 4 は「自前のコードを足さずに済んだ」）。
- * **Monaco には無いので、ここが宿題として戻ってきた**
- * （[ADR-0009](../../../docs/adr/0009-editor-engine-monaco.md) の受け入れコスト 1）。
- *
- * # `onEnterRules` では足りない
- *
- * Monaco は言語設定の `onEnterRules` で継続入力を宣言できるが、
- * **足せるのは固定の文字列だけ**である。番号付きリストの次の番号（F-EDIT-10）は
- * 計算しないと出せないので、`Enter` を自分で持つ。
- *
- * # 手を引いたら既定の `Enter` へ渡す
- *
- * リストでも引用でもない行では `null` を返し、`keymap.ts` が Monaco の
- * 既定の改行に渡す。**握り潰すと、ただの改行ができなくなる。**
- *
- * # 続きの項目までは振り直さない
- *
- * `1. 2. 3.` と並んでいる途中で `Enter` を押しても、後続の番号は触らない。
- * 触れば「編集していない箇所のバイト列が変わる」ことになり、N-CMP-03 に反する。
- * Markdown は `1.` が並んでいても正しく採番して描くので、実害も無い
- * （`format.ts` の `toggleOrderedList` と同じ判断）。
+ * 続きの項目の番号は振り直さない。
+ * 触ると「編集していない箇所が変わる」ことになり N-CMP-03 に反する（Markdown は不連続な採番でも正しく描くので実害も無い）。
  */
 import { byRange, lineInfo, offsetRange, type MarkdownEdit } from './edits';
 

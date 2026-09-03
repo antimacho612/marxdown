@@ -2,20 +2,15 @@
 /**
  * スクロール同期の配線と双方向ジャンプ（F-MODE-05 / 03.ux-spec/03-split-mode.md §2, §3）。
  *
- * 補間の算数は `scroll-sync.test.ts` が見ている。**ここが見るのは配線のほう**で、
- * 「どちらが主導するか」「ダブルクリックがどの行になるか」「抜けたときに外れるか」を並べる。
+ * 補間の算数は `scroll-sync.test.ts` が見ている。
+ * ここが見るのは配線のほうで、「どちらが主導するか」「ダブルクリックがどの行になるか」「抜けたときに外れるか」を並べる。
  *
- * # エディタは偽物でよい
+ * 受け取るのが `EditorScrollPort`（行番号だけの窓口）なので、Monaco を載せずに配線を全部見られる。
+ * ポートの Monaco 側の実装は `features/editor/scroll-port.dom.test.ts` が本物のエディタで見ている。
  *
- * 受け取るのが `EditorScrollPort`（行番号だけの窓口）なので、
- * **Monaco を載せずに配線を全部見られる。** ポートの Monaco 側の実装は
- * `features/editor/scroll-port.dom.test.ts` が本物のエディタで見ている。
- *
- * # jsdom はレイアウトしない
- *
- * `getBoundingClientRect()` が全部 0 を返すため、`data-line` のアンカーは
- * 位置を持てない。**そこは差し替える**（`stubRects`）。位置を持たせないと
- * `topForLine` が常に 0 を返し、どの行を渡しても同じ結果になってしまう。
+ * `getBoundingClientRect()` が jsdom では全部 0 を返すため、`data-line` のアンカーは位置を持てない。
+ * そこは差し替える（`stubRects`）。
+ * 位置を持たせないと `topForLine` が常に 0 を返し、どの行を渡しても同じ結果になってしまう。
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -49,12 +44,7 @@ const port: EditorScrollPort = {
 
 /**
  * `data-line` を持つ段落を 3 つ置き、jsdom が返さない位置を与える。
- *
- * ```text
- * data-line  0 → 行 1  top   0
- * data-line  9 → 行 10 top 200
- * data-line 19 → 行 20 top 400
- * ```
+ * `data-line` 0/9/19（行 1/10/20）にそれぞれ top 0/200/400 を割り当てる。
  */
 function stubRects(): HTMLElement {
   const preview = document.querySelector<HTMLElement>('#mx-preview');
@@ -137,7 +127,7 @@ describe('主導権 (§2)', () => {
     expect(scrollToLine).toHaveBeenCalledWith(20);
   });
 
-  it('動かされた側からは戻さない（揺り戻しを止める）', () => {
+  it('動かされた側からは戻さない（循環的な同期を止める）', () => {
     const preview = stubRects();
     startScrollSync();
 

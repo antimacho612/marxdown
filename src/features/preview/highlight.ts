@@ -1,22 +1,11 @@
 /**
  * コードブロックのシンタックスハイライト（F-VIEW-03）。
  *
- * **このモジュールは遅延チャンク `highlight` の入口**（02.architecture/05-startup-sequence.md §3）。
- * コードブロックを含むドキュメントを描いたときにだけロードされる。
- * `preview` から静的に import してはいけない。クリティカルパスに載る。
+ * 遅延チャンク `highlight` の入口。
+ * コードブロックを含む文書を描いたときにだけロードされるため、`preview` から静的に import してはいけない。
  *
- * # なぜ highlight.js か（04.tech-stack/04-markdown.md §5）
- *
- * Shiki は VS Code と同一の見た目になるが ~1MB の WASM を伴う。
- * **コードブロックのハイライトは読みやすさの問題であって、正確さの問題ではない。**
- * Principle 8 に照らして 1MB は正当化できない。
- *
- * # なぜ言語を絞るのか
- *
- * `highlight.js/lib/common` は 40 言語弱を積んでいる。中心ユースケースは
- * 「LLM が生成した Markdown を読む」ことなので、そこに現れる言語だけを登録する。
- * 未登録の言語はハイライトされないだけで、コードは普通に読める。
- * **登録しないことの害は小さく、積むことの害はバンドル予算に直接来る。**
+ * Shiki（VS Code と同一の見た目）は ~1MB の WASM を伴い、読みやすさの問題に対して正当化できないため highlight.js を使う（04.tech-stack/04-markdown.md §5）。
+ * 言語は LLM 生成の Markdown に現れる範囲に絞って登録し、未登録言語はハイライトされないだけで普通に読める（積む害のほうがバンドル予算に直接来る）。
  */
 import hljs from 'highlight.js/lib/core';
 

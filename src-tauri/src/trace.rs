@@ -1,19 +1,10 @@
 //! 起動計測ハーネス（05.performance-budget/05-operations.md §2）。
 //!
-//! Rust 側の T0〜T3 とフロント側の T4〜T9 を、**同一の時間軸**に載せて JSON へ出す。
-//!
-//! ```text
-//! Rust:      T0 main() 冒頭 / T1 引数解析完了 / T2 ファイル読み込み完了 / T3 ウィンドウ生成呼び出し完了
-//! Frontend:  T4 初期スクリプト評価開始 / T5 bootstrap 読み取り完了 / T6 Worker へ parse 送信
-//!            T7 Worker から HTML 受信 / T8 本文 DOM 挿入完了 + 次の rAF / T9 window.show()
-//! ```
-//!
-//! # 時間軸の合わせ方
+//! Rust 側の T0〜T3（main() 冒頭 / 引数解析完了 / ファイル読み込み完了 / ウィンドウ生成呼び出し完了）と、フロント側の T4〜T9（初期スクリプト評価開始 / bootstrap 読み取り完了 / Worker へ parse 送信 / Worker から HTML 受信 / 本文 DOM 挿入完了 + 次の rAF / window.show()）を、同一の時間軸に統一して JSON へ出力する。
 //!
 //! `Instant` は単調増加だがプロセス間・言語間で共有できない。
-//! そこで T0 の時点の **UNIX epoch ミリ秒**を bootstrap でフロントへ渡し、
-//! フロント側は `performance.timeOrigin + mark.startTime - t0EpochMs` を送り返す。
-//! これで両者が「T0 からの経過ミリ秒」という同じ軸に乗る。
+//! そこで T0 の時点の UNIX epoch ミリ秒を bootstrap でフロントへ渡し、フロント側は `performance.timeOrigin + mark.startTime - t0EpochMs` を計算して送り返す。
+//! これにより両者が「T0 からの経過ミリ秒」という同じ基準で扱えるようになる。
 
 use std::path::PathBuf;
 use std::sync::Mutex;

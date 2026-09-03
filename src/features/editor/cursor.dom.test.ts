@@ -2,12 +2,8 @@
 /**
  * カーソル位置の間引き（03.ux-spec/07-status-and-notifications.md §3 / ADR-0005）。
  *
- * # Monaco を載せない
- *
- * `installCursorReport` が触るのは `getPosition()` と `onDidChangeCursorPosition`
- * の 2 つだけで、**本物のエディタが要る性質はどこにも無い**。
- * 偽物にすると「1 フレームに何度も動かす」を正確に作れるので、
- * ここで見たいこと（間引き）がそのまま試験になる。
+ * `installCursorReport` が触るのは `getPosition()` と `onDidChangeCursorPosition` の 2 つだけで、本物のエディタが要る性質はどこにも無いため Monaco は載せない。
+ * 偽物にすると「1 フレームに何度も動かす」を正確に作れるので、ここで見たいこと（間引き）がそのまま試験になる。
  *
  * rAF も自前で持つ。jsdom のものは実時間で走るので、
  * 「まだ描いていない」状態を確かめられない。

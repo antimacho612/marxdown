@@ -1,24 +1,13 @@
 /**
- * 編集コマンドの土台（`editor` チャンク / [ADR-0009](../../../docs/adr/0009-editor-engine-monaco.md)）。
+ * 編集コマンドの土台（`editor` チャンク / ADR-0009）。
  *
- * # コマンドは「編集を組み立てて返す」だけにする
+ * コマンドはエディタを直接触らず、モデルと選択範囲から `EditResult` を組み立てて返す。
+ * `null` を返せば「手を引いた」として呼び出し側が既定動作へ渡せ（`Tab` / `Enter` がこれを要求する）、かつテストがエディタ無しで回せる（`tests/editor-harness.ts`）。
  *
- * エディタを直接触らせず、**モデルと選択範囲から `EditResult` を作って返す**形にしてある。
- * 理由は 2 つ。
- *
- * 1. **手を引けるようにするため。** `null` を返したコマンドは何もしなかったことになり、
- *    呼び出し側が既定の動作へ渡せる（`Tab` と `Enter` がこれを要求している）。
- *    CodeMirror の `StateCommand` が `false` を返していたのと同じ約束
- * 2. **テストからエディタ無しで回せるようにするため**（`tests/editor-harness.ts`）
- *
- * # 位置は文字数（offset）で数える
- *
- * Monaco は行と桁で位置を表すが、書式コマンドが見たいのは「記号が何文字あるか」である。
- * 行をまたぐ判定も素直に書けるので、**中の計算は offset で行い、境界で
- * `getPositionAt` / `getOffsetAt` を通す。**
- *
- * offset はモデルの EOL の長さで数えられる。`editor.ts` が LF を明示しているので、
- * ここでの offset は LF 基準の文字数と一致する（N-CMP-03）。
+ * 位置は行・桁ではなく文字数（offset）で数える。
+ * 書式コマンドが見たいのは記号の数であり、行をまたぐ判定も素直に書ける。
+ * 境界でのみ `getPositionAt` / `getOffsetAt` を通す。
+ * `editor.ts` が LF を明示しているため、offset は LF 基準の文字数と一致する（N-CMP-03）。
  */
 import { monaco } from './monaco';
 
@@ -141,11 +130,8 @@ interface RangeResult {
 /**
  * 選択範囲ごとに結論を出し、1 つの編集にまとめる（CodeMirror の `changeByRange` にあたる）。
  *
- * # 前の範囲がずらしたぶんを足す
- *
- * `build` が返す `select` は**その範囲自身の編集しか知らない**。複数カーソルでは
- * 手前の範囲が入れた記号のぶんだけ後ろが動くので、**昇順に回して差分を積む。**
- * CodeMirror はこれを自分でやっていた。
+ * `build` が返す `select` はその範囲自身の編集しか知らないため、複数カーソルでは手前の範囲が入れた記号の分だけ後ろが動く。
+ * 昇順に回して差分を積むことで補正する。
  */
 export function byRange(
   model: monaco.editor.ITextModel,

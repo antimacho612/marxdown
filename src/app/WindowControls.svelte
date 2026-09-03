@@ -1,21 +1,8 @@
 <!--
   ウィンドウ操作ボタン（03.ux-spec/01-screen-layout.md §1）。
-
-  ```text
-                                              ─  □  ✕
-  ```
-
-  **Windows の作法にそのまま合わせる。** 右上・`─ □ ✕` の順・幅 46px・
-  閉じるのホバーだけ赤。ここは「Marxdown らしさ」を出す場所ではなく、
-  ウィンドウを閉じ損ねない場所である（Principle 5「Familiar Over Novel」）。
-
-  絵は `Mark.svelte` と同じくインライン SVG で持つ。Segoe Fluent Icons の
-  グリフを使うと、フォントが無い環境で豆腐になる。**アイコンフォントに
-  依存しない**のは、クリティカルパスにリクエストを増やさないためでもある。
-
-  線幅 1px の直線だけで組んであるのは、この寸法（10px 角）では
-  それ以外がぼやけるため。`shape-rendering` は既定のまま（`crispEdges` にすると
-  高 DPI で線が消える）。
+  Windows の作法にそのまま合わせる（右上・`─ □ ✕` の順・幅 46px・閉じるのホバーのみ赤 / Principle 5「Familiar Over Novel」）。
+  絵はインライン SVG である（Segoe Fluent Icons を使うと、フォントが無い環境で文字化けの表示になる）。
+  10px 角の寸法では線幅 1px の直線以外は輪郭がぼやけるため、`shape-rendering` は既定のままにしている（`crispEdges` にすると高 DPI 環境で線が表示されなくなる）。
 -->
 <script lang="ts">
   import { viewStore } from '@/features/view/store.svelte';

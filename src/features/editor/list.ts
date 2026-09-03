@@ -1,22 +1,10 @@
 /**
  * リストのインデント（F-EDIT-09 の `Tab` / `Shift+Tab` / `editor` チャンク）。
  *
- * # `indentMore` では入れ子にならない
- *
- * Monaco の `Tab` は `tabSize`（2 文字）で一律に下げる。`1. ` の下に入れると
- * 2 文字しか下がらず**入れ子にならない**（CommonMark は親の本文が始まる桁まで
- * 下げることを求める）。ここが埋めているのはその差である。
- *
- * # リストでない場所では必ず手を引く
- *
- * `null` を返すと `keymap.ts` が Monaco の既定の `Tab` へ渡す。
- * 返さないと、ただのインデントができなくなる。
- *
- * # 継続入力と自動採番は隣（`enter.ts`）
- *
- * CodeMirror では `@codemirror/lang-markdown` が `Enter` と `Backspace` を
- * 既定で持っていたが、**Monaco には無いので自作した**
- * （[ADR-0009](../../../docs/adr/0009-editor-engine-monaco.md) の受け入れコスト 1）。
+ * Monaco の既定 `Tab` は `tabSize`（2 文字）で一律に下げるが、`1. ` の下は CommonMark 上 3 文字下げないと入れ子にならない。
+ * その差をここで埋める。
+ * リストでない場所では `null` を返して `keymap.ts` に既定の `Tab` を渡す。
+ * 継続入力と自動採番は隣の `enter.ts` が扱う（どちらも Monaco に無いため自作 / ADR-0009）。
  */
 import { offsetRange, selectedLines, type MarkdownEdit } from './edits';
 import type { monaco } from './monaco';

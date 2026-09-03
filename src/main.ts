@@ -1,14 +1,7 @@
 /**
  * エントリポイント。`main` チャンクのルート。
- *
- * ここに import を足すと、そのままクリティカルパスに載る。
- * 追加の前に 05.performance-budget/06-decision-flow.md の判定手順を通すこと。
- *
- * # なぜ Svelte を動的 import しないか
- *
- * 動的 import にすると Svelte のランタイムが `main` チャンクから外れ、
- * 150KB の予算計測（size-limit の `main-*.js`）が実態を映さなくなる。
- * **予算を守るためには、予算の計測対象に載っている必要がある。**
+ * ここに import を足すとそのままクリティカルパスに載るため、追加の前に 05.performance-budget/06-decision-flow.md の判定手順を通すこと。
+ * Svelte を動的 import しないのは、外すと size-limit の `main-*.js` 予算計測が実態を反映しなくなるためである。
  */
 import '@/styles/tokens.css';
 import '@/styles/themes.css';

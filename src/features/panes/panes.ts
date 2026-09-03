@@ -1,27 +1,11 @@
 /**
  * ペインの開閉と幅（03.ux-spec/06-panes.md §3）。
  *
- * # キーの 2 系統のうち「ペイン」側
+ * §4 はキーの意味を「ペイン（開閉する）」と「ビュー（出してフォーカスする）」の 2 系統に分けることを求めており、このモジュールは前者だけを持ち中身が何かは知らない（ビュー側は `features/outline/show.ts`）。
+ * 開閉は倍率と同じく `initPanes` で bootstrap から同期的に当てる（後から当てると本文が一度全幅で描かれた後に幅が縮小して見える）。
  *
- * §4 は、キーの意味を **ペイン（開閉する）** と **ビュー（出してフォーカスする）**
- * の 2 系統に分けることを求めている。このモジュールが持つのは前者だけで、
- * **中身が何であるかを知らない**。アウトラインを左ペインへ移す日が来ても、
- * ここは 1 行も変わらない。
- *
- * ビュー側（`Ctrl+Shift+U` で Outline を出してフォーカスする）は
- * `features/outline/show.ts` にある。
- *
- * # 開閉は bootstrap から同期的に当てる
- *
- * 倍率（`zoom.ts`）と同じ。後から当てると、本文が一度全幅で描かれてから
- * 横に詰まる（02.architecture/04-rust-responsibilities.md §5 / 02.architecture/05-startup-sequence.md §1）。`initPanes` は
- * **シェルを描くより前**に呼ぶこと。
- *
- * # Svelte に幅を持たせてよい理由
- *
- * ADR-0005 が禁じているのは**本文**をリアクティブな状態に置くことで、
- * 数値 1 つはその対象ではない。ドラッグ中の更新は rAF で間引き（`Resizer`）、
- * 永続化は 400ms のデバウンス（`schedulePersist`）で受ける。
+ * ADR-0005 が禁じるのは本文をリアクティブな状態に置くことで、数値 1 つは対象外である。
+ * ドラッグ中は rAF で間引き、永続化は 400ms デバウンスで受ける。
  */
 import { viewStore } from '@/features/view/store.svelte';
 import { getPlatform, type Bootstrap, type Panes } from '@/platform';

@@ -1,26 +1,9 @@
 <!--
   ステータスバー（03.ux-spec/07-status-and-notifications.md §3）。
-
-  ```text
-  Preview   UTF-8  LF   12,345 文字   約 4 分            100%
-  ```
-
-  **押しても何も起きないものをボタンに見せない**（§3.1 の表）。
-  押せるのはモード・エンコーディング・EOL・倍率、そして Split のときの `⇄`。
-
-  ```text
-  モード         押すと選択肢が出る（Preview / Edit / Split）
-  エンコーディング  押すと選び直せる。**読み直しを伴う**（`document/encoding.ts`）
-  EOL           押すと変換する。**次の保存で書き戻す**（`document/eol.ts`）
-  カーソル位置    表示だけ。Preview では出ない（§3 の但し書き）
-  文字数 / 読了時間  表示だけ。詳細の置き場所はコマンドパレット（M3）
-  倍率           押すと等倍に戻る
-  ```
-
-  スクロール同期の `⇄` は Split のときだけ出る（03.ux-spec/03-split-mode.md §2）。
-
-  計測値（パース / 描画）は開発ビルドでのみ出す。開発中の道具であって、
-  製品の画面に居座る理由が説明できない（06.roadmap/invariants.md）。
+  押しても何も起きないものはボタンにしない（§3.1）。
+  エンコーディングの再解釈は読み直しを伴い、EOL の変換は次の保存で書き戻す（`document/encoding.ts` / `document/eol.ts`）。
+  スクロール同期の `⇄` は Split のときだけ表示する（03.ux-spec/03-split-mode.md §2）。
+  計測値は開発ビルドのみ表示する（06.roadmap/invariants.md）。
 -->
 <script lang="ts">
   import { effectiveEol, nextEol as nextEolOf, toggleEol } from '@/features/document/eol';

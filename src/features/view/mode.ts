@@ -1,23 +1,10 @@
 /**
  * 表示モードの決定と切り替え（F-MODE-01, 02, 06, 07 / 03.ux-spec/02-view-modes.md）。
  *
- * # クリティカルパスに載ってよい形
- *
- * 06.roadmap/m2-editor.md §1.2 の制約。ここにあるのは**モードの値と、切り替えの手続き**だけで、
- * エディタの実体は `features/editor/open-editor.ts` 経由の動的 import になっている。
- * **エディタを直接 import しないこと。** `editor` チャンク（Monaco）が `main` に載る。
- *
- * # 隠すのは CSS の担当
- *
- * `data-mx-mode` を `<html>` に立てるだけで、要素の付け外しはしない
- * （`styles/shell.css`）。エディタを壊すと Undo 履歴が消え、
- * 03.ux-spec/02-view-modes.md §4「モードを切り替えても保持する」が壊れる。
- *
- * # スクロール位置は明示的に戻す
- *
- * `display: none` された要素は `scrollTop` を保てない。§4 が保持を要求している以上、
- * 隠す直前に控えて、戻すときに当て直す。行番号ベースの対応付け（Split の
- * スクロール同期）は Phase 5 の担当で、ここは**同じ面へ戻ってきたときの復元**だけを見る。
+ * ここにあるのはモードの値と切り替え手続きだけである（06.roadmap/m2-editor.md §1.2 の制約）。
+ * エディタは `features/editor/open-editor.ts` 経由の動的 import で、直接 import すると `editor` チャンクが `main` に載る。
+ * 表示の切り替えは `data-mx-mode` 属性で CSS が行い要素の付け外しはしない（エディタを壊すと Undo 履歴が消え §4 に反する）。
+ * `display: none` された要素は `scrollTop` を保てないため、隠す直前にスクロール位置を控えて戻すときに当て直す。
  */
 import { cancelLiveRender, renderNow } from '@/features/document/live';
 import { mountEditorLazily, relayoutEditorLazily, setSplitSyncLazily } from '@/features/editor/open-editor';
@@ -49,14 +36,10 @@ let previewScroll = 0;
 /**
  * 起動時のモードを決める（F-MODE-07 / 03.ux-spec/02-view-modes.md §3）。
  *
- * ```text
- * 1. CLI で --mode が指定されている        → それに従う
- * 2. ファイル単位の記憶がある（設定 ON 時）  → M5（F-MODE-08）
- * 3. ファイルが読み取り専用               → Preview
- * 4. それ以外                            → 既定の Preview
- * ```
+ * 優先順位は、CLI で `--mode` が指定されていればそれに従い、次にファイル単位の記憶（設定 ON 時、M5 / F-MODE-08）、ファイルが読み取り専用なら Preview、それ以外は既定の Preview、の順である。
  *
- * 2 と、4 の設定キー（`defaultMode`）は M5。**いま無いのは器であって判断ではない。**
+ * 2 と、4 の設定キー（`defaultMode`）は M5。
+ * いま無いのは器であって判断ではない。
  * 既定値が `"preview"` である以上、設定キーが無い状態の結果は 4 と同じになる。
  */
 export function decideInitialMode(bootstrap: Bootstrap | null, meta: DocumentMeta | null): ViewMode {

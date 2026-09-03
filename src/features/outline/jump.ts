@@ -1,13 +1,7 @@
 /**
  * アウトラインから本文の見出しへ飛ぶ（F-VIEW-02 / 03.ux-spec/06-panes.md §2）。
  *
- * # `data-line` で引く
- *
- * 見出しには `markdown-it-anchor` が付けた `id` もあるが、**空になりうる**
- * （記号だけの見出し）うえ、重複時の連番は Markdown 側の都合で変わる。
- * `data-line`（`line-map.ts`）は 1 行に 1 ブロックしか始まらないので一意で、
- * 02.architecture/06-markdown-rendering-pipeline.md §3 が「アウトラインからのジャンプ」を載せている土台そのもの。
- * `id` は保険として後ろに置く。
+ * `id`（`markdown-it-anchor`）は記号だけの見出しで空になりうるうえ重複連番が Markdown 側の都合で変わるため、行に 1 ブロックしか始まらず一意な `data-line`（`line-map.ts`）を優先し、`id` は保険として後ろに置く。
  */
 import { jumpToEditorLine } from '@/features/view/scroll-sync';
 import type { OutlineItem } from '@/markdown/plugins/line-map';

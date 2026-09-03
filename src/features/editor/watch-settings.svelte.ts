@@ -1,29 +1,18 @@
 /**
  * 設定の変化を拾う（`editor` チャンク / F-CONF-04）。
- *
- * **このファイルの中身は購読だけ。** 当てる値の組み立ては `options.ts` にある。
- * ルーン（`$effect.root`）を使うぶんだけを `.svelte.ts` に切り出してあり、
- * ここには Monaco も設定の意味も持ち込まない。
+ * 当てる値の組み立ては `options.ts` にあり、ここはルーン（`$effect.root`）を使う購読だけを持つ。
+ * Monaco も設定の意味も持ち込まない。
  */
 import { settingsStore } from '@/features/settings/store.svelte';
 import { styleEpoch } from '@/features/settings/style-epoch.svelte';
 
 /**
- * 設定の変化に追従する。**解除する関数を返す。**
+ * 設定の変化に追従する。解除する関数を返す。
  *
- * # なぜ `theme.ts` の MutationObserver では足りないのか
- *
- * あちらが見ているのは `<html>` の属性で、拾えるのは**CSS に現れる変化**だけ。
- * 折り返し・タブ幅・行番号はトークン層に出ないので、ストアを直接見るしかない。
- * `editor.css` の注入も `<html>` には映らないので、同じ理由でここが拾う。
- *
- * # `$effect.root` を使う
- *
- * ここはコンポーネントではないので、効果を張る器を自分で作る。
- * **`editor` チャンクの中に閉じている**ので、`main` 側に購読の口は増えない。
- *
- * 効果はマイクロタスクで走るため、**マウント直後に 1 回よけいに呼ばれる**。
- * `updateOptions` は同じ値なら何もしないので、そのままにしてある。
+ * `theme.ts` の MutationObserver は `<html>` の属性（CSS に現れる変化）しか拾えない。
+ * 折り返し・タブ幅・行番号や `editor.css` の注入はトークン層に出ないため、ここがストアを直接見て拾う。
+ * コンポーネントではないので `$effect.root` で効果を張る器を自作し、`editor` チャンクの中に閉じることで `main` 側に購読の口を増やさない。
+ * 効果はマイクロタスクで走るためマウント直後に 1 回余分に呼ばれるが、`updateOptions` は同じ値なら何もしないので無害である。
  */
 export function watchEditorSettings(reapply: () => void): () => void {
   return $effect.root(() => {

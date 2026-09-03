@@ -1,17 +1,8 @@
 /**
  * ステータスバーのメニューに並べる項目（03.ux-spec/07-status-and-notifications.md §3 / `status` チャンク）。
- *
- * # ここが遅延チャンクにある理由
- *
- * 文言と選択肢の一覧は、**押されるまで誰も要らない**。ステータスバーが常に
- * 出しているのは「いまの値」1 つで、それは `documentStore.meta` から来る。
- * ハンバーガーメニュー（`features/menu/items.ts`）と同じ分け方である。
- *
- * # 押した結果が読めること
- *
- * どちらのメニューも**いま選ばれている行に印を付ける**。押す前に
- * 「何が変わるのか」ではなく「いまどれなのか」が分かることが先で、
- * それが無いと 5 つ並んだエンコーディングの意味が読めない（Principle 3）。
+ * 文言と選択肢は押されるまで不要なので遅延チャンクに置く（`features/menu/items.ts` と同じ分け方）。
+ * どちらのメニューも選ばれている行に印を付ける。
+ * 押す前に「いまどれか」が分からないと 5 つ並んだエンコーディングの意味が読めないためである（Principle 3）。
  */
 import { ENCODINGS, reinterpret } from '@/features/document/encoding';
 import { documentStore } from '@/features/document/store.svelte';

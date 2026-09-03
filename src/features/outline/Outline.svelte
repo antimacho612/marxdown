@@ -1,24 +1,9 @@
 <!--
   アウトライン（F-VIEW-02 / 03.ux-spec/06-panes.md §2）。
+  データは `documentStore.outline` に既に入っており（`markdown/plugins/line-map.ts`）、ここは UI と追従だけを持つ。
 
-  ```text
-  ┌─────────────┐
-  │ アウトライン │
-  │  Marxdown   │
-  │   Motiv…    │  ← 現在位置は本文のスクロールで自動的に移る
-  │   Concept   │
-  └─────────────┘
-  ```
-
-  データは M1 の時点で `documentStore.outline` に入っている
-  （`markdown/plugins/line-map.ts`）。ここにあるのは **UI と追従だけ**。
-
-  # 入れ子にせず、深さを属性で伝える
-
-  見出し数百個の文書（`huge.md`）で `<ul>` を入れ子にすると、
-  1 項目あたりの DOM が増え、深い階層ほど不利になる。**平らな 1 枚のリスト**にして、
-  段差はインデント（`padding-inline-start`）で描く。階層そのものは
-  `role="tree"` + `aria-level` で伝わるので、支援技術から見た構造は失われない。
+  `<ul>` の入れ子にはせず平らな 1 枚のリストにし、段差はインデントで描く（見出し数百個の文書で入れ子にすると 1 項目あたりの DOM が増えるため）。
+  階層は `role="tree"` + `aria-level` で伝わるので支援技術から見た構造は失われない。
 -->
 <script lang="ts">
   import { untrack } from 'svelte';

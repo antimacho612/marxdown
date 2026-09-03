@@ -1,26 +1,11 @@
 /**
  * URL のスマートペースト（F-EDIT-12 / `editor` チャンク）。
+ * 選択範囲への URL 貼り付けで `[選択文字](URL)` になる。
+ * CodeMirror では `pasteURLAsLink` が既定で持っていたが Monaco には無いため自作した（ADR-0009 の受け入れコスト 1）。
  *
- * > 選択範囲への URL 貼り付けで `[選択文字](URL)` になる
- *
- * # ここも CodeMirror では書かなくてよかった
- *
- * `@codemirror/lang-markdown` の `pasteURLAsLink` が既定で持っていた
- * （[ADR-0009](../../../docs/adr/0009-editor-engine-monaco.md) の受け入れコスト 1）。
- *
- * # `onDidPaste` ではなく DOM の `paste` を捕まえる
- *
- * Monaco の `onDidPaste` は**貼り終わってから**飛ぶ。そこで直そうとすると
- * 「URL を貼る」と「リンクに直す」で Undo が 2 回に割れるうえ、
- * 貼る前の選択範囲（＝リンクテキストになるはずのもの）は既に消えている。
- *
- * DOM の `paste` を先に捕まえて `preventDefault()` すれば、**1 回の編集**で済む。
- *
- * # 貼るのが URL でなければ手を出さない
- *
- * 判定は**スキーム付きで空白を含まない 1 行**に限る。ここを緩めると、
- * ただの文字列を貼っただけでリンクにされて驚くことになる。
- * リンクを**打つ**ほうは `format.ts` の `insertLink`（`Ctrl+K`）。
+ * Monaco の `onDidPaste` は貼り終わってから飛ぶため、そこで直すと Undo が 2 回に割れ選択範囲も消えている。
+ * DOM の `paste` を先に捕まえて `preventDefault()` すれば 1 回の編集で済む。
+ * 判定はスキーム付きで空白を含まない 1 行に限り、緩めると普通の文字列貼り付けまでリンク化されてしまう。
  */
 import { byRange, runEdit, textAt, type MarkdownEdit } from './edits';
 import type { monaco } from './monaco';

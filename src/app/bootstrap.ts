@@ -1,29 +1,8 @@
 /**
  * 起動シーケンス（02.architecture/05-startup-sequence.md §1）。
  *
- * Marxdown で最も重要な経路。ここを 1 本の細い線に保つことが
- * Principle 1「Open Fast」の実装そのもの。
- *
- * ```text
- * T4  初期スクリプト評価開始          （Rust の initialization_script が打つ）
- * T5  bootstrap を同期読み取り        （IPC 往復なし）
- * T6  parse を投げる                  （シェル描画より先に投げる）
- * ─── ここでシェルを描く ───
- * T7  パース結果を受け取る
- * T8  本文 DOM 挿入完了 + 次の rAF     ← 「読める」瞬間
- * T9  window.show()
- * ```
- *
- * # 順序の理由
- *
- * `parse` を投げるのを**シェル描画より前**に置いているのが要点。
- * `parse` は `pipeline` チャンクの解決を待つ非同期なので、先に投げておけば
- * その取得と評価にシェルの描画時間が重なる（[ADR-0010](../../docs/adr/0010-parse-on-main-thread.md)）。
- *
- * この重ね合わせは `openDocument` の `betweenParseAndPaint` として表現してある。
- * 開く経路そのものは `features/document/open.ts` に 1 本化されており、
- * このファイルに残るのは**起動に固有の仕事**（bootstrap の読み取り、
- * ウィンドウの表示、購読の登録）だけ。
+ * `parse` をシェル描画より前に投げ、その取得・評価とシェル描画を重ねる（`openDocument` の `betweenParseAndPaint` / ADR-0010）。
+ * 開く経路自体は `features/document/open.ts` に一本化されており、このファイルは起動固有の処理（bootstrap 読み取り・ウィンドウ表示・購読登録）のみを扱う。
  */
 import { configureOpener, openDocument, openDropped, openPath } from '@/features/document/open';
 import { saveThenQuit } from '@/features/document/save';
@@ -70,40 +49,32 @@ export async function startup(renderShell: () => void): Promise<void> {
   adoptT4();
   mark('T5', bootstrap?.document ? `${bootstrap.document.size} bytes` : 'no document');
 
-  // 倍率は**本文を描くより前**に当てる（F-VIEW-11）。
-  // 後から当てると、既定倍率で 1 フレーム描かれてから跳ねる。
+  // ここから customCss/editorCss の取得までは、すべて本文を描くより前に適用する。
+  // 後から適用すると、本文が描画された直後に見た目が変化する瞬間が生じる
+  // （F-VIEW-11 / F-NAV-04 / 03.ux-spec/06-panes.md §3 / 02.architecture/04-rust-responsibilities.md §5）。
   applyZoom(bootstrap?.zoom ?? 1, false);
   recentStore.entries = bootstrap?.recent ?? [];
 
-  // ペインの開閉と幅も**本文を描くより前**（F-NAV-04 / 03.ux-spec/06-panes.md §3）。
-  // 後から当てると、本文が一度全幅で描かれてから横に詰まる。倍率と同じ理由で
-  // bootstrap に載せてある（02.architecture/04-rust-responsibilities.md §5）。
-  //
-  // ここで入れた値は、この下の `renderShell()` が描く最初のシェルに既に効いている。
-  // シェルの描画は本文の paint より前（`betweenParseAndPaint`）なので、
-  // **全幅の本文が 1 フレームでも画面に出ることは無い。**
+  // 後から適用すると、本文が一度全幅で描画された後に幅が縮小して見える。
+  // ここで設定した値は、この下の `renderShell()` が描く最初のシェルに既に反映されている
+  // （シェルの描画は本文の paint より前 / `betweenParseAndPaint`）。
   initPanes(bootstrap);
-  // Split の分割比も同じ理由でここ（03.ux-spec/03-split-mode.md §1）。
-  // 後から当てると、`--mode split` で開いたときに 50:50 で一度描かれてから寄る。
+  // 後から適用すると、`--mode split` で開いたときに 50:50 の状態が一度描画された後に分割比が変化して見える（03.ux-spec/03-split-mode.md §1）。
   initSplit(bootstrap);
 
-  // 設定も同じ理由でここ。bootstrap に丸ごと載っているので IPC 往復は無い
-  // （02.architecture/04-rust-responsibilities.md §5 / 02.architecture/05-startup-sequence.md §1）。テーマ・フォント・本文幅は
-  // `initSettings` の中で**同期的に** CSS 変数へ当たる。後から当てると、
-  // 一度出た絵が描き変わる（02.architecture/05-startup-sequence.md §1 の表）。
+  // bootstrap に丸ごと含まれているため IPC 往復は発生しない（02.architecture/05-startup-sequence.md §1）。
+  // テーマ・フォント・本文幅は `initSettings` の中で同期的に CSS 変数へ反映される。
+  // 後から適用すると、一度描画された内容が別の見た目に再描画される。
   initSettings(bootstrap);
 
-  // カスタム CSS も**本文を描くより前**（F-CONF-07 / 02.architecture/10-theming.md §3）。
-  //
-  // 64KB 以下なら bootstrap に同梱されて届いている。ここで当てないと、
-  // ダークな背景を指定している人の画面で**白い初期画面が一瞬見える**。
-  // 当てるのは `@scope (#mx-preview)` で包んだ後の 1 枚だけで、
-  // 包めなかった場合は当てずに結果だけ返る（通知は `ready()` の後）。
+  // 64KB 以下なら bootstrap に同梱されて届く（F-CONF-07 / 02.architecture/10-theming.md §3）。
+  // ここで当てないと、ダークな背景を指定している人の画面で白い初期画面が一瞬見える。
+  // 包めなかった場合は当てずに結果だけ返す（通知は `ready()` の後）。
   const customCss = bootstrap?.customCss ?? null;
   const customCssResult = applyCustomCss(customCss?.css ?? null);
-  // エディタ用も同じ扱い（ADR-0013）。**エディタが載っていなくても当てておく。**
-  // 当たっているのはトークンで、Monaco はマウント時にそれを読み出す。
-  // ここを遅らせると、Edit で開いた 1 フレームだけ既定の配色で出る。
+  // エディタ用も同じ扱いである（ADR-0013）。
+  // エディタが未マウントでも適用しておく（適用されるのはトークンであり、Monaco はマウント時にそれを読み出す）。
+  // 適用を遅らせると、Edit で開いた最初の 1 フレームだけ既定の配色で表示される。
   const editorCss = bootstrap?.editorCss ?? null;
   const editorCssResult = applyCustomCss(editorCss?.css ?? null, 'editor');
 
@@ -223,16 +194,13 @@ export async function startup(renderShell: () => void): Promise<void> {
 }
 
 /**
- * エディタを用意する。**起動時のモードによって、載せるか温めるかが変わる。**
+ * エディタを用意する。
+ * 起動時のモードによって、載せるか温めるかが変わる。
+ * `--mode edit` で起動した場合は画面がエディタを待っているのでその場で載せ、それ以外（既定の Preview）はアイドル時にチャンクだけを取得しておく。
  *
- * ```text
- * --mode edit で起動した  → その場で載せる（画面がエディタを待っている）
- * それ以外（既定の Preview） → アイドルでチャンクだけ取っておく
- * ```
- *
- * 後者が `editor` チャンクの idle プリロード。**載せはしない**ので、
- * `#mx-editor` は空のまま隠れている。初めて `Ctrl+Shift+V` を押したときの
- * 待ちが消えるだけで、押さなければ何も起きない。
+ * 後者が `editor` チャンクのアイドルプリロードである。
+ * 載せはしないため、`#mx-editor` は空のまま非表示になっている。
+ * 初めて `Ctrl+Shift+V` を押したときの待ち時間が無くなるだけで、押さなければ何も起きない。
  *
  * `requestIdle` は 1 回きりで、ポーリングではない（`lib/idle.ts`）。
  */
@@ -309,14 +277,6 @@ function reportStartupProblems(bootstrap: Bootstrap | null): void {
 }
 
 /**
- * 別インスタンスからの起動要求（ウォーム起動）。
- *
- * ここには WebView の初期化も、バンドルの評価も、Svelte のマウントも存在しない。
- * **Worker が既に温まっており、パースだけが仕事になる**（02.architecture/05-startup-sequence.md §2）。
- *
- * タブが実装される（M3）までは「タブを増やす」のではなく現在の本文を置き換える。
- */
-/**
  * トレイメニューの「Marxdown を開く」（ADR-0007 論点 6）。
  *
  * **ダイアログを Rust 側で出さない。** `pick_file` は既にあるが、開いた結果の扱い
@@ -371,6 +331,14 @@ function installTrayResume(): void {
   });
 }
 
+/**
+ * 別インスタンスからの起動要求（ウォーム起動）。
+ *
+ * ここには WebView の初期化も、バンドルの評価も、Svelte のマウントも存在しない。
+ * Worker は既に初期化済みであり、パースの実行のみが必要になる（02.architecture/05-startup-sequence.md §2）。
+ *
+ * タブが実装される（M3）までは、「タブを増やす」のではなく現在の本文を置き換える。
+ */
 function installOpenRequestHandler(): void {
   const platform = getPlatform();
 

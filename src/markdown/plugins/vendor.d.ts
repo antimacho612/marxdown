@@ -1,14 +1,9 @@
 /**
- * 型定義を同梱していない markdown-it プラグインの宣言。
+ * 型定義を同梱していない markdown-it プラグインの宣言（04.tech-stack/04-markdown.md §2）。
  *
- * # `@types/*` を入れない理由
- *
- * `@types/markdown-it-footnote` は存在するが、`@types/markdown-it` に依存している。
- * markdown-it 15 は**自前の型を同梱している**ので、入れると `markdown-it` モジュールの
- * 宣言が 2 つになり、`pipeline.ts` が import している `MarkdownIt` / `Token` と
- * 別物の型が混ざる。必要なのは `md.use()` に渡せることだけなので、ここで最小限を書く。
- *
- * 04.tech-stack/04-markdown.md §2 の採用パッケージに対応する。
+ * `@types/markdown-it-footnote` は `@types/markdown-it` に依存するが、markdown-it 15 は自前の型を同梱している。
+ * そのため入れると `markdown-it` モジュール宣言が二重になり、`pipeline.ts` が import する型と競合する。
+ * `md.use()` に渡せれば足りるので最小限を書く。
  */
 
 declare module 'markdown-it-footnote' {

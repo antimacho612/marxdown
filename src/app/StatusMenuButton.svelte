@@ -1,23 +1,9 @@
 <!--
   ステータスバーの「押すと選択肢が出る」項目（03.ux-spec/07-status-and-notifications.md §3）。
-
-  モード（`クリックでモード切替メニュー`）とエンコーディング（`クリックで
-  エンコーディング再解釈`）が、同じ形をしている。**器を 1 つにしてある。**
-
-  # 中身はここに無い
-
-  押されるまで、選択肢も見た目もロードしない（動的 import）。
-  クリティカルパスに載るのはこのボタン 1 つ分と、いま出している値だけ。
-  ハンバーガーメニュー（`app/MenuButton.svelte`）と同じ形である。
-
-  # 開く場所は、ここで測る
-
-  **ステータスバーは `overflow: hidden` である**（狭い窓で項目がはみ出すのを
-  切るため / `styles/shell.css`）。中に `position: absolute` で置いたパネルは
-  丸ごと切り落とされ、DOM にはあるのに何も見えない。
-
-  そこでパネルは `position: fixed` にしてある。位置は**押した瞬間にボタンが
-  自分を測って渡す**。開いてから測ると、1 フレームだけ左上に出てから飛ぶ。
+  モードとエンコーディングが同じ形をしているため、器を 1 つにしてある。
+  選択肢も見た目も押されるまでロードしない（動的 import / `app/MenuButton.svelte` と同じ形）。
+  ステータスバーは `overflow: hidden` であるため、パネルを `position: absolute` で置くと切り落とされる。
+  そのため `position: fixed` にし、位置は押した瞬間にボタンが自分の位置を測定して渡す（開いてから測定すると、1 フレームだけ誤った位置に表示された後に正しい位置へ切り替わる）。
 -->
 <script lang="ts">
   import type { StatusMenu, StatusMenuAnchor, StatusMenuKind } from '@/features/status/props';

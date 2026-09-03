@@ -1,18 +1,11 @@
 /**
  * 保存経路（F-EDIT-02, 14 / N-REL-01, 02 / N-CMP-03）。
  *
- * **[OQ-29](../../docs/07.open-questions/oq-29-dx-investment.md) がこの土台を先に作れと言った理由がここ。**
- * 単体テストでは「エディタの内容 → `WriteRequest` → IPC → ディスクのバイト列」を
- * 通しで確かめられない。M2 の完了条件（06.roadmap/m2-editor.md §3）のうち 2 つが、
- * ここでしか検証できない。
+ * [OQ-29](../../docs/07.open-questions/oq-29-dx-investment.md) がこの土台を先に作れと言った理由がここにある。
+ * 単体テストでは「エディタの内容 → `WriteRequest` → IPC → ディスクのバイト列」を通しで確かめられず、M2 の完了条件（06.roadmap/m2-editor.md §3）のうち、1 文字だけ編集して保存したときに git diff が 1 行だけになることと、保存の衝突を意図的に起こしてもデータが失われないことの 2 つが、ここでしか検証できない。
  *
- * ```text
- * 1 文字だけ編集して保存したとき、git diff が 1 行だけになる
- * 保存の衝突を意図的に起こし、データが失われないことを確認
- * ```
- *
- * **照合は必ず `Buffer`。** 文字列で比べると、CRLF が LF に潰れたことも
- * BOM が落ちたことも通ってしまう（`helpers/fixtures.ts`）。
+ * 照合は必ず `Buffer` で行う。
+ * 文字列で比べると、CRLF が LF に潰れたことも BOM が落ちたことも通ってしまう（`helpers/fixtures.ts`）。
  */
 import { Key } from 'webdriverio';
 

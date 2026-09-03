@@ -1,21 +1,9 @@
 /**
- * Outline を**出してフォーカスする**（`Ctrl+Shift+U` / 03.ux-spec/06-panes.md §4）。
+ * Outline を出してフォーカスする（`Ctrl+Shift+U` / 03.ux-spec/06-panes.md §4）。
+ * トグルにしないのは §4 の決定で、常に同じ結果を返すためである（閉じるのはペイン側の `Ctrl+Alt+B`）。
+ * 将来アウトラインを左ペインへ移すときも `openRightPane()` を差し替えるだけで済む。
  *
- * # なぜトグルではないのか
- *
- * §4 の決定そのもの。「アウトラインを見たい」という意図に対して**常に同じ結果**
- * を返すため、開いていても閉じない。閉じるのはペイン側のキー（`Ctrl+Alt+B`）の仕事。
- *
- * この分け方は、将来アウトラインを左ペインへ移したときに効く。移すときに直すのは
- * **このファイルの `openRightPane()` を `openLeftPane()` に変える 1 行だけ**で、
- * キーの意味も、ペイン側のコードも変わらない。
- *
- * # フォーカスの当て先はコンポーネントが決める
- *
- * 「アウトラインの現在位置」がどの DOM 要素かを知っているのは
- * `Outline.svelte` だけ。ここから `querySelector` で探しに行くと、
- * マークアップを変えるたびにこちらが壊れる。**向こうから名乗り出てもらう**
- * （`features/document/refresh.ts` の `registerSearchRefresher` と同じ形）。
+ * フォーカス先の DOM 要素は `Outline.svelte` だけが知っているため、ここから `querySelector` で探さず `Outline.svelte` 側から登録してもらう（`features/document/refresh.ts` の `registerSearchRefresher` と同じ形）。
  */
 import { tick } from 'svelte';
 

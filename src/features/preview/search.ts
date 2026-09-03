@@ -1,19 +1,9 @@
 /**
  * プレビュー内の全文検索（F-VIEW-10 / 03.ux-spec/04-keybindings.md §3）。
+ * 遅延チャンクで `Ctrl+F` を押すまでロードされない。
  *
- * **このモジュールは遅延チャンク。** `Ctrl+F` を押すまでロードされない。
- *
- * # DOM を書き換えない
- *
- * 一致箇所を `<mark>` で包む実装にしない。理由が 3 つある。
- *
- * 1. 段階的描画（02.architecture/06-markdown-rendering-pipeline.md §4）で本文は後からも増える。包んだ DOM と増える DOM が混ざる
- * 2. 包んで外すたびに、本文の DOM が作り直される。`huge.md` で無視できない
- * 3. `data-line` の行マッピング（同 §3）が壊れる。スクロール同期（M2）の土台
- *
- * 代わりに **CSS Custom Highlight API** を使う。`Range` を登録するだけで、
- * DOM には一切触らない。WebView2 Evergreen / WKWebView のみを対象とする
- * 設計（04.tech-stack/08-typescript.md）なので、この API を前提にしてよい。
+ * 一致箇所を `<mark>` で包む実装にはしない（段階的描画で増える DOM と混ざる／`huge.md` で本文の DOM が作り直され続ける／`data-line` の行マッピングが壊れる）。
+ * 代わりに CSS Custom Highlight API で `Range` を登録するだけにし、DOM には触れない（WebView2 Evergreen / WKWebView のみが対象のため前提にしてよい）。
  */
 import { registerSearchRefresher } from '@/features/document/refresh';
 import { ja } from '@/i18n/ja';

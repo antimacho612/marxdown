@@ -1,27 +1,15 @@
 /**
- * アプリの場所と、**開いているインスタンスにファイルを開かせる手段**。
+ * アプリの場所と、開いているインスタンスにファイルを開かせる手段。
  *
- * # なぜ argv で渡さないのか
+ * argv では渡さない。
+ * `tauri:options.args` は `ms:edgeOptions.args` へそのまま流れ、msedgedriver が Chromium のスイッチとして解釈するため、実測（2026-08-30）では `args: ['C:\work\doc.md']` は argv に `"--c:\work\doc.md"`（`--` 前置 + 小文字化）として渡り、`args: ['--']` はセッション生成が "argument is empty" で失敗する。
+ * つまりこの経路でファイルパスは渡せない。
+ * ドライバ側の制約であり、`cli.rs` を変えても解決しない。
  *
- * `tauri:options.args` は `ms:edgeOptions.args` へそのまま流れ、
- * msedgedriver が **Chromium のスイッチとして**解釈する。実測（2026-08-30）:
- *
- * ```text
- * args: ['C:\work\doc.md']  → argv に "--c:\work\doc.md"（`--` 前置 + 小文字化）
- * args: ['--']                → セッション生成が "argument is empty" で失敗
- * ```
- *
- * つまり**この経路でファイルパスは渡せない**。ドライバ側の制約であり、
- * `cli.rs` を変えても解決しない。
- *
- * # 代わりに argv 転送を使う
- *
- * Marxdown は単一インスタンス（[ADR-0004](../../docs/adr/0004-process-model-and-cli.md)）で、
- * 2 回目以降の `marxdown foo.md` は**新規プロセスを立てずに既存プロセスへ argv を転送する**。
+ * 代わりに argv 転送を使う。
+ * Marxdown は単一インスタンス（[ADR-0004](../../docs/adr/0004-process-model-and-cli.md)）で、2 回目以降の `marxdown foo.md` は新規プロセスを立てずに既存プロセスへ argv を転送する。
  * ドライバが起動した 1 つ目に対して、テストから 2 つ目を叩けばよい。
- *
- * テスト専用の裏口を製品コードに開けずに済むうえ、
- * **中心価値そのもの（Warm Start の経路）を毎回通ることになる。**
+ * テスト専用の裏口を製品コードに開けずに済むうえ、中心価値そのもの（Warm Start の経路）を毎回通ることになる。
  */
 import { spawn } from 'node:child_process';
 import path from 'node:path';
@@ -79,14 +67,12 @@ async function documentAppeared(expected: string, timeout: number): Promise<bool
 /**
  * argv 転送でファイルを開き、本文が描かれるまで待つ。
  *
- * # 再送する理由
- *
- * **転送は取りこぼされうる。** `bootstrap.ts` が `onOpenRequest` を購読するのは
- * `ready()` の**後**で、それより前に届いた転送は聞く相手が居ないまま捨てられる。
+ * 再送するのは、転送は取りこぼされうるためである。
+ * `bootstrap.ts` が `onOpenRequest` を購読するのは `ready()` の後で、それより前に届いた転送は聞く相手が居ないまま捨てられる。
  * シェルの描画（`waitForShell`）は `ready()` の手前なので、待っても十分ではない。
  *
- * 製品としては問題にならない。人が 2 つ目を叩くのは 1 つ目が画面に出た後だからで、
- * ここだけが**起動から数十 ms のうちに転送を投げる**特殊な使い方になる。
+ * 製品としては問題にならない。
+ * 人が 2 つ目を叩くのは 1 つ目が画面に出た後だからで、ここだけが起動から数十 ms のうちに転送を投げる特殊な使い方になる。
  * 製品側に順序の保証を足すより、テスト側で再送するほうが釣り合う。
  */
 export async function openViaForward(target: string, expected: string): Promise<void> {
@@ -116,17 +102,12 @@ export async function currentMode(): Promise<string> {
 /**
  * エディタが吐く DOM を指すセレクタ。**エンジンの名前が書いてよいのはここだけ。**
  *
- * spec 側に散ると、[ADR-0009](../../docs/adr/0009-editor-engine-monaco.md) の
- * 差し替えで 4 ファイルを同時に直すことになる。**この表 1 枚と、下の薄い関数群を
- * 書き換えれば済む**状態にしてある。CodeMirror → Monaco の張り替えで
- * 書き換えたのはこの範囲だけで、**spec の期待値は 1 つも動かしていない。**
+ * spec 側に散ると、[ADR-0009](../../docs/adr/0009-editor-engine-monaco.md) の差し替えで 4 ファイルを同時に直すことになる。
+ * この表 1 枚と、下の薄い関数群を書き換えれば済む状態にしてある。
+ * CodeMirror → Monaco の張り替えで書き換えたのはこの範囲だけで、spec の期待値は 1 つも動かしていない。
  *
- * # すべて `#mx-editor` の内側に閉じる
- *
- * **`.monaco-editor` はもう 1 つある。** はみ出すウィジェットの受け皿として
- * `document.body` 直下にも同じクラスの要素を置いているので
- * （`features/editor/editor.ts`）、素のクラス名で数えると
- * **載っていないのに 1 つある**ことになる。
+ * すべて `#mx-editor` の内側に閉じる。
+ * `.monaco-editor` はもう 1 つあり、はみ出すウィジェットの受け皿として `document.body` 直下にも同じクラスの要素を置いているため（`features/editor/editor.ts`）、素のクラス名で数えると載っていないのに 1 つあることになる。
  *
  * `browser.execute` に渡す関数は文字列化されて向こう側で走るので、
  * **セレクタはクロージャで掴まず引数で渡す。**
@@ -180,22 +161,16 @@ export async function editorContentText(): Promise<string> {
 /**
  * エディタが持っている本文。改行はエディタの行区切りから組み直す。
  *
- * # DOM の順に読んではいけない
+ * DOM の順に読んではいけない。
+ * Monaco は行の要素を使い回すため、スクロールすると中身だけが差し替わるので `querySelectorAll` の順は画面の上から下の順とは限らない。
+ * 位置（`style.top`）で並べ直す。
+ * CodeMirror では DOM の順がそのまま行の順だったので、張り替えで中身が変わったのはこの関数である（返すものは変えていない）。
  *
- * **Monaco は行の要素を使い回す。** スクロールすると中身だけが差し替わるので、
- * `querySelectorAll` の順は**画面の上から下の順とは限らない。**
- * 位置（`style.top`）で並べ直す。CodeMirror では DOM の順がそのまま行の順だったので、
- * **張り替えで中身が変わったのはこの関数である**（返すものは変えていない）。
+ * 空白は元に戻す。
+ * Monaco は空白を `&nbsp;`（U+00A0）で描くため、素の `textContent` で突き合わせると見た目が同じなのに一致しないという形で落ちる。
+ * タブは `tabSize` ぶんの空白に展開して描かれるので元には戻せない（spec はタブを打たない。`Tab` が入れるのは空白 / `features/editor/list.ts`）。
  *
- * # 空白は元に戻す
- *
- * Monaco は空白を `&nbsp;`（U+00A0）で描く。素の `textContent` で突き合わせると
- * **見た目が同じなのに一致しない**という形で落ちる。
- * タブは `tabSize` ぶんの空白に展開して描かれるので**元には戻せない**
- * （spec はタブを打たない。`Tab` が入れるのは空白 / `features/editor/list.ts`）。
- *
- * # 見えている行しか無い
- *
+ * 見えている行しか無い。
  * 仮想化されているので、長い本文では画面の外の行が入らない。
  * この関数を使う spec は短い本文だけを扱っている。
  */

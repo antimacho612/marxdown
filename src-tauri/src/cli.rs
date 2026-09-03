@@ -1,19 +1,13 @@
 //! CLI 引数解析（F-OPEN-01 / F-OPEN-12）。
 //!
-//! # なぜ `tauri-plugin-cli` を使わないか
-//!
-//! `tauri-plugin-cli` の `matches()` は `App` の構築後（`setup()` の中）でしか呼べない。
-//!
-//! 一方 02.architecture/05-startup-sequence.md §1 の起動シーケンスは、
-//! **ウィンドウ生成より前に**パスを確定させ、ファイル読み込みを WebView 初期化と
-//! 並行させることを要求する。プラグイン経由ではこの並行化ができない。
-//!
-//! また 05.performance-budget/05-operations.md §2 の T1（CLI 引数解析完了）を
-//! T0 の直後に置けることが、内訳の計測そのものに必要である。
+//! `tauri-plugin-cli` は使わない。
+//! その `matches()` は `App` の構築後（`setup()` の中）でしか呼べない。
+//! 一方、02.architecture/05-startup-sequence.md §1 の起動シーケンスは、ウィンドウ生成より前にパスを確定させ、ファイル読み込みを WebView 初期化と並行させることを要求する。
+//! そのため、プラグイン経由ではこの並行化ができない。
+//! また、05.performance-budget/05-operations.md §2 の T1（CLI 引数解析完了）を T0 の直後に置けることが、内訳の計測そのものに必要である。
 //!
 //! よって argv は `std::env::args_os()` から直接読む。
-//! 引数体系は 03.ux-spec/README.md に閉じており、clap を要する複雑さはない。
-//! → 04.tech-stack/06-rust.md §3
+//! 引数体系は 03.ux-spec/README.md に閉じており、clap を要する複雑さはない（04.tech-stack/06-rust.md §3）。
 
 use std::path::{Path, PathBuf};
 

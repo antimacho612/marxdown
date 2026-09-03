@@ -5,11 +5,9 @@
  * それまでは「内容が変わった」の真偽だけで dirty を立てていたため、Undo で
  * 編集前 / 保存直後の内容まで戻っても dirty が残ったままだった。
  *
- * # Monaco を jsdom で載せる
- *
- * `mountEditor` を実際に通す。Monaco はレイアウトと OS のテーマを問い合わせるので、
- * jsdom に無いものを最小限だけ立てる（`preview/search.dom.test.ts` と同じ手当て）。
- * **本物の描画は要らない。** ここで見たいのは
+ * `mountEditor` を実際に通して Monaco を jsdom で載せる。
+ * Monaco はレイアウトと OS のテーマを問い合わせるので、jsdom に無いものを最小限だけ立てる（`preview/search.dom.test.ts` と同じ手当て）。
+ * 本物の描画は要らない。ここで見たいのは
  * 「モデルの版が基準に戻ったら dirty が外れるか」だけである。
  */
 import { beforeEach, describe, expect, it } from 'vitest';

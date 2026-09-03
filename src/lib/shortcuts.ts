@@ -1,33 +1,11 @@
 /**
  * グローバルキーバインド（03.ux-spec/04-keybindings.md）。
  *
- * # 和音を持たない
+ * 和音（`Ctrl+K V` 等）は扱わない（§2）ので、1 イベント 1 判定で済む。
+ * 「入力中かどうか」も見ない。
+ * 境界は `app/commands.ts` の `KEY_BINDINGS`（アプリ操作、どこでも効く）と `features/editor/keymap.ts`（本文の編集、エディタ内でのみ効く）のどちらに書いてあるかで決まり、両者は重ならない（`keymap.ts` が重複キーを外す）。
  *
- * 03.ux-spec/04-keybindings.md §2 の決定により `Ctrl+K V` のような和音は扱わない。したがってここに
- * 「第 1 打鍵を受けて待機する」状態機械は存在せず、1 イベント 1 判定で済む。
- * この単純さは Principle 3「Simple Means Low Cognitive Load」の実装でもある。
- *
- * # エディタとキーを取り合わない
- *
- * M2 Phase 1・2 では「入力可能な要素にフォーカスがあるときは発火しない」を既定にし、
- * 越えたいものに `whenEditing: true` を付けていた。**Phase 3 で例外が全部になった。**
- * `Ctrl+S` も倍率も `Ctrl+Shift+V` も、Edit モードで効かなければ困る。
- *
- * 境界の引き方を変えてある。フォーカスの位置ではなく、**どちらの表に書いてあるか**。
- *
- * ```text
- * app/commands.ts KEY_BINDINGS   アプリに対する操作。どこに居ても効く
- * features/editor/keymap.ts      本文をどう編集するか。エディタに居るときだけ効く
- * ```
- *
- * 2 つの表は重ならない（`keymap.ts` が重なるキーを外している）。したがって、
- * ここに「入力中かどうか」を見る仕掛けは要らない。
- *
- * # 既定動作を必ず止める
- *
- * `Ctrl+=` / `Ctrl+-` は WebView 自身のズームに、`Ctrl+F` は WebView の検索に
- * 割り当たっている。一致したバインドでは必ず `preventDefault()` する。
- * ここを忘れると、アプリの倍率と WebView の倍率が二重にかかる。
+ * `Ctrl+=` / `Ctrl+-` / `Ctrl+F` は WebView 自身の機能にも割り当たっているため、一致したバインドでは必ず `preventDefault()` して二重動作を防ぐ。
  */
 
 export interface Binding {

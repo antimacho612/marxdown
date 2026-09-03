@@ -2,17 +2,11 @@
 /**
  * スクロール同期の窓口の、Monaco 側の実装（F-MODE-05 / `scroll-port.ts`）。
  *
- * # 配線ではなく換算を見る
+ * 配線ではなく換算を見る。
+ * 「どちらが主導するか」「ダブルクリックがどの行になるか」は `features/view/scroll-sync.dom.test.ts` が偽のポートで見ている。
+ * ここが見るのは行番号とスクロール量の換算であり、エンジンを差し替えたときに真っ先に壊れるのはこちらである。
  *
- * 「どちらが主導するか」「ダブルクリックがどの行になるか」は
- * `features/view/scroll-sync.dom.test.ts` が偽のポートで見ている。
- * **ここが見るのは、行番号とスクロール量の換算**であり、
- * エンジンを差し替えたときに真っ先に壊れるのはこちらである。
- *
- * # jsdom でも高さは出る
- *
- * Monaco の `getTopForLineNumber` は**レイアウトではなく設定の `lineHeight` から
- * 積み上げて計算する**（`viewLayout`）ので、描画されない jsdom でも正しい値になる。
+ * Monaco の `getTopForLineNumber` はレイアウトではなく設定の `lineHeight` から積み上げて計算するため（`viewLayout`）、描画されない jsdom でも正しい値になる。
  * 折り返しが起きないぶん「1 行 = `lineHeight`」で読めるので、期待値も書ける。
  */
 import { beforeEach, describe, expect, it } from 'vitest';

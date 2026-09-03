@@ -1,12 +1,8 @@
 /**
  * エディタを載せる入口（`main` チャンク）。
- *
- * **動的 import の一行だけを持つモジュール**として切り出してある。
- * `open-search.ts` / `open-settings.ts` / `open-jump.ts` と同じ形で、理由も同じ。
- *
- * ここに置いても `editor` チャンクは遅延のまま。
- * 既定の表示モードが Preview なのは、この分割境界を成立させるためでもある
- * （02.architecture/05-startup-sequence.md §1 の要点 3）。
+ * 動的 import の一行だけを持つモジュールとして切り出してある（`open-search.ts` 等と同じ形）。
+ * ここに置いても `editor` チャンクは遅延のままである。
+ * 既定の表示モードが Preview なのは、この分割境界を成立させるためでもある（02.architecture/05-startup-sequence.md §1 の要点 3）。
  */
 const EDITOR_SELECTOR = '#mx-editor';
 

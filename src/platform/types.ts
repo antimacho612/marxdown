@@ -356,8 +356,8 @@ export interface Bootstrap {
   /**
    * ペインの開閉と幅（F-NAV-04 / 03.ux-spec/06-panes.md §3）。
    *
-   * **倍率と同じ理由でここに載っている。** 後から当てると、本文が一度全幅で
-   * 描かれてから横に詰まる（02.architecture/04-rust-responsibilities.md §5）。
+   * 倍率と同じ理由でここに載っている。
+   * 後から当てると、本文が一度全幅で描かれた後に幅が縮小して見える（02.architecture/04-rust-responsibilities.md §5）。
    */
   panes: Panes;
   /**
@@ -422,18 +422,18 @@ export type DragDropEvent =
   | { type: 'leave' };
 
 /**
- * Platform 層のインタフェース。
- *
- * Domain 層はこれだけを見る。Tauri の存在を知らないことで、
- * Vitest 上でも `dev:web` のブラウザ上でも同じコードが動く（02.architecture/03-layers.md §1）。
- */
-/**
  * ウォーム経路の種別（ADR-0007「Warm Start の計測経路が 2 本になる」）。
  *
  * 記録を分けるためだけに存在する。**混ぜてはいけない。**
  */
 export type WarmKind = 'warm' | 'tray-resume';
 
+/**
+ * Platform 層のインタフェース。
+ *
+ * Domain 層はこれだけを見る。Tauri の存在を知らないことで、
+ * Vitest 上でも `dev:web` のブラウザ上でも同じコードが動く（02.architecture/03-layers.md §1）。
+ */
 export interface Platform {
   readonly kind: 'tauri' | 'web';
   /** 同期的に読める初期ペイロード。IPC 往復を挟まないことが最重要。 */

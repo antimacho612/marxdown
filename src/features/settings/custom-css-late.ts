@@ -1,18 +1,8 @@
 /**
- * カスタム CSS の、**起動が終わってからやること**（02.architecture/10-theming.md §3 / 02.architecture/05-startup-sequence.md §1）。
+ * カスタム CSS の、起動が終わってからやること（02.architecture/10-theming.md §3）。
  *
- * # なぜ分かれているか
- *
- * `custom-css.ts`（適用そのもの）は `main` に載る。bootstrap 同梱の CSS を
- * 本文より前に当てないと FOUC になるため、そこだけは遅延できない。
- *
- * **残りはすべてここ。** このモジュールは `ready()` の後に動的 import され、
- * `settings` チャンクに入る（06.roadmap/m1.5-shell-and-settings.md §3 の完了条件）。
- * ここでやることは 3 つで、どれも IPC を伴い、数十 ms 遅れても実害がない。
- *
- * 1. 64KB を超えて bootstrap に載らなかった CSS を取りに行く
- * 2. 読めなかった / 大きすぎた / 包めなかったことを通知バーに出す
- * 3. 外部エディタでの編集を購読して当て直す（**設定を試行錯誤できることが目的**）
+ * `custom-css.ts`（適用そのもの）は FOUC 回避のため `main` に残るが、それ以外（64KB 超で bootstrap に載らなかった CSS の取得・読み込み失敗の通知・外部編集の購読）はすべてここにある。
+ * `ready()` の後に動的 import される `settings` チャンクで、どれも IPC を伴い数十 ms 遅れても実害が無い。
  */
 import { documentStore } from '@/features/document/store.svelte';
 import { ja } from '@/i18n/ja';

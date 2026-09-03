@@ -1,41 +1,12 @@
 /**
  * `Ctrl+F` / `Ctrl+H` の振り分け（F-VIEW-10 / F-EDIT-05）。
  *
- * # 1 つのキーに 2 つの実装がある
+ * 検索は面ごとに別実装（Preview は Range 検索、Edit は Monaco の find ウィジェット）だが、同じキーで見ているほうが開く。
+ * `features/editor/keymap.ts` が `Ctrl+F` を Monaco から剥がしているのはこのためである（外すと Edit で二重に開く）。
  *
- * 検索は面ごとに別物である。
- *
- * ```text
- * Preview  本文の DOM を Range で探す（CSS Custom Highlight API / preview/search.ts）
- * Edit     エディタのモデルを探す（Monaco の find ウィジェット）
- * ```
- *
- * **同じキーで、見ているほうが開く。** ユーザーから見れば「いま読んでいるものを探す」
- * という 1 つの操作なので、キーを 2 つに分けない。
- *
- * この振り分けがあるので、`features/editor/keymap.ts` は `Ctrl+F` を Monaco から剥がしている。
- * 外さないと、Edit ではエディタが先に受けたあと、ここでもう一度開くことになる。
- *
- * # Split では「見ている面」がモードで決まらない
- *
- * 両方が見えているので、`viewStore.mode` では判定にならない。
- * **フォーカスのある側を探す**（[03.ux-spec > keybindings §4](../../../docs/03.ux-spec/04-keybindings.md)）。
- * Split に入った直後はエディタにフォーカスがあるので、既定はエディタ検索になる。
- * プレビューを叩いてから押せば本文検索が開く。
- *
- * # 2 つの検索を同時に開かない
- *
- * プレビュー検索の `F3` / `Escape` は `bindKeys`（`lib/shortcuts.ts`）でグローバルに置いてある。
- * **あちらには「入力中は発火しない」が無い**ので、エディタにフォーカスを移しても効き続ける。
- * Split で両方開けると `F3` が 2 つの検索を同時に進めることになるため、
- * **開くほうが、もう片方を閉じる。**
- *
- * # 置換は Edit だけ
- *
- * `Ctrl+H` は Preview では何も起きない。読んでいるものを書き換える経路は無いし、
- * 押した人が期待しているのは編集であって、モードが勝手に変わることではない。
- * メニューには Preview のときだけ出さない（`app/commands.ts` の `isListed`）。
- * **Split では効く。** 片方はエディタなので、置換の行き先が決まっている。
+ * Split では両方見えるため `viewStore.mode` では判定できず、フォーカスのある側を探す（03.ux-spec/04-keybindings.md §4。既定はエディタ検索）。
+ * プレビュー検索の `F3`/`Escape` はグローバルに効き続けるため、開くほうがもう片方を閉じて同時進行を防ぐ。
+ * `Ctrl+H`（置換）は Edit と Split のみで、Preview では書き換える経路が無いため何もしない。
  */
 import { closeEditorSearchLazily, openEditorSearchLazily } from '@/features/editor/open-editor';
 import { openSearchLazily } from '@/features/preview/open-search';

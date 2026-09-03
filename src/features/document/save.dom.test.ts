@@ -2,18 +2,12 @@
 /**
  * 保存経路の回帰テスト（F-EDIT-02, 03, 14 / N-REL-01）。
  *
- * # ここで見るもの
+ * バイト列の正しさは Rust 側の担当（`src-tauri/src/document/`）で、UI からの通し確認は E2E の担当である（`e2e/`）。
+ * この層が担うのは間の組み立てで、本文とメタ情報から `WriteRequest` を組む（EOL / BOM / encoding を落とさないか）ことと、`SaveResult` を画面の言葉と次の状態に変換する（mtime を更新し忘れないか）ことである。
  *
- * バイト列の正しさは Rust 側の担当（`src-tauri/src/document/`）で、
- * UI からの通し確認は E2E の担当（`e2e/`）。**この層が担うのは間の組み立て**である。
- *
- * ```text
- * いまの本文とメタ情報 → WriteRequest      ← EOL / BOM / encoding を落とさないか
- * SaveResult          → 画面の言葉と次の状態 ← mtime を更新し忘れないか
- * ```
- *
- * `mtime` の更新漏れは**画面に出ない**。2 回目の保存で初めて「別のプロセスが
- * 変更しています」として現れ、そのときには原因が遠い。ここで固定しておく。
+ * `mtime` の更新漏れは画面に出ない。
+ * 2 回目の保存で初めて「別のプロセスが変更しています」として現れ、そのときには原因が遠い。
+ * ここで固定しておく。
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 

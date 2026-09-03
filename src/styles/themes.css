@@ -1,52 +1,17 @@
 /**
  * 組み込みの配色（F-CONF-08 / ADR-0013）。
  *
- * # テーマは「属性で選ぶトークンの上書き」でしかない
+ * `[data-mx-theme='...']` によるカスタムプロパティの上書きのみで実現する。
+ * `#mx-preview` / `#mx-editor` / 設定ダイアログの見本にそれぞれ独立に付き、`default` は属性を付けず tokens.css のトークンをそのまま使う（F-CONF-02）。
+ * `:root` には付けない（クロームは常に tokens.css のまま / ADR-0013）。
  *
- * 新しい仕組みを作らない。ユーザーが preview.css / editor.css でやることと同じ
- * （トークンを上書きする）を、組み込みで数個持っているだけである。
- * 属性が付いた要素の配下すべてに、カスタムプロパティの継承で降りていく。
+ * 明暗は tokens.css 側の `color-scheme` 管理を介して `light-dark()` が解決するため、ライト/ダークを別ブロックに分けず 1 テーマ 1 ブロックで済む。
  *
- * ```text
- * #mx-preview[data-mx-theme='solarized']   本文
- * #mx-editor[data-mx-theme='nord']         エディタ（Monaco が theme.ts 経由で読み出す）
- * 設定ダイアログの見本                       選択中のパレットを同じ属性で着る
- * ```
+ * 上書きは面（bg / fg / border / accent / selection）と記法（code-*）の 18 変数に限定する。
+ * `--mx-color-danger` のような意味を持つ色はテーマで変更しない（警告が目立たなくなるため）。
  *
- * **`default` には属性を付けない。** 設定を触らない人の見た目は tokens.css のままで、
- * このファイルは 1 行も効かない（F-CONF-02）。
- *
- * # クロームには当てない
- *
- * `:root` には決して付けない。タイトルバー・ステータスバー・通知バー・設定ダイアログの
- * 配色は常に tokens.css のままである（ADR-0013）。
- * 「クロームは細く、静か」（Design Brief Principle 2）を配色でも守る。
- *
- * # 明暗は `light-dark()` に任せる
- *
- * tokens.css はダーク変種を 2 か所（`:root[data-theme='dark']` と
- * `@media (prefers-color-scheme: dark)`）に書いている。**テーマごとにこれを繰り返すと
- * 1 テーマ 3 ブロックになる。**
- *
- * `light-dark()` は要素に効いている `color-scheme` で解決される。
- * tokens.css が `:root` の `color-scheme` を正しく管理しており（`light dark` か、
- * `data-theme` に対応した固定値）、それは継承で降りてくる。
- * したがって **1 テーマ 1 ブロックで、明示指定にも OS 追従にも同時に追従する。**
- *
- * > tokens.css 本体は書き換えない。既定パレットの見た目が変わる危険に対して、
- * > 得られるのは行数だけである。
- *
- * # 上書きするのはこの 18 個だけ
- *
- * 面（bg / fg / border / accent / selection）と記法（code-*）に閉じている。
- * `--mx-color-danger` や `--mx-color-caption-close` のような「意味を持つ色」は
- * テーマで動かさない。**警告が配色によって目立たなくなってはいけない。**
- *
- * # ユーザーの CSS が必ず勝つ
- *
- * ここは素のセレクタ、preview.css / editor.css は `@scope`。
- * `@scope` はスコープ近接（CSS Cascade 6）で非スコープの規則に優先するので、
- * **「組み込みテーマを選んだうえで一部だけ上書きする」が `!important` なしで成立する。**
+ * ここは素のセレクタで指定し、preview.css / editor.css は `@scope` で指定する。
+ * スコープ近接（CSS Cascade 6）により後者が優先されるため、`!important` なしでユーザー CSS が組み込みテーマより優先される。
  */
 
 /* ========== GitHub ========== */

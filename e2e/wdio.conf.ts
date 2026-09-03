@@ -1,27 +1,17 @@
 /**
  * E2E の設定（02.architecture/12-testing-strategy.md / OQ-29）。
  *
- * # 何のためにあるのか
- *
- * M2 で編集と保存が入ると、壊れたときの被害が「表示が崩れる」から
- * **「ユーザーのファイルが壊れる」** に変わる（N-REL-01）。
+ * M2 で編集と保存が入ると、壊れたときの被害が「表示が崩れる」から「ユーザーのファイルが壊れる」に変わる（N-REL-01）。
  * 原子的書き込み・衝突検知・EOL/BOM の復元は、単体テストでは通しで検証できない。
+ * Rust 側の `document::write` は `cargo test` が固めてあるので（`read_then_save_untouched_keeps_bytes_identical`）、ここが見るのはその上、「エディタの内容 → `WriteRequest` の組み立て → IPC → ディスクのバイト列」の経路である。
  *
- * Rust 側の `document::write` は `cargo test` が固めてある
- * （`read_then_save_untouched_keeps_bytes_identical`）。**ここが見るのはその上**、
- * 「エディタの内容 → `WriteRequest` の組み立て → IPC → ディスクのバイト列」の経路である。
+ * CI では走らせない。
+ * 05.performance-budget/05-operations.md §5 と同じ扱いで、実機（WebView2 ランタイム + 版の合った msedgedriver）が要り、環境ノイズも大きい。
+ * `pnpm e2e` の手動実行と、マイルストーン完了時の実行にとどめる。
+ * 前提の揃え方は `e2e/README.md`。
  *
- * # CI では走らせない
- *
- * 05.performance-budget/05-operations.md §5 と同じ扱い。実機（WebView2 ランタイム + 版の合った
- * msedgedriver）が要り、環境ノイズも大きい。`pnpm e2e` の手動実行と、
- * マイルストーン完了時の実行にとどめる。前提の揃え方は `e2e/README.md`。
- *
- * # 本数を絞る
- *
- * 02.architecture/12-testing-strategy.md の方針どおり。E2E は遅くて壊れやすい。
- * ここに置いてよいのは**保存経路と、起動して本文が出ること**だけで、
- * それ以外は Vitest と `cargo test` の担当。
+ * 本数は絞る。
+ * 02.architecture/12-testing-strategy.md の方針どおり E2E は遅くて壊れやすいため、ここに置いてよいのは保存経路と起動して本文が出ることだけで、それ以外は Vitest と `cargo test` の担当。
  */
 import { execFileSync, spawn, type ChildProcess } from 'node:child_process';
 import { existsSync } from 'node:fs';

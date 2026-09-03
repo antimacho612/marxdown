@@ -12,11 +12,9 @@
  * node scripts/bench-input.mjs --json out.json
  * ```
  *
- * # 比較してよい値
- *
- * **比べるのは同じファイル・同じ run 数の値だけ。**
+ * 比べるのは同じファイル・同じ run 数の値だけである。
  * Cold Start と同じく（measurements/03-cold-start.md §2）、絶対値は環境で振れる。
- * 意味を持つのは**実装を変えた前後の差**である（打鍵列はシード固定で毎回同じ）。
+ * 意味を持つのは実装を変えた前後の差である（打鍵列はシード固定で毎回同じ）。
  */
 import { spawn } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';

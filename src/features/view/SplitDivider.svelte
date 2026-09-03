@@ -1,21 +1,7 @@
 <!--
   Split の分割線（03.ux-spec/03-split-mode.md §1）。
-
-  ```text
-  ├────────────┬───────────┬─┬───────────┬─────────────┤
-  │ leftpane   │ editor    │▏│ preview   │ rightpane   │
-  ```
-
-  # ライトペインの掴み手と同じ形にしてある
-
-  `panes/RightPane.svelte` の `__resizer` と、ドラッグの取り方・rAF の間引き・
-  離した時点で 1 回だけ保存する形が同じ。**違うのは単位だけ**で、
-  あちらは px、こちらは比を扱う（`features/view/split.ts`）。
-
-  # `slider` にしている理由もあちらと同じ
-
-  フォーカスできる `separator`（ウィンドウスプリッタ）を Svelte の a11y 検査が
-  「押せない要素」と見なす。伝えたいこと（いまどの比か）は slider のほうが素直に読める。
+  ライトペインの掴み手（`panes/RightPane.svelte` の `__resizer`）とドラッグ・rAF 間引き・離した時点で 1 回だけ保存する形が同じで、違うのは単位だけである（あちらは px、こちらは比）。
+  `role="slider"` なのは、Svelte の a11y 検査が `separator` を「押せない要素」と見なすためである。
 -->
 <script lang="ts">
   import { viewStore } from '@/features/view/store.svelte';

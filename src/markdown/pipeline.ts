@@ -1,25 +1,12 @@
 /**
  * markdown-it の構築（02.architecture/06-markdown-rendering-pipeline.md §1 / ADR-0003）。
  *
- * このモジュールは **Worker 側で評価される**ことを前提にしている。
- * DOM に触れてはいけない（DOMPurify はメインスレッド側の担当）。
+ * DOM に触れてはいけない（Worker 側で評価される前提。DOMPurify はメインスレッド側の担当）。
+ * プラグイン構成は 04.tech-stack/04-markdown.md §2 の既定に従う。
+ * 脚注・タスクリスト・GitHub Alerts は M4 から M2 へ前倒し済みである（OQ-27 / 06.roadmap/m2-editor.md §1.4）。
  *
- * # プラグイン構成の方針
- *
- * 04.tech-stack/04-markdown.md §2 が「既定で有効」とするものを入れている。
- * 目次（F-VIEW-15）だけは採用パッケージが未定なので OQ-27 に残してある。
- *
- * 脚注 / タスクリスト / GitHub Alerts は元々 M4 の担当だったが、
- * **OQ-27 の決着により M2 の着手時点へ前倒した**（06.roadmap/m2-editor.md §1.4）。
- * Design Brief §5.3 の目安「GitHub のプレビューで表示できるものは、Marxdown でも
- * 表示できる」に届いていないことが、読む体験（価値 2 位 / ADR-0008）を
- * 最も直接に損なっていたため。Mermaid（OQ-27 の案 C）は OQ-18 待ちで M3 以降。
- *
- * # `use` の順序が仕様である
- *
- * `lineMapPlugin` を**最後**に置く。あれは `md.renderer.rules[...]` を
- * その時点の中身ごと包むので、先に置くと後続プラグインの代入で上書きされる
- * （`plugins/line-map.ts`）。GitHub Alerts の `alert_open` がまさにそれに当たる。
+ * `use` の順序は仕様であり、`lineMapPlugin` を最後に置くこと。
+ * `md.renderer.rules[...]` をその時点の中身ごと包むため、先に置くと後続プラグインの代入で上書きされる。
  */
 import MarkdownItCallable, { type MarkdownIt, type Token } from 'markdown-it';
 import anchor from 'markdown-it-anchor';

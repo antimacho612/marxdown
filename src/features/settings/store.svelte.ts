@@ -1,17 +1,9 @@
 /**
  * ユーザー設定（F-CONF-03 / 02.architecture/04-rust-responsibilities.md §5）。
  *
- * # 真実はファイルの側にある
- *
- * このストアは `settings.json` の写しであり、初期値は bootstrap に同梱されて届く。
- * **IPC で取りに行く経路を作らない。** 見た目に効く値（テーマ / 本文幅 / フォント）は
- * 本文を描くより前に当たっている必要があり、往復を挟むと FOUC になる（02.architecture/05-startup-sequence.md §1）。
- *
- * # ここに置くのは設定の値だけ
- *
- * ADR-0005 の禁止（本文をリアクティブな状態に置かない）は設定にも同じく効く。
- * 「壊れている」という事実は通知バー（`documentStore.notice`）に流して終わりにし、
- * ここには残さない。状態を 2 か所に持つと、直したあとに片方だけ残る。
+ * 真実は `settings.json` 側にあり、このストアはその写しである。
+ * 初期値は bootstrap に同梱されて届くため IPC で取りに行く経路は作らない（往復を挟むと FOUC になる）。
+ * 「壊れている」という事実は通知バー（`documentStore.notice`）に流すだけでここには残さない（ADR-0005。状態を 2 か所に持つと直した後に片方だけ残る）。
  */
 import { documentStore } from '@/features/document/store.svelte';
 import { ja } from '@/i18n/ja';

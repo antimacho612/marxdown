@@ -1,34 +1,12 @@
 /**
  * 「このアプリで何ができるか」の唯一の表（06.roadmap/m2-editor.md §1.2）。
  *
- * # ここに集めた理由
+ * 以前はキーバインドとメニューに別々の一覧が存在していた。
+ * ここへ集約した結果、`features/menu` は `runCommand(id)` だけを呼べばよくなり、feature 同士が互いの関数名を知らずに済む。
+ * 登録元がここ（`app/`）にあるのは、各 feature を把握してよい composition root だからである。
  *
- * 以前は同じ操作の一覧が 2 か所に、別々の形で存在していた。
- *
- * ```text
- * bootstrap.ts installShortcuts()   キー → 無名クロージャ
- * features/menu/items.ts buildMenu() id / label / shortcut / run
- * ```
- *
- * M2 で書式コマンドとモード切り替えが、M3 でコマンドパレット（F-NAV-06）が
- * 3 つ目の一覧として加わる。**コマンドが 15 個増えてから寄せるのは、いま寄せるより高い。**
- *
- * 寄せた結果、`features/menu` が 8 つの feature を名指しで import していたのが
- * `runCommand(id)` だけになった。feature 同士が互いの関数名を知らなくなり、
- * 「誰が誰を呼んでいるか」が**この 1 ファイルを読めば分かる**状態になっている。
- *
- * # 登録元が `app/` にある理由
- *
- * ここはアプリの組み立て役（composition root）で、各 feature を知っていてよい
- * 唯一の場所。逆に feature 側はコマンドの存在を知らないままでいられる
- * （`zoom.ts` は `zoomIn` を export するだけで、id を知らない）。
- *
- * # クリティカルパスに載っているもの
- *
- * 06.roadmap/m2-editor.md §1.2 の制約どおり、**`id → run` と `key → id` の 2 つの表だけ**。
- * ラベルは `features/menu/items.ts`（遅延チャンク）に置いてある。
- * 実体も、遅延チャンクのものは `open*Lazily` の形を維持している
- * （動的 import 一行だけのモジュールを経由するので、押されるまで何もロードされない）。
+ * クリティカルパスに載るのは `id → run` と `key → id` の 2 表のみである（§1.2 の制約）。
+ * ラベルは遅延チャンク側（`features/menu/items.ts`）に置いてある。
  */
 import { toggleEol } from '@/features/document/eol';
 import { newDocument } from '@/features/document/new';
@@ -174,31 +152,12 @@ const RELOAD_KEYS = ['F5', 'Ctrl+R', 'Ctrl+Shift+R', 'Ctrl+F5', 'Shift+F5'];
 /**
  * キーと id の対応（03.ux-spec/04-keybindings.md §3）。
  *
- * ここに並ぶのは**アプリ全体で効くもの**だけ。プレビュー内検索の `F3` / `Escape`
- * のように、開いている間だけ効くキーは、その機能のモジュールが自分で `bindKeys` する。
+ * アプリ全体で効くものだけを並べる（プレビュー内検索の `F3`/`Escape` のように開いている間だけ効くキーは、その機能のモジュールが自分で `bindKeys` する）。
+ * クリティカルパスに載ってよい唯一の形であり（06.roadmap/m2-editor.md §1.2）、キーバインド設定はこの表を差し替える形で入る。
  *
- * **この表がクリティカルパスに載ってよい唯一の形**（06.roadmap/m2-editor.md §1.2）。
- * Design Brief §3.8 のキーバインド設定は、この表を差し替える形で入る。
- *
- * # ここに書いたキーは、どこにフォーカスがあっても効く
- *
- * M2 Phase 1・2 では 1 つずつ `whenEditing: true` を足していた。Edit モードでは
- * フォーカスが CodeMirror にあり、既定の「入力中は発火しない」に任せると
- * **入った先から戻れず、保存もできず、素通りしたキーが WebView 自身の機能
- * （ズーム / 名前を付けて保存）に当たる**ためだった。
- *
- * Phase 3 で、足りないぶん（`Ctrl+O` / ペイン / アウトライン / 戻る・進む）を
- * 埋めた結果、**例外が 1 つも残らなかった**。境界は「入力中かどうか」ではなく、
- * どちらの表に書いてあるか、である。
- *
- * ```text
- * この表                        アプリに対する操作。どこに居ても効く
- * features/editor/keymap.ts     本文をどう編集するか。エディタに居るときだけ効く
- * ```
- *
- * **2 つの表は重ならない。** 重なると CodeMirror（要素で捕まえる）が先に処理し、
- * そのあと `globalThis` のリスナが同じキーをもう一度処理する。重ならないように
- * するために `keymap.ts` が `Mod-f` などを外している。
+ * ここに書いたキーはどこにフォーカスがあっても効く。
+ * 以前は Edit モードで `whenEditing: true` を個別に足していたが、境界を「入力中かどうか」ではなく「どちらの表に書いてあるか」に変えたことで例外が無くなった。
+ * この表と `features/editor/keymap.ts`（本文編集用）は重ならないよう、`keymap.ts` 側が重複キーを外している。
  */
 export const KEY_BINDINGS: KeyBinding[] = [
   // 新規ファイル（03.ux-spec/04-keybindings.md §3）。素通りさせると WebView 自身の

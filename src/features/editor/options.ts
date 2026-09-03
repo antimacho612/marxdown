@@ -1,37 +1,11 @@
 /**
  * 設定を Monaco のオプションに写す（`editor` チャンク / F-CONF-04 / ADR-0012）。
  *
- * # ここは「写像」だけを持つ
+ * 値の検証は Rust 側（`settings/schema.rs`）と `appearance.ts` の `LIMITS` が済ませており、ここで再検証しない。
+ * `editor.create()` に直接書いたオプション（`editor.ts`）は設定にしないと決めたもの（N-CMP-03 に触れる／IDE 寄りの機能／禁則との衝突）で、迷ったらそちら側に置く。
+ * トークンから引くのは表示倍率と `editor.fontFamily` の空欄時フォールバックの 2 つだけである（`theme.ts` 経由）。
  *
- * 値の検証（範囲・型）は Rust 側（`settings/schema.rs`）と `appearance.ts` の `LIMITS` が
- * 済ませている。**このファイルで再検証しない。** 3 か所目の判断が生えると、
- * どれが本当の上限なのかが読めなくなる。
- *
- * # 設定に出さないものは `editor.ts` に残す
- *
- * `editor.create()` に直接書いてあるオプションは、**設定にしないと決めたもの**である。
- * 理由は 3 つに分かれる（`editor.ts` の該当箇所にそれぞれ書いてある）。
- *
- * ```text
- * N-CMP-03  触っていないバイト列を変える機能（formatOnPaste / autoIndent など）
- * Non-goal  IDE に寄る機能（補完・言語サービス）。editor worker を起こす経路でもある
- * 禁則      09-motion.md（smoothScrolling）や独自機能との衝突（mouseWheelZoom）
- * ```
- *
- * **迷ったら `editor.ts` に置く。** 設定は増やすより減らすほうが難しい。
- *
- * # トークンから引くのは 2 つだけ
- *
- * 表示倍率（`--mx-zoom` / F-VIEW-11）と、`editor.fontFamily` が空のときの
- * 落とし先（`--mx-font-code`）。どちらも CSS 側にしか無い値なので、
- * `theme.ts` の読み出し層を通す。
- *
- * # 購読は隣のファイルにある
- *
- * 設定の変化を拾う `watchEditorSettings` は `watch-settings.svelte.ts` にある。
- * **ルーン（`$effect.root`）を使うファイルだけを分けてある。**
- * こちらが素の `.ts` でいられると、写像のテストが Svelte のコンパイルも
- * Monaco の読み込みも通さずに済む（`options.dom.test.ts`）。
+ * 設定変化の購読（`watchEditorSettings`）はルーンを使うため `watch-settings.svelte.ts` に分けてあり、このファイルは素の `.ts` のまま Svelte も Monaco も通さずテストできる。
  */
 import { formatFontFamily } from '@/features/settings/appearance';
 import { settingsStore } from '@/features/settings/store.svelte';

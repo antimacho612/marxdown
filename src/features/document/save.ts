@@ -1,25 +1,9 @@
 /**
  * 保存（F-EDIT-02, 03, 14 / N-REL-01, 02）。
  *
- * # ここが M2 で最も壊してはいけない経路
- *
- * 壊れたときの被害が「表示が崩れる」から **「ユーザーのファイルが壊れる」** に変わる。
- * 原子的書き込み・衝突検知・EOL/BOM の復元は **Rust 側が済ませてある**
- * （`src-tauri/src/document/`）ので、ここの責務は 3 つだけ。
- *
- * ```text
- * 1. いまの本文とメタ情報から WriteRequest を正しく組み立てる
- * 2. 返ってきた結果（saved / conflict）を画面の言葉に落とす
- * 3. 保存できた事実を、次の保存が使う形（mtime）へ反映する
- * ```
- *
- * # 3 が抜けると、自分の保存が次の衝突になる
- *
- * `expectedMtimeMs` は「前回読んだ / 書いた時点のディスクの姿」である。
- * 保存に成功したのに更新し忘れると、**2 回目の `Ctrl+S` が必ず衝突する。**
- * 外から誰も触っていないのに「別のプロセスが変更しています」が出る。
- *
- * ダーティ状態そのものは `dirty.ts` にある（依存の向きが違うため）。
+ * 原子的書き込み・衝突検知・EOL/BOM の復元は Rust 側（`src-tauri/src/document/`）が済ませてあるため、ここの責務は WriteRequest の組み立て・結果の通知・`expectedMtimeMs` の更新の 3 つだけである。
+ * mtime の更新を忘れると、外部の変更が無くても 2 回目の保存が必ず衝突として弾かれる。
+ * ダーティ状態は `dirty.ts` にある（依存の向きが違うため）。
  */
 import { ja } from '@/i18n/ja';
 import { toMessage } from '@/lib/error';
@@ -138,13 +122,8 @@ function applySaved(path: string, mtimeMs: number, size: number, eol: Eol): void
 
 /**
  * 衝突したときの選択（03.ux-spec/07-status-and-notifications.md §2 の「警告」）。
- *
- * ```text
- * 「保存できませんでした: 別のプロセスが変更しています」+ 上書き / 再読み込み
- * ```
- *
- * **消えない通知にする。** データ消失に直結する選択なので、
- * 3 秒で消えて「無かったこと」になってはいけない。
+ * 「保存できませんでした: 別のプロセスが変更しています」+ 上書き / 再読み込み、を消えない通知として出す。
+ * データ消失に直結する選択なので、3 秒で消えて「無かったこと」になってはいけない。
  */
 function offerConflictChoice(path: string, diskMtimeMs: number): void {
   documentStore.notice = {

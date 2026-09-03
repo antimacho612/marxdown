@@ -1,17 +1,11 @@
 //! 起動時の先読みと初期ペイロード生成（02.architecture/05-startup-sequence.md §1）。
 //!
-//! # 設計の要点
-//!
-//! 1. **ファイル読み込みと WebView 起動を並行させる。**
-//!    WebView2 の初期化には数百 ms かかる。その待ち時間はファイル I/O にとって無料の時間。
-//!
-//! 2. **初期コンテンツを IPC 往復ではなく初期化スクリプトで渡す。**
-//!    `invoke()` の往復を待つと、WebView 準備完了 → リクエスト → レスポンスという
-//!    最低 1 ラウンドトリップが本文表示前に挟まる。
-//!
-//! 3. **256KB を超える本文は埋め込まない。**
-//!    初期化スクリプトは文字列として WebView に渡されるため、
-//!    巨大な本文を JSON 文字列化するコストが往復コストを上回る点がある。
+//! ファイル読み込みと WebView 起動を並行させる。
+//! WebView2 の初期化には数百 ms かかるため、その待ち時間をファイル I/O に充てられる。
+//! 初期コンテンツは IPC 往復ではなく初期化スクリプトで渡す。
+//! `invoke()` の往復を待つと、WebView の準備完了後にリクエストとレスポンスの往復が発生し、本文の表示が遅れるためである。
+//! ただし 256KB を超える本文は埋め込まない。
+//! 初期化スクリプトは文字列として WebView に渡されるため、巨大な本文を JSON 文字列化するコストが往復のコストを上回る場合がある。
 
 use serde::Serialize;
 
@@ -46,15 +40,16 @@ pub struct Bootstrap {
     /// IPC 往復ではなくここに載せる（03.ux-spec/08-empty-states.md §1）。
     pub recent: Vec<RecentEntry>,
     /// 表示倍率（F-VIEW-11）。最初のフレームから正しい倍率で描くために必要。
-    /// 後から当てると、本文が一度既定倍率で描かれてから跳ねる。
+    /// 後から当てると、本文が一度既定倍率で描かれた後に別の倍率に変化して見える。
     pub zoom: f64,
     /// ペインの開閉と幅（F-NAV-04 / 03.ux-spec/06-panes.md §3）。
     ///
-    /// **倍率と同じ理由でここに載る。** 後から当てると、本文が一度全幅で描かれてから
-    /// 横に詰まる（02.architecture/04-rust-responsibilities.md §5「`panes` と `zoom` は bootstrap に載せる」）。
+    /// 倍率と同じ理由でここに載る。
+    /// 後から当てると、本文が一度全幅で描かれた後に幅が縮小して見える（02.architecture/04-rust-responsibilities.md §5「`panes` と `zoom` は bootstrap に載せる」）。
     pub panes: Panes,
-    /// Split の分割比（03.ux-spec/03-split-mode.md §1）。**倍率・ペインと同じ理由でここに載る。**
-    /// 後から当てると、Split で開いたときに 50:50 で一度描かれてから寄る。
+    /// Split の分割比（03.ux-spec/03-split-mode.md §1）。
+    /// 倍率・ペインと同じ理由でここに載る。
+    /// 後から当てると、Split で開いたときに 50:50 の状態が一度描かれた後に分割比が変化して見える。
     pub split: f64,
     /// ユーザー設定の**全体**（F-CONF-03 / 02.architecture/04-rust-responsibilities.md §5）。
     ///
@@ -392,7 +387,7 @@ mod tests {
 
     /// 03.ux-spec/06-panes.md §3 /02.architecture/04-rust-responsibilities.md §5「`panes` と `zoom` は bootstrap に載せる」。
     ///
-    /// **ここが空だと本文が一度全幅で描かれてから横に詰まる。**
+    /// ここが空だと本文が一度全幅で描かれた後に幅が縮小して見える。
     /// フロントが `ready()` の後に IPC で聞きに行く経路は作らない。
     #[test]
     fn the_script_carries_the_pane_state() {

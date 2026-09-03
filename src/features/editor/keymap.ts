@@ -1,46 +1,15 @@
 /**
  * エディタのキーマップ（F-EDIT-04〜10, 12 / `editor` チャンク）。
  *
- * # 2 つの表の境界
+ * キーは 2 表にしか無い。`app/commands.ts` の `KEY_BINDINGS`（どこでも効くアプリ操作）と、ここ（エディタに居るときだけ効く編集操作）である。
+ * 重なると要素側が先に処理し `globalThis` のリスナが二重に処理するため、重複キーは `REMOVED` で剥がす。
  *
- * このアプリのキーは 2 か所にしかない。
+ * Monaco は VS Code のキーが最初から入っているため、CodeMirror 時代の「互換キーマップを外から足す」作業が「アプリ側が握るキーを剥がす」だけになった（ADR-0009 の受け入れコスト 6）。
+ * マルチカーソル/矩形選択の修飾子も既定で 03.ux-spec/04-keybindings.md §3 と一致するため直す必要がない。
  *
- * ```text
- * app/commands.ts KEY_BINDINGS   アプリに対する操作。どこにフォーカスがあっても効く
- * features/editor/keymap.ts      本文をどう編集するか。エディタに居るときだけ効く
- * ```
+ * `DROPPED` は `KeyMod` / `KeyCode` の定数で照合するため、パッケージの綴りが変わると型で落ちる（CodeMirror 版の文字列照合とは違い見張るテストが不要）。
  *
- * **この 2 つは重ならない。** 重なると、エディタ（要素で捕まえる）が先に処理し、
- * そのあと `globalThis` のリスナがもう一度同じキーを処理することになる。
- * 重ならないようにする作業が、下の `REMOVED` である。
- *
- * # 作業が反転した
- *
- * CodeMirror では **VS Code 互換キーマップを外から足す**必要があり、
- * `@replit/codemirror-vscode-keymap` を丸ごと入れて要らないものを名指しで外していた。
- *
- * **Monaco では VS Code のキーが最初から全部入っている。** やることは
- * 「Marxdown がアプリ側で握るキーを剥がす」ことだけになった
- * （[ADR-0009](../../../docs/adr/0009-editor-engine-monaco.md) の受け入れコスト 6）。
- *
- * ついでに消えた作業もある。**マルチカーソルと矩形選択の修飾子は直さなくてよい。**
- * CodeMirror は `Ctrl+クリック` / `Alt+ドラッグ` を既定にしていて VS Code と食い違っていたが、
- * Monaco は `Alt+クリック` / `Shift+Alt+ドラッグ` で
- * [03.ux-spec > keybindings §3](../../../docs/03.ux-spec/04-keybindings.md) と最初から一致する。
- *
- * # 綴りではなく定数で書ける
- *
- * CodeMirror 版の `DROPPED` は**キーの綴りを文字列で照合**していたため、
- * パッケージ側の綴りが変わると黙って外れなくなり、それをテストで見張っていた。
- * Monaco は `KeyMod` / `KeyCode` の定数なので、**名前が変われば型で落ちる。**
- * 見張るテストが要らなくなったぶん、`keymap.test.ts` は畳んである。
- *
- * # IME 変換中には割り込まない
- *
- * `Enter` と `Backspace` を横取りしているが、**変換中の確定は奪わない。**
- * IME の変換中、ブラウザは `keyCode: 229` で keydown を出す。Monaco の
- * `StandardKeyboardEvent` はこれをどのキーにも対応させないので、
- * キーバインドはそもそも解決されない。
+ * `Enter` / `Backspace` を横取りするが、IME 変換中（`keyCode: 229`）は Monaco がキーバインドを解決しないため確定操作を奪わない。
  */
 import { runEdit, type MarkdownEdit } from './edits';
 import { continueList, deleteMarkupBackward } from './enter';

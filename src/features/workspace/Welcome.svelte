@@ -1,21 +1,6 @@
 <!--
   引数なしで起動したときの画面（F-OPEN-03 / F-OPEN-09 / 03.ux-spec/08-empty-states.md §1）。
-
-  ```text
-  Marxdown
-
-  ファイルを開く          Ctrl+O
-  新規ファイル            Ctrl+N
-
-  最近開いたファイル
-    README.md            ~/repos/marxdown
-    00.design-brief.md   ~/repos/marxdown/docs.local
-
-  ここに Markdown ファイルをドロップ
-  ```
-
-  チュートリアルもツアーも出さない。**ショートカットを併記することが唯一の教育**。
-
+  チュートリアルもツアーも出さず、ショートカットの併記だけを教育手段にする。
   「フォルダを開く」（M3）はまだ並べていない。
   押しても何も起きない項目を置くのは Principle 3 に反する。
 -->

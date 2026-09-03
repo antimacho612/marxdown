@@ -3,18 +3,11 @@
  * リストの継続入力・自動採番・記法の畳み込みの回帰テスト
  * （F-EDIT-09 の `Enter` / F-EDIT-10 / `enter.ts`）。
  *
- * # ここは前は無かった
+ * このテストは前は無かった。
+ * CodeMirror では `@codemirror/lang-markdown` が持っていたので「自分で書いていないものをテストしない」と決めていたが、Monaco では自作なのでここで見る（[ADR-0009](../../../docs/adr/0009-editor-engine-monaco.md) の受け入れコスト 1）。
  *
- * CodeMirror では `@codemirror/lang-markdown` が持っていたので
- * 「自分で書いていないものをテストしない」と決めていた。
- * **Monaco では自作なので、ここで見る**
- * （[ADR-0009](../../../docs/adr/0009-editor-engine-monaco.md) の受け入れコスト 1）。
- *
- * # `null`（＝手を引いた）が期待値になる
- *
- * `Enter` と `Backspace` は**本来別の意味を持つキーを横取りしている**。
- * リストでない場所で握り潰すと、ただの改行と 1 文字削除ができなくなる。
- * `run` は手を引いたときだけ `null` を返す（`keymap.ts` の `FALLTHROUGH`）。
+ * `Enter` と `Backspace` は本来別の意味を持つキーを横取りしているため、リストでない場所で握り潰すと、ただの改行と 1 文字削除ができなくなる。
+ * `null`（＝手を引いた）が期待値になる場面があり、`run` は手を引いたときだけ `null` を返す（`keymap.ts` の `FALLTHROUGH`）。
  */
 import { describe, expect, it } from 'vitest';
 

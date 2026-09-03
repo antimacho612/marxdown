@@ -1,22 +1,9 @@
 /**
- * すべてのブロックレベル要素に `data-line="開始行"` を付ける markdown-it プラグイン。
+ * すべてのブロックレベル要素に `data-line="開始行"` を付ける markdown-it プラグイン（02.architecture/06-markdown-rendering-pipeline.md §3 / VS Code の Markdown プレビューと同じ手法）。
+ * スクロール同期・クリックジャンプ・編集位置ハイライト・アウトラインジャンプの基盤である。
  *
- * 02.architecture/06-markdown-rendering-pipeline.md §3。VS Code の Markdown プレビューと同じ手法で、
- * 以下がすべてこの 1 つの仕組みの上に乗る。
- *
- * - Split モードのスクロール同期（双方向）
- * - Preview のクリック → 該当ソース行へジャンプ
- * - 編集中の該当位置をプレビュー側でハイライト
- * - アウトラインからのジャンプ
- *
- * 消費側（スクロール同期）は M2 だが、**先行投資として最初から付けておく**。
- * あとから入れると HTML の形が変わって回帰が出る。
- *
- * # プラグインより後に `use` すること
- *
- * ここは `md.renderer.rules[...]` を**その時点の中身ごと包む**。先に `use` すると
- * 包む相手がまだ居らず、後から登録したプラグインの代入で丸ごと上書きされる。
- * `pipeline.ts` が `lineMapPlugin` を最後に置いているのはこのため。
+ * 他のプラグインより後に `use` すること。
+ * `md.renderer.rules[...]` をその時点の中身ごと包むため、先に置くと後続プラグインの代入で上書きされる（`pipeline.ts` が最後に置いている理由）。
  */
 import type { MarkdownIt, RendererRule, Token } from 'markdown-it';
 
