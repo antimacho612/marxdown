@@ -82,7 +82,7 @@
 <Story name="既定幅" loaders={[seed(240)]} template={stage} />
 
 <!-- 最小幅。長い見出しがどこで省略されるかを見る。 -->
-<Story name="最小幅（180px）" loaders={[seed(PANE_WIDTH_MIN)]} template={stage} />
+<Story name="最小幅 (180px)" loaders={[seed(PANE_WIDTH_MIN)]} template={stage} />
 
 <!-- 上限まで広げた状態。本文が潰れないための歯止め（`store.rs` と同じ値）。 -->
 <Story name="最大幅" loaders={[seed(PANE_WIDTH_MAX)]} template={stage} />

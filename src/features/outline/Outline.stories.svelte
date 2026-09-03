@@ -91,14 +91,14 @@
   §2「見出しがない、または 2 個以下のドキュメントでは自動的に折りたたむ」。
   畳んだ状態で出るが、押せば開く（判断を押し付けない）。
 -->
-<Story name="見出しが 2 個（自動で折りたたむ）" loaders={[seed(FEW)]} template={pane} />
+<Story name="見出しが 2 個 (自動で折りたたむ)" loaders={[seed(FEW)]} template={pane} />
 
 <Story name="深い階層" loaders={[seed(DEEP)]} template={pane} />
 
 <Story name="H2 から始まる文書" loaders={[seed(STARTS_AT_H2)]} template={pane} />
 
 <!-- 400 個。スクロールできること、1 行の高さが崩れないことを見る。 -->
-<Story name="長大（400 個）" loaders={[seed(HUGE)]} template={pane} />
+<Story name="長大 (400 個)" loaders={[seed(HUGE)]} template={pane} />
 
 <style>
   /* ライトペインの中に置かれた状態を再現する（幅は既定の 240px）。 */

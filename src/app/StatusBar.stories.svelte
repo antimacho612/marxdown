@@ -57,7 +57,7 @@
   Edit モード。**カーソル位置はここで初めて出る**（Preview では概念が無い /
   03.ux-spec/07-status-and-notifications.md §3）。
 -->
-<Story name="Edit（カーソル位置）" loaders={[seed(BASE, 1, 'edit')]} />
+<Story name="Edit (カーソル位置)" loaders={[seed(BASE, 1, 'edit')]} />
 
 <!-- 倍率は 100% でも出す（押せる場所を動かさないため / 03.ux-spec/07-status-and-notifications.md §3）。 -->
 <Story name="拡大中" loaders={[seed(BASE, 1.5)]} />

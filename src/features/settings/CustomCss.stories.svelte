@@ -105,7 +105,7 @@ blockquote {
   **拒否される CSS。** タイトルバーが消えていないこと、本文にも何も当たっていないこと
   （部分適用を残さない）を確認する。実アプリではここで通知バーが出る。
 -->
-<Story name="クロームを消そうとする CSS（拒否）" loaders={[seed(ESCAPING)]} template={stage} />
+<Story name="クロームを消そうとする CSS (拒否)" loaders={[seed(ESCAPING)]} template={stage} />
 
 <style>
   /* 実アプリの body grid（`shell.css`）の代わり。タイトルバーと本文を縦に積む。 */
