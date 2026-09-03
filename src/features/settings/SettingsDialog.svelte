@@ -1,15 +1,18 @@
 <!--
-  設定 UI（F-CONF-05 / ADR-0011）。
-  遅延チャンクにあり、`Ctrl+,` かメニューの「設定」が押されるまでロードされない。
+@component
+設定 UI（F-CONF-05 / ADR-0011）。
 
-  項目が 6 個から 28 個に増え 1 列に収まらなくなったため、モーダルダイアログ（カテゴリを持てる形）へ移した。
-  背後が見えなくなる代わりに、フォントまわりだけ見本を内蔵する（本文幅・折り返し・タブ幅は見本に出せないため出していない）。
-  フォーカストラップ・inert 化・`::backdrop` はブラウザの `<dialog>` に任せる。
+遅延チャンクにあり、`Ctrl+,` かメニューの「設定」が押されるまでロードされない。
 
-  「既定に戻す」ボタンは既定でないときだけ出す（押しても無意味なボタンを並べない）。
-  settings.json が壊れている間は保存を試みない。
-  Rust 側も拒否するが、UI が「保存できたように見せる」のを避けるため入力欄ごと止め、ファイルへの導線だけ残す。
+項目が 6 個から 28 個に増え 1 列に収まらなくなったため、モーダルダイアログ（カテゴリを持てる形）へ移した。
+背後が見えなくなる代わりに、フォントまわりだけ見本を内蔵する（本文幅・折り返し・タブ幅は見本に出せないため出していない）。
+フォーカストラップ・inert 化・`::backdrop` はブラウザの `<dialog>` に任せる。
+
+「既定に戻す」ボタンは既定でないときだけ出す（押しても無意味なボタンを並べない）。
+settings.json が壊れている間は保存を試みない。
+Rust 側も拒否するが、UI が「保存できたように見せる」のを避けるため入力欄ごと止め、ファイルへの導線だけ残す。
 -->
+
 <script module lang="ts">
   /**
    * 最後に開いていたカテゴリ。**永続化しない。**
@@ -28,6 +31,7 @@
 
   import { formatFontFamily, LIMITS, type NumericKey } from './appearance';
   import { changeSetting } from './change';
+  import { ResetButton, Section } from './components';
   import { settingsStore } from './store.svelte';
 
   const { onclose }: { onclose: () => void } = $props();
@@ -340,14 +344,14 @@
         {@render selectField('editor.theme', ja.settings.palette, PALETTES, ja.settings.paletteHint)}
         {@render editorSample()}
 
-        {@render section(ja.settings.sections.font)}
+        <Section label={ja.settings.sections.font} />
         {@render textField('editor.fontFamily', ja.settings.editor.fontFamily, ja.settings.fontFamilyHint)}
         {@render numberField('editor.fontSize', ja.settings.editor.fontSize, ja.settings.unitPx, '')}
         {@render numberField('editor.lineHeight', ja.settings.editor.lineHeight, '', '')}
         {@render numberField('editor.letterSpacing', ja.settings.editor.letterSpacing, ja.settings.unitPx, '')}
         {@render toggleField('editor.fontLigatures', ja.settings.editor.fontLigatures)}
 
-        {@render section(ja.settings.sections.display)}
+        <Section label={ja.settings.sections.display} />
         {@render selectField('editor.lineNumbers', ja.settings.editor.lineNumbers, LINE_NUMBERS, '')}
         {@render selectField('editor.renderWhitespace', ja.settings.editor.renderWhitespace, RENDER_WHITESPACE, '')}
         {@render selectField(
@@ -363,7 +367,7 @@
         {@render rulersField()}
         {@render numberField('editor.padding.top', ja.settings.editor.paddingTop, ja.settings.unitPx, '')}
 
-        {@render section(ja.settings.sections.input)}
+        <Section label={ja.settings.sections.input} />
         {@render selectField('editor.wordWrap', ja.settings.editor.wordWrap, WORD_WRAP, '')}
         {#if values['editor.wordWrap'] === 'wordWrapColumn' || values['editor.wordWrap'] === 'bounded'}
           <!-- 桁を使う設定のときだけ出す。使わない値を編集させても意味が無い。 -->
@@ -414,24 +418,10 @@
   </footer>
 </dialog>
 
-<!-- ---------------------------------------------------------------- -->
-<!-- 部品                                                              -->
-<!-- ---------------------------------------------------------------- -->
-
-{#snippet section(label: string)}
-  <h3 class="mx-settings__section">{label}</h3>
-{/snippet}
-
+<!-- MARK: Snippets -->
 {#snippet resetButton(key: keyof Settings, label: string)}
   {#if customized(key)}
-    <button
-      type="button"
-      class="mx-settings__reset"
-      title={ja.settings.resetOf(label)}
-      onclick={() => changeSetting(key, null)}
-    >
-      {ja.settings.reset}
-    </button>
+    <ResetButton title={ja.settings.resetOf(label)} onClick={() => changeSetting(key, null)} />
   {/if}
 {/snippet}
 
@@ -772,20 +762,6 @@
     flex: none;
   }
 
-  /* 節の見出し。**項目より前に来る区切り**なので、上だけ余白を足す。 */
-  .mx-settings__section {
-    margin: var(--mx-space-2) 0 0;
-    padding-bottom: var(--mx-space-1);
-    border-bottom: 1px solid var(--mx-color-border-subtle);
-    font-size: var(--mx-font-size-ui);
-    font-weight: 600;
-    color: var(--mx-color-fg-muted);
-  }
-
-  .mx-settings__section:first-child {
-    margin-top: 0;
-  }
-
   /*
    * 項目は**ラベル列 + 操作列の 2 列**。
    *
@@ -835,21 +811,6 @@
     padding: 0;
     color: var(--mx-color-fg);
     font-weight: 600;
-  }
-
-  .mx-settings__reset {
-    flex: none;
-    padding: 0 var(--mx-space-1);
-    border: none;
-    background: none;
-    color: var(--mx-color-accent);
-    font: inherit;
-    font-size: 11px;
-    cursor: default;
-  }
-
-  .mx-settings__reset:hover:not(:disabled) {
-    text-decoration: underline;
   }
 
   .mx-settings__choices {
