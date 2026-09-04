@@ -374,7 +374,7 @@ export const ja = {
     unitLines: '行',
     reset: '既定に戻す',
     resetOf: (label: string) => `${label}を既定に戻す`,
-    edit: 'settings.json を開く',
+    edit: '設定（JSON）を開く',
     editHint: 'ここに無い項目は settings.json に直接書ける',
   },
   /**

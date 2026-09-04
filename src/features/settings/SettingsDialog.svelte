@@ -34,6 +34,7 @@ Rust 側も拒否するが、UI が「保存できたように見せる」のを
   import {
     ContentSample,
     EditorSample,
+    Navigation
     NumberField,
     RadioGroup,
     Section,
@@ -269,25 +270,7 @@ Rust 側も拒否するが、UI が「保存できたように見せる」のを
   {/if}
 
   <div class="mx-settings__body">
-    <!--
-      カテゴリ。**タブの ARIA ロールにしていない。**
-      `tablist` を名乗ると矢印キーでの移動を自分で実装する義務が生まれる。
-      素のボタンなら `Tab` だけで全部に届き、実装は 0 行で済む
-      （03.ux-spec/10-accessibility.md「すべての操作がキーボードで到達可能」）。
-    -->
-    <nav class="mx-settings__nav" aria-label={ja.settings.title}>
-      {#each CATEGORIES as item (item.id)}
-        <button
-          type="button"
-          class="mx-settings__category"
-          class:mx-settings__category--current={category === item.id}
-          aria-current={category === item.id ? 'true' : undefined}
-          onclick={() => (category = item.id)}
-        >
-          {item.label}
-        </button>
-      {/each}
-    </nav>
+    <Navigation items={CATEGORIES} selected={category} onSelectionChange={(id) => (category = id)} />
 
     <!--
       壊れているときは `fieldset` 1 枚でまとめて止める。個々の `disabled` を
@@ -368,20 +351,9 @@ Rust 側も拒否するが、UI が「保存できたように見せる」のを
     </fieldset>
   </div>
 
-  <!--
-    ファイルへの導線。**壊れていても押せる**（直す場所はファイルにしかない）。
-    `fieldset` の外に置いてあるのがその実装。
-
-    カスタム CSS（F-CONF-07 / 02.architecture/10-theming.md §3）に置くのも
-    **このボタン 1 つだけ**。有効化のスイッチもパスの設定も無く、
-    `custom.css` が存在すれば効く。設定項目を増やさないことがそのまま仕様なので、
-    ここに ON/OFF を足さないこと。
-  -->
+  <!-- TODO: 削除。preview.css は「プレビュー」カテゴリの中、editor.css は「エディタ」カテゴリの中に置く。 -->
   <footer class="mx-settings__footer">
     <div class="mx-settings__files">
-      <button type="button" class="mx-settings__file" onclick={() => void getPlatform().openSettingsFile()}>
-        {ja.settings.edit}
-      </button>
       <button type="button" class="mx-settings__file" onclick={() => void getPlatform().openCustomCssFile()}>
         {ja.customCss.open}
       </button>
@@ -389,9 +361,6 @@ Rust 側も拒否するが、UI が「保存できたように見せる」のを
         {ja.customCss.openEditor}
       </button>
     </div>
-    <p class="mx-settings__hint">{ja.settings.editHint}</p>
-    <p class="mx-settings__hint">{ja.customCss.hint}</p>
-    <p class="mx-settings__hint">{ja.customCss.hintEditor}</p>
   </footer>
 </dialog>
 
@@ -574,37 +543,6 @@ Rust 側も拒否するが、UI が「保存できたように見せる」のを
     min-height: 0;
     display: grid;
     grid-template-columns: 10rem 1fr;
-  }
-
-  .mx-settings__nav {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    overflow-y: auto;
-    padding: var(--mx-space-3) var(--mx-space-2);
-    border-inline-end: 1px solid var(--mx-color-border-subtle);
-  }
-
-  .mx-settings__category {
-    padding: var(--mx-space-2) var(--mx-space-3);
-    border: none;
-    border-radius: var(--mx-radius-sm);
-    background: none;
-    color: var(--mx-color-fg-muted);
-    font: inherit;
-    text-align: start;
-    cursor: default;
-  }
-
-  .mx-settings__category:hover {
-    background: var(--mx-color-bg-hover);
-    color: var(--mx-color-fg);
-  }
-
-  .mx-settings__category--current {
-    background: var(--mx-color-bg-hover);
-    color: var(--mx-color-fg);
-    font-weight: 600;
   }
 
   /* `fieldset` の既定（枠・余白・`min-inline-size: min-content`）を落とす。
