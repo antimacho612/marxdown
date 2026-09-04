@@ -34,7 +34,7 @@ Rust 側も拒否するが、UI が「保存できたように見せる」のを
   import {
     ContentSample,
     EditorSample,
-    Navigation
+    Navigation,
     NumberField,
     RadioGroup,
     Section,
