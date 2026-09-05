@@ -3,7 +3,7 @@
  *
  * M2 で編集と保存が入ると、壊れたときの被害が「表示が崩れる」から「ユーザーのファイルが壊れる」に変わる（N-REL-01）。
  * 原子的書き込み・衝突検知・EOL/BOM の復元は、単体テストでは通しで検証できない。
- * Rust 側の `document::write` は `cargo test` が固めてあるので（`read_then_save_untouched_keeps_bytes_identical`）、ここが見るのはその上、「エディタの内容 → `WriteRequest` の組み立て → IPC → ディスクのバイト列」の経路である。
+ * Rust 側の `document::write` は `cargo test` が固めてあるので（`read_then_save_untouched_keeps_bytes_identical`）、ここが見るのはその上、「エディターの内容 → `WriteRequest` の組み立て → IPC → ディスクのバイト列」の経路である。
  *
  * CI では走らせない。
  * 05.performance-budget/05-operations.md §5 と同じ扱いで、実機（WebView2 ランタイム + 版の合った msedgedriver）が要り、環境ノイズも大きい。

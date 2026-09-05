@@ -120,7 +120,7 @@ Rust 側も拒否するが、UI が「保存できたように見せる」のを
     dialog.showModal();
     void reload();
     focusFirstControl();
-    // 外部エディタで直された / 壊された瞬間に、この画面の見え方も変わる。
+    // 外部エディターで直された / 壊された瞬間に、この画面の見え方も変わる。
     // 値のほうは `installSettingsWatch` が当て直しているので、ここで見るのは
     // 「保存できる状態か」だけ。
     const unwatch = getPlatform().onSettingsChanged(() => void reload());
@@ -226,7 +226,7 @@ Rust 側も拒否するが、UI が「保存できたように見せる」のを
   $effect(() => {
     const next = values['editor.rulers'].join(', ');
     if (next === pushedRulers) return;
-    // 外部エディタでの編集か「既定に戻す」。入力欄を追いつかせる。
+    // 外部エディターでの編集か「既定に戻す」。入力欄を追いつかせる。
     rulersText = next;
     pushedRulers = next;
   });
@@ -351,7 +351,7 @@ Rust 側も拒否するが、UI が「保存できたように見せる」のを
     </fieldset>
   </div>
 
-  <!-- TODO: 削除。preview.css は「プレビュー」カテゴリの中、editor.css は「エディタ」カテゴリの中に置く。 -->
+  <!-- TODO: 削除。preview.css は「プレビュー」カテゴリの中、editor.css は「エディター」カテゴリの中に置く。 -->
   <footer class="mx-settings__footer">
     <div class="mx-settings__files">
       <button type="button" class="mx-settings__file" onclick={() => void getPlatform().openCustomCssFile()}>

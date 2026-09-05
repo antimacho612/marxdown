@@ -174,9 +174,9 @@ function summarize(reports) {
 }
 
 const ROWS = [
-  ['keyResponseMs', '打鍵が届く → エディタ反映  ★予算'],
+  ['keyResponseMs', '打鍵が届く → エディター反映  ★予算'],
   ['keyTypeMs', '  うち Monaco の編集'],
-  ['keyLatencyMs', '予定時刻 → エディタ反映'],
+  ['keyLatencyMs', '予定時刻 → エディター反映'],
   ['keyWaitMs', '  うち打鍵が待たされた分'],
   ['previewTotalMs', '打ち終わり → プレビュー反映'],
   ['previewParseWaitMs', '  うちパース（往復 / 占有）'],

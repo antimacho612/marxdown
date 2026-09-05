@@ -33,12 +33,12 @@
   const depths = $derived(toDepths(items));
 
   /**
-   * 追う相手がプレビューではなくエディタか（#59）。
+   * 追う相手がプレビューではなくエディターか（#59）。
    *
    * Edit では本文の面が `display: none` にある。**隠れた要素の交差は起きない**ので、
    * `IntersectionObserver` は現在位置を教えてくれない（`rootBounds` も
    * `boundingClientRect` も全部 0 で届き、全部の見出しが「越えた」と読めてしまう）。
-   * 見えているのはエディタのほうなので、そちらのカーソル行から引く。
+   * 見えているのはエディターのほうなので、そちらのカーソル行から引く。
    */
   const followsCursor = $derived(viewStore.mode === 'edit');
 
@@ -103,7 +103,7 @@
    *
    * カーソル位置は既にストアに来ている（`features/editor/cursor.ts` が rAF で
    * 間引いて入れる / ADR-0005）。**購読を新しく増やさずに済む**のが要点で、
-   * ペインを閉じてもエディタ側に外し忘れが残らない。
+   * ペインを閉じてもエディター側に外し忘れが残らない。
    */
   $effect(() => {
     if (!followsCursor) return;

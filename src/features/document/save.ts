@@ -31,7 +31,7 @@ export async function saveCurrent(): Promise<boolean> {
   if (meta === null) return false;
 
   // まだ一度も保存していない文書（`Ctrl+N` / `document/new.ts`）には保存先が無い。
-  // **`Ctrl+S` で名前を訊く**のが、どのエディタでも同じ振る舞いである（Familiar）。
+  // **`Ctrl+S` で名前を訊く**のが、どのエディターでも同じ振る舞いである（Familiar）。
   if (meta.path === null) return saveAs();
 
   return writeTo(meta.path, meta.mtimeMs);

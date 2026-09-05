@@ -259,9 +259,9 @@ function customCssNow(): CustomCss {
 }
 
 /**
- * dev:web のエディタ用カスタム CSS（ADR-0013）。
+ * dev:web のエディター用カスタム CSS（ADR-0013）。
  *
- * `?editorCss` を付けると見本が入る。**エディタの配色はトークン経由でしか変えられない**
+ * `?editorCss` を付けると見本が入る。**エディターの配色はトークン経由でしか変えられない**
  * ことを見本自身が示すため、色ではなく変数を上書きしてある。
  */
 function editorCssNow(): CustomCss {
@@ -285,7 +285,7 @@ blockquote {
 }
 `;
 
-/** エディタ用の見本。**変数の上書きだけ**で配色が変わることを示す。 */
+/** エディター用の見本。**変数の上書きだけ**で配色が変わることを示す。 */
 const SAMPLE_EDITOR_CSS = `:scope {
   --mx-color-bg: #1a1b26;
   --mx-color-fg: #c0caf5;

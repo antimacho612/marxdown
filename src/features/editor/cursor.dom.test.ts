@@ -2,7 +2,7 @@
 /**
  * カーソル位置の間引き（03.ux-spec/07-status-and-notifications.md §3 / ADR-0005）。
  *
- * `installCursorReport` が触るのは `getPosition()` と `onDidChangeCursorPosition` の 2 つだけで、本物のエディタが要る性質はどこにも無いため Monaco は載せない。
+ * `installCursorReport` が触るのは `getPosition()` と `onDidChangeCursorPosition` の 2 つだけで、本物のエディターが要る性質はどこにも無いため Monaco は載せない。
  * 偽物にすると「1 フレームに何度も動かす」を正確に作れるので、ここで見たいこと（間引き）がそのまま試験になる。
  *
  * rAF も自前で持つ。jsdom のものは実時間で走るので、
@@ -17,7 +17,7 @@ import type { monaco } from './monaco';
 
 type Listener = (e: { position: monaco.IPosition }) => void;
 
-/** 位置を動かせるだけの偽エディタ。 */
+/** 位置を動かせるだけの偽エディター。 */
 function fakeEditor(initial: monaco.IPosition | null) {
   let listener: Listener | null = null;
   return {
@@ -118,7 +118,7 @@ describe('カーソル位置の報告', () => {
     expect(documentStore.cursor).toBeNull();
   });
 
-  it('位置を持たないエディタでは何も出さない', () => {
+  it('位置を持たないエディターでは何も出さない', () => {
     const { editor } = fakeEditor(null);
     installCursorReport(editor);
 

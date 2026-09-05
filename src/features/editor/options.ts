@@ -67,7 +67,7 @@ export function editorOptions(values: Settings): EditorOptions {
  * フォント名。**空欄はトークン層のコードフォントに落ちる。**
  *
  * `--mx-font-code` は `preview.codeFontFamily` を先頭に足した後の値なので、
- * エディタ側を指定していない人には M2 までと同じフォントが出る。
+ * エディター側を指定していない人には M2 までと同じフォントが出る。
  *
  * 指定があるときに既定スタックを後ろへ足すのは `applyAppearance` と同じ理由で、
  * **そのフォントに無い字（日本語 / 記号）の落とし先を残す**ため（F-CONF-04）。

@@ -1,9 +1,9 @@
 /**
- * エディタの見た目（`editor` チャンク）。
+ * エディターの見た目（`editor` チャンク）。
  *
  * CodeMirror ではテーマ値に `var(--mx-*)` をそのまま書けたが、Monaco の `IStandaloneThemeData.colors` は実際の色（hex）しか受け付けないため、トークンを読み出して反映する層が要る（ADR-0009 の受け入れコスト 2）。
  * 同じ理由で `<html>` の属性（`data-theme` / `style`）と `prefers-color-scheme` をイベント駆動で監視し、変化のたびに反映し直す。
- * エディタの配色は面（`#mx-editor`）そのものに乗るため `:root` からは読めない（`tokenRoot()` / ADR-0013）。
+ * エディターの配色は面（`#mx-editor`）そのものに乗るため `:root` からは読めない（`tokenRoot()` / ADR-0013）。
  *
  * ライト/ダークの判定は `data-theme` ではなく解決後の背景色の明度で行う。
  * `system` やカスタム CSS によるトークン上書きでもテーマ名だけを見る分岐は外れるためである。
@@ -22,7 +22,7 @@ const THEME_NAME = 'marxdown';
  *
  * **`#mx-editor` から読む。`documentElement` からではない。**
  *
- * エディタの配色（`editor.theme` / `editor.css`）は、面そのものに
+ * エディターの配色（`editor.theme` / `editor.css`）は、面そのものに
  * カスタムプロパティを上書きする形で当たっている。`:root` から読むと、
  * **そこには何も乗っていない**ので、テーマを選んでも Monaco に届かない。
  *
@@ -223,7 +223,7 @@ function buildTheme(): monaco.editor.IStandaloneThemeData {
  * プレビューのトークンをそのまま着ていたが、読む面と書く面で別々に持つようにした
  * （ADR-0012）。いまは `options.ts` が設定から組む。
  *
- * エディタの実体を取らないのは、`defineTheme` / `setTheme` が
+ * エディターの実体を取らないのは、`defineTheme` / `setTheme` が
  * **Monaco 全体に対する操作**だから。インスタンスを渡す形にすると、
  * タブが増えたときに枚数ぶん呼ばれることになる（M3）。
  */
@@ -237,9 +237,9 @@ export function applyEditorTheme(): void {
  *
  * `<html>` の `data-theme`（テーマの切り替え、F-CONF-01）と `style`（プレビューのフォント・文字サイズ・行の高さと表示倍率、F-VIEW-11）の属性 2 本で全部拾える。
  * `applyAppearance` も `applyZoom` も `documentElement.style` を書き換えるので、アプリ側に通知の口を足す必要が無い。
- * `main` チャンクはエディタの存在を知らないままでいられる。
+ * `main` チャンクはエディターの存在を知らないままでいられる。
  *
- * エディタの設定（`editor.*`）はここを通らない。
+ * エディターの設定（`editor.*`）はここを通らない。
  * 折り返しやタブ幅は CSS に現れないため、属性を見ていても変化に気づけない。
  * そちらは `watchEditorSettings`（`watch-settings.svelte.ts`）がストアを直接購読する。
  */

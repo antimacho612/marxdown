@@ -77,7 +77,7 @@ interface KeySample {
   waitMs: number;
   /** `type` が返るまでの同期的な仕事。 */
   typeMs: number;
-  /** 打鍵が届いてから、エディタが描き直した直後のフレームまで。**予算はこれで見る。** */
+  /** 打鍵が届いてから、エディターが描き直した直後のフレームまで。**予算はこれで見る。** */
   responseMs: number;
   /** 予定時刻起点。`waitMs` を含む。 */
   latencyMs: number;
@@ -191,7 +191,7 @@ export async function runInputBench(): Promise<void> {
 
     const editor = await import('@/features/editor/editor');
     const mounted = await waitFor(() => editor.isEditorMounted(), 60_000);
-    if (!mounted) throw new Error('エディタが載らなかった');
+    if (!mounted) throw new Error('エディターが載らなかった');
 
     editor.moveToEndForBench();
     editor.focusEditor();
@@ -268,9 +268,9 @@ export async function runInputBench(): Promise<void> {
       hasMeta: documentStore.meta !== null,
       hasContainer: document.querySelector('#mx-preview') !== null,
     },
-    /** 打鍵が届く → エディタに反映（06.roadmap/m2-editor.md §3 の 16ms はこれ）。 */
+    /** 打鍵が届く → エディターに反映（06.roadmap/m2-editor.md §3 の 16ms はこれ）。 */
     keyResponseMs: stats(keys.map((s) => s.responseMs)),
-    /** 予定 → エディタに反映。タイマーの粗さを含む。 */
+    /** 予定 → エディターに反映。タイマーの粗さを含む。 */
     keyLatencyMs: stats(keys.map((s) => s.latencyMs)),
     /** 予定 → 実際に打てた時刻。メインスレッドの遅延そのもの。 */
     keyWaitMs: stats(keys.map((s) => s.waitMs)),

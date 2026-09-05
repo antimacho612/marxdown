@@ -27,12 +27,12 @@ async function currentMode(): Promise<string> {
   return browser.execute(() => document.documentElement.dataset['mxMode'] ?? '');
 }
 
-/** プレビューのスクロール位置。エディタ側は `editorScrollTop`（helper）が持つ。 */
+/** プレビューのスクロール位置。エディター側は `editorScrollTop`（helper）が持つ。 */
 async function previewScrollTop(): Promise<number> {
   return browser.execute(() => document.querySelector('#mx-preview')?.scrollTop ?? -1);
 }
 
-/** エディタ / プレビューのスクロール位置。 */
+/** エディター / プレビューのスクロール位置。 */
 async function positions(): Promise<{ editor: number; preview: number }> {
   return { editor: await editorScrollTop(), preview: await previewScrollTop() };
 }
@@ -40,7 +40,7 @@ async function positions(): Promise<{ editor: number; preview: number }> {
 /**
  * プレビューを動かす。**素の器なので代入で足りる**（`scroll` が飛ぶ）。
  *
- * エディタ側は代入では動かない。Monaco の器は `overflow: hidden` で、
+ * エディター側は代入では動かない。Monaco の器は `overflow: hidden` で、
  * `scrollTop` を見ていないため（`helpers/app.ts` の `editorScrollTop`）。
  * あちらは `scrollEditorToEnd` / `scrollEditorToTop` がキーで動かす。
  */
@@ -133,14 +133,14 @@ describe('Split に入る (F-MODE-03)', () => {
 });
 
 describe('スクロール同期 (F-MODE-05 / §2)', () => {
-  it('エディタを動かすとプレビューが追随する', async () => {
+  it('エディターを動かすとプレビューが追随する', async () => {
     await resetBoth();
 
     await scrollEditorToEnd();
     await waitForFollow('preview', 0);
   });
 
-  it('プレビューを動かすとエディタが追随する', async () => {
+  it('プレビューを動かすとエディターが追随する', async () => {
     await resetBoth();
 
     await scrollPreviewTo(500);
@@ -193,12 +193,12 @@ describe('スクロール同期 (F-MODE-05 / §2)', () => {
 
 describe('双方向ジャンプ (§3)', () => {
   /**
-   * プレビューの要素をダブルクリック → エディタの該当行へ。
+   * プレビューの要素をダブルクリック → エディターの該当行へ。
    *
    * 最後の段落（`終わり`）を叩くと、コードブロックより後ろの行へ飛ぶ。
    * **行を数えるだけの実装では、ここでコードブロックの中を指してしまう。**
    */
-  it('プレビューをダブルクリックすると、エディタのその行へカーソルが移る', async () => {
+  it('プレビューをダブルクリックすると、エディターのその行へカーソルが移る', async () => {
     await resetBoth();
 
     await browser.execute(() => {
@@ -211,7 +211,7 @@ describe('双方向ジャンプ (§3)', () => {
         const line = await activeLineText();
         return line.includes('終わり');
       },
-      { timeout: 10_000, timeoutMsg: 'エディタの該当行へ移らなかった' },
+      { timeout: 10_000, timeoutMsg: 'エディターの該当行へ移らなかった' },
     );
   });
 });
@@ -224,18 +224,18 @@ describe('双方向ジャンプ (§3)', () => {
  * **ここで見るのは「キーが届いて、本当に開くもの / 閉じるものが入れ替わるか」だけ。**
  */
 describe('Split の検索 (F-VIEW-10 / F-EDIT-05)', () => {
-  /** プレビュー内検索のパネルが出ているか。**エディタの外**にある。 */
+  /** プレビュー内検索のパネルが出ているか。**エディターの外**にある。 */
   async function isPreviewFindOpen(): Promise<boolean> {
     return browser.execute(() => document.querySelectorAll('.mx-search').length === 1);
   }
 
-  it('エディタにフォーカスがあるとエディタ検索が開く', async () => {
+  it('エディターにフォーカスがあるとエディター検索が開く', async () => {
     await focusEditorSurface();
     await browser.keys([Key.Control, 'f']);
 
     await browser.waitUntil(() => isSearchPanelOpen(), {
       timeout: 10_000,
-      timeoutMsg: 'エディタの検索が開かなかった',
+      timeoutMsg: 'エディターの検索が開かなかった',
     });
     expect(await isPreviewFindOpen()).toBe(false);
   });
@@ -252,7 +252,7 @@ describe('Split の検索 (F-VIEW-10 / F-EDIT-05)', () => {
     // **同時に開かない。** 開いたほうが、もう片方を閉じる。
     await browser.waitUntil(async () => !(await isSearchPanelOpen()), {
       timeout: 10_000,
-      timeoutMsg: 'エディタの検索が閉じなかった',
+      timeoutMsg: 'エディターの検索が閉じなかった',
     });
   });
 

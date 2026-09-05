@@ -100,7 +100,7 @@ export default defineConfig(({ mode }) => ({
           if (isStatusMenu) return 'assets/status-[hash].js';
 
           /*
-           * エディタ（M2 Phase 1）。menu / settings / outline と同じく**名前付けだけ**。
+           * エディター（M2 Phase 1）。menu / settings / outline と同じく**名前付けだけ**。
            *
            * 下の `manualChunks` が `@codemirror/*` を `editor` へ寄せているが、
            * それは**依存側**の話で、こちらは `features/editor/` から始まる

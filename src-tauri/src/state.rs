@@ -121,7 +121,7 @@ impl AppState {
     /// 設定を読み直す（02.architecture/04-rust-responsibilities.md §5）。
     ///
     /// **読めない内容に変わったときは既定値に戻さない。** 直前に読めていた値を保持し、
-    /// 壊れている事実だけを添えて返す。外部エディタで編集している最中の中間状態で
+    /// 壊れている事実だけを添えて返す。外部エディターで編集している最中の中間状態で
     /// テーマが飛ぶのを防ぐため（ファイル監視も、この経路を通す）。
     pub fn reload_settings(&self) -> SettingsLoad {
         let fresh = crate::settings::load(self.paths.settings.as_deref());
@@ -168,7 +168,7 @@ impl AppState {
 
     /// `✕` の意味（ADR-0007 論点 1）。**メモリ上の設定を見る。**
     ///
-    /// ディスクを読み直さないのは、外部エディタでの編集をファイル監視が
+    /// ディスクを読み直さないのは、外部エディターでの編集をファイル監視が
     /// 既に取り込んでいるため。`✕` を押すたびにファイル I/O をするのは、
     /// 得られるものに対して高い。
     pub fn close_behavior(&self) -> crate::settings::CloseBehavior {
@@ -203,7 +203,7 @@ impl AppState {
         self.paths.custom_css.as_deref()
     }
 
-    /// エディタ用カスタム CSS（`editor.css`）。本文用と同じ扱い。
+    /// エディター用カスタム CSS（`editor.css`）。本文用と同じ扱い。
     pub fn editor_css_path(&self) -> Option<&std::path::Path> {
         self.paths.editor_css.as_deref()
     }

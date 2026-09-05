@@ -1,7 +1,7 @@
 /**
  * 本文テキストの持ち主が状況で変わることの検証（ADR-0005 / `text.ts`）。
  *
- * ここが壊れると、エディタを載せた瞬間に本文が空になったり、
+ * ここが壊れると、エディターを載せた瞬間に本文が空になったり、
  * `huge.md` の 2MB を二重に握り続けたりする。**どちらも画面には出ない。**
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -15,7 +15,7 @@ import {
   type EditorTextPort,
 } from './text';
 
-/** テキストを 1 つ持つだけの偽エディタ。CodeMirror は要らない。 */
+/** テキストを 1 つ持つだけの偽エディター。CodeMirror は要らない。 */
 function fakePort(initial: string): EditorTextPort & { text: string; replace: ReturnType<typeof vi.fn> } {
   const port = {
     text: initial,
@@ -32,7 +32,7 @@ beforeEach(() => {
   resetDocumentText();
 });
 
-describe('エディタが載っていないあいだ', () => {
+describe('エディターが載っていないあいだ', () => {
   it('渡したテキストをそのまま返す', () => {
     setDocumentText('# a\n');
     expect(getDocumentText()).toBe('# a\n');
@@ -49,8 +49,8 @@ describe('エディタが載っていないあいだ', () => {
   });
 });
 
-describe('エディタが載っているあいだ', () => {
-  it('エディタの内容が真実になる', () => {
+describe('エディターが載っているあいだ', () => {
+  it('エディターの内容が真実になる', () => {
     setDocumentText('読み込んだ内容');
     const port = fakePort(getDocumentText());
     attachEditor(port);
@@ -59,7 +59,7 @@ describe('エディタが載っているあいだ', () => {
     expect(getDocumentText()).toBe('編集した内容');
   });
 
-  it('開き直すとエディタの内容も差し替わる', () => {
+  it('開き直すとエディターの内容も差し替わる', () => {
     setDocumentText('最初');
     const port = fakePort(getDocumentText());
     attachEditor(port);
@@ -72,15 +72,15 @@ describe('エディタが載っているあいだ', () => {
   it('二重に持たない', () => {
     // `huge.md`（2MB）で 2MB 余計に握り続けることになる。常駐アプリでは積算する。
     setDocumentText('控えとして持っている内容');
-    attachEditor(fakePort('エディタの内容'));
+    attachEditor(fakePort('エディターの内容'));
 
     // 控えが残っていれば、外した後にそれが出てくる。
     detachEditor();
-    expect(getDocumentText()).toBe('エディタの内容');
+    expect(getDocumentText()).toBe('エディターの内容');
   });
 });
 
-describe('エディタを外すとき', () => {
+describe('エディターを外すとき', () => {
   it('外す前の内容を控えへ戻す', () => {
     setDocumentText('最初');
     const port = fakePort('編集後');

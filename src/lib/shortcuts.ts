@@ -3,7 +3,7 @@
  *
  * 和音（`Ctrl+K V` 等）は扱わない（§2）ので、1 イベント 1 判定で済む。
  * 「入力中かどうか」も見ない。
- * 境界は `app/commands.ts` の `KEY_BINDINGS`（アプリ操作、どこでも効く）と `features/editor/keymap.ts`（本文の編集、エディタ内でのみ効く）のどちらに書いてあるかで決まり、両者は重ならない（`keymap.ts` が重複キーを外す）。
+ * 境界は `app/commands.ts` の `KEY_BINDINGS`（アプリ操作、どこでも効く）と `features/editor/keymap.ts`（本文の編集、エディター内でのみ効く）のどちらに書いてあるかで決まり、両者は重ならない（`keymap.ts` が重複キーを外す）。
  *
  * `Ctrl+=` / `Ctrl+-` / `Ctrl+F` は WebView 自身の機能にも割り当たっているため、一致したバインドでは必ず `preventDefault()` して二重動作を防ぐ。
  */

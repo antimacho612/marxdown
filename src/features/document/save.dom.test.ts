@@ -107,7 +107,7 @@ describe('WriteRequest の組み立て (F-EDIT-14)', () => {
     expect(documentStore.isDirty).toBe(false);
   });
 
-  it('いまの本文を送る（控えではなくエディタの内容）', async () => {
+  it('いまの本文を送る（控えではなくエディターの内容）', async () => {
     setDocumentText('古い');
     setDocumentText('新しい');
     await saveCurrent();
@@ -230,7 +230,7 @@ describe('名前を付けて保存 (F-EDIT-02)', () => {
 
   /**
    * 無題の文書（`Ctrl+N` / `document/new.ts`）には保存先が無い。
-   * **`Ctrl+S` が名前を訊く**のが、どのエディタでも同じ振る舞いである（Familiar）。
+   * **`Ctrl+S` が名前を訊く**のが、どのエディターでも同じ振る舞いである（Familiar）。
    */
   it('まだ保存していない文書では、Ctrl+S が名前を訊きに行く', async () => {
     documentStore.meta = { ...META, path: null, mtimeMs: 0, size: 0 };

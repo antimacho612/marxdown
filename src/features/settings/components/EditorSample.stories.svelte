@@ -1,7 +1,7 @@
 <!--
-  エディタの見本。
+  エディターの見本。
 
-  **エディタの設定はトークン層に出ない**ので、当てるスタイルはこの部品が自分で組む。
+  **エディターの設定はトークン層に出ない**ので、当てるスタイルはこの部品が自分で組む。
   記法の色は `theme.ts` の `tokenRules()` と同じ対応で、見出しとリストの記号が
   同じトークン（`keyword.md`）になるのは Monarch 側の都合をそのまま写しているため。
 
@@ -13,7 +13,7 @@
   import EditorSample from './EditorSample.svelte';
 
   const { Story } = defineMeta({
-    title: '設定/components/エディタの見本',
+    title: '設定/components/エディターの見本',
     component: EditorSample,
     parameters: { layout: 'padded' },
     args: {

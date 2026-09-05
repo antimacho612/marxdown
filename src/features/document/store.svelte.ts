@@ -77,7 +77,7 @@ class DocumentStore {
   /**
    * カーソル位置（03.ux-spec/07-status-and-notifications.md §3）。
    *
-   * **エディタが載っていないあいだは `null`。** Preview だけで読んでいるときに
+   * **エディターが載っていないあいだは `null`。** Preview だけで読んでいるときに
    * カーソルは存在しない（§3 の但し書き「Preview では非表示」の実体はこれ）。
    *
    * 更新は **rAF で間引く**（ADR-0005 / 02.architecture/08-state-management.md §1）。

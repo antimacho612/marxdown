@@ -11,9 +11,9 @@ M2 で編集と保存が入ると、壊れたときの被害が「表示が崩�
 | 層 | 見るもの |
 | --- | --- |
 | `cargo test`（`src-tauri/src/document/`） | `document::write` の正しさ。**バイト列の往復はここで固めてある** |
-| **E2E（ここ）** | エディタの内容 → `WriteRequest` の組み立て → IPC → ディスクのバイト列 |
+| **E2E（ここ）** | エディターの内容 → `WriteRequest` の組み立て → IPC → ディスクのバイト列 |
 
-M2 Phase 3 で**キーの経路**が加わった。アプリのグローバルキーとエディタの
+M2 Phase 3 で**キーの経路**が加わった。アプリのグローバルキーとエディターの
 キーバインドが同じキーを取り合っていないことは、本物のキーイベントを流さないと確かめられない
 （[03.ux-spec > keybindings §4](../docs/03.ux-spec/04-keybindings.md)）。
 
@@ -28,7 +28,7 @@ M2 Phase 3 で**キーの経路**が加わった。アプリのグローバル�
 
 ## エンジンの名前は 1 ファイルにしか書かない
 
-エディタが吐く DOM を指すセレクタは `helpers/app.ts` の `EDITOR_DOM` に集めてある。
+エディターが吐く DOM を指すセレクタは `helpers/app.ts` の `EDITOR_DOM` に集めてある。
 **spec からはエンジンの名前が読めない。**
 
 [ADR-0009](../docs/adr/0009-editor-engine-monaco.md) で CodeMirror を Monaco へ
@@ -39,7 +39,7 @@ M2 Phase 3 で**キーの経路**が加わった。アプリのグローバル�
 | --- | --- |
 | `.monaco-editor` は 2 つある | はみ出すウィジェットの受け皿が `document.body` 直下にも居る。**セレクタは `#mx-editor` の内側に閉じる** |
 | 行の DOM の順は行の順ではない | Monaco は行の要素を使い回す。**`style.top` で並べ直す**（`editorText`） |
-| エディタは `scrollTop` で動かない | 器は `overflow: hidden` で、スクロールは中身を上へずらして表す。**読むのは `.lines-content` の `top`、動かすのはキー** |
+| エディターは `scrollTop` で動かない | 器は `overflow: hidden` で、スクロールは中身を上へずらして表す。**読むのは `.lines-content` の `top`、動かすのはキー** |
 
 > **ネイティブのモーダルは WebDriver から押せない。**
 > 未保存時の終了確認（`ask_then_quit`）と、別の文書へ移るときの確認

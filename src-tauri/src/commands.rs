@@ -347,7 +347,7 @@ pub fn store_set_split(state: State<'_, AppState>, split: f64) {
 /// 設定を読み直す。
 ///
 /// **起動時の読み込みはここを通らない。** 設定は bootstrap に丸ごと載っており、
-/// フロントが取りに行く経路は無い（02.architecture/04-rust-responsibilities.md §5）。ここが要るのは、外部エディタで
+/// フロントが取りに行く経路は無い（02.architecture/04-rust-responsibilities.md §5）。ここが要るのは、外部エディターで
 /// 編集されたあとの読み直し（ファイル監視）と設定 UI の再表示。
 #[tauri::command]
 pub fn read_settings(state: State<'_, AppState>) -> settings::SettingsLoad {
@@ -398,7 +398,7 @@ pub fn open_settings_file(app: tauri::AppHandle, state: State<'_, AppState>) -> 
 /// （02.architecture/10-theming.md §3 / FOUC を防ぐため）、ここが要るのは 2 つの場合だけ。
 ///
 /// 1. 64KB を超えていて bootstrap に載らなかった（`deferred`）
-/// 2. 外部エディタで編集された後の読み直し（`marxdown://custom-css-changed`）
+/// 2. 外部エディターで編集された後の読み直し（`marxdown://custom-css-changed`）
 ///
 /// **パスを引数に取らない。** `open_settings_file` と同じ理由で、
 /// 読む先は Rust 側が知っている 1 か所しかない。
@@ -408,7 +408,7 @@ pub fn read_custom_css(state: State<'_, AppState>) -> custom_css::CustomCss {
     custom_css::load(state.custom_css_path(), custom_css::MAX_BYTES)
 }
 
-/// エディタ用カスタム CSS を読む。**本文用と 1:1 の対**（`read_custom_css`）。
+/// エディター用カスタム CSS を読む。**本文用と 1:1 の対**（`read_custom_css`）。
 #[tauri::command]
 pub fn read_editor_css(state: State<'_, AppState>) -> custom_css::CustomCss {
     custom_css::load(state.editor_css_path(), custom_css::MAX_BYTES)

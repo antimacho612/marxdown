@@ -41,7 +41,7 @@ export function installFileWatch(): void {
     if (change.path !== documentStore.meta?.path) return;
 
     // 消えたファイルは読みに行かない。読みに行くと「開けません」が出て、
-    // エディタが一時ファイル経由で置き換えた場合は直後に作り直されて
+    // エディターが一時ファイル経由で置き換えた場合は直後に作り直されて
     // もう一度通知が出る。**消えたことは通知もしない**。
     // 本文は画面に残っており、ユーザーが困っているとは限らない。
     if (change.kind === 'removed') return;

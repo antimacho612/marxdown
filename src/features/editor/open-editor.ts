@@ -1,5 +1,5 @@
 /**
- * エディタを載せる入口（`main` チャンク）。
+ * エディターを載せる入口（`main` チャンク）。
  * 動的 import の一行だけを持つモジュールとして切り出してある（`open-search.ts` 等と同じ形）。
  * ここに置いても `editor` チャンクは遅延のままである。
  * 既定の表示モードが Preview なのは、この分割境界を成立させるためでもある（02.architecture/05-startup-sequence.md §1 の要点 3）。
@@ -20,7 +20,7 @@ export async function mountEditorLazily(): Promise<void> {
  *
  * **`display: none` のあいだ Monaco は寸法を失う**
  * （[ADR-0009](../../../docs/adr/0009-editor-engine-monaco.md) の受け入れコスト 3）。
- * 呼ぶのはエディタが見えるモードに入ったときだけなので、ここで `editor` チャンクが
+ * 呼ぶのはエディターが見えるモードに入ったときだけなので、ここで `editor` チャンクが
  * 新たに落ちてくることはない（既に `mountEditorLazily` を通っている）。
  */
 export async function relayoutEditorLazily(): Promise<void> {
@@ -47,7 +47,7 @@ export async function preloadEditor(): Promise<void> {
 /**
  * 検索・置換パネルを開く（F-EDIT-05）。
  *
- * **エディタが載っていなければ何も起きない。** ここでわざわざ載せないのは、
+ * **エディターが載っていなければ何も起きない。** ここでわざわざ載せないのは、
  * Preview を見ているときの `Ctrl+F` は本文検索へ行くからで、
  * この関数まで来た時点で Edit に居ることが決まっている
  * （振り分けは `features/view/find.ts`）。

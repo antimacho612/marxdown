@@ -1,5 +1,5 @@
 //! カスタム CSS の読み込み（F-CONF-07 / 02.architecture/10-theming.md §3）。
-//! `%APPDATA%\com.antimacho612.marxdown\preview.css`（本文にだけ適用される）と `editor.css`（エディタにだけ適用される）の 2 面あるが、扱いは 1 つである。
+//! `%APPDATA%\com.antimacho612.marxdown\preview.css`（本文にだけ適用される）と `editor.css`（エディターにだけ適用される）の 2 面あるが、扱いは 1 つである。
 //! 読み方・上限・監視・「無いのは正常」まですべて同じで、違うのはファイル名と雛形だけであるため、面ごとに関数を分けず [`Surface`] を引数に取る形にしてある。
 //! 適用範囲（`@scope` の起点）が違うことはフロント側の関心事であり、ここには出てこない。
 //!
@@ -31,7 +31,7 @@ use crate::error::CoreResult;
 pub enum Surface {
     /// 本文（`@scope (#mx-preview)`）。
     Preview,
-    /// エディタ（`@scope (#mx-editor)`）。
+    /// エディター（`@scope (#mx-editor)`）。
     Editor,
 }
 
@@ -53,7 +53,7 @@ impl Surface {
 
 /// M1.5〜M3 のあいだ本文用カスタム CSS が名乗っていた名前。
 ///
-/// **エディタ用が増えて `custom.css` が何に当たるのか名前から読めなくなった**ため、
+/// **エディター用が増えて `custom.css` が何に当たるのか名前から読めなくなった**ため、
 /// `preview.css` へ改名した（[ADR-0013](../../docs/adr/0013-surface-themes.md)）。
 /// 移行は起動時に 1 回だけ行う（[`migrate_legacy`]）。
 const LEGACY_FILE_NAME: &str = "custom.css";
@@ -215,7 +215,7 @@ const TEMPLATE_PREVIEW: &str = "\
  *
  * ここに書いた CSS は **本文（プレビュー）にだけ** 当たります。
  * タイトルバー・ステータスバー・通知バーには効きません。
- * エディタに当てたいものは editor.css へ書きます。
+ * エディターに当てたいものは editor.css へ書きます。
  *
  * 変数を上書きするときは :scope に書きます。
  *
@@ -227,21 +227,21 @@ const TEMPLATE_PREVIEW: &str = "\
  */
 ";
 
-/// エディタ用の雛形。
+/// エディター用の雛形。
 ///
 /// **本文用と決定的に違うのは、色の届き方を説明する必要があること。**
-/// エディタの配色は Monaco が描いており、CSS の色をそのまま読んではいない。
+/// エディターの配色は Monaco が描いており、CSS の色をそのまま読んではいない。
 /// 効かせる手段はトークンの上書き（`:scope { --mx-color-* }`）であって、
 /// `.monaco-editor` を直接狙うことではない、と最初に書いておく。
 const TEMPLATE_EDITOR: &str = "\
 /*
- * Marxdown のカスタム CSS（エディタ）。
+ * Marxdown のカスタム CSS（エディター）。
  *
- * ここに書いた CSS は **エディタにだけ** 当たります。
+ * ここに書いた CSS は **エディターにだけ** 当たります。
  * 本文（プレビュー）に当てたいものは preview.css へ書きます。
  *
  * 配色を変えるときは、色そのものではなく :scope の変数を上書きします。
- * エディタの色は Monaco が描いており、変数から色を読み出しています。
+ * エディターの色は Monaco が描いており、変数から色を読み出しています。
  *
  *   :scope {
  *     --mx-color-bg: #1a1b26;
@@ -384,7 +384,7 @@ mod tests {
     #[test]
     fn each_surface_gets_its_own_template() {
         let editor = Surface::Editor.template();
-        assert!(editor.contains("エディタにだけ"), "{editor}");
+        assert!(editor.contains("エディターにだけ"), "{editor}");
         assert!(
             editor.contains("preview.css"),
             "もう一方の行き先を書いてある: {editor}"

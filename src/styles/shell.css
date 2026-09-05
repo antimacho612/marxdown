@@ -22,7 +22,7 @@ body {
     'statusbar statusbar statusbar';
   /* leftpane / rightpane の列は auto にしてある。要素を置かなければ 0 幅に潰れるので、既定でペインが存在しないことを表現するために変数もフラグも要らない。 */
   /* main に minmax(0, ...) を被せてあるのは Split の 2 列と同じ理由。grid の既定の最小幅（auto = 中身の最小幅）は fr の指定を押しのける。 */
-  /* Monaco は自分の器に px の幅を書き込むので、これが無いとペインを開いた側へ列が縮まず、エディタが画面外へはみ出してライトペインを viewport の外へ押し出す（#59）。 */
+  /* Monaco は自分の器に px の幅を書き込むので、これが無いとペインを開いた側へ列が縮まず、エディターが画面外へはみ出してライトペインを viewport の外へ押し出す（#59）。 */
   grid-template-columns: auto minmax(0, 1fr) auto;
   grid-template-rows: var(--mx-titlebar-height) 1fr var(--mx-statusbar-height);
 }
@@ -35,7 +35,7 @@ body {
 /* data-mx-mode が無い状態（bootstrap を持たない経路 / Storybook）は Preview 扱い。既定が Preview であることを、属性の有無にも一致させてある。 */
 .mx-preview,
 .mx-editor {
-  /* 本文の面とエディタの面は 同じセルに重ねてある。出し分けはここだけで行い、要素の付け外しはしない（features/view/mode.ts）。 */
+  /* 本文の面とエディターの面は 同じセルに重ねてある。出し分けはここだけで行い、要素の付け外しはしない（features/view/mode.ts）。 */
   /* Split はこの grid を 2 列に割る形で足す。そのとき変わるのは grid-template-areas の定義と、ここの 2 行だけで済む。 */
   grid-area: main;
   min-height: 0;
@@ -65,10 +65,11 @@ body {
   body {
     /* 列を 2 つ増やすだけ。変わるのは grid-template-areas の定義と .mx-preview / .mx-editor の行き先だけで、要素の付け外しは無い（EditorView を壊さない）。 */
     /* 分割比は fr の値そのものを変数で受け取る（features/view/split.ts が 0.3fr のような単位まで含んだ文字列を入れる）。ピクセルで持つと、ウィンドウの大きさやペインの開閉で左右の比が変わってしまう。 */
-    /* minmax(0, ...) を被せてあるのは、grid の既定の最小幅（auto = 中身の最小幅）が fr の指定を押しのけるため。エディタの長い行が比を無視して列を広げる。 */
-    grid-template-columns:
-      auto minmax(0, var(--mx-split-editor, 1fr)) var(--mx-split-divider) minmax(0, var(--mx-split-preview, 1fr))
-      auto;
+    /* minmax(0, ...) を被せてあるのは、grid の既定の最小幅（auto = 中身の最小幅）が fr の指定を押しのけるため。エディターの長い行が比を無視して列を広げる。 */
+    grid-template-columns: auto minmax(0, var(--mx-split-editor, 1fr)) var(--mx-split-divider) minmax(
+        0,
+        var(--mx-split-preview, 1fr)
+      ) auto;
     grid-template-areas:
       'titlebar titlebar titlebar titlebar titlebar'
       'leftpane editor divider preview rightpane'

@@ -66,7 +66,7 @@ pub struct Bootstrap {
     /// ダークな背景を当てているときに白い初期画面が一瞬見えるのを防ぐため。
     /// 超える場合は `deferred` が立ち、フロントが `read_custom_css` で取りに行く。
     pub custom_css: CustomCss,
-    /// エディタ用のカスタム CSS（`editor.css`）。**本文用と完全に同じ扱い。**
+    /// エディター用のカスタム CSS（`editor.css`）。**本文用と完全に同じ扱い。**
     /// 別のフィールドにしているのは、当てる先（`@scope` の根）が違うため。
     pub editor_css: CustomCss,
 }

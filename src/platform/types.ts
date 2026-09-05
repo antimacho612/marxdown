@@ -115,7 +115,7 @@ export type Theme = 'system' | 'light' | 'dark';
 export type WindowCloseBehavior = 'tray' | 'exit';
 
 /*
- * エディタの選択肢（VS Code と同じ綴り / `src-tauri/src/settings/schema.rs` の列挙）。
+ * エディターの選択肢（VS Code と同じ綴り / `src-tauri/src/settings/schema.rs` の列挙）。
  *
  * **値の文字列を Marxdown 独自のものにしない。** VS Code の `settings.json` から
  * そのまま写して効くことが、この設定群の存在理由そのものである（F-CONF-06）。
@@ -131,7 +131,7 @@ export type CursorBlinking = 'blink' | 'smooth' | 'phase' | 'expand' | 'solid';
  * 配色（ADR-0013 / `src/styles/themes.css`）。
  *
  * **明暗を含まない。** 明暗を決めるのは `theme` だけで、各パレットは
- * ライトとダークの両方を持つ。プレビューとエディタは同じカタログから独立に選ぶ。
+ * ライトとダークの両方を持つ。プレビューとエディターは同じカタログから独立に選ぶ。
  *
  * `'default'` は**属性を付けない状態**で、`tokens.css` のトークンがそのまま降りてくる。
  */
@@ -172,7 +172,7 @@ export interface Settings {
   /** 縦罫線を引く桁。空なら引かない。`preview.maxWidth` と対で使う。 */
   'editor.rulers': number[];
   'editor.scrollBeyondLastLine': boolean;
-  /** エディタの配色。**`preview.theme` とは独立に選べる。** */
+  /** エディターの配色。**`preview.theme` とは独立に選べる。** */
   'editor.theme': Palette;
   'editor.tabSize': number;
   'editor.wordWrap': WordWrap;
@@ -197,7 +197,7 @@ export interface Settings {
  * 実際に届く値は Rust 側で既定値を埋めた後のものなので、これが要るのは
  * bootstrap を持たない経路（`dev:web` の初回・テスト）だけ。
  *
- * **エディタのタイポグラフィはプレビューと別の値**（ADR-0012）。
+ * **エディターのタイポグラフィはプレビューと別の値**（ADR-0012）。
  * 16px / 1.75 は読むための値で、書く面では行が離れすぎる。
  */
 export const DEFAULT_SETTINGS: Settings = {
@@ -361,7 +361,7 @@ export interface Bootstrap {
    */
   panes: Panes;
   /**
-   * Split の分割比（エディタ側の取り分 / 03.ux-spec/03-split-mode.md §1）。
+   * Split の分割比（エディター側の取り分 / 03.ux-spec/03-split-mode.md §1）。
    *
    * **倍率・ペインと同じ理由でここに載る。** 後から当てると、Split で開いたときに
    * 50:50 で一度描かれてから寄る。
@@ -385,7 +385,7 @@ export interface Bootstrap {
    */
   customCss: CustomCss;
   /**
-   * エディタ用のカスタム CSS（`editor.css` / ADR-0013）。**本文用と完全に同じ扱い。**
+   * エディター用のカスタム CSS（`editor.css` / ADR-0013）。**本文用と完全に同じ扱い。**
    * 別のフィールドなのは、当てる先（`@scope` の根）が違うため。
    */
   editorCss: CustomCss;
@@ -509,7 +509,7 @@ export interface Platform {
    * 設定を読み直す（F-CONF-03）。
    *
    * **起動時はこれを呼ばない。** 設定は bootstrap に丸ごと載っている。
-   * ここが要るのは、外部エディタで編集されたあとの読み直しと設定 UI の再表示。
+   * ここが要るのは、外部エディターで編集されたあとの読み直しと設定 UI の再表示。
    */
   readSettings(): Promise<SettingsLoad>;
   /**
@@ -527,7 +527,7 @@ export interface Platform {
    *
    * **起動時の 64KB 以下はこれを呼ばない。** bootstrap に同梱されている。
    * ここが要るのは「64KB を超えていて載らなかった」場合と、
-   * 外部エディタで編集された後の読み直しだけ。
+   * 外部エディターで編集された後の読み直しだけ。
    */
   readCustomCss(): Promise<CustomCss>;
 

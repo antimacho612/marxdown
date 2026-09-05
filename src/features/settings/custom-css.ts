@@ -1,7 +1,7 @@
 /**
  * カスタム CSS の適用（F-CONF-07 / 02.architecture/10-theming.md §3 / ADR-0006 / ADR-0013）。
  *
- * 当てる面は 2 つ（本文 `preview.css` / エディタ `editor.css`）だが閉じ込めの仕組みは 1 つで根が違うだけである。
+ * 当てる面は 2 つ（本文 `preview.css` / エディター `editor.css`）だが閉じ込めの仕組みは 1 つで根が違うだけである。
  * 遅延取得・監視・通知は `custom-css-late.ts` にあるが、ここだけは `main` に残る。
  * 64KB 以下は bootstrap に同梱され、本文を描く前に当てないと FOUC になるためである。
  *
@@ -49,7 +49,7 @@ export type CustomCssResult = 'applied' | 'empty' | 'rejected';
  */
 export function applyCustomCss(css: string | null, surface: CssSurface = 'preview'): CustomCssResult {
   const style = styleElement(surface);
-  // **エディタ側だけ合図を出す。** Monaco はトークンを JS で読み出しており、
+  // **エディター側だけ合図を出す。** Monaco はトークンを JS で読み出しており、
   // `<style>` が増えたことに自分では気づけない（`style-epoch.svelte.ts`）。
   // 本文側は CSS がそのまま効くので、知らせる相手がいない。
   if (surface === 'editor') bumpStyleEpoch();

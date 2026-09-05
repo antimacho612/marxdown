@@ -72,8 +72,8 @@ export async function startup(renderShell: () => void): Promise<void> {
   // 包めなかった場合は当てずに結果だけ返す（通知は `ready()` の後）。
   const customCss = bootstrap?.customCss ?? null;
   const customCssResult = applyCustomCss(customCss?.css ?? null);
-  // エディタ用も同じ扱いである（ADR-0013）。
-  // エディタが未マウントでも適用しておく（適用されるのはトークンであり、Monaco はマウント時にそれを読み出す）。
+  // エディター用も同じ扱いである（ADR-0013）。
+  // エディターが未マウントでも適用しておく（適用されるのはトークンであり、Monaco はマウント時にそれを読み出す）。
   // 適用を遅らせると、Edit で開いた最初の 1 フレームだけ既定の配色で表示される。
   const editorCss = bootstrap?.editorCss ?? null;
   const editorCssResult = applyCustomCss(editorCss?.css ?? null, 'editor');
@@ -109,7 +109,7 @@ export async function startup(renderShell: () => void): Promise<void> {
   const initial = await resolveInitialDocument(bootstrap);
 
   // 表示モードも**本文を描くより前**に当てる（F-MODE-07 / 倍率・ペインと同じ理由）。
-  // 後から当てると、Preview の面が 1 フレーム描かれてからエディタに差し替わる。
+  // 後から当てると、Preview の面が 1 フレーム描かれてからエディターに差し替わる。
   //
   // `--mode edit` で起動しても、ここではまだ `editor` チャンクを取りに行かない。
   // 属性を立てるだけなので、クリティカルパスは太らない。実体は下の
@@ -164,11 +164,11 @@ export async function startup(renderShell: () => void): Promise<void> {
   // Windows へ答える主体は `ready()` の中で付くので、ここでも取りこぼさない。
   reportSnapLayoutsTarget();
 
-  // エディタ（F-EDIT-01）。**`ready()` の後**に回す。
+  // エディター（F-EDIT-01）。**`ready()` の後**に回す。
   //
   // `--mode edit` で起動した場合でも、本文が読める瞬間（T8）を 203KB の
   // チャンク取得と評価の後ろへ動かさない。遅れたときの最悪は「起動直後の
-  // 一瞬だけ空のエディタ面が見える」ことで、これは回復する
+  // 一瞬だけ空のエディター面が見える」ことで、これは回復する
   // （02.architecture/05-startup-sequence.md §1 の判断基準）。
   installInitialEditor();
 
@@ -183,7 +183,7 @@ export async function startup(renderShell: () => void): Promise<void> {
 
   // 入力レスポンスの計測（`--bench-input` / 計測専用 / `features/bench/input.ts`）。
   //
-  // **`ready()` の後**。エディタが載るのを待つ側であり、起動の経路には一切関与しない。
+  // **`ready()` の後**。エディターが載るのを待つ側であり、起動の経路には一切関与しない。
   // フラグが立った起動でしかチャンクを取りに行かないので、普段の起動には出てこない。
   if (bootstrap?.benchInput === true) {
     void import('@/features/bench/input').then(async ({ runInputBench }) => {
@@ -194,9 +194,9 @@ export async function startup(renderShell: () => void): Promise<void> {
 }
 
 /**
- * エディタを用意する。
+ * エディターを用意する。
  * 起動時のモードによって、載せるか温めるかが変わる。
- * `--mode edit` で起動した場合は画面がエディタを待っているのでその場で載せ、それ以外（既定の Preview）はアイドル時にチャンクだけを取得しておく。
+ * `--mode edit` で起動した場合は画面がエディターを待っているのでその場で載せ、それ以外（既定の Preview）はアイドル時にチャンクだけを取得しておく。
  *
  * 後者が `editor` チャンクのアイドルプリロードである。
  * 載せはしないため、`#mx-editor` は空のまま非表示になっている。

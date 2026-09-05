@@ -28,7 +28,7 @@ pub const DIRTY_MESSAGE: &str = "保存していない変更があります。";
 
 /// いま `✕` がどちらの意味か（設定 `window.closeBehavior`）。
 ///
-/// **ディスクではなくメモリ上の設定を見る。** 外部エディタで `settings.json` を
+/// **ディスクではなくメモリ上の設定を見る。** 外部エディターで `settings.json` を
 /// 書き換えたらファイル監視が読み直しているので、ここで読みに行く必要はない。
 pub fn stashes_on_close<R: Runtime>(app: &AppHandle<R>) -> bool {
     app.try_state::<AppState>()

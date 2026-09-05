@@ -8,7 +8,7 @@
 //! 既定値は 3 か所で一致させる必要がある。
 //! ここ（ファイルを読み込むときの既定）、`src/platform/types.ts` の `DEFAULT_SETTINGS`（bootstrap を経由しない経路の既定）、`src/styles/tokens.css`（プレビューの見た目の既定）の 3 か所である。
 //! プレビューの 3 項目（文字サイズ・行間・本文幅）だけはトークン層にも既定があり、ここがずれると設定ファイルが無いときと「既定値を明示的に書いたとき」で見た目が変わる。
-//! エディタの既定値はトークン層に無い。
+//! エディターの既定値はトークン層に無い。
 //! M2 まではプレビューのトークンをそのまま使用していたが、読む面と書く面でタイポグラフィを分けた（ADR-0012）。
 
 use serde::{Deserialize, Serialize};
@@ -59,7 +59,7 @@ pub const DEFAULT_FONT_SIZE: f64 = 16.0;
 pub const DEFAULT_LINE_HEIGHT: f64 = 1.75;
 pub const DEFAULT_MAX_WIDTH: f64 = 100.0;
 
-/// エディタの既定（ADR-0012）。**プレビューとは別の値**。
+/// エディターの既定（ADR-0012）。**プレビューとは別の値**。
 ///
 /// 16px / 1.75 は**読むための**タイポグラフィで、書く面では行が離れすぎて視線が飛ぶ。
 /// VS Code の手触り（14px）に寄せ、行間だけ日本語のために少し開けている。
@@ -184,7 +184,7 @@ pub enum CursorStyle {
 /// 各パレットはライトとダークの両方を持つ（CSS 側の `light-dark()`）。
 /// テーマ自身に明暗を持たせると、明暗の真実が 3 か所に増える。
 ///
-/// **プレビューとエディタで同じカタログを使う。** どちらも同じトークン
+/// **プレビューとエディターで同じカタログを使う。** どちらも同じトークン
 /// （`--mx-color-*` / `--mx-color-code-*`）の上書きでしかなく、
 /// 面ごとにカタログを分ける理由が無い。
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
@@ -266,7 +266,7 @@ pub struct Settings {
     pub editor_rulers: Vec<f64>,
     #[serde(rename = "editor.scrollBeyondLastLine")]
     pub editor_scroll_beyond_last_line: bool,
-    /// エディタの配色。**`preview.theme` とは独立に選べる。**
+    /// エディターの配色。**`preview.theme` とは独立に選べる。**
     #[serde(rename = "editor.theme")]
     pub editor_theme: Palette,
     #[serde(rename = "editor.tabSize")]

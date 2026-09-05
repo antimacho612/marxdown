@@ -34,7 +34,7 @@ export function installCursorReport(editor: monaco.editor.IStandaloneCodeEditor)
 }
 
 /**
- * 報告を止めて、控えを捨てる。**エディタを破棄するときだけ呼ぶ**（M3 / N-PERF-06）。
+ * 報告を止めて、控えを捨てる。**エディターを破棄するときだけ呼ぶ**（M3 / N-PERF-06）。
  *
  * 予約したフレームを取り消しておかないと、破棄した後に 1 回だけ古い位置が出る。
  */

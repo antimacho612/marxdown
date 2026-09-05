@@ -4,7 +4,7 @@
  * 検索は面ごとに別実装（Preview は Range 検索、Edit は Monaco の find ウィジェット）だが、同じキーで見ているほうが開く。
  * `features/editor/keymap.ts` が `Ctrl+F` を Monaco から剥がしているのはこのためである（外すと Edit で二重に開く）。
  *
- * Split では両方見えるため `viewStore.mode` では判定できず、フォーカスのある側を探す（03.ux-spec/04-keybindings.md §4。既定はエディタ検索）。
+ * Split では両方見えるため `viewStore.mode` では判定できず、フォーカスのある側を探す（03.ux-spec/04-keybindings.md §4。既定はエディター検索）。
  * プレビュー検索の `F3`/`Escape` はグローバルに効き続けるため、開くほうがもう片方を閉じて同時進行を防ぐ。
  * `Ctrl+H`（置換）は Edit と Split のみで、Preview では書き換える経路が無いため何もしない。
  */
@@ -24,10 +24,10 @@ const EDITOR_SELECTOR = '#mx-editor';
 let closePreview: (() => void) | null = null;
 
 /**
- * エディタ検索を開いたことがあるか。
+ * エディター検索を開いたことがあるか。
  *
  * **`editor` チャンクを落とさないための番人。** 閉じにいくのは開いたことがある場合だけで、
- * そうしないと Preview だけで読んでいる起動の初回 `Ctrl+F` でエディタが落ちてくる
+ * そうしないと Preview だけで読んでいる起動の初回 `Ctrl+F` でエディターが落ちてくる
  * （`closePreview` が `null` のときに何もしないのと同じ理由）。
  *
  * ユーザーが `Escape` で自分で閉じた場合は立ったままになるが、
@@ -35,7 +35,7 @@ let closePreview: (() => void) | null = null;
  */
 let editorSearchOpened = false;
 
-/** エディタ側にフォーカスがあるか。Monaco の find ウィジェットも `#mx-editor` の中にある。 */
+/** エディター側にフォーカスがあるか。Monaco の find ウィジェットも `#mx-editor` の中にある。 */
 function editorHasFocus(): boolean {
   const host = document.querySelector<HTMLElement>(EDITOR_SELECTOR);
   const active = document.activeElement;
@@ -80,7 +80,7 @@ export function closePreviewFind(): void {
   closePreview = null;
 }
 
-/** エディタ検索を閉じる。開いたことが無ければ `editor` チャンクを触らない。 */
+/** エディター検索を閉じる。開いたことが無ければ `editor` チャンクを触らない。 */
 async function closeEditorFind(): Promise<void> {
   if (!editorSearchOpened) return;
   await closeEditorSearchLazily();

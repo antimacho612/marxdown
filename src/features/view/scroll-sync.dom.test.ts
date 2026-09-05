@@ -6,7 +6,7 @@
  * ここが見るのは配線のほうで、「どちらが主導するか」「ダブルクリックがどの行になるか」「抜けたときに外れるか」を並べる。
  *
  * 受け取るのが `EditorScrollPort`（行番号だけの窓口）なので、Monaco を載せずに配線を全部見られる。
- * ポートの Monaco 側の実装は `features/editor/scroll-port.dom.test.ts` が本物のエディタで見ている。
+ * ポートの Monaco 側の実装は `features/editor/scroll-port.dom.test.ts` が本物のエディターで見ている。
  *
  * `getBoundingClientRect()` が jsdom では全部 0 を返すため、`data-line` のアンカーは位置を持てない。
  * そこは差し替える（`stubRects`）。
@@ -74,7 +74,7 @@ beforeEach(() => {
   topLine = 1;
 
   stopScrollSync();
-  // **エディタが載っている状態から始める。** 窓口はスクロール同期とは別で、
+  // **エディターが載っている状態から始める。** 窓口はスクロール同期とは別で、
   // Split でなくても在る（`attachEditorScrollPort`）。
   attachEditorScrollPort(port);
   document.body.innerHTML = '<div id="mx-preview"></div>';
@@ -109,7 +109,7 @@ describe('開始と終了', () => {
 });
 
 describe('主導権 (§2)', () => {
-  it('エディタが動くとプレビューが追随する', () => {
+  it('エディターが動くとプレビューが追随する', () => {
     const preview = stubRects();
     startScrollSync();
 
@@ -118,7 +118,7 @@ describe('主導権 (§2)', () => {
     expect(preview.scrollTop).toBe(200);
   });
 
-  it('プレビューが動くとエディタが追随する', () => {
+  it('プレビューが動くとエディターが追随する', () => {
     const preview = stubRects();
     startScrollSync();
 
@@ -131,7 +131,7 @@ describe('主導権 (§2)', () => {
     const preview = stubRects();
     startScrollSync();
 
-    // エディタが主導 → その結果として飛ぶプレビューの scroll は無視される。
+    // エディターが主導 → その結果として飛ぶプレビューの scroll は無視される。
     topLine = 10;
     notifyEditorScroll?.();
     preview.dispatchEvent(new Event('scroll'));
@@ -158,7 +158,7 @@ describe('双方向ジャンプ (§3)', () => {
     const preview = stubRects();
     startScrollSync();
 
-    // `data-line` は 0 始まり、エディタは 1 始まり。
+    // `data-line` は 0 始まり、エディターは 1 始まり。
     preview.querySelector('[data-line="9"]')?.dispatchEvent(new MouseEvent('dblclick', { bubbles: true }));
     expect(revealLine).toHaveBeenCalledWith(10, { focus: true });
   });
@@ -198,7 +198,7 @@ describe('双方向ジャンプ (§3)', () => {
     expect(revealLine).toHaveBeenCalledWith(10, { focus: false });
   });
 
-  it('エディタ側からプレビューへも飛べる', () => {
+  it('エディター側からプレビューへも飛べる', () => {
     const preview = stubRects();
     startScrollSync();
 
@@ -206,14 +206,14 @@ describe('双方向ジャンプ (§3)', () => {
     expect(preview.scrollTop).toBe(400);
   });
 
-  it('Split でなくてもエディタへは飛べる（Edit のアウトライン / #59）', () => {
+  it('Split でなくてもエディターへは飛べる（Edit のアウトライン / #59）', () => {
     stubRects();
 
     jumpToEditorLine(10, { focus: false });
     expect(revealLine).toHaveBeenCalledWith(10, { focus: false });
   });
 
-  it('エディタが載っていなければ、どちらのジャンプも何もしない', () => {
+  it('エディターが載っていなければ、どちらのジャンプも何もしない', () => {
     const preview = stubRects();
     attachEditorScrollPort(null);
 

@@ -30,7 +30,7 @@ export function setDirty(dirty: boolean): void {
  * 源のどれかが変わったので、ダーティ状態を出し直す。
  *
  * **値が変わらなければ何もしない。** 打鍵ごとにストアへ書いたり IPC を出したり
- * しないための門で、エディタは 1 打鍵ごとにここへ来る。
+ * しないための門で、エディターは 1 打鍵ごとにここへ来る。
  */
 export function refreshDirty(): void {
   // **`eol.ts` を import しない。** あちらは変換の意味を持つ側で、こちらを呼ぶ。
@@ -41,7 +41,7 @@ export function refreshDirty(): void {
   void getPlatform().setDirty(dirty);
 }
 
-/** 本文が変わった。エディタの `onDidChangeContent` から呼ばれる。 */
+/** 本文が変わった。エディターの `onDidChangeContent` から呼ばれる。 */
 export function markDirty(): void {
   setDirty(true);
 }

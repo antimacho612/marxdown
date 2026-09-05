@@ -143,7 +143,7 @@ export async function openDocument(payload: StoredPayload, options: OpenOptions 
   documentStore.meta = payload;
 
   // 本文はストアではなく素のモジュールへ（ADR-0005 / `document/text.ts`）。
-  // エディタが載っていれば CodeMirror の dispatch を伴うため、T6→T7 の並行処理を崩さないようパース送信の後に置く。
+  // エディターが載っていれば CodeMirror の dispatch を伴うため、T6→T7 の並行処理を崩さないようパース送信の後に置く。
   setDocumentText(payload.content);
 
   // ディスクと一致した状態から始める。開き直しでもここを通るので

@@ -36,7 +36,7 @@ pub const PANE_WIDTH_MIN: f64 = 180.0;
 /// 手で書いた `state.json` や解像度の違う環境から巨大な幅が来ても本文が潰れないようにする。
 pub const PANE_WIDTH_MAX: f64 = 640.0;
 
-/// Split の分割比（エディタ側の取り分 / 03.ux-spec/03-split-mode.md §1）。
+/// Split の分割比（エディター側の取り分 / 03.ux-spec/03-split-mode.md §1）。
 ///
 /// **比で持つ。** ピクセルで記憶すると、解像度やペインの開閉で
 /// 「左右のどちらがどれだけ」が変わってしまう。既定は 50:50。

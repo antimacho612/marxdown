@@ -77,7 +77,7 @@ export const ja = {
     zoomReset: '等倍',
     /**
      * 検索（F-VIEW-10 / F-EDIT-05）。**ラベルは探す対象を言う。**
-     * Preview では本文の DOM を、Edit ではエディタのテキストを探す
+     * Preview では本文の DOM を、Edit ではエディターのテキストを探す
      * （`features/view/find.ts`）。同じ `Ctrl+F` でも別物なので、名前を分ける。
      */
     search: 'プレビュー内を検索',
@@ -174,7 +174,7 @@ export const ja = {
       `${index} / ${total.toLocaleString('ja-JP')}${truncated ? '+' : ''}`,
   },
   /*
-   * エディタ自身が出す文言（検索・置換パネルなど）は **Monaco が日本語を同梱している**
+   * エディター自身が出す文言（検索・置換パネルなど）は **Monaco が日本語を同梱している**
    * ので、ここには置かない（`features/editor/monaco.ts` が `nls/lang/ja.js` を読む）。
    *
    * CodeMirror のときは `EditorState.phrases` に「原文 → 日本語」の対応表を
@@ -184,7 +184,7 @@ export const ja = {
   /** Split（F-MODE-03, 05 / 03.ux-spec/03-split-mode.md）。 */
   split: {
     resize: '分割の幅を変える',
-    ratio: (percent: number) => `エディタ ${percent}%`,
+    ratio: (percent: number) => `エディター ${percent}%`,
     /**
      * スクロール同期（§2）。**ラベルは状態を言い、ツールチップが結果を言う。**
      * アイコンだけでは ON なのか「押すと ON になる」のかが読めない。
@@ -208,7 +208,7 @@ export const ja = {
    *
    * 「読めませんでした」で止めるのは、**既定値で動いていること**と
    * **ファイルは上書きしていないこと**の両方を、短い 1 行に収めるため。
-   * 原因（何行目が壊れているか）はエディタが教えてくれる。
+   * 原因（何行目が壊れているか）はエディターが教えてくれる。
    */
   settings: {
     broken: 'settings.json を読めませんでした。既定の設定で表示しています',
@@ -233,10 +233,10 @@ export const ja = {
     categories: {
       appearance: '外観',
       preview: 'プレビュー',
-      editor: 'エディタ',
+      editor: 'エディター',
       window: 'ウィンドウ',
     },
-    /** エディタの中の節。項目が 22 個あるので、見出し無しでは探せない。 */
+    /** エディターの中の節。項目が 22 個あるので、見出し無しでは探せない。 */
     sections: {
       font: 'フォント',
       display: '表示',
@@ -247,10 +247,10 @@ export const ja = {
     themeSystem: 'OS に合わせる',
     themeLight: 'ライト',
     themeDark: 'ダーク',
-    themeHint: 'ライトとダークの切り替え。配色はプレビューとエディタで別々に選べる',
+    themeHint: 'ライトとダークの切り替え。配色はプレビューとエディターで別々に選べる',
 
     /**
-     * 配色（F-CONF-08 / ADR-0013）。**プレビューとエディタで同じカタログ。**
+     * 配色（F-CONF-08 / ADR-0013）。**プレビューとエディターで同じカタログ。**
      *
      * 名前は本家の綴りをそのまま使う。「GitHub 風」のような言い換えをすると、
      * 選ぶ前に何が出るか分からなくなる。
@@ -278,7 +278,7 @@ export const ja = {
     maxWidthHint: '1 行に収まる半角文字の数',
 
     /**
-     * エディタ（ADR-0012）。**プレビューと同じ言葉を使う**（文字サイズ / 行間）。
+     * エディター（ADR-0012）。**プレビューと同じ言葉を使う**（文字サイズ / 行間）。
      * 同じものを別の名前で呼ぶと、2 か所にあること自体が読み取れなくなる。
      */
     editor: {
@@ -392,7 +392,7 @@ export const ja = {
     open: 'preview.css を開く',
     openEditor: 'editor.css を開く',
     hint: '本文にだけ当たる CSS。ファイルが無ければ雛形を作って開く',
-    hintEditor: 'エディタにだけ当たる CSS。配色は変数（--mx-color-*）で上書きする',
+    hintEditor: 'エディターにだけ当たる CSS。配色は変数（--mx-color-*）で上書きする',
     tooLarge: 'カスタム CSS が大きすぎるため適用していません（1MB まで）',
     unreadable: 'カスタム CSS を読み込めなかったため適用していません',
     rejected: 'カスタム CSS を面の中に収められないため適用していません。} の対応を確認してください',

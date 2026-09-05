@@ -13,7 +13,7 @@ class ViewStore {
    * 表示モード（F-MODE-01, 02, 03）。切り替えは `features/view/mode.ts`。
    *
    * **ここは値だけを持つ。** 面の出し分けは `<html data-mx-mode>` を見る CSS が行い、
-   * エディタの実体は遅延チャンクにいる。UI（ステータスバー）はこの値だけを購読する。
+   * エディターの実体は遅延チャンクにいる。UI（ステータスバー）はこの値だけを購読する。
    *
    * 初期値は `initMode` が bootstrap から**シェルを描く前**に入れる（倍率・ペインと同じ）。
    * `'split'` は Phase 5。器としての型には最初から入っている。
@@ -24,7 +24,7 @@ class ViewStore {
   zoom = $state(1);
 
   /**
-   * Split の分割比（エディタ側の取り分 / 03.ux-spec/03-split-mode.md §1）。
+   * Split の分割比（エディター側の取り分 / 03.ux-spec/03-split-mode.md §1）。
    *
    * **列幅そのものは CSS 変数が持つ**（`split.ts`）。ここに置いてあるのは
    * 分割線の `aria-valuenow` と永続化のためで、UI はこの値では描かれない。

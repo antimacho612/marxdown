@@ -17,7 +17,7 @@ const PREVIEW_SELECTOR = '#mx-preview';
  * 返すのは、Edit へ切り替えたときにパネルを閉じる必要があるため
  * （`features/view/find.ts`）。パネルは `document.body` にあるので、
  * 放っておくと隠れた面の上に浮いたまま残り、`F3` / `Escape` が
- * エディタ側の検索と食い合う。
+ * エディター側の検索と食い合う。
  *
  * **閉じる側もこの入口を通す。** `mode.ts` から `./search` を import すると、
  * 一度も検索していない起動でも `search` チャンクが落ちてくる。

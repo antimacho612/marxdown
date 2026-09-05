@@ -23,7 +23,7 @@
    * カーソル位置（§3 の但し書き「Preview では非表示」）。
    *
    * 条件が 2 つあるのは、**隠れる理由が 2 つあるから**である。
-   * Preview では「カーソルという概念が画面に無い」、エディタが載る前は
+   * Preview では「カーソルという概念が画面に無い」、エディターが載る前は
    * 「まだ誰も位置を知らない」。前者はモードで、後者はストアの `null` で決まる。
    */
   const cursor = $derived(viewStore.mode === 'preview' ? null : documentStore.cursor);

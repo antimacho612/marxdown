@@ -26,7 +26,7 @@ vi.mock('@/features/preview/open-search', () => ({
 
 const { closePreviewFind, openFind, openReplace, resetFind } = await import('./find');
 
-/** エディタの中の入力欄にフォーカスを置く（Monaco のテキストエリアの代わり）。 */
+/** エディターの中の入力欄にフォーカスを置く（Monaco のテキストエリアの代わり）。 */
 function focusEditor(): void {
   document.querySelector<HTMLInputElement>('#mx-editor input')?.focus();
 }
@@ -48,7 +48,7 @@ describe('片面のとき', () => {
     expect(openEditorSearchLazily).not.toHaveBeenCalled();
   });
 
-  it('Edit ではエディタ検索が開く', async () => {
+  it('Edit ではエディター検索が開く', async () => {
     viewStore.mode = 'edit';
     await openFind();
     expect(openEditorSearchLazily).toHaveBeenCalledWith(false);
@@ -67,20 +67,20 @@ describe('Split ではフォーカスで決まる', () => {
     viewStore.mode = 'split';
   });
 
-  it('エディタにフォーカスがあればエディタ検索', async () => {
+  it('エディターにフォーカスがあればエディター検索', async () => {
     focusEditor();
     await openFind();
     expect(openEditorSearchLazily).toHaveBeenCalledWith(false);
     expect(openSearchLazily).not.toHaveBeenCalled();
   });
 
-  it('エディタの外にフォーカスがあれば本文検索', async () => {
+  it('エディターの外にフォーカスがあれば本文検索', async () => {
     await openFind();
     expect(openSearchLazily).toHaveBeenCalled();
     expect(openEditorSearchLazily).not.toHaveBeenCalled();
   });
 
-  it('置換はフォーカスに関わらずエディタ', async () => {
+  it('置換はフォーカスに関わらずエディター', async () => {
     await openReplace();
     expect(openEditorSearchLazily).toHaveBeenCalledWith(true);
   });
@@ -91,14 +91,14 @@ describe('2 つの検索を同時に開かない', () => {
     viewStore.mode = 'split';
   });
 
-  it('本文検索 → エディタ検索で、本文検索が閉じる', async () => {
+  it('本文検索 → エディター検索で、本文検索が閉じる', async () => {
     await openFind();
     focusEditor();
     await openFind();
     expect(closePreview).toHaveBeenCalled();
   });
 
-  it('エディタ検索 → 本文検索で、エディタ検索が閉じる', async () => {
+  it('エディター検索 → 本文検索で、エディター検索が閉じる', async () => {
     focusEditor();
     await openFind();
     document.querySelector<HTMLElement>('#mx-editor input')?.blur();
@@ -106,9 +106,9 @@ describe('2 つの検索を同時に開かない', () => {
     expect(closeEditorSearchLazily).toHaveBeenCalled();
   });
 
-  it('エディタ検索を一度も開いていなければ、閉じにいかない', async () => {
+  it('エディター検索を一度も開いていなければ、閉じにいかない', async () => {
     // **`editor` チャンクを落とさないための番人。** Preview だけで読んでいる起動の
-    // 初回 `Ctrl+F` でここを通ると、動的 import が走ってエディタが落ちてくる。
+    // 初回 `Ctrl+F` でここを通ると、動的 import が走ってエディターが落ちてくる。
     await openFind();
     expect(closeEditorSearchLazily).not.toHaveBeenCalled();
   });

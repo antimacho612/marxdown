@@ -2,7 +2,7 @@
 /**
  * 表示モードの決定と切り替え（F-MODE-06, 07 / 03.ux-spec/02-view-modes.md）。
  *
- * **エディタの実体はモックする。** ここで見たいのはモードの筋道であって
+ * **エディターの実体はモックする。** ここで見たいのはモードの筋道であって
  * CodeMirror ではない。実体まで載せると `editor` チャンク（178KB）の評価が
  * テストの度に走り、落ちたときにどちらの問題か切り分けられなくなる。
  */
@@ -77,7 +77,7 @@ describe('モードの適用', () => {
     expect(viewStore.mode).toBe('edit');
   });
 
-  it('エディタが要るモードでだけチャンクを取りに行く', async () => {
+  it('エディターが要るモードでだけチャンクを取りに行く', async () => {
     await setMode('edit');
     expect(mountEditorLazily).toHaveBeenCalledTimes(1);
 
@@ -95,7 +95,7 @@ describe('モードの適用', () => {
    * 面が出るモードに入ったら測り直させる。**Preview へ抜けるときは呼ばない**
    * （見えない面のために仕事をしない / N-PERF-05）。
    */
-  it('エディタが見えるモードに入ったら器を測り直させる', async () => {
+  it('エディターが見えるモードに入ったら器を測り直させる', async () => {
     await setMode('edit');
     expect(relayoutEditorLazily).toHaveBeenCalledTimes(1);
 

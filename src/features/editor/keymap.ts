@@ -1,7 +1,7 @@
 /**
- * エディタのキーマップ（F-EDIT-04〜10, 12 / `editor` チャンク）。
+ * エディターのキーマップ（F-EDIT-04〜10, 12 / `editor` チャンク）。
  *
- * キーは 2 表にしか無い。`app/commands.ts` の `KEY_BINDINGS`（どこでも効くアプリ操作）と、ここ（エディタに居るときだけ効く編集操作）である。
+ * キーは 2 表にしか無い。`app/commands.ts` の `KEY_BINDINGS`（どこでも効くアプリ操作）と、ここ（エディターに居るときだけ効く編集操作）である。
  * 重なると要素側が先に処理し `globalThis` のリスナが二重に処理するため、重複キーは `REMOVED` で剥がす。
  *
  * Monaco は VS Code のキーが最初から入っているため、CodeMirror 時代の「互換キーマップを外から足す」作業が「アプリ側が握るキーを剥がす」だけになった（ADR-0009 の受け入れコスト 6）。
@@ -41,7 +41,7 @@ const KEYBOARD_SOURCE = 'keyboard';
  */
 const REMOVED: { keybinding: number; why: string }[] = [
   // 検索を開くのはアプリの仕事。**見ている面によって開くものが変わる**ので
-  // （Preview なら本文検索 / Edit ならエディタ検索）、エディタが自分で受けると
+  // （Preview なら本文検索 / Edit ならエディター検索）、エディターが自分で受けると
   // 二重に開く（`features/view/find.ts`）。
   { keybinding: KeyMod.CtrlCmd | KeyCode.KeyF, why: 'アプリの Ctrl+F が面ごとに振り分ける' },
   { keybinding: KeyMod.CtrlCmd | KeyCode.KeyH, why: 'Ctrl+H も同じ経路を通す' },
@@ -130,8 +130,8 @@ const EDITOR_TEXT_FOCUS = 'editorTextFocus';
 /**
  * キーを載せる。**`mountEditor` から 1 回だけ呼ぶ。**
  *
- * `addKeybindingRules` はグローバル（エディタごとではない）だが、
- * エディタは 1 つしか作らないので問題にならない（`editor.ts`）。
+ * `addKeybindingRules` はグローバル（エディターごとではない）だが、
+ * エディターは 1 つしか作らないので問題にならない（`editor.ts`）。
  */
 export function installEditorKeymap(editor: monaco.editor.IStandaloneCodeEditor): void {
   monaco.editor.addKeybindingRules(REMOVED.map(({ keybinding }) => ({ keybinding, command: null })));

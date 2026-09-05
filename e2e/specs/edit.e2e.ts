@@ -22,7 +22,7 @@ import {
 } from '../helpers/app';
 import { WORK_DOC } from '../helpers/fixtures';
 
-/** エディタの本文を行の配列で。 */
+/** エディターの本文を行の配列で。 */
 async function editorLines(): Promise<string[]> {
   const text = await editorText();
   return text.split('\n');
@@ -91,14 +91,14 @@ describe('行操作 (F-EDIT-07)', () => {
 });
 
 describe('検索と置換 (F-EDIT-05)', () => {
-  it('Ctrl+F でエディタの検索パネルが開く', async () => {
+  it('Ctrl+F でエディターの検索パネルが開く', async () => {
     // Preview を見ているときは本文検索が開く。**同じキーで別のものが開く**
-    // （`features/view/find.ts`）。ここは Edit なのでエディタ側。
+    // （`features/view/find.ts`）。ここは Edit なのでエディター側。
     await browser.keys([Key.Control, 'f']);
 
     await browser.waitUntil(() => isSearchPanelOpen(), {
       timeout: 10_000,
-      timeoutMsg: 'エディタの検索パネルが開かなかった',
+      timeoutMsg: 'エディターの検索パネルが開かなかった',
     });
     expect(await focusedFindField()).toBe('search');
   });
@@ -117,7 +117,7 @@ describe('検索と置換 (F-EDIT-05)', () => {
    *
    * CodeMirror のときは `vscodeKeymap` の `Escape` が scope を持たず編集面でしか
    * 効かなかったので、`keymap.ts` が scope 付きで足していた。
-   * **Monaco の `closeFindWidget` は「エディタにフォーカスがある」ことだけを見る**
+   * **Monaco の `closeFindWidget` は「エディターにフォーカスがある」ことだけを見る**
    * （ウィジェットの入力欄もその内側）ので、足すものが無くなった。
    */
   it('置換欄に居るまま Escape で閉じられる', async () => {
@@ -130,7 +130,7 @@ describe('検索と置換 (F-EDIT-05)', () => {
   });
 });
 
-describe('アプリのキーとエディタのキーが取り合わない', () => {
+describe('アプリのキーとエディターのキーが取り合わない', () => {
   /**
    * Phase 1・2 では、`whenEditing` を立てたキーだけが Edit モードで効いた。
    * ペイン・アウトライン・戻る/進むは**押しても何も起きない**状態だった。
@@ -154,7 +154,7 @@ describe('アプリのキーとエディタのキーが取り合わない', () =
 
   /**
    * プレビュー内検索のパネルは `document.body` にある。閉じずに Edit へ移ると
-   * **隠れた面の上に浮いたまま残り**、`F3` / `Escape` がエディタ側と食い合う。
+   * **隠れた面の上に浮いたまま残り**、`F3` / `Escape` がエディター側と食い合う。
    */
   it('Preview で開いた検索は、Edit へ切り替えると閉じる', async () => {
     await browser.keys([Key.Control, Key.Shift, 'v']);
@@ -190,7 +190,7 @@ describe('アプリのキーとエディタのキーが取り合わない', () =
 describe('Markdown 書式 (F-EDIT-08)', () => {
   before(async () => {
     // **先に編集面へフォーカスを戻す。** 直前の describe は検索パネルを
-    // 触っており、フォーカスがエディタから外れたままになっている。
+    // 触っており、フォーカスがエディターから外れたままになっている。
     await focusEditorSurface();
     await browser.keys([Key.Control, 'a']);
     await browser.keys('書式の確認');

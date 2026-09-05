@@ -2,8 +2,8 @@
  * 表示モードの決定と切り替え（F-MODE-01, 02, 06, 07 / 03.ux-spec/02-view-modes.md）。
  *
  * ここにあるのはモードの値と切り替え手続きだけである（06.roadmap/m2-editor.md §1.2 の制約）。
- * エディタは `features/editor/open-editor.ts` 経由の動的 import で、直接 import すると `editor` チャンクが `main` に載る。
- * 表示の切り替えは `data-mx-mode` 属性で CSS が行い要素の付け外しはしない（エディタを壊すと Undo 履歴が消え §4 に反する）。
+ * エディターは `features/editor/open-editor.ts` 経由の動的 import で、直接 import すると `editor` チャンクが `main` に載る。
+ * 表示の切り替えは `data-mx-mode` 属性で CSS が行い要素の付け外しはしない（エディターを壊すと Undo 履歴が消え §4 に反する）。
  * `display: none` された要素は `scrollTop` を保てないため、隠す直前にスクロール位置を控えて戻すときに当て直す。
  */
 import { cancelLiveRender, renderNow } from '@/features/document/live';
@@ -51,7 +51,7 @@ export function decideInitialMode(bootstrap: Bootstrap | null, meta: DocumentMet
 /**
  * 起動時に 1 回だけ当てる。**シェルを描くより前**に呼ぶこと。
  *
- * 後から当てると、Preview の面が 1 フレーム描かれてからエディタに差し替わる
+ * 後から当てると、Preview の面が 1 フレーム描かれてからエディターに差し替わる
  * （倍率やペインと同じ理由 / 02.architecture/05-startup-sequence.md §1）。
  */
 export function initMode(mode: ViewMode): void {
@@ -61,7 +61,7 @@ export function initMode(mode: ViewMode): void {
 }
 
 /**
- * モードを変える。**エディタが要るモードなら、その場でチャンクを取りに行く。**
+ * モードを変える。**エディターが要るモードなら、その場でチャンクを取りに行く。**
  *
  * 取得を待つあいだ画面は前のモードのままにする。先に切り替えると、
  * 初回だけ何も無い面が数百 ms 見えることになる。
@@ -98,7 +98,7 @@ export async function setMode(mode: ViewMode): Promise<void> {
 
   // **Monaco は `display: none` のあいだ寸法を失う**（ADR-0009）。プレビューの
   // スクロール位置を戻すのと同じ理由・同じ場所で、器を測り直させる。
-  // エディタが見えるモードに入るときだけなので、ここでチャンクは増えない。
+  // エディターが見えるモードに入るときだけなので、ここでチャンクは増えない。
   if (isEditorVisible(mode)) void relayoutEditorLazily();
 
   // スクロール同期は Split でしか意味を持たない（03.ux-spec/03-split-mode.md §2）。
@@ -162,7 +162,7 @@ export function isPreviewVisible(mode: ViewMode): boolean {
   return mode !== 'edit';
 }
 
-/** エディタの面が出ているか。 */
+/** エディターの面が出ているか。 */
 export function isEditorVisible(mode: ViewMode): boolean {
   return mode !== 'preview';
 }

@@ -15,7 +15,7 @@ import { DEFAULT_SETTINGS, type Palette, type Settings } from '@/platform';
  * Rust 側は読んだ時点で潰しているので、ここが効くのは設定 UI から
  * 直接入力された値に対してだけ。**入力欄の `min` / `max` もここから引く。**
  *
- * **エディタの項目もここに置く。** 当てる先（CSS か Monaco か）は別々でも、
+ * **エディターの項目もここに置く。** 当てる先（CSS か Monaco か）は別々でも、
  * 「設定 UI から来た数値を潰す」という仕事は 1 つしかない。
  * 表を 2 枚に割ると、`change.ts` がキーごとにどちらを見るか判断することになる。
  */
@@ -44,7 +44,7 @@ export function clampSetting(key: NumericKey, value: number): number {
  * 設定の全体を見た目に当てる。**差分は取らない。**
  *
  * 当てる対象は少なく、差分を計算するほうが高くつく。
- * 外部エディタでの編集も設定 UI の操作も、同じこの 1 本を通る。
+ * 外部エディターでの編集も設定 UI の操作も、同じこの 1 本を通る。
  */
 export function applyAppearance(values: Settings): void {
   const root = document.documentElement;

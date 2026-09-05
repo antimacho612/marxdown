@@ -113,7 +113,7 @@ const COMMANDS: Command[] = [
     isListed: () => hasDocument() && viewStore.mode !== 'preview',
   },
 
-  // 倍率は Preview 専用ではない。エディタの font-size にも `--mx-zoom` が乗っている
+  // 倍率は Preview 専用ではない。エディターの font-size にも `--mx-zoom` が乗っている
   // （`features/editor/theme.ts`）。id の接頭辞が `preview.` なのは
   // 実装の置き場所であって、効く範囲ではない。
   { id: 'preview.zoomIn', run: () => void zoomIn(), isListed: hasDocument },
@@ -199,7 +199,7 @@ export const KEY_BINDINGS: KeyBinding[] = [
   // 戻る / 進む（F-NAV-07）。相対リンクで辿った先から帰ってくるための経路で、
   // **スクロール位置も一緒に戻る**（`features/history/navigate.ts`）。
   //
-  // Windows のエディタでは `Alt+←` は空いている（`vscodeKeymap` が
+  // Windows のエディターでは `Alt+←` は空いている（`vscodeKeymap` が
   // `Mod-ArrowLeft` に単語移動を置いていて、`Alt` 側は mac だけ）。
   { key: 'Alt+ArrowLeft', id: 'history.back' },
   { key: 'Alt+ArrowRight', id: 'history.forward' },

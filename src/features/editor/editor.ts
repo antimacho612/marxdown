@@ -1,7 +1,7 @@
 /**
  * Monaco の生成と保持（F-EDIT-01 / `editor` チャンク / ADR-0009）。
  *
- * Edit / Split / WYSIWYG は単一のエディタ・単一のモデルを共有し、置き場所だけが違う（02.architecture/07-editor-wysiwyg.md §1）。
+ * Edit / Split / WYSIWYG は単一のエディター・単一のモデルを共有し、置き場所だけが違う（02.architecture/07-editor-wysiwyg.md §1）。
  * これにより Undo 履歴・カーソル・IME の挙動がモード間で揃う。
  * Preview へ切り替えても `dispose()` しない（Undo 履歴を保持するため / §4）。
  * ただし Monaco は非表示のあいだ寸法を失うので、表示を戻したら `relayoutEditor()` を呼ぶこと。
@@ -44,7 +44,7 @@ function readText(): string {
 }
 
 /**
- * エディタを載せる。**2 回目以降は何もしない。**
+ * エディターを載せる。**2 回目以降は何もしない。**
  *
  * 初期内容は `getDocumentText()` から取る。`attachEditor` より**前**に読むこと
  * （後にすると、控えを捨てたあとの空文字を読む）。
@@ -111,7 +111,7 @@ export function mountEditor(host: HTMLElement): monaco.editor.IStandaloneCodeEdi
   // `setDirty` は値が変わらなければ何もしない。
   //
   // `editor.onDidChangeModelContent` ではなくモデル側を購読する。
-  // エディタの通知は Undo で版を巻き戻す前に飛ぶ「速い」ほうで、それで判定すると Undo で基準まで戻ってもダーティが外れない（#43 の再来。実測で確認済み）。
+  // エディターの通知は Undo で版を巻き戻す前に飛ぶ「速い」ほうで、それで判定すると Undo で基準まで戻ってもダーティが外れない（#43 の再来。実測で確認済み）。
   model.onDidChangeContent(() => {
     setDirty(model?.getAlternativeVersionId() !== cleanVersionId);
     // Split では右のプレビューを追いかけさせる（F-MODE-03）。
@@ -130,7 +130,7 @@ export function mountEditor(host: HTMLElement): monaco.editor.IStandaloneCodeEdi
   refreshAppearance();
   // 見張るものが 2 つあるのは、変化が 2 系統あるため。
   // トークン（テーマ / プレビューの設定 / 表示倍率）は CSS に現れ、
-  // エディタの設定（折り返し・タブ幅など）は現れない。
+  // エディターの設定（折り返し・タブ幅など）は現れない。
   watchEditorTokens(refreshAppearance);
   watchEditorSettings(refreshAppearance);
 
@@ -209,7 +209,7 @@ export function openEditorSearch(replace: boolean): void {
  * **`getAction` では引けない。** 閉じる側は `registerEditorAction` ではなく
  * `registerEditorCommand` で登録されており（`contrib/find/browser/findController.js`）、
  * アクション一覧には出てこない。`trigger` はアクションを見たあと
- * エディタコマンドを見るので、こちらなら引ける。
+ * エディターコマンドを見るので、こちらなら引ける。
  *
  * ウィジェットが出ていなければ precondition（`CONTEXT_FIND_WIDGET_VISIBLE`）で
  * 弾かれるので、呼ぶ側が状態を持つ必要はない。
@@ -246,7 +246,7 @@ export function moveToEndForBench(): void {
 /**
  * Split のスクロール同期を始める / やめる（F-MODE-05）。
  *
- * エディタの実体を外へ渡さないための包みである。
+ * エディターの実体を外へ渡さないための包みである。
  * 同期の中身（`features/view/scroll-sync.ts`）は行番号だけの窓口（`EditorScrollPort`）しか知らず、座標計算は `scroll-port.ts` にある。
  */
 export function setSplitSync(on: boolean): void {

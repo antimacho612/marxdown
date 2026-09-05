@@ -318,7 +318,7 @@ pub fn run() {
                 app.state::<watch::FileWatcher>()
                     .watch(path, watch::Role::Settings);
             }
-            // `custom.css` も同じ扱い（02.architecture/10-theming.md §3「外部エディタで編集されたら即反映」）。
+            // `custom.css` も同じ扱い（02.architecture/10-theming.md §3「外部エディターで編集されたら即反映」）。
             // **まだ存在しなくても登録する。** 親ディレクトリを見る形になるので、
             // 後から手で置かれた瞬間に拾える（`settings.json` と監視元を共有する）。
             if let Some(path) = state.custom_css_path() {

@@ -7,7 +7,7 @@
  * 本文の上端から 15% の帯を検出線とし、見出しの上端が越えたかを覚えて「越えているものの最後」を現在位置とする。
  * 座標は交差時にブラウザが渡すので測りに行かない（レイアウト強制なし）。
  *
- * Edit では本文が `display: none` で交差が起きないため、エディタのカーソル行から引く（`headingAtLine` / #59）。
+ * Edit では本文が `display: none` で交差が起きないため、エディターのカーソル行から引く（`headingAtLine` / #59）。
  */
 import type { OutlineItem } from '@/markdown/plugins/line-map';
 
@@ -112,11 +112,11 @@ export function followHeadings(container: HTMLElement, onActive: (index: number)
  * **行番号より手前にある最後の見出し**が答えになる。見出しより前
  * （Front Matter / 前書き）に居るあいだは `-1`。そこはどの見出しの中でもない。
  *
- * カーソル行を使うのは、Edit で見えているのがエディタだからで、
+ * カーソル行を使うのは、Edit で見えているのがエディターだからで、
  * VS Code のアウトラインが現在位置を示す基準と同じである。
  *
  * @param items アウトラインの項目。`line` は 0 始まり（`markdown/plugins/line-map.ts`）
- * @param line エディタのカーソル行。**1 始まり**
+ * @param line エディターのカーソル行。**1 始まり**
  */
 export function headingAtLine(items: readonly OutlineItem[], line: number): number {
   let found = -1;

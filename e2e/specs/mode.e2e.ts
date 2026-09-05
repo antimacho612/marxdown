@@ -30,14 +30,14 @@ describe('Preview と Edit を行き来する', () => {
     await openViaForward(WORK_DOC, '本文です。');
   });
 
-  it('起動直後は Preview で、エディタは載っていない', async () => {
+  it('起動直後は Preview で、エディターは載っていない', async () => {
     // 既定が Preview であることが `editor` チャンクを分ける境界そのもの
     // （02.architecture/05-startup-sequence.md §1 の要点 3）。
     expect(await mode()).toBe('preview');
     expect(await mountedEditorCount()).toBe(0);
   });
 
-  it('Ctrl+Shift+V で Edit に入り、エディタが載る', async () => {
+  it('Ctrl+Shift+V で Edit に入り、エディターが載る', async () => {
     await pressTogglePreview();
 
     await browser.waitUntil(async () => (await mode()) === 'edit', {
@@ -49,7 +49,7 @@ describe('Preview と Edit を行き来する', () => {
     await waitForEditorMounted();
   });
 
-  it('エディタに読み込んだ本文が入っている', async () => {
+  it('エディターに読み込んだ本文が入っている', async () => {
     const text = await editorContentText();
     expect(text).toContain('本文です。');
   });
@@ -58,7 +58,7 @@ describe('Preview と Edit を行き来する', () => {
     await expect($('.mx-statusbar')).toHaveText(expect.stringContaining('Edit'));
   });
 
-  it('もう一度押すと Preview に戻り、エディタは壊されない', async () => {
+  it('もう一度押すと Preview に戻り、エディターは壊されない', async () => {
     // 03.ux-spec/02-view-modes.md §4。破棄すると Undo 履歴が消える。
     await pressTogglePreview();
 

@@ -155,12 +155,12 @@ describe('クロームの隠蔽を防ぐ (06.roadmap/m1.5-shell-and-settings.md 
 });
 
 /**
- * エディタ用のカスタム CSS（ADR-0013）。
+ * エディター用のカスタム CSS（ADR-0013）。
  *
  * **閉じ込めの仕組みは本文と 1 つ**で、変わるのは `@scope` の根と `<style>` の id だけ。
  * ここで見るのは「面を取り違えていないこと」に尽きる。
  */
-describe('エディタ用カスタム CSS (ADR-0013)', () => {
+describe('エディター用カスタム CSS (ADR-0013)', () => {
   function injectedEditor(): HTMLStyleElement | null {
     return document.querySelector<HTMLStyleElement>('style#mx-editor-css');
   }
@@ -183,10 +183,10 @@ describe('エディタ用カスタム CSS (ADR-0013)', () => {
   });
 
   /**
-   * **エディタ側でも閉じ込めが破れないこと。** 本文用と同じ判定を通っているが、
+   * **エディター側でも閉じ込めが破れないこと。** 本文用と同じ判定を通っているが、
    * 根を引数で渡すようになったぶん、取り違えると片方だけ素通りしうる。
    */
-  it('スコープの外へ出る CSS は、エディタ側でも丸ごと拒否する', () => {
+  it('スコープの外へ出る CSS は、エディター側でも丸ごと拒否する', () => {
     const escaping = 'h1 { color: red }\n}\n.mx-titlebar { display: none }';
 
     expect(applyCustomCss(escaping, 'editor')).toBe('rejected');

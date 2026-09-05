@@ -132,7 +132,7 @@ describe('壊れた settings.json の通知', () => {
   });
 });
 
-/** 外部エディタでの編集を即反映する（02.architecture/04-rust-responsibilities.md §5）。 */
+/** 外部エディターでの編集を即反映する（02.architecture/04-rust-responsibilities.md §5）。 */
 describe('settings.json の読み直し', () => {
   function withSettings(readSettings: ReturnType<typeof vi.fn>): () => void {
     const platform = getPlatform();

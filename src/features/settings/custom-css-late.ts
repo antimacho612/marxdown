@@ -44,7 +44,7 @@ export function installCustomCss(surface: CssSurface, initial: CustomCss | null,
     report(surface, problemOf(initial, applied));
   }
 
-  // 外部エディタで書き換えられたら当て直す。**ファイルが後から作られた場合も届く**
+  // 外部エディターで書き換えられたら当て直す。**ファイルが後から作られた場合も届く**
   // （Rust 側が親ディレクトリを見ている / 02.architecture/04-rust-responsibilities.md §4）。
   // **面ごとに別のイベント**なので、片方を書き換えてもう片方が読み直されることはない。
   SURFACE[surface].watch(() => void refreshCustomCss(surface));

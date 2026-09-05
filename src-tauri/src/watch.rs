@@ -40,7 +40,7 @@ pub const EVENT_EDITOR_CSS_CHANGED: &str = "marxdown://editor-css-changed";
 
 /// 変更が落ち着いたと見なすまでの時間（02.architecture/04-rust-responsibilities.md §4）。
 ///
-/// エディタの保存は 1 回の操作でも複数のイベントになる（一時ファイルの作成 → rename →
+/// エディターの保存は 1 回の操作でも複数のイベントになる（一時ファイルの作成 → rename →
 /// 属性の変更）。ここを短くすると、書き換えの途中の状態を読みに行くことになる。
 const DEBOUNCE: Duration = Duration::from_millis(300);
 

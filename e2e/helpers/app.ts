@@ -96,11 +96,11 @@ export async function currentMode(): Promise<string> {
 }
 
 /* ------------------------------------------------------------------ */
-/* エディタの DOM（エンジン固有）                                       */
+/* エディターの DOM（エンジン固有）                                       */
 /* ------------------------------------------------------------------ */
 
 /**
- * エディタが吐く DOM を指すセレクタ。**エンジンの名前が書いてよいのはここだけ。**
+ * エディターが吐く DOM を指すセレクタ。**エンジンの名前が書いてよいのはここだけ。**
  *
  * spec 側に散ると、[ADR-0009](../../docs/adr/0009-editor-engine-monaco.md) の差し替えで 4 ファイルを同時に直すことになる。
  * この表 1 枚と、下の薄い関数群を書き換えれば済む状態にしてある。
@@ -113,7 +113,7 @@ export async function currentMode(): Promise<string> {
  * **セレクタはクロージャで掴まず引数で渡す。**
  */
 export const EDITOR_DOM = {
-  /** エディタの外枠。載っているかの判定に使う。 */
+  /** エディターの外枠。載っているかの判定に使う。 */
   root: '#mx-editor .monaco-editor',
   /** 編集面。クリックしてフォーカスを取る先。 */
   content: '#mx-editor .view-lines',
@@ -131,7 +131,7 @@ export const EDITOR_DOM = {
   replacePart: '.replace-part',
 } as const;
 
-/** 載っているエディタの数。Preview だけで読んでいるときは 0。 */
+/** 載っているエディターの数。Preview だけで読んでいるときは 0。 */
 export async function mountedEditorCount(): Promise<number> {
   return browser.execute((selector: string) => document.querySelectorAll(selector).length, EDITOR_DOM.root);
 }
@@ -141,7 +141,7 @@ export async function waitForEditorMounted(): Promise<void> {
   await browser.waitUntil(async () => (await mountedEditorCount()) === 1, {
     // **Monaco は CodeMirror より待つ。** raw 3.0MB の評価が入る（ADR-0009 の根拠 2）。
     timeout: 30_000,
-    timeoutMsg: 'エディタが載らなかった',
+    timeoutMsg: 'エディターが載らなかった',
   });
 }
 
@@ -159,7 +159,7 @@ export async function editorContentText(): Promise<string> {
 }
 
 /**
- * エディタが持っている本文。改行はエディタの行区切りから組み直す。
+ * エディターが持っている本文。改行はエディターの行区切りから組み直す。
  *
  * DOM の順に読んではいけない。
  * Monaco は行の要素を使い回すため、スクロールすると中身だけが差し替わるので `querySelectorAll` の順は画面の上から下の順とは限らない。
@@ -238,7 +238,7 @@ export async function focusedFindField(): Promise<string> {
 }
 
 /**
- * エディタのスクロール位置。器が無ければ `-1`。
+ * エディターのスクロール位置。器が無ければ `-1`。
  *
  * **`scrollTop` では読めない。** Monaco の器は `overflow: hidden` で、
  * スクロールは中身を上へずらして表している
@@ -257,7 +257,7 @@ export async function editorScrollTop(): Promise<number> {
 }
 
 /**
- * エディタを端まで動かす。**キーで動かす。**
+ * エディターを端まで動かす。**キーで動かす。**
  *
  * CodeMirror のときは器の `scrollTop` へ代入していたが、
  * **Monaco はその値を見ていない**（`editorScrollTop` の但し書き）。
@@ -271,7 +271,7 @@ export async function scrollEditorToEnd(): Promise<void> {
   await browser.keys([Key.Control, Key.End]);
 }
 
-/** エディタを先頭へ戻す。 */
+/** エディターを先頭へ戻す。 */
 export async function scrollEditorToTop(): Promise<void> {
   await focusEditorSurface();
   await browser.keys([Key.Control, Key.Home]);
@@ -281,7 +281,7 @@ export async function scrollEditorToTop(): Promise<void> {
 /* 編集の操作                                                          */
 /* ------------------------------------------------------------------ */
 
-/** Edit モードに入り、エディタが載るまで待つ。 */
+/** Edit モードに入り、エディターが載るまで待つ。 */
 export async function enterEditMode(): Promise<void> {
   if ((await currentMode()) === 'edit') return;
 
@@ -293,7 +293,7 @@ export async function enterEditMode(): Promise<void> {
   await waitForEditorMounted();
 }
 
-/** エディタの末尾に文字を打つ。**実際のキー入力**で入れる（IME を除く本番の経路）。 */
+/** エディターの末尾に文字を打つ。**実際のキー入力**で入れる（IME を除く本番の経路）。 */
 export async function typeAtEnd(text: string): Promise<void> {
   await focusEditorSurface();
   await browser.keys([Key.Control, 'End']);
@@ -351,13 +351,13 @@ export async function waitForNotice(needle: string): Promise<void> {
   );
 }
 
-/** エディタの本文に `needle` が現れるまで待つ。 */
+/** エディターの本文に `needle` が現れるまで待つ。 */
 export async function waitForEditorText(needle: string): Promise<void> {
   await browser.waitUntil(
     async () => {
       const text = await editorText();
       return text.includes(needle);
     },
-    { timeout: 20_000, timeoutMsg: `エディタに「${needle}」が現れなかった` },
+    { timeout: 20_000, timeoutMsg: `エディターに「${needle}」が現れなかった` },
   );
 }

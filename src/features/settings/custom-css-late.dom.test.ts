@@ -95,7 +95,7 @@ describe('起動後のカスタム CSS (02.architecture/10-theming.md §3)', () 
     expect(documentStore.notice?.message).toBe('ファイルが見つかりません');
   });
 
-  /** 02.architecture/10-theming.md §3「外部エディタで編集されたら即反映」。監視は Rust 側、当て直しはここ。 */
+  /** 02.architecture/10-theming.md §3「外部エディターで編集されたら即反映」。監視は Rust 側、当て直しはここ。 */
   it('外部変更の通知を受けたら、読み直して当て直す', async () => {
     let current: CustomCss = { ...NO_CUSTOM_CSS, css: 'h1 { color: red }' };
     let notify = (): void => {};
