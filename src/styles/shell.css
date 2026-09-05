@@ -66,10 +66,9 @@ body {
     /* 列を 2 つ増やすだけ。変わるのは grid-template-areas の定義と .mx-preview / .mx-editor の行き先だけで、要素の付け外しは無い（EditorView を壊さない）。 */
     /* 分割比は fr の値そのものを変数で受け取る（features/view/split.ts が 0.3fr のような単位まで含んだ文字列を入れる）。ピクセルで持つと、ウィンドウの大きさやペインの開閉で左右の比が変わってしまう。 */
     /* minmax(0, ...) を被せてあるのは、grid の既定の最小幅（auto = 中身の最小幅）が fr の指定を押しのけるため。エディターの長い行が比を無視して列を広げる。 */
-    grid-template-columns: auto minmax(0, var(--mx-split-editor, 1fr)) var(--mx-split-divider) minmax(
-        0,
-        var(--mx-split-preview, 1fr)
-      ) auto;
+    grid-template-columns:
+      auto minmax(0, var(--mx-split-editor, 1fr)) var(--mx-split-divider) minmax(0, var(--mx-split-preview, 1fr))
+      auto;
     grid-template-areas:
       'titlebar titlebar titlebar titlebar titlebar'
       'leftpane editor divider preview rightpane'
