@@ -46,3 +46,7 @@ a {
   scrollbar-color: var(--mx-color-border) transparent;
   scrollbar-width: thin;
 }
+
+button:not(:disabled) {
+  cursor: pointer;
+}
