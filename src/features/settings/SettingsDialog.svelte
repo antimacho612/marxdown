@@ -272,28 +272,20 @@ Rust 側も拒否するが、UI が「保存できたように見せる」のを
   <div class="mx-settings__body">
     <Navigation items={CATEGORIES} selected={category} onSelectionChange={(id) => (category = id)} />
 
-    <!--
-      壊れているときは `fieldset` 1 枚でまとめて止める。個々の `disabled` を
-      書いて回ると、項目を足したときに 1 つ書き忘れる。
-    -->
+    <!-- settings.json が壊れているときは `fieldset` でまとめて非活性にする。項目追加時の書き忘れ防止のため。 -->
     <fieldset class="mx-settings__pane" disabled={broken !== null}>
       {#if category === 'appearance'}
-        {@render radioGroup('theme', ja.settings.theme, THEMES)}
-        <p class="mx-settings__hint">{ja.settings.themeHint}</p>
+        {@render radioGroup('theme', ja.settings.theme, ja.settings.themeHint, THEMES)}
       {:else if category === 'preview'}
-        <!--
-          配色を先頭に置く（ADR-0013）。**面の印象を決めるのはここ**で、
-          フォントや幅はその上での微調整にあたる。
-        -->
-        {@render selectField('preview.theme', ja.settings.palette, PALETTES, ja.settings.paletteHint)}
+        {@render selectField('preview.theme', ja.settings.palette, ja.settings.paletteHint, PALETTES)}
         {@render textField('preview.fontFamily', ja.settings.fontFamily, ja.settings.fontFamilyHint)}
         {@render textField('preview.codeFontFamily', ja.settings.codeFontFamily, ja.settings.fontFamilyHint)}
-        {@render numberField('preview.fontSize', ja.settings.fontSize, ja.settings.unitPx, '')}
-        {@render numberField('preview.lineHeight', ja.settings.lineHeight, '', '')}
-        {@render numberField('preview.maxWidth', ja.settings.maxWidth, ja.settings.unitCh, ja.settings.maxWidthHint)}
+        {@render numberField('preview.fontSize', ja.settings.fontSize.label, ja.settings.fontSize.description)}
+        {@render numberField('preview.lineHeight', ja.settings.lineHeight.label, ja.settings.lineHeight.description)}
+        {@render numberField('preview.maxWidth', ja.settings.maxWidth.label, ja.settings.maxWidth.description)}
         <ContentSample palette={values['preview.theme']} />
       {:else if category === 'editor'}
-        {@render selectField('editor.theme', ja.settings.palette, PALETTES, ja.settings.paletteHint)}
+        {@render selectField('editor.theme', ja.settings.palette, ja.settings.paletteHint, PALETTES)}
         <EditorSample
           palette={values['editor.theme']}
           fontFamily={values['editor.fontFamily']}
@@ -306,47 +298,101 @@ Rust 側も拒否するが、UI が「保存できたように見せる」のを
 
         <Section label={ja.settings.sections.font} />
         {@render textField('editor.fontFamily', ja.settings.editor.fontFamily, ja.settings.fontFamilyHint)}
-        {@render numberField('editor.fontSize', ja.settings.editor.fontSize, ja.settings.unitPx, '')}
-        {@render numberField('editor.lineHeight', ja.settings.editor.lineHeight, '', '')}
-        {@render numberField('editor.letterSpacing', ja.settings.editor.letterSpacing, ja.settings.unitPx, '')}
-        {@render toggleField('editor.fontLigatures', ja.settings.editor.fontLigatures)}
+        {@render numberField(
+          'editor.fontSize',
+          ja.settings.editor.fontSize.label,
+          ja.settings.editor.fontSize.description,
+        )}
+        {@render numberField(
+          'editor.lineHeight',
+          ja.settings.editor.lineHeight.label,
+          ja.settings.editor.lineHeight.description,
+        )}
+        {@render numberField(
+          'editor.letterSpacing',
+          ja.settings.editor.letterSpacing.label,
+          ja.settings.editor.letterSpacing.description,
+        )}
+        {@render toggleField(
+          'editor.fontLigatures',
+          ja.settings.editor.fontLigatures.label,
+          ja.settings.editor.fontLigatures.description,
+        )}
 
         <Section label={ja.settings.sections.display} />
-        {@render selectField('editor.lineNumbers', ja.settings.editor.lineNumbers, LINE_NUMBERS, '')}
-        {@render selectField('editor.renderWhitespace', ja.settings.editor.renderWhitespace, RENDER_WHITESPACE, '')}
+        {@render selectField('editor.lineNumbers', ja.settings.editor.lineNumbers, '', LINE_NUMBERS)}
+        {@render selectField('editor.renderWhitespace', ja.settings.editor.renderWhitespace, '', RENDER_WHITESPACE)}
         {@render selectField(
           'editor.renderLineHighlight',
           ja.settings.editor.renderLineHighlight,
-          RENDER_LINE_HIGHLIGHT,
           '',
+          RENDER_LINE_HIGHLIGHT,
         )}
-        {@render toggleField('editor.renderControlCharacters', ja.settings.editor.renderControlCharacters)}
-        {@render toggleField('editor.guides.indentation', ja.settings.editor.guidesIndentation)}
-        {@render toggleField('editor.bracketPairColorization.enabled', ja.settings.editor.bracketPairColorization)}
-        {@render toggleField('editor.minimap.enabled', ja.settings.editor.minimap)}
+        {@render toggleField(
+          'editor.renderControlCharacters',
+          ja.settings.editor.renderControlCharacters.label,
+          ja.settings.editor.renderControlCharacters.description,
+        )}
+        {@render toggleField(
+          'editor.guides.indentation',
+          ja.settings.editor.guidesIndentation.label,
+          ja.settings.editor.guidesIndentation.description,
+        )}
+        {@render toggleField(
+          'editor.bracketPairColorization.enabled',
+          ja.settings.editor.bracketPairColorization.label,
+          ja.settings.editor.bracketPairColorization.description,
+        )}
+        {@render toggleField(
+          'editor.minimap.enabled',
+          ja.settings.editor.minimap.label,
+          ja.settings.editor.minimap.description,
+        )}
         {@render rulersField()}
-        {@render numberField('editor.padding.top', ja.settings.editor.paddingTop, ja.settings.unitPx, '')}
+        {@render numberField(
+          'editor.padding.top',
+          ja.settings.editor.paddingTop.label,
+          ja.settings.editor.paddingTop.description,
+        )}
 
         <Section label={ja.settings.sections.input} />
-        {@render selectField('editor.wordWrap', ja.settings.editor.wordWrap, WORD_WRAP, '')}
+        {@render selectField('editor.wordWrap', ja.settings.editor.wordWrap, '', WORD_WRAP)}
         {#if values['editor.wordWrap'] === 'wordWrapColumn' || values['editor.wordWrap'] === 'bounded'}
-          <!-- 桁を使う設定のときだけ出す。使わない値を編集させても意味が無い。 -->
-          {@render numberField('editor.wordWrapColumn', ja.settings.editor.wordWrapColumn, ja.settings.unitCh, '')}
+          {@render numberField(
+            'editor.wordWrapColumn',
+            ja.settings.editor.wordWrapColumn.label,
+            ja.settings.editor.wordWrapColumn.description,
+          )}
         {/if}
-        {@render numberField('editor.tabSize', ja.settings.editor.tabSize, '', '')}
-        {@render toggleField('editor.insertSpaces', ja.settings.editor.insertSpaces)}
-        {@render selectField('editor.cursorStyle', ja.settings.editor.cursorStyle, CURSOR_STYLE, '')}
-        {@render selectField('editor.cursorBlinking', ja.settings.editor.cursorBlinking, CURSOR_BLINKING, '')}
+        {@render numberField(
+          'editor.tabSize',
+          ja.settings.editor.tabSize.label,
+          ja.settings.editor.tabSize.description,
+        )}
+        {@render toggleField(
+          'editor.insertSpaces',
+          ja.settings.editor.insertSpaces.label,
+          ja.settings.editor.insertSpaces.description,
+        )}
+        {@render selectField('editor.cursorStyle', ja.settings.editor.cursorStyle, '', CURSOR_STYLE)}
+        {@render selectField('editor.cursorBlinking', ja.settings.editor.cursorBlinking, '', CURSOR_BLINKING)}
         {@render numberField(
           'editor.cursorSurroundingLines',
-          ja.settings.editor.cursorSurroundingLines,
-          ja.settings.unitLines,
-          '',
+          ja.settings.editor.cursorSurroundingLines.label,
+          ja.settings.editor.cursorSurroundingLines.description,
         )}
-        {@render toggleField('editor.scrollBeyondLastLine', ja.settings.editor.scrollBeyondLastLine)}
+        {@render toggleField(
+          'editor.scrollBeyondLastLine',
+          ja.settings.editor.scrollBeyondLastLine.label,
+          ja.settings.editor.scrollBeyondLastLine.description,
+        )}
       {:else}
-        {@render radioGroup('window.closeBehavior', ja.settings.window.closeBehavior, CLOSE_BEHAVIORS)}
-        <p class="mx-settings__hint">{ja.settings.window.closeBehaviorHint}</p>
+        {@render radioGroup(
+          'window.closeBehavior',
+          ja.settings.window.closeBehavior,
+          ja.settings.window.closeBehaviorHint,
+          CLOSE_BEHAVIORS,
+        )}
       {/if}
     </fieldset>
   </div>
@@ -365,17 +411,12 @@ Rust 側も拒否するが、UI が「保存できたように見せる」のを
 </dialog>
 
 <!-- MARK: Snippets -->
-<!--
-  設定のキーと部品（`components/`）をつなぐだけの層。**見た目はここに書かない。**
 
-  1 項目を足すのに要るのが呼び出し側の 1 行だけ、という状態を保つためにある。
-  ここを畳んで呼び出し側に部品を直接並べると、`values[...]` と `changeSetting(...)` の
-  組が 22 回ぶん写経されることになる。
--->
-{#snippet textField(key: ChoiceKey, label: string, hint: string)}
+{#snippet textField(key: ChoiceKey, label: string, description: string)}
   <TextField
+    {key}
     {label}
-    {hint}
+    {description}
     value={values[key]}
     placeholder={ja.settings.fontFamilyPlaceholder}
     onInput={(value) => changeChoice(key, value)}
@@ -383,11 +424,11 @@ Rust 側も拒否するが、UI が「保存できたように見せる」のを
   />
 {/snippet}
 
-{#snippet numberField(key: NumericKey, label: string, unit: string, hint: string)}
+{#snippet numberField(key: NumericKey, label: string, description: string)}
   <NumberField
+    {key}
     {label}
-    {unit}
-    {hint}
+    {description}
     value={values[key]}
     min={LIMITS[key].min}
     max={LIMITS[key].max}
@@ -397,43 +438,40 @@ Rust 側も拒否するが、UI が「保存できたように見せる」のを
   />
 {/snippet}
 
-{#snippet selectField(key: ChoiceKey, label: string, options: Choice[], hint: string)}
+{#snippet selectField(key: ChoiceKey, label: string, description: string, options: Choice[])}
   <SelectField
+    {key}
     {label}
     {options}
-    {hint}
+    {description}
     value={values[key]}
     onChange={(value) => changeChoice(key, value)}
     onReset={resetOf(key)}
   />
 {/snippet}
 
-{#snippet toggleField(key: ToggleKey, label: string)}
+{#snippet toggleField(key: ToggleKey, label: string, description: string)}
   <ToggleField
+    {key}
     {label}
+    description={`${description}（既定値: ${DEFAULT_SETTINGS[key]}）`}
     checked={values[key]}
     onChange={(checked) => changeSetting(key, checked)}
-    onReset={resetOf(key)}
   />
 {/snippet}
 
-{#snippet radioGroup(key: ChoiceKey, label: string, options: Choice[])}
-  <RadioGroup
-    {label}
-    {options}
-    value={values[key]}
-    onChange={(value) => changeChoice(key, value)}
-    onReset={resetOf(key)}
-  />
+{#snippet radioGroup(key: ChoiceKey, label: string, description: string, options: Choice[])}
+  <RadioGroup {label} {description} {options} value={values[key]} onChange={(value) => changeChoice(key, value)} />
 {/snippet}
 
 <!-- 縦罫線だけは**打っている途中の文字列**を渡す（上の `rulersText` を参照）。 -->
 {#snippet rulersField()}
   <TextField
-    label={ja.settings.editor.rulers}
-    hint={ja.settings.editor.rulersHint}
+    key="editor.rulers"
+    label={ja.settings.editor.rulers.label}
+    description={ja.settings.editor.rulers.description}
     value={rulersText}
-    placeholder={ja.settings.editor.rulersPlaceholder}
+    placeholder={ja.settings.editor.rulers.placeholder}
     inputmode="numeric"
     onInput={onRulersInput}
     onReset={resetOf('editor.rulers')}
@@ -458,24 +496,27 @@ Rust 側も拒否するが、UI が「保存できたように見せる」のを
     color: var(--mx-color-fg);
 
     flex-direction: column;
-  }
 
-  /* `display: flex` は開いているときだけ。閉じているあいだは `none` が勝つ必要がある。 */
-  .mx-settings[open] {
-    display: flex;
-  }
+    &[open] {
+      display: flex;
+    }
 
-  .mx-settings::backdrop {
-    background: rgb(0 0 0 / 35%);
-  }
+    &::backdrop {
+      background: rgb(0 0 0 / 35%);
+    }
 
-  /*
+    /*
    * 03.ux-spec/09-motion.md「パレットの出現 100ms ease-out」に揃える。
    * 本文の上に重なるものであり、本文のレイアウトには触らない（§1 の基準）。
    */
-  .mx-settings[open],
-  .mx-settings[open]::backdrop {
-    animation: mx-settings-in 100ms ease-out;
+    &[open],
+    &[open]::backdrop {
+      animation: mx-settings-in 100ms ease-out;
+    }
+
+    &:focus {
+      outline: none;
+    }
   }
 
   @keyframes mx-settings-in {
@@ -489,10 +530,6 @@ Rust 側も拒否するが、UI が「保存できたように見せる」のを
     .mx-settings[open]::backdrop {
       animation: none;
     }
-  }
-
-  .mx-settings:focus {
-    outline: none;
   }
 
   .mx-settings__header {
@@ -521,14 +558,13 @@ Rust 側も拒否するが、UI が「保存できたように見せる」のを
     color: var(--mx-color-fg-muted);
     font: inherit;
     cursor: default;
+
+    &:hover {
+      background: var(--mx-color-bg-hover);
+      color: var(--mx-color-fg);
+    }
   }
 
-  .mx-settings__close:hover {
-    background: var(--mx-color-bg-hover);
-    color: var(--mx-color-fg);
-  }
-
-  /* 保存できない理由。**入力欄より上に出す**（触る前に読ませる）。 */
   .mx-settings__broken {
     flex: none;
     margin: 0;
@@ -545,8 +581,6 @@ Rust 側も拒否するが、UI が「保存できたように見せる」のを
     grid-template-columns: 10rem 1fr;
   }
 
-  /* `fieldset` の既定（枠・余白・`min-inline-size: min-content`）を落とす。
-     最後のものを消し忘れると、幅が中身に押し広げられてダイアログからはみ出す。 */
   .mx-settings__pane {
     min-width: 0;
     min-inline-size: 0;
@@ -559,16 +593,8 @@ Rust 側も拒否するが、UI が「保存できたように見せる」のを
     gap: var(--mx-space-3);
   }
 
-  /* **縮ませない。** 縦に積んだ flex の子は既定で縮む。
-     項目そのものは部品の側が同じ指定を持っている（スコープが跨がらないため）。 */
   .mx-settings__pane > * {
     flex: none;
-  }
-
-  .mx-settings__hint {
-    margin: 0;
-    color: var(--mx-color-fg-subtle);
-    font-size: 11px;
   }
 
   .mx-settings__footer {
@@ -580,7 +606,6 @@ Rust 側も拒否するが、UI が「保存できたように見せる」のを
     border-top: 1px solid var(--mx-color-border-subtle);
   }
 
-  /* 2 つ並ぶ（`settings.json` と `custom.css`）。狭い幅では折り返す。 */
   .mx-settings__files {
     display: flex;
     flex-wrap: wrap;
@@ -588,7 +613,6 @@ Rust 側も拒否するが、UI が「保存できたように見せる」のを
     margin-bottom: var(--mx-space-1);
   }
 
-  /* 壊れているときも押せる。**直す場所はファイルにしかない**（F-CONF-06）。 */
   .mx-settings__file {
     padding: var(--mx-space-1) var(--mx-space-3);
     border: 1px solid var(--mx-color-border);
@@ -597,10 +621,10 @@ Rust 側も拒否するが、UI が「保存できたように見せる」のを
     color: var(--mx-color-fg);
     font: inherit;
     cursor: default;
-  }
 
-  .mx-settings__file:hover {
-    background: var(--mx-color-bg-hover);
+    &:hover {
+      background: var(--mx-color-bg-hover);
+    }
   }
 
   /* 残っているのはクロームのボタンだけ（入力欄は部品の側が自分で持つ）。 */

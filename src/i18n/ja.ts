@@ -244,7 +244,7 @@ export const ja = {
     },
 
     theme: 'テーマ',
-    themeSystem: 'OS に合わせる',
+    themeSystem: 'システム',
     themeLight: 'ライト',
     themeDark: 'ダーク',
     themeHint: 'ライトとダークの切り替え。配色はプレビューとエディターで別々に選べる',
@@ -259,7 +259,7 @@ export const ja = {
      */
     palette: '配色',
     paletteOptions: {
-      default: 'Marxdown（既定）',
+      default: 'Marxdown',
       github: 'GitHub',
       solarized: 'Solarized',
       nord: 'Nord',
@@ -272,10 +272,12 @@ export const ja = {
     /** ウェブフォントは CSP（`font-src 'self'`）で読み込めない（02.architecture/10-theming.md §3）。 */
     fontFamilyHint: 'OS に入っているフォント名。無いフォントを書いても既定のフォントに落ちる',
     fontFamilyPlaceholder: '既定のフォント',
-    fontSize: '文字サイズ',
-    lineHeight: '行間',
-    maxWidth: '本文幅',
-    maxWidthHint: '1 行に収まる半角文字の数',
+    fontSize: { label: '文字サイズ', description: '文字サイズを制御します（単位: px）。' },
+    lineHeight: {
+      label: '行間',
+      description: '行の高さを制御します（単位: px）。フォントサイズから行の高さを計算するには 0 を使用します。',
+    },
+    maxWidth: { label: '本文幅', description: '1 行に収まる半角文字の数を制御します（単位: ch）。' },
 
     /**
      * エディター（ADR-0012）。**プレビューと同じ言葉を使う**（文字サイズ / 行間）。
@@ -283,11 +285,13 @@ export const ja = {
      */
     editor: {
       fontFamily: 'フォント名',
-      fontSize: '文字サイズ',
-      lineHeight: '行間',
-      letterSpacing: '字間',
-      fontLigatures: 'リガチャ（合字）を使う',
-
+      fontSize: { label: '文字サイズ', description: '文字サイズを制御します（単位: px）。' },
+      lineHeight: {
+        label: '行間',
+        description: '行の高さを制御します（単位: px）。フォントサイズから行の高さを計算するには 0 を使用します。',
+      },
+      letterSpacing: { label: '字間', description: '文字間隔を制御します（単位: px）' },
+      fontLigatures: { label: 'リガチャ（合字）', description: 'フォント合字を有効にするかどうかを制御します。' },
       lineNumbers: '行番号',
       lineNumbersOptions: {
         off: '表示しない',
@@ -303,7 +307,7 @@ export const ja = {
         trailing: '行末だけ',
         all: 'すべて',
       },
-      renderControlCharacters: '制御文字を表示する',
+      renderControlCharacters: { label: '制御文字の表示', description: '制御文字を表示するかどうかを制御します。' },
       renderLineHighlight: 'カーソル行の強調',
       renderLineHighlightOptions: {
         none: 'しない',
@@ -311,13 +315,22 @@ export const ja = {
         line: '行全体',
         all: '両方',
       },
-      guidesIndentation: 'インデントガイドを表示する',
-      bracketPairColorization: '対応する括弧を色分けする',
-      minimap: 'ミニマップを表示する',
-      rulers: '縦罫線',
-      rulersHint: '引く桁をカンマ区切りで。空欄なら引かない',
-      rulersPlaceholder: '例: 80, 100',
-      paddingTop: '上の余白',
+      guidesIndentation: { label: 'インデントガイド', description: 'インデントガイドを表示するかどうかを制御します。' },
+      bracketPairColorization: {
+        label: 'ブラケットペアの色付け',
+        description: '対応する括弧を色分けするかどうかを制御します。',
+      },
+      minimap: { label: 'ミニマップ', description: 'ミニマップを表示するかどうかを制御します。' },
+      rulers: {
+        label: '縦罫線',
+        description:
+          '特定の等幅文字数の後に垂直ルーラーを表示します。複数のルーラーを引く場合は数値をカンマ区切りで指定します。',
+        placeholder: '例: 80, 100',
+      },
+      paddingTop: {
+        label: '上の余白',
+        description: 'エディターの上端と最初の行の間の余白の大きさを制御します（単位: px）。',
+      },
 
       wordWrap: '折り返し',
       wordWrapOptions: {
@@ -326,9 +339,12 @@ export const ja = {
         wordWrapColumn: '指定した桁で折り返す',
         bounded: 'ウィンドウの幅と桁の狭いほう',
       },
-      wordWrapColumn: '折り返す桁',
-      tabSize: 'タブ幅',
-      insertSpaces: 'タブをスペースで挿入する',
+      wordWrapColumn: { label: '折り返す桁', description: '折り返し行を制御します。' },
+      tabSize: { label: 'タブ幅', description: '1 つのタブに相当するスペースの数を制御します。' },
+      insertSpaces: {
+        label: 'タブをスペースで挿入',
+        description: 'Tab キーを押したときにタブではなくスペースを挿入するかどうかを制御します。',
+      },
       cursorStyle: 'カーソルの形',
       cursorStyleOptions: {
         line: '縦線',
@@ -346,8 +362,14 @@ export const ja = {
         expand: '伸び縮みする',
         solid: '点滅しない',
       },
-      cursorSurroundingLines: 'カーソルの上下に残す行数',
-      scrollBeyondLastLine: '最終行より下へスクロールできる',
+      cursorSurroundingLines: {
+        label: 'カーソルの上下に残す行数',
+        description: 'カーソル前後の表示可能な先頭の行 (最小 0) と末尾の行 (最小 1) の最小数を制御します（単位: 行）。',
+      },
+      scrollBeyondLastLine: {
+        label: '最終行より下へのスクロール',
+        description: '最後の行を超えてスクロールするかどうかを制御します。',
+      },
     },
 
     /** ウィンドウ（ADR-0007）。**`✕` の意味が既定と違う**ので、選べることを見せる。 */

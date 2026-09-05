@@ -1,74 +1,113 @@
 <!--
 @component
-真偽値の項目。
+真偽値の設定項目。
 
-**ラベルを「〜する」の形にして、チェックの意味を文にする。**
-「ミニマップ [✓]」だと、チェックが「表示」なのか「有効」なのか読めない。
-
-ラベル列を使わず 1 列に伸ばすのは、チェックボックスが**自分で自分を説明する**ため。
-左に名前、右に四角、では同じ言葉を 2 回書くことになる。
+@prop key
+@prop label
+@prop description
+@prop checked
+@prop onChange
 -->
 
 <script lang="ts">
-  import { ja } from '@/i18n/ja';
-
-  import ResetButton from './ResetButton.svelte';
+  import Field from './Field.svelte';
 
   interface Props {
+    key: string;
     label: string;
+    description: string;
     checked: boolean;
     onChange: (checked: boolean) => void;
-    /** **渡したときだけ「既定に戻す」を出す。** 既定のままの項目には渡さない。 */
-    onReset?: (() => void) | undefined;
   }
 
-  let { label, checked, onChange, onReset }: Props = $props();
+  let { key, label, description, checked, onChange }: Props = $props();
+
+  const id = $props.id();
+
+  function handleClick() {
+    onChange(!checked);
+  }
+
+  function handleKeyDown(e: KeyboardEvent) {
+    if (e.key !== 'Enter' && e.key !== ' ') {
+      return;
+    }
+
+    e.preventDefault();
+    onChange(!checked);
+  }
 </script>
 
-<div class="mx-settings__field mx-settings__field--full">
-  <div class="mx-settings__row">
-    <label class="mx-settings__toggle">
-      <input type="checkbox" {checked} onchange={(e) => onChange(e.currentTarget.checked)} />
-      <span>{label}</span>
-    </label>
-    {#if onReset}
-      <ResetButton title={ja.settings.resetOf(label)} onClick={onReset} />
-    {/if}
-  </div>
-</div>
+<Field {label} labelFor={id} tooltip={key} {description}>
+  <button
+    type="button"
+    role="switch"
+    {id}
+    class="mx-settings__toggle"
+    class:mx-settings__toggle--checked={checked}
+    aria-checked={checked}
+    aria-label={label}
+    onclick={handleClick}
+    onkeydown={handleKeyDown}
+  >
+    <span class="mx-settings__toggle__thumb" aria-hidden="true"></span>
+  </button>
+</Field>
 
 <style>
-  /* **縮ませない**（`Field.svelte` と同じ理由）。 */
-  .mx-settings__field {
-    flex: none;
-    min-inline-size: 0;
-  }
-
-  .mx-settings__field--full {
-    display: flex;
-    flex-direction: column;
-    gap: var(--mx-space-2);
-  }
-
-  .mx-settings__row {
-    display: flex;
-    align-items: center;
-    gap: var(--mx-space-2);
-  }
-
   .mx-settings__toggle {
-    flex: 1;
-    display: flex;
+    flex: none;
+    position: relative;
+    margin: 0;
+    padding: 0;
+    height: 24px;
+    width: 44px;
+    display: inline-flex;
     align-items: center;
-    gap: var(--mx-space-2);
+    border: 1px solid var(--mx-color-border);
+    border-radius: 9999px;
+    background: var(--mx-color-bg);
+    cursor: pointer;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    vertical-align: middle;
+    transition:
+      background-color 200ms ease,
+      border-color 200ms ease;
+
+    &:focus-visible {
+      outline: 2px solid var(--mx-color-accent);
+      outline-offset: 1px;
+    }
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
   }
 
-  .mx-settings__toggle input:focus-visible {
-    outline: 2px solid var(--mx-color-accent);
-    outline-offset: 1px;
+  .mx-settings__toggle__thumb {
+    position: absolute;
+    left: 2px;
+    top: 50%;
+    width: 18px;
+    height: 18px;
+    transform: translateY(-50%);
+    border-radius: 9999px;
+    background: var(--mx-color-fg-muted);
+    box-shadow: var(--mx-shadow-1);
+    pointer-events: none;
+    transition:
+      transform 200ms cubic-bezier(0.4, 0, 0.2, 1),
+      background-color 200ms ease;
   }
 
-  .mx-settings__toggle input:disabled {
-    opacity: 0.5;
+  .mx-settings__toggle--checked {
+    background: var(--mx-color-accent);
+
+    .mx-settings__toggle__thumb {
+      background: light-dark(var(--mx-color-accent-fg), var(--mx-color-fg));
+      transform: translateY(-50%) translateX(20px);
+    }
   }
 </style>

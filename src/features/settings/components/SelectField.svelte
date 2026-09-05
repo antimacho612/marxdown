@@ -1,42 +1,42 @@
 <!--
 @component
-選択肢の項目。
+選択形式の設定項目。
 
-**一覧と値を突き合わせ直さない。** 妥当性は Rust 側が持っていて、
-知らない綴りは既定値に落ちる。
+@prop key
+@prop label
+@prop description
+@prop value
+@prop options
+@prop onChange
+@prop onReset?
 -->
 
 <script lang="ts">
-  import { ja } from '@/i18n/ja';
-
   import Field from './Field.svelte';
-  import ResetButton from './ResetButton.svelte';
   import type { Choice } from './types';
 
   interface Props {
+    key: string;
     label: string;
+    description: string;
     value: string;
     options: Choice[];
-    hint?: string;
     onChange: (value: string) => void;
-    /** **渡したときだけ「既定に戻す」を出す。** 既定のままの項目には渡さない。 */
+    /** リセット時のコールバック。未指定時は「既定に戻す」ボタン自体表示されない。 */
     onReset?: (() => void) | undefined;
   }
 
-  let { label, value, options, hint = '', onChange, onReset }: Props = $props();
+  let { key, label, description, value, options, onChange, onReset }: Props = $props();
 
   const id = $props.id();
 </script>
 
-<Field {id} {label} {hint}>
+<Field {label} labelFor={id} tooltip={key} {description} {onReset}>
   <select {id} class="mx-settings__select" {value} onchange={(e) => onChange(e.currentTarget.value)}>
     {#each options as option (option.value)}
       <option value={option.value}>{option.label}</option>
     {/each}
   </select>
-  {#if onReset}
-    <ResetButton title={ja.settings.resetOf(label)} onClick={onReset} />
-  {/if}
 </Field>
 
 <style>
@@ -48,14 +48,14 @@
     background: var(--mx-color-bg);
     color: var(--mx-color-fg);
     font: inherit;
-  }
 
-  .mx-settings__select:focus-visible {
-    outline: 2px solid var(--mx-color-accent);
-    outline-offset: 1px;
-  }
+    &:focus-visible {
+      outline: 2px solid var(--mx-color-accent);
+      outline-offset: 1px;
+    }
 
-  .mx-settings__select:disabled {
-    opacity: 0.5;
+    &:disabled {
+      opacity: 0.5;
+    }
   }
 </style>

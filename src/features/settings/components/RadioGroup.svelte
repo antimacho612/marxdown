@@ -1,43 +1,39 @@
 <!--
 @component
-排他の選択肢（テーマ / 閉じるときの動作）。
+選択形式の設定項目。
 
-**素のラジオボタンにしてある。** 同じ `name` を持つラジオは、矢印キーでの移動も
-`Tab` の扱い（グループ全体で 1 つ）も**ブラウザ側が実装している**。
-見た目のためにボタンで組み直すと、それを自分で書き直すことになる。
+選択肢が 4 つ以下 かつ 選択肢のラベルが長すぎず、長さがおおよそ揃っている場合に使う。
+選択肢が多い場合やラベルが長い選択肢があるときは、`SelectField` コンポーネントを使用する。
 
-`fieldset` / `legend` のままにしているのは、グループ名を読み上げに載せる方法として
-いちばん確実だから。**grid の 2 列に載せない**のは `legend` の配置がブラウザ差を持つため。
+@prop label
+@prop description
+@prop value
+@prop options
+@prop onChange
 -->
 
 <script lang="ts">
-  import { ja } from '@/i18n/ja';
-
-  import ResetButton from './ResetButton.svelte';
   import type { Choice } from './types';
 
   interface Props {
     label: string;
+    description: string;
     value: string;
     options: Choice[];
     onChange: (value: string) => void;
-    /** **渡したときだけ「既定に戻す」を出す。** 既定のままの項目には渡さない。 */
-    onReset?: (() => void) | undefined;
   }
 
-  let { label, value, options, onChange, onReset }: Props = $props();
+  let { label, description, value, options, onChange }: Props = $props();
 
-  /** グループの名前。**同じ画面に 2 つ置いても混ざらない**ように、実体ごとに振る。 */
   const name = $props.id();
 </script>
 
-<fieldset class="mx-settings__field mx-settings__field--full mx-settings__group">
-  <div class="mx-settings__row">
-    <legend class="mx-settings__label">{label}</legend>
-    {#if onReset}
-      <ResetButton title={ja.settings.resetOf(label)} onClick={onReset} />
-    {/if}
+<fieldset class="mx-settings__field">
+  <div class="mx-settings__label">
+    <legend>{label}</legend>
+    <p class="mx-settings__description">{description}</p>
   </div>
+
   <div class="mx-settings__choices">
     {#each options as option (option.value)}
       <label class="mx-settings__choice">
@@ -55,54 +51,83 @@
 </fieldset>
 
 <style>
-  /* `fieldset` の既定（枠・余白・`min-inline-size: min-content`）を落とす。
-     最後のものを消し忘れると、幅が中身に押し広げられてダイアログからはみ出す。
-     **縮ませない**のは `Field.svelte` と同じ理由。 */
   .mx-settings__field {
     flex: none;
+    min-inline-size: 0;
     margin: 0;
     padding: 0;
     border: none;
-    min-inline-size: 0;
-  }
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: start;
+    gap: var(--mx-space-1) var(--mx-space-3);
 
-  .mx-settings__field--full {
-    display: flex;
-    flex-direction: column;
-    gap: var(--mx-space-2);
-  }
-
-  .mx-settings__row {
-    display: flex;
-    align-items: center;
-    gap: var(--mx-space-2);
+    @media (max-width: 720px) {
+      grid-template-columns: 1fr;
+    }
   }
 
   .mx-settings__label {
-    flex: 1;
-    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--mx-space-2);
     color: var(--mx-color-fg);
     font-weight: 600;
   }
 
+  .mx-settings__description {
+    margin: 0;
+    color: var(--mx-color-fg-subtle);
+    font-size: 11px;
+  }
+
   .mx-settings__choices {
+    position: relative;
+    /* padding: var(--mx-space-1); */
     display: flex;
-    flex-wrap: wrap;
-    gap: var(--mx-space-1) var(--mx-space-4);
+    background: var(--mx-color-bg-inset);
+    border-radius: var(--mx-radius);
   }
 
   .mx-settings__choice {
-    display: flex;
+    position: relative;
+    display: inline-flex;
     align-items: center;
-    gap: var(--mx-space-2);
-  }
+    justify-content: center;
+    padding: var(--mx-space-1) var(--mx-space-3);
+    border: 1px solid transparent;
+    border-radius: var(--mx-radius);
+    color: var(--mx-color-fg-muted);
+    font-weight: 500;
+    user-select: none;
+    cursor: pointer;
 
-  .mx-settings__choice input:focus-visible {
-    outline: 2px solid var(--mx-color-accent);
-    outline-offset: 1px;
-  }
+    input {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      opacity: 0;
+      margin: 0;
+    }
 
-  .mx-settings__choice input:disabled {
-    opacity: 0.5;
+    &:has(input:checked) {
+      border-color: var(--mx-color-border);
+      background: var(--mx-color-bg);
+      color: var(--mx-color-fg);
+    }
+
+    &:has(input:not(:checked):not(:disabled)):hover {
+      color: var(--mx-color-fg);
+    }
+
+    &:has(input:focus-visible) {
+      outline: 2px solid var(--mx-color-accent);
+      outline-offset: 1px;
+    }
+
+    &:has(input:disabled) {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
   }
 </style>
