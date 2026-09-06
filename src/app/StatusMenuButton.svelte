@@ -6,7 +6,7 @@
   そのため `position: fixed` にし、位置は押した瞬間にボタンが自分の位置を測定して渡す（開いてから測定すると、1 フレームだけ誤った位置に表示された後に正しい位置へ切り替わる）。
 -->
 <script lang="ts">
-  import type { StatusMenu, StatusMenuAnchor, StatusMenuKind } from '@/features/status/props';
+  import type { StatusMenu, StatusMenuAnchor, StatusMenuKind } from '@/features/status';
 
   import StatusBarButton from './StatusBarButton.svelte';
 
@@ -35,7 +35,7 @@
     anchor = { left: rect.left, bottom: globalThis.innerHeight - rect.top };
 
     if (!menu) {
-      const loaded = await import('@/features/status/StatusMenu.svelte');
+      const loaded = await import('@/features/status/lazy/StatusMenu.svelte');
       menu = loaded.default;
     }
     open = true;

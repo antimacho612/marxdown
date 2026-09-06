@@ -92,9 +92,9 @@ export default defineConfig(({ mode }) => ({
           /*
            * ステータスバーのポップアップメニュー（M2 Phase 7）。他と同じく**名前付けだけ**。
            *
-           * `src/features/status/` に置いてあるのは**押されるまで要らないもの**だけで、
+           * `src/features/status/lazy/` に置いてあるのは**押されるまで要らないもの**だけで、
            * `main` 側は `app/StatusMenuButton.svelte`（ボタン 1 つ）しか持たない。
-           * ここに `main` から静的に import されるものを足すと、境界が壊れる。
+           * feature 直下の `props.ts` と `index.ts` は型だけなので、評価されるものは残らない。
            */
           const isStatusMenu = /[\\/]src[\\/]features[\\/]status[\\/]/.test(chunk.facadeModuleId ?? '');
           if (isStatusMenu) return 'assets/status-[hash].js';

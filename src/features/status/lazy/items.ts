@@ -9,9 +9,19 @@ import { documentStore } from '@/features/document/store.svelte';
 import { setMode } from '@/features/mode';
 import { viewStore } from '@/features/view';
 import { ja } from '@/i18n/ja';
-import type { ViewMode } from '@/platform';
+import type { Encoding, ViewMode } from '@/platform';
 
-import type { StatusMenuItem, StatusMenuKind } from './props';
+import type { StatusMenuKind } from '../props';
+
+/** メニューに並ぶ 1 行。**並べる側にしか要らない**ので `props.ts` には置かない。 */
+export interface StatusMenuItem {
+  /** エンコーディングか表示モード。`{#each}` のキーになる。 */
+  id: Encoding | ViewMode;
+  label: string;
+  /** いま選ばれているか。`aria-checked` と印に使う。 */
+  checked: boolean;
+  run: () => void;
+}
 
 /**
  * 表示モードの選択肢（03.ux-spec/02-view-modes.md §1）。

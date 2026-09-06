@@ -9,8 +9,8 @@
 <script lang="ts">
   import { onMount } from 'svelte';
 
-  import { statusMenuItems } from './items';
-  import type { StatusMenuItem, StatusMenuProps } from './props';
+  import type { StatusMenuProps } from '../props';
+  import { statusMenuItems, type StatusMenuItem } from './items';
 
   const { kind, anchor, onclose }: StatusMenuProps = $props();
 
