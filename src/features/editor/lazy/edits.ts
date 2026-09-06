@@ -21,28 +21,24 @@ export interface OffsetRange {
 export interface EditResult {
   edits: monaco.editor.IIdentifiedSingleEditOperation[];
   /**
-   * **編集を適用した後**の offset で書く。
+   * 編集を適用した後の offset で指定する。
    *
-   * 省略すると、**いまの選択が編集を通して移動する**（Monaco が面倒を見る）。
-   * 行頭の記法だけを差し替えるコマンド（見出し・引用・リスト）はこれでよい。
-   * 記号を入れてカーソルを中に置くコマンド（`Ctrl+B` など）は明示する。
+   * 省略した場合は、現在の選択が編集に応じて Monaco 側で移動する。
+   * 行頭の記法だけを差し替えるコマンド（見出し・引用・リスト）はこれで足りる。
+   * 記号を挿入してカーソルをその内側に置くコマンド（`Ctrl+B` など）では明示する。
    *
-   * > **offset から行・桁への変換は、編集の後でなければ正しくない。**
-   * > 変換は `runEdit` が `ICursorStateComputer` の中で行う。あれはモデルを
-   * > 書き換えた**後**に呼ばれるので、そこで初めて後の座標が引ける。
+   * offset から行・桁への変換は、編集の後でなければ正しい値にならない。
+   * 変換は `runEdit` が `ICursorStateComputer` の中で行う。
+   * これはモデルを書き換えた後に呼ばれるため、その時点で初めて編集後の座標を取得できる。
    */
   selectionOffsets?: OffsetRange[];
 }
 
-/** 編集を組み立てる。**手を引くときは `null`。** */
+/** 編集を組み立てる。処理しない場合は `null` を返す。 */
 export type MarkdownEdit = (
   model: monaco.editor.ITextModel,
   selections: readonly monaco.Selection[],
 ) => EditResult | null;
-
-/* ------------------------------------------------------------------ */
-/* offset と Monaco の位置の変換                                        */
-/* ------------------------------------------------------------------ */
 
 /** offset の範囲を Monaco の `Range` にする。 */
 export function offsetRange(model: monaco.editor.ITextModel, from: number, to: number): monaco.Range {
@@ -62,7 +58,7 @@ export function selectionAt(model: monaco.editor.ITextModel, from: number, to: n
   return new monaco.Selection(start.lineNumber, start.column, end.lineNumber, end.column);
 }
 
-/** 選択範囲を offset で。**`from <= to`**（向きは捨てる）。 */
+/** 選択範囲を offset で返す。常に `from <= to` になり、選択の向きは保持しない。 */
 export function offsetsOf(
   model: monaco.editor.ITextModel,
   selection: monaco.Selection,
@@ -81,10 +77,6 @@ export function textAt(model: monaco.editor.ITextModel, from: number, to: number
   return model.getValueInRange(offsetRange(model, start, end));
 }
 
-/* ------------------------------------------------------------------ */
-/* 行                                                                  */
-/* ------------------------------------------------------------------ */
-
 /** 行の内容と、その行頭の offset。 */
 export interface LineInfo {
   number: number;
@@ -93,6 +85,7 @@ export interface LineInfo {
   from: number;
 }
 
+/** 指定した行の情報を取り出す。 */
 export function lineInfo(model: monaco.editor.ITextModel, lineNumber: number): LineInfo {
   return {
     number: lineNumber,
@@ -102,10 +95,10 @@ export function lineInfo(model: monaco.editor.ITextModel, lineNumber: number): L
 }
 
 /**
- * 選択が触れているすべての行。**複数カーソルでも 1 行を二度数えない。**
+ * 選択範囲が含むすべての行。複数カーソルでも同じ行を重複させない。
  *
- * 行番号の昇順で返す。選択が行頭で終わっている場合もその行を含める
- * （CodeMirror 版と揃えてある。範囲の端が乗っている行は対象）。
+ * 行番号の昇順で返す。
+ * 選択が行頭で終わっている場合もその行を含める（範囲の端が含まれる行は対象とする）。
  */
 export function selectedLines(model: monaco.editor.ITextModel, selections: readonly monaco.Selection[]): LineInfo[] {
   const numbers = new Set<number>();
@@ -119,11 +112,11 @@ export function selectedLines(model: monaco.editor.ITextModel, selections: reado
   return [...numbers].toSorted((a, b) => a - b).map((n) => lineInfo(model, n));
 }
 
-/** 1 つの選択範囲に対する結論。位置は**元の**offset で書く。 */
+/** 1 つの選択範囲に対する結果。位置は編集前の offset で指定する。 */
 interface RangeResult {
   /** `text` が空なら削除、`from === to` なら挿入。 */
   edits: { from: number; to: number; text: string }[];
-  /** **この範囲自身の編集を適用した後**の offset。 */
+  /** この範囲自身の編集を適用した後の offset。 */
   select: OffsetRange;
 }
 
@@ -160,15 +153,11 @@ export function byRange(
   return { edits, selectionOffsets };
 }
 
-/* ------------------------------------------------------------------ */
-/* 実行                                                                */
-/* ------------------------------------------------------------------ */
-
 /**
- * コマンドを 1 回流す。**手を引いたら `false`。**
+ * コマンドを 1 回実行する。処理しなかった場合は `false` を返す。
  *
- * `false` を返した場合、呼び出し側（`keymap.ts`）は既定の動作へ渡す。
- * `executeEdits` は Undo の履歴に載るので、`Ctrl+Z` で 1 回で戻る。
+ * `false` を返した場合、呼び出し側（`keymap.ts`）が既定の動作へ渡す。
+ * `executeEdits` は Undo の履歴に残るため、`Ctrl+Z` の 1 回で元に戻る。
  */
 export function runEdit(editor: monaco.editor.ICodeEditor, edit: MarkdownEdit, source: string): boolean {
   const model = editor.getModel();
@@ -183,7 +172,7 @@ export function runEdit(editor: monaco.editor.ICodeEditor, edit: MarkdownEdit, s
     result.edits,
     after ? () => after.map((range) => selectionAt(model, range.from, range.to)) : undefined,
   );
-  // CodeMirror の `scrollIntoView: true` にあたる。**画面の外にあるときだけ動かす。**
+  // カーソルが表示範囲の外にあるときだけスクロールする。
   const position = editor.getPosition();
   if (position) editor.revealPositionInCenterIfOutsideViewport(position);
   return true;

@@ -2,11 +2,12 @@
 @component
 エディターの見本（ADR-0011 / ADR-0012）。
 
-**エディターの設定はトークン層（CSS 変数）に出ない**ので、当てるスタイルをここで組む。
-空欄のときの落とし先は `options.ts` と同じ `--mx-font-code`。
+エディターの設定はトークン層（CSS 変数）に反映されないため、適用するスタイルをここで組み立てる。
+空欄のときのフォールバック先は `options.ts` と同じ `--mx-font-code` である。
 
-**表示倍率は掛けない。** 本文の見本（`--mx-font-size-content`）も掛けていないので、
-2 つの見本の縮尺が揃う。倍率は本文にしか掛からない。
+表示倍率は掛けない。
+本文の見本（`--mx-font-size-content`）でも掛けていないため、2 つの見本の縮尺が揃う。
+倍率は本文にのみ適用される。
 -->
 
 <script lang="ts">
@@ -46,10 +47,9 @@
 </script>
 
 <!--
-  記法の色は **`theme.ts` の `tokenRules()` と同じ対応**で塗る。
-  見出しとリストの記号は Monarch では 1 つのトークン（`keyword.md`）になり、
-  `--mx-color-code-function` が当たっている。ここで別の色を使うと、
-  見本と実物が食い違う。
+  記法の色は `theme.ts` の `tokenRules()` と同じ対応で指定する。
+  見出しとリストの記号は Monarch では 1 つのトークン（`keyword.md`）になり、`--mx-color-code-function` が適用される。
+  ここで別の色を使うと、見本と実際の表示が食い違う。
 -->
 <div class="mx-settings__sample mx-settings__sample--code" {style} data-mx-theme={paletteAttr(palette)}>
   {#if showLineNumbers}
@@ -67,7 +67,7 @@
     padding: var(--mx-space-3);
     border: 1px solid var(--mx-color-border-subtle);
     border-radius: var(--mx-radius-sm);
-    /* **配色は見本自身に乗る**（`ContentSample.svelte` と同じ理由）。 */
+    /* 配色は見本の要素自身に適用する（`ContentSample.svelte` と同じ理由）。 */
     background: var(--mx-color-bg);
     color: var(--mx-color-fg);
     overflow-x: auto;

@@ -10,27 +10,29 @@
 import { viewStore } from '@/features/view';
 import { getPlatform } from '@/platform';
 
+/** 最小化する。 */
 export function minimizeWindow(): void {
   void getPlatform().minimizeWindow();
 }
 
+/** 最大化と復元を切り替える。 */
 export function toggleMaximizeWindow(): void {
   void getPlatform().toggleMaximizeWindow();
 }
 
+/** 閉じる。設定 `window.closeBehavior` によってはトレイへの格納になる（ADR-0007 論点 2）。 */
 export function closeWindow(): void {
   void getPlatform().closeWindow();
 }
 
 /**
- * 最大化状態の追従を始める。**`ready()` の後に呼ぶ**（02.architecture/05-startup-sequence.md §1）。
+ * 最大化状態の追従を開始する。`ready()` の後に呼ぶ（02.architecture/05-startup-sequence.md §1）。
  *
- * IPC を伴う購読であり、本文が読める瞬間に間に合っている必要がない。
- * 遅れたときの最悪は「最大化して復元した直後の数十 ms だけ、ボタンの絵柄が
- * 最大化前のまま」で、次の変化で必ず正しくなる。
+ * IPC を伴う購読であり、本文が読める時点に間に合っている必要がない。
+ * 遅れた場合の最悪の結果は、最大化して復元した直後の数十 ms だけボタンの表示が最大化前のままになることで、次の変化で解消する。
  *
- * 初回の 1 回だけ現在値を聞く。最大化した状態で終了 → 復元した起動のときに、
- * 聞かないと `□` のまま始まってしまうため。
+ * 初回だけ現在値を取得する。
+ * 最大化した状態で終了し、その状態を復元して起動した場合に、取得しないと `□` のまま開始してしまうためである。
  */
 export function installWindowState(): void {
   const platform = getPlatform();
@@ -46,24 +48,19 @@ export function installWindowState(): void {
   });
 }
 
-/* ------------------------------------------------------------------ */
-/* Snap Layouts（Windows / 06.roadmap/m1.5-shell-and-settings.md §2）                          */
-/* ------------------------------------------------------------------ */
-
 /**
- * 測り直しを待つ時間。ウィンドウのリサイズ中に毎フレーム IPC を投げないため。
+ * 測り直しを待つ時間。ウィンドウのリサイズ中に毎フレーム IPC を送信しないために設ける。
  *
- * **1 回きりの `setTimeout` であって、ポーリングではない**
- * （05.performance-budget/04-targets.md §5）。ドラッグ中に矩形が古いことは害にならない。
- * その間にユーザーが最大化ボタンへホバーすることはできない。
+ * 1 回だけの `setTimeout` であり、ポーリングではない（05.performance-budget/04-targets.md §5）。
+ * ドラッグ中に矩形が古いままでも影響はない。その間に最大化ボタンへホバーすることはできない。
  */
 const SNAP_REPORT_DEBOUNCE_MS = 120;
 
 /**
- * 居場所を答える相手（最大化ボタン）。
+ * 位置を報告する対象（最大化ボタン）。
  *
- * 追従の登録（`trackSnapLayoutsTarget`）と初回の報告（`reportSnapLayoutsTarget`）が
- * **別の時点で走る**ので、あいだをこれで繋ぐ。ボタンは 1 つしか無い。
+ * 追従の登録（`trackSnapLayoutsTarget`）と初回の報告（`reportSnapLayoutsTarget`）が別の時点で実行されるため、両者をこの変数で繋ぐ。
+ * 対象のボタンは 1 つだけである。
  */
 let target: HTMLElement | null = null;
 
@@ -97,15 +94,12 @@ export function trackSnapLayoutsTarget(element: HTMLElement): () => void {
 }
 
 /**
- * 最初の 1 回だけ矩形を報告する。**`ready()` の後に呼ぶ**
- * （02.architecture/05-startup-sequence.md §1 / OQ-30）。
+ * 最初の 1 回だけ矩形を報告する。`ready()` の後に呼ぶ（02.architecture/05-startup-sequence.md §1 / OQ-30）。
  *
- * Windows へ「ここが最大化ボタンだ」と答える主体（`snap_layouts::install`）は
- * `ready` コマンドの中で付く（`src-tauri/src/commands.rs`）。**ここへ回しても
- * 取りこぼさない。**
+ * 最大化ボタンの位置を Windows へ応答する主体（`snap_layouts::install`）は `ready` コマンドの中で登録される（`src-tauri/src/commands.rs`）。
+ * そのため、ここまで遅らせても取りこぼさない。
  *
- * 遅れたときの最悪は「起動直後の数十 ms だけ、最大化ボタンにホバーしても
- * フライアウトが出ない」ことで、ホバーし直せば必ず出る。
+ * 遅れた場合の最悪の結果は、起動直後の数十 ms だけ最大化ボタンにホバーしてもフライアウトが表示されないことで、ホバーし直せば表示される。
  */
 export function reportSnapLayoutsTarget(): void {
   if (!target) return;
@@ -115,8 +109,7 @@ export function reportSnapLayoutsTarget(): void {
 /**
  * 矩形を測って Rust へ渡す。
  *
- * **`getBoundingClientRect()` は強制同期レイアウトである。**
- * 呼ぶ時点を選ぶこと（`trackSnapLayoutsTarget` の「ここで矩形を測らない」）。
+ * `getBoundingClientRect()` は強制同期レイアウトを発生させるため、呼び出す時点を選ぶこと（`trackSnapLayoutsTarget` の「ここでは矩形を測定しない」）。
  */
 function report(element: HTMLElement): void {
   const box = element.getBoundingClientRect();

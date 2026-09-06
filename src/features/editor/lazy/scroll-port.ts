@@ -20,10 +20,10 @@ function clampLine(editor: Editor, line: number): number {
 /**
  * 高さ `offset` に載っている行番号。
  *
- * **`getVisibleRanges()` は使わない。** あちらが返すのは「描かれている範囲」で、
+ * `getVisibleRanges()` は使わない。返るのは描画されている範囲であり、
  * 上端に半分だけ隠れている行を含むかどうかがビューポートの状態に依る。
- * ここが欲しいのは「その高さにある行」なので、**単調増加する
- * `getTopForLineNumber` を二分探索する。** 折り返しがあっても正しく、
+ * ここで必要なのは指定した高さにある行であるため、単調増加する `getTopForLineNumber` を二分探索する。
+ * 折り返しがあっても正しく求められ、
  * `huge.md`（5 万行）でも 16 回で決まる。
  */
 function lineAtOffset(editor: Editor, offset: number): number {
@@ -39,14 +39,15 @@ function lineAtOffset(editor: Editor, offset: number): number {
   return low;
 }
 
+/** スクロール同期に渡すインタフェースを組み立てる。`mountEditor` から 1 回だけ呼ぶ。 */
 export function createScrollPort(editor: Editor): EditorScrollPort {
   return {
     topLine() {
       const offset = editor.getScrollTop();
       const line = lineAtOffset(editor, offset);
       const top = editor.getTopForLineNumber(line);
-      // その行の途中まで隠れているぶんを端数として足す。**折り返した行は
-      // 1 行が数行ぶんの高さを持つ**ので、行の高さは実測から取る。
+      // その行の途中まで隠れている分を端数として加算する。
+      // 折り返した行は 1 行が複数行ぶんの高さを持つため、行の高さは実測値から取得する。
       const height = editor.getBottomForLineNumber(line) - top;
       const fraction = height > 0 ? Math.min(1, Math.max(0, (offset - top) / height)) : 0;
       return line + fraction;
@@ -62,15 +63,15 @@ export function createScrollPort(editor: Editor): EditorScrollPort {
     revealLine(line, options = {}) {
       const target = clampLine(editor, line);
       editor.setPosition({ lineNumber: target, column: 1 });
-      // 画面の外にあるときだけ動かす。既に見えている行へ飛んだときに
-      // 画面表示が急に変わると、どこへ飛んだのか分からなくなる。
+      // 表示範囲の外にあるときだけスクロールする。
+      // 既に表示されている行へ移動したときに表示が大きく変わると、移動先を把握しにくくなる。
       editor.revealLineInCenterIfOutsideViewport(target);
       if (options.focus !== false) editor.focus();
     },
 
     onScroll(listener) {
       const subscription = editor.onDidScrollChange((event) => {
-        // 横スクロールでは同期しない。行番号が変わっていない。
+        // 横スクロールでは行番号が変わらないため同期しない。
         if (event.scrollTopChanged) listener();
       });
       return () => {

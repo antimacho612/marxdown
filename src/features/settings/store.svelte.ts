@@ -13,23 +13,23 @@ import { applyAppearance } from './appearance';
 
 class SettingsStore {
   /**
-   * 設定の全体。**既定値で埋まった後の姿**が入る（欠けたキーは Rust 側で埋まる）。
+   * 設定の全体。既定値で埋めた後の状態が入る（欠けたキーは Rust 側で埋められる）。
    *
-   * 見た目への適用は `applyAppearance` が担当する。**このストアを購読して
-   * 当てる形にはしていない**（`$effect` を張ると、当たる瞬間が
-   * マイクロタスク以降にずれて初期フレームに間に合わない）。
-   * 値が変わる場所は 3 つしかないので、そこで明示的に呼ぶ。
+   * 表示への適用は `applyAppearance` が担当し、このストアを購読して適用する形にはしていない。
+   * `$effect` を使うと適用のタイミングがマイクロタスク以降にずれ、初期フレームに間に合わないためである。
+   * 値が変わる箇所は 3 か所しかないため、そこで明示的に呼ぶ。
    */
   values = $state<Settings>(DEFAULT_SETTINGS);
 }
 
+/** ユーザー設定。モジュールの singleton として共有する。 */
 export const settingsStore = new SettingsStore();
 
 /**
- * bootstrap から**同期的に**初期化し、その場で見た目に当てる。
+ * bootstrap から同期的に初期化し、その場で表示へ適用する。
  *
- * 本文を描くより前に呼ぶこと。倍率（`applyZoom`）と同じ理由で、
- * 後から当てると一度既定の見た目で描かれてから切り替わる。
+ * 本文を描画するより前に呼ぶこと。
+ * 倍率（`applyZoom`）と同じ理由で、後から適用すると既定の表示で一度描画された後に切り替わる。
  */
 export function initSettings(bootstrap: Bootstrap | null): void {
   settingsStore.values = bootstrap?.settings ?? DEFAULT_SETTINGS;
@@ -39,8 +39,8 @@ export function initSettings(bootstrap: Bootstrap | null): void {
 /**
  * 外部エディターでの編集を即反映する（02.architecture/04-rust-responsibilities.md §5）。起動時に 1 回だけ呼ぶ。
  *
- * IPC を伴う購読なので **`ready()` の後**に呼ぶこと（02.architecture/05-startup-sequence.md §1）。
- * 監視の登録は Rust 側が起動時に済ませている（パスを知っているのはあちらだけ）。
+ * IPC を伴う購読であるため、`ready()` の後に呼ぶこと（02.architecture/05-startup-sequence.md §1）。
+ * 監視の登録は Rust 側が起動時に済ませている（パスを知っているのは Rust 側だけである）。
  */
 export function installSettingsWatch(): void {
   getPlatform().onSettingsChanged(() => void refreshSettings());
@@ -49,25 +49,24 @@ export function installSettingsWatch(): void {
 /**
  * `settings.json` を読み直して全体を当て直す（§5）。
  *
- * **差分適用にしない。** 設定は 1KB 未満で、部分更新の一貫性を気にするより
- * 読み直すほうが確実に安い。
+ * 差分適用にはしない。
+ * 設定は 1KB 未満であり、部分更新の一貫性を保つより全体を読み直すほうがコストが低い。
  *
- * **読めない内容に変わっても既定値に戻さない。** 直前に読めていた値を保つのは
- * Rust 側（`AppState::reload_settings`）の担当で、ここはその結果を映すだけ。
- * 保存の途中で一瞬 JSON として壊れた状態を経由するのは普通のことであり、
- * そのたびにテーマが飛んでは設定を試行錯誤できない。
+ * 読めない内容に変わっても既定値へは戻さない。
+ * 直前に読めていた値を保持するのは Rust 側（`AppState::reload_settings`）の担当であり、ここはその結果を反映するだけである。
+ * 保存の途中で JSON として一時的に壊れた状態を経由することは通常起こりうるため、そのたびに表示が変わると設定を調整できなくなる。
  */
 export async function refreshSettings(): Promise<void> {
   let loaded;
   try {
     loaded = await getPlatform().readSettings();
   } catch {
-    // 読み直せなかったこと自体は伝えない。直前の値のまま動き続ける
+    // 読み直しに失敗したこと自体は通知しない。直前の値のまま動作を続ける
     return;
   }
 
-  // 外部エディターでの編集も、設定 UI からの変更と同じ 1 本を通って見た目に届く。
-  // **ここが「設定を試行錯誤しながら使える」の実体**（02.architecture/04-rust-responsibilities.md §5）。
+  // 外部エディターでの編集も、設定 UI からの変更と同じ経路を通って表示に反映される。
+  // 設定を編集しながら結果を確認できるのはこの構造による（02.architecture/04-rust-responsibilities.md §5）。
   settingsStore.values = loaded.values;
   applyAppearance(loaded.values);
 
@@ -75,17 +74,17 @@ export async function refreshSettings(): Promise<void> {
     reportSettingsProblem(loaded.broken);
     return;
   }
-  // 直っていたら、消えない通知を自分で下げる。壊れている間だけ出るべきものなので、
-  // ユーザーが直したのに残り続けると「まだ直っていない」と読めてしまう。
+  // 修正されていれば、自動では消えない通知をここで閉じる。
+  // 壊れている間だけ表示すべきものであり、修正後も残ると未修正であるかのように見える。
   if (documentStore.notice?.message === ja.settings.broken) documentStore.notice = null;
 }
 
 /**
  * 壊れた `settings.json` を知らせる（03.ux-spec/07-status-and-notifications.md §2）。
  *
- * **消えない**エラー通知にする。既定値で動いてしまう以上、
- * 黙っていると「設定が効かない」としか見えない。
- * `ファイルを開く` を添えるのは、直す場所がファイルしかないため（F-CONF-06）。
+ * 自動では消えないエラー通知にする。
+ * 既定値で動作してしまうため、通知しないと設定が反映されない理由が分からない。
+ * 「ファイルを開く」を添えるのは、修正できる場所がファイルしかないためである（F-CONF-06）。
  */
 export function reportSettingsProblem(problem: SettingsProblem | null): void {
   if (!problem) return;

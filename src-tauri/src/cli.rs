@@ -20,6 +20,8 @@ pub enum ViewMode {
     Split,
 }
 
+/// 解析済みの起動引数。
+/// 不正な引数でも解析は失敗させず、`unknown` に積んで通知バーで知らせる。
 #[derive(Debug, Clone, Default)]
 pub struct CliArgs {
     /// 絶対パスに解決済み。存在確認はまだ行っていない。
@@ -32,15 +34,14 @@ pub struct CliArgs {
     pub exit_after_trace: bool,
     /// `--bench-input <OUT>`。入力レスポンスを計測し、JSON を書き出して終了する。
     ///
-    /// **計測専用**（`scripts/bench-input.mjs` 用）。M2 の完了条件
-    /// 「キー入力 → 反映が p95 で 16ms 以内」と [OQ-15](../../docs/07.open-questions/oq-15-markdown-worker.md)
-    /// の判定は、どちらもこの経路でしか測れない。
+    /// 計測専用（`scripts/bench-input.mjs` 用）。
+    /// M2 の完了条件「キー入力 → 反映が p95 で 16ms 以内」と [OQ-15](../../docs/07.open-questions/oq-15-markdown-worker.md) の判定は、どちらもこの経路でしか測定できない。
     pub bench_input: Option<PathBuf>,
     /// `--gc-probe`。WebView2 に `--js-flags=--expose-gc` を渡す（OQ-18）。
     ///
-    /// **計測専用。** 「メモリが戻らない」のが本当に到達可能な参照のせいなのか、
-    /// 単に Blink / V8 がまだ回収していないだけなのかを切り分けるために要る。
-    /// これが無いと、DevTools から `gc()` を呼べず候補 1 を潰せない。
+    /// 計測専用。
+    /// メモリが解放されない原因が到達可能な参照によるものか、Blink / V8 が未回収なだけかを切り分けるために必要である。
+    /// これが無いと DevTools から `gc()` を呼べず、候補 1 を検証できない。
     pub gc_probe: bool,
     pub show_help: bool,
     pub show_version: bool,
@@ -48,6 +49,7 @@ pub struct CliArgs {
     pub unknown: Vec<String>,
 }
 
+/// `--help` の出力。オプションを足したらここも直す。
 pub const HELP: &str = "\
 marxdown — Markdown を見る・書くなら、これ一択。
 
@@ -70,8 +72,7 @@ MEASUREMENT OPTIONS (計測用。開発ビルドでのみ意味を持つ):
 
 /// `argv`（実行ファイル名を含まない）と `cwd` から引数を解析する。
 ///
-/// `cwd` を明示的に受け取るのは、単一インスタンスの argv 転送で
-/// **2 番目のプロセスの cwd** を使って相対パスを解決する必要があるため（ADR-0004）。
+/// `cwd` を明示的に受け取るのは、単一インスタンスの argv 転送で 2 番目のプロセスの cwd を使って相対パスを解決する必要があるためである（ADR-0004）。
 pub fn parse(argv: &[String], cwd: &Path) -> CliArgs {
     let mut args = CliArgs::default();
     let mut i = 0;
@@ -93,8 +94,8 @@ pub fn parse(argv: &[String], cwd: &Path) -> CliArgs {
             _ => (arg, None),
         };
 
-        // クロージャにすると `args` と `i` を可変借用したまま match 内でも触ることになるため、
-        // 展開が呼び出し位置で行われるマクロにしている。
+        // クロージャにすると `args` と `i` を可変借用したまま match 内でも参照することになる。
+        // そのため、呼び出し位置で展開されるマクロにしている。
         macro_rules! take_value {
             ($name:literal) => {{
                 if let Some(v) = inline.clone() {
@@ -158,9 +159,9 @@ pub fn parse_process_args() -> CliArgs {
 
 /// 相対パスを `cwd` 基準の絶対パスにする。
 ///
-/// ここでは `canonicalize` しない。存在しないパス（新規作成）も受け付ける必要があり、
-/// また canonicalize は I/O を伴うためクリティカルパス上で避けたい。
-/// 正規化と symlink 解決は、実際にファイルへ触れる `document` / `resolve_asset` 側で行う。
+/// ここでは `canonicalize` しない。
+/// 存在しないパス（新規作成）も受け付ける必要があり、canonicalize は I/O を伴うためクリティカルパス上では避ける。
+/// 正規化と symlink 解決は、実際にファイルへアクセスする `document` / `resolve_asset` 側で行う。
 fn resolve(cwd: &Path, raw: &str) -> PathBuf {
     let p = Path::new(raw);
     if p.is_absolute() {

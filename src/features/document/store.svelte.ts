@@ -1,7 +1,7 @@
 /**
  * ドキュメントの派生状態（02.architecture/08-state-management.md §1 / ADR-0005）。
  *
- * 本文（CodeMirror の `EditorState` / Preview の HTML 文字列）はここに複製しない。
+ * 本文（Monaco の `ITextModel` / Preview の HTML 文字列）はここに複製しない。
  * UI が購読するのはダーティ・カーソル位置・アウトライン・メタ情報などの派生値だけである。
  * `.svelte.ts` にしてあるのは、ルーンの対象判定が拡張子ベースのためであり、これにより UI の外（`open.ts` / `bootstrap.ts` など）からも同じオブジェクトを素の代入で読み書きできる（ADR-0005 D2）。
  */
@@ -30,8 +30,8 @@ export interface NoticeAction {
 /**
  * 通知バー（03.ux-spec/07-status-and-notifications.md §2）。本文の上に薄く重ねる。
  *
- * **モーダルダイアログはデータ消失の可能性がある場面だけに限定する**という
- * 方針の受け皿。読み込み失敗も外部変更もここに出る。
+ * モーダルダイアログはデータ消失の可能性がある場面だけに限定するという方針の受け皿である。
+ * 読み込みの失敗も外部変更もここに表示する。
  */
 export interface Notice {
   level: 'info' | 'warning' | 'error';
@@ -50,9 +50,9 @@ export interface Notice {
 export const INFO_NOTICE_MS = 3000;
 
 /**
- * カーソル位置（03.ux-spec/07-status-and-notifications.md §3）。**1 始まり**（Monaco と同じ）。
+ * カーソル位置（03.ux-spec/07-status-and-notifications.md §3）。行も列も 1 始まりで、Monaco と同じである。
  *
- * 列は**桁**であってバイト数でも文字数でもない。Monaco の `column` をそのまま出す。
+ * 列は桁であり、バイト数でも文字数でもない。Monaco の `column` をそのまま表示する。
  */
 export interface CursorPosition {
   line: number;
@@ -77,12 +77,12 @@ class DocumentStore {
   /**
    * カーソル位置（03.ux-spec/07-status-and-notifications.md §3）。
    *
-   * **エディターが載っていないあいだは `null`。** Preview だけで読んでいるときに
-   * カーソルは存在しない（§3 の但し書き「Preview では非表示」の実体はこれ）。
+   * エディターがマウントされていない間は `null` になる。
+   * Preview だけで表示しているときはカーソルが存在しない（§3 の但し書き「Preview では非表示」の実体はこれ）。
    *
-   * 更新は **rAF で間引く**（ADR-0005 / 02.architecture/08-state-management.md §1）。
-   * 押しっぱなしの矢印キーは 1 フレームに何度も位置を動かすが、
-   * 画面に出るのはフレームに 1 回でよい。間引きは `features/editor/lazy/cursor.ts`。
+   * 更新は rAF で間引く（ADR-0005 / 02.architecture/08-state-management.md §1）。
+   * 押しっぱなしの矢印キーは 1 フレームに何度も位置を変えるが、画面の更新はフレームに 1 回で足りる。
+   * 間引きは `features/editor/lazy/cursor.ts` が行う。
    */
   cursor = $state<CursorPosition | null>(null);
   /**
@@ -100,9 +100,8 @@ class DocumentStore {
   /**
    * 自動消滅タイマー。
    *
-   * 通知を出す側（`open.ts` など）は UI の外にいるため、タイマーはストアが持つ。
-   * **1 回きりの `setTimeout` であって、ポーリングではない**
-   * （05.performance-budget/04-targets.md §5「アイドル時のタイマーを増やさない」）。
+   * 通知を出す側（`open.ts` など）は UI の外にあるため、タイマーはストアが持つ。
+   * 1 回だけの `setTimeout` であり、ポーリングではない（05.performance-budget/04-targets.md §5「アイドル時のタイマーを増やさない」）。
    */
   #dismissTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -113,9 +112,8 @@ class DocumentStore {
   /**
    * 代入するだけで自動消滅のタイマーが張り替わる。
    *
-   * 個別の setter メソッドを置かずにアクセサにしているのは、
-   * **通知の設定経路を 1 本にするため**。`store.notice = x` 以外の入口を作ると、
-   * タイマーを張り忘れた経路がいつか生まれる。
+   * 個別の setter メソッドを置かずにアクセサにしているのは、通知を設定する経路を 1 本にするためである。
+   * `store.notice = x` 以外の入口を作ると、タイマーの設定が漏れた経路が生まれる。
    */
   set notice(notice: Notice | null) {
     this.#notice = notice;
@@ -137,6 +135,7 @@ class DocumentStore {
   }
 }
 
+/** ドキュメントの派生状態。モジュールの singleton として共有する。 */
 export const documentStore = new DocumentStore();
 
 /** 情報通知を出す。3 秒で自動的に消える（03.ux-spec/07-status-and-notifications.md §2）。 */

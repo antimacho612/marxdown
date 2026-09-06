@@ -6,7 +6,7 @@
  *
  * ここに載せてよいのは `main` に常駐するものだけである。
  * 設定 UI（`lazy/`）を再輸出すると `bootstrap.ts` の import から静的に辿れてしまい、クリティカルパスの分割が崩れる。
- * 遅延側の入口は `lazy/panel.ts` と `lazy/install-custom-css.ts` の 2 つで、いずれも動的 import で名指しする。
+ * 遅延側の入口は `lazy/panel.ts` と `lazy/install-custom-css.ts` の 2 つで、いずれも動的 import で参照する。
  */
 export { formatFontFamily } from './appearance';
 export { applyCustomCss } from './custom-css';

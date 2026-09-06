@@ -1,7 +1,7 @@
 /**
  * 起動シーケンス（02.architecture/05-startup-sequence.md §1）。
  *
- * `parse` をシェル描画より前に投げ、その取得・評価とシェル描画を重ねる（`openDocument` の `betweenParseAndPaint` / ADR-0010）。
+ * パースをシェル描画より前に開始し、その取得・評価とシェル描画を重ねる（`openDocument` の `betweenParseAndPaint` / ADR-0010）。
  * 開く経路自体は `features/document/open.ts` に一本化されており、このファイルは起動固有の処理（bootstrap 読み取り・ウィンドウ表示・購読登録）のみを扱う。
  */
 import {
@@ -37,15 +37,21 @@ import { installWindowState, reportSnapLayoutsTarget } from './window';
 const PREVIEW_SELECTOR = '#mx-preview';
 
 /**
- * bootstrap を読む。**同期的に読めることが最重要**（02.architecture/05-startup-sequence.md §1 の要点 2）。
+ * bootstrap を読む。同期的に読めることが最も重要である（02.architecture/05-startup-sequence.md §1 の要点 2）。
  *
- * `invoke()` の往復を待つと、WebView 準備完了 → リクエスト → レスポンスという
- * 最低 1 ラウンドトリップが本文表示前に挟まる。
+ * `invoke()` の往復を待つと、WebView の準備完了・リクエスト・レスポンスという最低 1 往復が本文表示の前に挟まる。
  */
 export function readBootstrap(): Bootstrap | null {
   return getPlatform().getBootstrap();
 }
 
+/**
+ * 起動シーケンスを実行する。`main.ts` から 1 回だけ呼ぶ。
+ *
+ * `renderShell` はシェル（タイトルバー / ステータスバー）を描画するコールバックである。
+ * 本文があるときは `openDocument` がパースの送信直後に呼び出し、無いときはこの関数が直接呼ぶ。
+ * どちらの経路でも 1 回しか実行されない。
+ */
 export async function startup(renderShell: () => void): Promise<void> {
   const platform = getPlatform();
 
@@ -89,7 +95,7 @@ export async function startup(renderShell: () => void): Promise<void> {
   // 空の本文を Preview で開いても何も見えないので、打てる場所へ移す。
   configureNewDocument(() => setMode('edit'));
 
-  // 履歴を辿るときの開き直し（F-NAV-07）。**引数の意味はここでしか決まらない。**
+  // 履歴を辿るときの開き直し（F-NAV-07）。引数の意味はここでしか決まらない。
   //
   // 履歴を辿る移動そのものは履歴に積まない（積むと二度と抜け出せない）。
   // 最近開いたファイル（F-OPEN-09）の順序は「最後に開いた順」であって
@@ -100,20 +106,20 @@ export async function startup(renderShell: () => void): Promise<void> {
       Boolean(await openPath(path, { resetScroll: false, restoreScroll: scrollTop, history: false, remember: false })),
   });
 
-  // リンクハンドラとキーバインドは**本文を描くより前**に登録する。
+  // リンクハンドラとキーバインドは本文を描くより前に登録する。
   //
-  // リンクを後回しにすると、パースが失敗した / 描画が止まった状態でリンクを
-  // 押されたときに素の遷移が起きる。WebView がページ遷移するとアプリのシェルごと
-  // 差し替わり、戻る手段が無い（N-SEC-04）。**塞ぐ側を先に置く。**
+  // リンクを後回しにすると、パースが失敗した状態や描画が停止した状態でリンクを押されたときに、ブラウザ既定の遷移が発生する。
+  // WebView がページ遷移するとアプリのシェルごと差し替わり、復帰する手段が無い（N-SEC-04）。
+  // そのため、塞ぐ側を先に登録する。
   //
-  // キーバインドを後回しにすると、`extreme.md` のような重いファイルを描いている間
-  // `Ctrl+O` が効かない。「別のファイルを開いて逃げる」ができないのは体験として悪い。
+  // キーバインドを後回しにすると、`extreme.md` のような重いファイルを描画している間 `Ctrl+O` が動作しない。
+  // 描画の完了を待たずに別のファイルを開けることは、この経路で担保する。
   //
-  // どちらもリスナーの登録だけで IPC を伴わない。クリティカルパスへの上乗せは
-  // 無視できる（IPC を伴う購読は下の `ready()` の後に置いてある）。
+  // どちらもリスナーの登録だけで IPC を伴わないため、クリティカルパスへの追加コストは無視できる
+  // （IPC を伴う購読は下の `ready()` の後に置いてある）。
   //
-  // コマンドの登録もここ。**メニューより先**に済んでいる必要がある
-  // （`features/menu` は id しか知らず、実体はこの登録を見に行く / `commands.ts`）。
+  // コマンドの登録もここで行う。
+  // メニューより先に済んでいる必要がある（`features/menu` は id しか持たず、実体はこの登録を参照する / `commands.ts`）。
   installLinks();
   installCommands();
 
@@ -128,12 +134,12 @@ export async function startup(renderShell: () => void): Promise<void> {
 
   const initial = await resolveInitialDocument(bootstrap);
 
-  // 表示モードも**本文を描くより前**に当てる（F-MODE-07 / 倍率・ペインと同じ理由）。
-  // 後から当てると、Preview の面が 1 フレーム描かれてからエディターに差し替わる。
+  // 表示モードも本文を描くより前に適用する（F-MODE-07 / 倍率・ペインと同じ理由）。
+  // 後から適用すると、Preview の面が 1 フレーム描画されてからエディターへ差し替わる。
   //
-  // `--mode edit` で起動しても、ここではまだ `editor` チャンクを取りに行かない。
-  // 属性を立てるだけなので、クリティカルパスは太らない。実体は下の
-  // `installInitialEditor()` が `ready()` の後で載せる。
+  // `--mode edit` で起動しても、ここではまだ `editor` チャンクを取得しない。
+  // 属性を設定するだけであり、クリティカルパスは増えない。
+  // 実体は下の `installInitialEditor()` が `ready()` の後で読み込む。
   initMode(decideInitialMode(bootstrap, initial));
 
   if (initial) {
@@ -142,28 +148,25 @@ export async function startup(renderShell: () => void): Promise<void> {
     renderShellOnce();
   }
 
-  // 通知は**本文を描いた後**に出す。`openDocument` は描画に成功した時点で
-  // 通知バーを下げる（開けなかったことを知らせる通知を、開けたあとも
-  // 残さないため）ので、手前で出すと `settings.json` が壊れていることが
-  // 本文と一緒に消えてしまう。
+  // 通知は本文を描いた後に出す。
+  // `openDocument` は描画に成功した時点で通知バーを閉じる（開けなかったことを知らせる通知を、開けた後も残さないため）。
+  // そのため手前で出すと、`settings.json` が壊れていることが本文と一緒に消えてしまう。
   //
-  // 本文の描画とは独立な情報なので、1 フレーム遅れて出て構わない。
+  // 本文の描画とは独立した情報であるため、1 フレーム遅れて表示して差し支えない。
   reportStartupProblems(bootstrap);
 
-  // --- ウィンドウを見せる -------------------------------------------------
-  // 04.tech-stack/09-tauri-config.md §1: 最初に見えるフレームが既に本文である状態を作る。
+  // 04.tech-stack/09-tauri-config.md §1: 最初に表示されるフレームが既に本文である状態を作る。
   if (isTracing()) await platform.reportTrace(drain());
   await platform.ready();
 
-  // --- 以降は非同期 -------------------------------------------------------
-  // ウィンドウが見えた後に回す。いずれも Rust 側への購読（IPC）を伴い、
-  // 「本文が読める」瞬間に間に合っている必要がない。
+  // 以降はウィンドウの表示後に実行する。
+  // いずれも Rust 側への購読（IPC）を伴い、本文が読める時点に間に合っている必要がない。
   //
-  // ファイル監視の購読が遅れたときの最悪は「起動直後の数十 ms に起きた外部変更を
-  // 取りこぼす」ことで、`F5` で回復できる（02.architecture/05-startup-sequence.md §1 の判断基準）。
+  // ファイル監視の購読が遅れた場合の最悪の結果は、起動直後の数十 ms に発生した外部変更を検出できないことであり、`F5` で回復できる
+  // （02.architecture/05-startup-sequence.md §1 の判断基準）。
   //
-  // 最大化状態の追従も同じ扱い。遅れたときの最悪は「最大化して起動した直後の
-  // 数十 ms だけ、ボタンの絵柄が `□` のまま」で、次に状態が変われば必ず直る。
+  // 最大化状態の追従も同じ扱いである。
+  // 遅れた場合の最悪の結果は、最大化して起動した直後の数十 ms だけボタンの表示が `□` のままになることで、次に状態が変われば解消する。
   installOpenRequestHandler();
   installTrayOpen();
   installSaveAndQuit();
@@ -173,28 +176,25 @@ export async function startup(renderShell: () => void): Promise<void> {
   installSettingsWatch();
   installWindowState();
 
-  // Snap Layouts の初回報告（OQ-30）。**ここより前に置いてはいけない。**
+  // Snap Layouts の初回報告（OQ-30）。ここより前に置いてはいけない。
   //
-  // 矩形を測る `getBoundingClientRect()` は強制同期レイアウトで、シェルを描いた
-  // 直後に呼ぶとスタイル再計算とレイアウトがまるごと走る（実測 32〜35ms）。
-  // その間はパース側のスクリプト評価も進まないので、シェルとパースを重ねるという
-  // この経路の前提そのものが崩れる（`window.ts` の `trackSnapLayoutsTarget`）。
+  // 矩形を測る `getBoundingClientRect()` は強制同期レイアウトであり、シェルを描画した直後に呼ぶとスタイル再計算とレイアウトが実行される（実測 32〜35ms）。
+  // その間はパース側のスクリプト評価も進まないため、シェルとパースを重ねるというこの経路の前提が成立しなくなる（`window.ts` の `trackSnapLayoutsTarget`）。
   //
-  // 遅れたときの最悪は「起動直後の数十 ms だけフライアウトが出ない」。
-  // Windows へ答える主体は `ready()` の中で付くので、ここでも取りこぼさない。
+  // 遅れた場合の最悪の結果は、起動直後の数十 ms だけフライアウトが表示されないことである。
+  // Windows へ応答する主体は `ready()` の中で登録されるため、ここでも取りこぼさない。
   reportSnapLayoutsTarget();
 
-  // エディター（F-EDIT-01）。**`ready()` の後**に回す。
+  // エディター（F-EDIT-01）。`ready()` の後に実行する。
   //
-  // `--mode edit` で起動した場合でも、本文が読める瞬間（T8）を 203KB の
-  // チャンク取得と評価の後ろへ動かさない。遅れたときの最悪は「起動直後の
-  // 一瞬だけ空のエディター面が見える」ことで、これは回復する
+  // `--mode edit` で起動した場合でも、本文が読める時点（T8）をチャンクの取得と評価の後ろへ動かさない。
+  // 遅れた場合の最悪の結果は、起動直後の一瞬だけ空のエディター面が表示されることであり、これは解消する
   // （02.architecture/05-startup-sequence.md §1 の判断基準）。
   installInitialEditor();
 
-  // カスタム CSS の残り（遅延取得・監視・通知）は**遅延チャンク**に置いてある
-  // （06.roadmap/m1.5-shell-and-settings.md §3）。`main` に残っているのは適用そのものだけ。
-  // ここで待たないのは、いずれも本文の表示に関与しないため。
+  // カスタム CSS の残り（遅延取得・監視・通知）は遅延チャンクに置いてある（06.roadmap/m1.5-shell-and-settings.md §3）。
+  // `main` に残っているのは適用そのものだけである。
+  // ここで待たないのは、いずれも本文の表示に関与しないためである。
   void import('@/features/settings/lazy/install-custom-css').then(({ installCustomCss }) => {
     installCustomCss('preview', customCss, customCssResult);
     installCustomCss('editor', editorCss, editorCssResult);
@@ -203,8 +203,8 @@ export async function startup(renderShell: () => void): Promise<void> {
 
   // 入力レスポンスの計測（`--bench-input` / 計測専用 / `features/bench/input.ts`）。
   //
-  // **`ready()` の後**。エディターが載るのを待つ側であり、起動の経路には一切関与しない。
-  // フラグが立った起動でしかチャンクを取りに行かないので、普段の起動には出てこない。
+  // `ready()` の後に実行する。エディターの読み込みを待つ側であり、起動の経路には関与しない。
+  // フラグが指定された起動でしかチャンクを取得しないため、通常の起動には影響しない。
   if (bootstrap?.benchInput === true) {
     void import('@/features/bench/input').then(async ({ runInputBench }) => {
       await runInputBench();
@@ -219,15 +219,15 @@ export async function startup(renderShell: () => void): Promise<void> {
  * `--mode edit` で起動した場合は画面がエディターを待っているのでその場で載せ、それ以外（既定の Preview）はアイドル時にチャンクだけを取得しておく。
  *
  * 後者が `editor` チャンクのアイドルプリロードである。
- * 載せはしないため、`#mx-editor` は空のまま非表示になっている。
+ * マウントはしないため、`#mx-editor` は空のまま非表示になっている。
  * 初めて `Ctrl+Shift+V` を押したときの待ち時間が無くなるだけで、押さなければ何も起きない。
  *
  * `requestIdle` は 1 回きりで、ポーリングではない（`lib/idle.ts`）。
  */
 function installInitialEditor(): void {
   if (viewStore.mode !== 'preview') {
-    // `--mode split` で起動した場合は同期も始める。`setMode` を通らない経路なので、
-    // ここで面倒を見ないと「Split で開いたときだけ追随しない」ことになる。
+    // `--mode split` で起動した場合はスクロール同期も開始する。
+    // `setMode` を通らない経路であるため、ここで処理しないと Split で開いたときだけ同期が働かない。
     const split = viewStore.mode === 'split';
     void mountEditorLazily().then(() => (split ? setSplitSyncLazily(true) : undefined));
     return;
@@ -238,16 +238,16 @@ function installInitialEditor(): void {
 /**
  * 本文中のリンククリック（F-VIEW-05, 06, 07 / N-SEC-04）。
  *
- * **1 回だけ**登録する。`#mx-preview` は index.html に最初から在り、開き直しても
- * 同じ要素のままで、ハンドラは現在のドキュメントをストアから読む。
- * 開くたびに登録するとリスナーが積み上がる。
+ * 登録は 1 回だけ行う。
+ * `#mx-preview` は index.html に最初から存在し、開き直しても同じ要素のままで、ハンドラは現在のドキュメントをストアから読む。
+ * 開くたびに登録するとリスナーが蓄積する。
  */
 function installLinks(): void {
   const container = document.querySelector<HTMLElement>(PREVIEW_SELECTOR);
   if (!container) return;
 
-  // 開くのも知らせるのも `document` の仕事で、あちらは本文を描くために `preview` を
-  // 参照している。呼び返す向きはここで繋ぐ（`configureHistory` と同じ形）。
+  // 開く処理も通知も `document` が担当し、`document` は本文を描画するために `preview` を参照している。
+  // 逆向きの呼び出しはここで接続する（`configureHistory` と同じ形）。
   installLinkHandler(container, {
     currentPath: () => documentStore.meta?.path ?? '',
     open: (path, anchor) => void openPath(path, anchor === undefined ? {} : { anchor }),
@@ -260,8 +260,8 @@ function installLinks(): void {
 /**
  * 起動時に開くべき本文を確定させる。
  *
- * 通常は bootstrap に本文ごと載っている。載っていないのは
- * **256KB 超のファイル**のときだけで、この場合だけ IPC 往復が 1 回増える
+ * 通常は bootstrap に本文ごと載っている。
+ * 載っていないのは 256KB を超えるファイルのときだけで、この場合だけ IPC 往復が 1 回増える
  * （初期化スクリプトに埋め込むと、文字列化のコストが往復のコストを上回る）。
  */
 async function resolveInitialDocument(bootstrap: Bootstrap | null): Promise<DocumentPayload | null> {
@@ -286,12 +286,11 @@ async function resolveInitialDocument(bootstrap: Bootstrap | null): Promise<Docu
 /**
  * 起動時に見つかった問題（CLI 引数 / 設定）を通知バーに出す。
  *
- * 本文の描画とは独立だが、**描画の後**に呼ぶ（呼び出し側にその理由がある）。
+ * 本文の描画とは独立しているが、描画の後に呼ぶ（理由は呼び出し側に記載）。
  */
 function reportStartupProblems(bootstrap: Bootstrap | null): void {
-  // 通知は 1 つしか出ない（後から出したものが勝つ）ので、**弱いものから順に**出す。
-  // 設定が壊れていても既定値で読めているが、本文が開けなかったのは
-  // ユーザーがやろうとしたこと自体の失敗であり、そちらを見せる。
+  // 通知は 1 つしか表示されず、後から出したものが前のものを上書きするため、重要度の低いものから順に出す。
+  // 設定が壊れていても既定値で動作するが、本文が開けなかった場合はユーザーの操作そのものが失敗しているため、そちらを表示する。
   reportSettingsProblem(bootstrap?.settingsError ?? null);
 
   if (bootstrap?.documentError) {
@@ -309,12 +308,11 @@ function reportStartupProblems(bootstrap: Bootstrap | null): void {
 /**
  * トレイメニューの「Marxdown を開く」（ADR-0007 論点 6）。
  *
- * **ダイアログを Rust 側で出さない。** `pick_file` は既にあるが、開いた結果の扱い
- * （履歴に積む / 通知を出す / 相対パスの基準を差し替える）は `open.ts` に
- * 集約してある。トレイから別経路で開くと、そこだけ抜け落ちる。
+ * ダイアログを Rust 側では表示しない。
+ * `pick_file` は既にあるが、開いた結果の扱い（履歴に積む / 通知を出す / 相対パスの基準を差し替える）は `open.ts` に集約してある。
+ * トレイから別経路で開くと、そこだけ処理が抜ける。
  *
- * 「最近開いたファイル」のほうは argv 転送（`onOpenRequest`）に載せてあるので、
- * ここには来ない。
+ * 「最近開いたファイル」は argv 転送（`onOpenRequest`）に載せてあるため、ここは通らない。
  */
 function installTrayOpen(): void {
   getPlatform().onTrayOpen(() => {
@@ -325,12 +323,12 @@ function installTrayOpen(): void {
 /**
  * 終了の確認で「保存して終了」が選ばれたとき（F-EDIT-03 / `src-tauri/src/close.rs`）。
  *
- * **保存できるのはフロントだけである。** 本文は CodeMirror の `EditorState` にあり
- * （ADR-0005）、Rust からは読めない。Rust は頼むだけで、
- * 成功したらこちらがもう一度終了を要求する。
+ * 保存できるのはフロントだけである。
+ * 本文は Monaco の `ITextModel` にあり（ADR-0005）、Rust からは読めない。
+ * Rust は保存を依頼するだけで、成功したらフロントがもう一度終了を要求する。
  *
- * 失敗したらダーティのままなので終了しない。もう一度 `Ctrl+Q` を押せば
- * 同じ確認が出る（N-REL-01）。
+ * 失敗した場合はダーティのままなので終了しない。
+ * もう一度 `Ctrl+Q` を押せば同じ確認が表示される（N-REL-01）。
  */
 function installSaveAndQuit(): void {
   getPlatform().onSaveAndQuit(() => {
@@ -341,13 +339,12 @@ function installSaveAndQuit(): void {
 /**
  * トレイからの復帰を計測する（ADR-0007「計測項目」/ 目標 120ms）。
  *
- * **Warm Start（20.0ms）とは別の経路である。** あちらはウィンドウが可視のまま
- * argv 転送を受けた値で、こちらはサスペンドされた WebView が起こされて
- * 画面に出るまで。06.roadmap/m1.5-shell-and-settings.md §3 の完了条件は**この経路のほう**を見る。
+ * Warm Start（20.0ms）とは別の経路である。
+ * Warm Start はウィンドウが可視のまま argv 転送を受けた場合の値で、こちらはサスペンドされた WebView が復帰して表示されるまでを測る。
+ * 06.roadmap/m1.5-shell-and-settings.md §3 の完了条件はこちらの経路を対象とする。
  *
- * 本文は既に描かれている（ウィンドウを破棄していないので再描画が要らない）ため、
- * 「読める」の判定は **1 フレーム描かれたこと**でよい。開き直す経路と違って
- * パースも paint も挟まらない。
+ * 本文は既に描画されている（ウィンドウを破棄していないため再描画が不要）。
+ * そのため読める状態の判定は 1 フレーム描画されたことで足り、開き直す経路と違ってパースも paint も挟まらない。
  */
 function installTrayResume(): void {
   const platform = getPlatform();
@@ -364,8 +361,7 @@ function installTrayResume(): void {
 /**
  * 別インスタンスからの起動要求（ウォーム起動）。
  *
- * ここには WebView の初期化も、バンドルの評価も、Svelte のマウントも存在しない。
- * Worker は既に初期化済みであり、パースの実行のみが必要になる（02.architecture/05-startup-sequence.md §2）。
+ * この経路には WebView の初期化もバンドルの評価も Svelte のマウントも含まれず、必要なのはパースの実行だけである（02.architecture/05-startup-sequence.md §2）。
  *
  * タブが実装される（M3）までは、「タブを増やす」のではなく現在の本文を置き換える。
  */
@@ -381,8 +377,8 @@ function installOpenRequestHandler(): void {
       if (!outcome) return outcome;
 
       // ウォーム起動の実測値。
-      // Rust 側は argv 転送を受けた瞬間から測っており、こちらはイベント受信から
-      // 測っている。両方を記録して差分も見えるようにする。
+      // Rust 側は argv 転送を受けた時点から、こちらはイベント受信から測っている。
+      // 両方を記録して差分も確認できるようにする。
       const fromEvent = performance.now() - warmStart;
       await platform.warmDone(
         req.requestId,
@@ -397,8 +393,8 @@ function installOpenRequestHandler(): void {
 /**
  * ウィンドウへのドラッグ＆ドロップ（F-OPEN-08）。
  *
- * ドロップ先の見た目は `data-mx-dragover` 属性 1 つで表す。Svelte を通さないのは、
- * ドラッグ中は毎フレーム `over` が飛んでくるため（ADR-0005 と同じ判断）。
+ * ドロップ先の表示は `data-mx-dragover` 属性 1 つで表す。
+ * Svelte を通さないのは、ドラッグ中に `over` が毎フレーム発火するためである（ADR-0005 と同じ判断）。
  */
 function installDragAndDrop(): void {
   const root = document.documentElement;

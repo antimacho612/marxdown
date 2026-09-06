@@ -1,8 +1,8 @@
 /**
  * menu feature の公開面（02.architecture/03-layers.md §2）。
  *
- * **型しか出さない。** 中身（`lazy/`）は押されるまでロードしないもので、値を再輸出すると
- * ボタン側（`app/MenuButton.svelte`）から静的に辿れてしまう（`features/status` と同じ形）。
- * 本体は `lazy/AppMenu.svelte` を動的 import で名指しする。
+ * 公開するのは型だけである。
+ * 中身（`lazy/`）は操作されるまで読み込まないものであり、値を再エクスポートするとボタン側（`app/MenuButton.svelte`）から静的に参照できてしまう（`features/status` と同じ形）。
+ * 本体は `lazy/AppMenu.svelte` を動的 import で参照する。
  */
 export type { AppMenu } from './props';

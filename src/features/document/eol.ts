@@ -11,19 +11,19 @@ import { refreshDirty } from './dirty';
 import { documentStore } from './store.svelte';
 
 /**
- * いま保存に使う改行コード。**ステータスバーが出しているのもこれ。**
- * 何も開いていなければ `null`。
+ * 保存時に使う改行コード。ステータスバーが表示しているのもこの値である。
+ * 何も開いていなければ `null` を返す。
  */
 export function effectiveEol(): Eol | null {
   return documentStore.eolOverride ?? documentStore.meta?.eol ?? null;
 }
 
-/** ディスクと違う改行コードを選んでいるか。＝未保存の変更の 1 種。 */
+/** ディスクと違う改行コードを選んでいるか。未保存の変更の 1 種として扱う。 */
 export function isEolChanged(): boolean {
   return documentStore.eolOverride !== null;
 }
 
-/** 押したときの行き先。**2 値しかないのでメニューを出さない。** */
+/** 押したときの切り替え先。2 値しかないためメニューは表示しない。 */
 export function nextEol(): Eol | null {
   const current = effectiveEol();
   if (current === null) return null;
@@ -33,9 +33,8 @@ export function nextEol(): Eol | null {
 /**
  * LF ⇄ CRLF を切り替える。
  *
- * ディスクと同じ値に戻したときは希望そのものを消す。
- * **「変えて、戻した」が「変えていない」に戻る**のは、
- * 未保存の印が残り続けないために要る（`store.svelte.ts` の `eolOverride`）。
+ * ディスクと同じ値に戻したときは変換の指定自体を破棄する。
+ * 変更して元に戻した結果を未変更として扱うのは、未保存の印が残り続けないようにするためである（`store.svelte.ts` の `eolOverride`）。
  */
 export function toggleEol(): void {
   const meta = documentStore.meta;

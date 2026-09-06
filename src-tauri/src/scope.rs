@@ -1,15 +1,13 @@
 //! パスのスコープ検証（N-SEC-05 / ADR-0006）。
 //!
 //! 中心ユースケースは「LLM が生成した、自分が書いていないファイルを開く」こと。
-//! そのファイルに `![](../../../../Users/me/.ssh/id_rsa)` が書かれていても、
-//! 許可ディレクトリの外へは絶対に出さない。
+//! そのファイルに `![](../../../../Users/me/.ssh/id_rsa)` が書かれていても、許可ディレクトリの外へは出さない。
 //!
 //! prefix 比較ではいけない。
 //! 許可ディレクトリが `C:\work\docs` のとき、要求パス `C:\work\docs-secret\x.png` は文字列の prefix 比較だと `C:\work\docs` で始まるため通ってしまう。
 //! パスコンポーネント単位で比較する必要がある。
 //!
-//! また `..` と symlink による脱出を防ぐため、比較の前に必ず
-//! `dunce::canonicalize`（symlink 解決を含む）を通す。
+//! また `..` と symlink による脱出を防ぐため、比較の前に必ず `dunce::canonicalize`（symlink 解決を含む）を通す。
 
 use std::path::{Component, Path, PathBuf};
 
@@ -17,7 +15,7 @@ use crate::error::{CoreError, CoreResult};
 
 /// `child` が `root` の配下（または root 自身）かどうか。
 ///
-/// 両者とも **canonicalize 済み**であることを前提とする。
+/// 両者とも canonicalize 済みであることを前提とする。
 pub fn is_within(root: &Path, child: &Path) -> bool {
     let root_components: Vec<Component> = root.components().collect();
     let child_components: Vec<Component> = child.components().collect();

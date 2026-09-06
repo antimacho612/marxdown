@@ -12,7 +12,7 @@
  * `editor.guides.indentation` のように 3 階層に見えるキーも、JSON の上では 1 本の文字列キーである。
  */
 
-/** 選択肢を持つ項目。**綴りは VS Code / Rust 側の serde が決める。** */
+/** 選択肢を持つ項目。綴りは VS Code と Rust 側の serde に合わせる。 */
 interface EnumEntry {
   kind: 'enum';
   values: readonly string[];
@@ -50,6 +50,7 @@ interface NumberListEntry {
   maxLength: number;
 }
 
+/** スキーマ 1 項目。種別ごとに持つ情報が違うため判別可能なユニオンにしてある。 */
 export type SettingSchemaEntry = EnumEntry | NumberEntry | BooleanEntry | StringEntry | NumberListEntry;
 
 /**
@@ -73,7 +74,7 @@ function defineSettingsSchema<const T extends Record<string, SettingSchemaEntry>
 /**
  * 配色のカタログ（ADR-0013 / `src/styles/themes.css`）。
  *
- * **明暗を含まない。** 明暗を決めるのは `theme` だけで、各パレットはライトとダークの両方を持つ。
+ * 明暗は含まない。明暗を決めるのは `theme` だけで、各パレットはライトとダークの両方を持つ。
  * プレビューとエディターは同じカタログから独立に選ぶため、値の並びをここで 1 本にしておく。
  */
 const PALETTES = ['default', 'github', 'solarized', 'nord', 'gruvbox'] as const;
@@ -106,7 +107,7 @@ export const SETTINGS_SCHEMA = defineSettingsSchema({
   'editor.guides.indentation': { kind: 'boolean', default: true },
   'editor.insertSpaces': { kind: 'boolean', default: true },
   'editor.letterSpacing': { kind: 'number', default: 0, min: -2, max: 10 },
-  /** 行の高さ。**倍率**（Monaco は 0 より大きく 8 未満なら倍率として解釈する）。 */
+  /** 行の高さ。倍率で指定する（Monaco は 0 より大きく 8 未満なら倍率として解釈する）。 */
   'editor.lineHeight': { kind: 'number', default: 1.6, min: 1, max: 3 },
   'editor.lineNumbers': { kind: 'enum', values: ['off', 'on', 'relative', 'interval'], default: 'on' },
   'editor.minimap.enabled': { kind: 'boolean', default: false },
@@ -124,7 +125,7 @@ export const SETTINGS_SCHEMA = defineSettingsSchema({
    */
   'editor.rulers': { kind: 'number[]', default: [], min: 1, max: 500, maxLength: 8 },
   'editor.scrollBeyondLastLine': { kind: 'boolean', default: true },
-  /** エディターの配色。**`preview.theme` とは独立に選べる。** */
+  /** エディターの配色。`preview.theme` とは独立に選べる。 */
   'editor.theme': { kind: 'enum', values: PALETTES, default: 'default' },
   'editor.tabSize': { kind: 'number', default: 2, min: 1, max: 8 },
   'editor.wordWrap': {
@@ -138,7 +139,7 @@ export const SETTINGS_SCHEMA = defineSettingsSchema({
   'preview.codeFontFamily': { kind: 'string', default: '' },
   'preview.fontFamily': { kind: 'string', default: '' },
   /**
-   * **エディターのタイポグラフィはプレビューと別の値**（ADR-0012）。
+   * エディターのタイポグラフィはプレビューとは別の値である（ADR-0012）。
    * 16px / 1.75 は読むための値で、書く面では行が離れすぎる。
    */
   'preview.fontSize': { kind: 'number', default: 16, min: 8, max: 72 },
@@ -167,18 +168,19 @@ type ValueOf<E> = E extends { kind: 'enum'; values: readonly (infer V)[] }
           : never;
 
 /**
- * `settings.json` の値の形。**スキーマからの導出であり、手で書き足す場所ではない。**
+ * `settings.json` の値の形。スキーマから導出されるため、ここに手で追記しない。
  *
  * 項目ごとの補足は `SETTINGS_SCHEMA` の各エントリに付いている。
  */
 export type Settings = { -readonly [K in keyof Schema]: ValueOf<Schema[K]> };
 
+/** 設定キーの全体。`Settings` から導出するため、ここに手で追記しない。 */
 export type SettingKey = keyof Settings;
 
-/** キー 1 本の種別。UI 側が「どの部品を当てられるか」を型で縛るために要る。 */
+/** キー 1 本の種別。UI 側でどの部品を割り当てられるかを型で制限するために使う。 */
 export type SettingKind<K extends SettingKey> = Schema[K]['kind'];
 
-/** 変更したキーだけを渡す。**`null` はキーを消す**（既定値に戻る）。 */
+/** 変更したキーだけを渡す。`null` はキーの削除を意味する（既定値に戻る）。 */
 export type SettingsPatch = { [K in SettingKey]?: Settings[K] | null };
 
 /** 数値の項目。許容範囲を持つのはこれだけで、`clampSetting` の対象もこれだけ。 */
@@ -190,6 +192,7 @@ export type EnumKey = { [K in keyof Schema]: Schema[K] extends { kind: 'enum' } 
 /** 真偽の項目。 */
 export type BooleanKey = { [K in keyof Schema]: Schema[K] extends { kind: 'boolean' } ? K : never }[keyof Schema];
 
+/** 個々の設定値の型。UI 側が `Settings` のキーを覚えずに済むよう、別名を切ってある。 */
 export type Theme = Settings['theme'];
 export type WindowCloseBehavior = Settings['window.closeBehavior'];
 export type WordWrap = Settings['editor.wordWrap'];
@@ -214,6 +217,7 @@ export const DEFAULT_SETTINGS: Settings = Object.fromEntries(
   ]),
 ) as Settings;
 
+/** 数値の項目か。`clampSetting` を通す必要があるかの判定に使う。 */
 export function isNumericKey(key: SettingKey): key is NumericKey {
   return SETTINGS_SCHEMA[key].kind === 'number';
 }
@@ -230,7 +234,7 @@ export function clampSetting(key: NumericKey, value: number): number {
 }
 
 /**
- * 選択肢の並び。**表示順もこれに従う**（i18n のオブジェクトのキー順に依存させない）。
+ * 選択肢の並び。表示順もこれに従う（i18n のオブジェクトのキー順には依存させない）。
  *
  * 戻り値をキーで狭めておくと、設定 UI が `<select>` の値をストアへ戻すときのキャストが要らなくなる。
  * `ValueOf` が同じ `values` から値の型を作っているので、ここでの絞り込みは実体と一致する。

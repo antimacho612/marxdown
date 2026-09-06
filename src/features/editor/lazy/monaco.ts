@@ -31,7 +31,7 @@ import 'monaco-editor/features/wordHighlighter/register.js';
 import 'monaco-editor/features/wordOperations/register.js';
 import 'monaco-editor/features/wordPartOperations/register.js';
 
-// 名前空間そのもの。**NLS の直後に置く**（上のコメント）。
+// 名前空間そのもの。NLS の直後に置く（モジュール冒頭のコメントを参照）。
 export * as monaco from 'monaco-editor/editor/editor.api.js';
 
 /** モデルに付ける言語 ID。Monarch の定義と揃える。 */

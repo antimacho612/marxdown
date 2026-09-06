@@ -20,8 +20,8 @@ use crate::document::atomic;
 /// 版が違うストアは読み捨てて既定値に戻す。
 pub const STORE_VERSION: u32 = 1;
 
-/// 最近開いたファイルの保持数。03.ux-spec/08-empty-states.md §1 が並べるのは数件だが、
-/// 存在しなくなったファイルを間引いた後でも埋まるように多めに持つ。
+/// 最近開いたファイルの保持数。
+/// 03.ux-spec/08-empty-states.md §1 が表示するのは数件だが、存在しなくなったファイルを除外した後でも埋まるよう多めに保持する。
 pub const RECENT_LIMIT: usize = 20;
 
 /// 表示倍率の範囲（F-VIEW-11）。ここを外れる値は読み込み時に丸める。
@@ -32,28 +32,30 @@ pub const ZOOM_DEFAULT: f64 = 1.0;
 /// ペインの幅（03.ux-spec/06-panes.md §3）。既定 240px、最小 180px。
 pub const PANE_WIDTH_DEFAULT: f64 = 240.0;
 pub const PANE_WIDTH_MIN: f64 = 180.0;
-/// 上限は 03.ux-spec/06-panes.md §3 に無い。**本文が主役である**（Principle 2）ことを守るための歯止めで、
-/// 手で書いた `state.json` や解像度の違う環境から巨大な幅が来ても本文が潰れないようにする。
+/// 上限は 03.ux-spec/06-panes.md §3 には無い。
+/// 本文を主役に保つため（Principle 2）の制限であり、手で書いた `state.json` や解像度の異なる環境から極端な幅が渡っても本文の領域が失われないようにする。
 pub const PANE_WIDTH_MAX: f64 = 640.0;
 
 /// Split の分割比（エディター側の取り分 / 03.ux-spec/03-split-mode.md §1）。
 ///
-/// **比で持つ。** ピクセルで記憶すると、解像度やペインの開閉で
-/// 「左右のどちらがどれだけ」が変わってしまう。既定は 50:50。
+/// 比率で保持する。
+/// ピクセルで記録すると、解像度やペインの開閉によって左右の配分が変わってしまう。
+/// 既定は 50:50。
 pub const SPLIT_DEFAULT: f64 = 0.5;
-/// 端まで寄せて片方を潰せないようにする。**潰せると Split である意味が無くなる**うえ、
-/// 戻す取っ手も同時に消える。
+/// 端まで寄せて片方の領域を失わないようにする。
+/// 片方が失われると Split である意味が無くなり、元に戻すための操作対象も同時に消える。
 pub const SPLIT_MIN: f64 = 0.2;
 pub const SPLIT_MAX: f64 = 0.8;
 
 const FILE_NAME: &str = "state.json";
 
-/// `#[serde(default)]` は `f64` に 0.0 を入れてしまう。**0 は「潰れた Split」**なので、
-/// 既定値を明示する。
+/// `#[serde(default)]` は `f64` に 0.0 を設定する。
+/// 0 は片側の領域が失われた状態を意味するため、既定値を明示する。
 fn default_split() -> f64 {
     SPLIT_DEFAULT
 }
 
+/// 最近開いたファイルの 1 件（F-OPEN-09）。新しいものほど先頭に並ぶ。
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RecentEntry {
@@ -62,10 +64,10 @@ pub struct RecentEntry {
     pub opened_at_ms: i64,
 }
 
-/// ウィンドウの位置とサイズ。**論理ピクセルで保持する。**
+/// ウィンドウの位置とサイズ。論理ピクセルで保持する。
 ///
-/// 物理ピクセルで保存すると、DPI の違うディスプレイ間で移動したときに
-/// 復元後の大きさが変わる。`to_logical` を通してから保存する。
+/// 物理ピクセルで保存すると、DPI の異なるディスプレイ間で移動したときに復元後のサイズが変わる。
+/// `to_logical` を通してから保存する。
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct WindowState {
@@ -78,8 +80,8 @@ pub struct WindowState {
 
 /// ペイン 1 枚の状態（03.ux-spec/06-panes.md §3 / 02.architecture/04-rust-responsibilities.md §5）。
 ///
-/// **記録が無いときは閉じている。** F-NAV-04 の「既定は非表示」は初回起動の話であり、
-/// 一度開いた人がそれを維持できることと両立する（03.ux-spec/06-panes.md §3 の引用ブロック）。
+/// 記録が無いときは閉じた状態にする。
+/// F-NAV-04 の「既定は非表示」は初回起動についての規定であり、一度開いた状態を維持できることと両立する（03.ux-spec/06-panes.md §3 の引用ブロック）。
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PaneState {
@@ -108,8 +110,8 @@ impl PaneState {
 
 /// 左右のペイン（03.ux-spec/06-panes.md §3）。
 ///
-/// **幅は左右で別々に記憶する。** 左（Explorer）は M3 だが、後から足すと
-/// 「どちらの幅か」が曖昧な 1 つの値が先に永続化されてしまうので、器は今作る。
+/// 幅は左右で別々に記録する。
+/// 左（Explorer）は M3 で導入するが、後から追加するとどちらの幅か判別できない 1 つの値が先に永続化されるため、構造だけ先に用意する。
 #[derive(Debug, Clone, Copy, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Panes {
@@ -122,6 +124,7 @@ pub struct Panes {
 }
 
 impl Panes {
+    /// 左右それぞれの幅を許容範囲へ丸める。
     pub fn sanitized(self) -> Self {
         Self {
             left: self.left.sanitized(),
@@ -130,6 +133,8 @@ impl Panes {
     }
 }
 
+/// `state.json` の全体。
+/// ユーザーの成果物ではなくキャッシュであり、読めなければ既定値へ戻す（[`load`]）。
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct StoreData {
@@ -139,9 +144,8 @@ pub struct StoreData {
     pub window: Option<WindowState>,
     /// ペインの開閉と幅（02.architecture/04-rust-responsibilities.md §5 の表）。
     ///
-    /// `#[serde(default)]` にしてあるので、**`panes` を持たない古い `state.json`
-    /// もそのまま読める**。版を上げると最近開いたファイルと倍率まで
-    /// 一緒に捨てることになり、キー 1 つの追加に対して代償が大き過ぎる。
+    /// `#[serde(default)]` にしてあるため、`panes` を持たない古い `state.json` もそのまま読める。
+    /// 版を上げると最近開いたファイルと倍率まで一緒に破棄することになり、キー 1 つの追加に対して代償が大きい。
     #[serde(default)]
     pub panes: Panes,
     /// Split の分割比（03.ux-spec/03-split-mode.md §1）。`panes` と同じく `#[serde(default)]` で、
@@ -150,10 +154,10 @@ pub struct StoreData {
     pub split: f64,
     /// トレイ常駐の説明を一度でも出したか（ADR-0007 論点 4）。
     ///
-    /// **`✕` の意味が OS の慣習と変わる瞬間**にだけモーダルを出す。
-    /// 03.ux-spec/07-status-and-notifications.md §2 の「モーダルはデータ消失の可能性がある場面だけ」に対する
-    /// 意図的な例外であり、**生涯 1 回**であることがその許容条件そのものなので、
-    /// フラグを永続化する。`state.json` に置くのは、アプリが自動的に書く値だから（02.architecture/04-rust-responsibilities.md §5）。
+    /// `✕` の意味が OS の慣習と変わる時点でだけモーダルを表示する。
+    /// 03.ux-spec/07-status-and-notifications.md §2 の「モーダルはデータ消失の可能性がある場面だけ」に対する意図的な例外である。
+    /// 生涯 1 回であることが許容条件そのものであるため、フラグを永続化する。
+    /// `state.json` に置くのは、アプリが自動的に書く値だからである（02.architecture/04-rust-responsibilities.md §5）。
     #[serde(default)]
     pub tray_intro_shown: bool,
 }
@@ -173,8 +177,8 @@ impl Default for StoreData {
 }
 
 impl StoreData {
-    /// 読み込んだ値を信用しない。ストアはユーザーが手で編集できるファイルであり、
-    /// 別バージョンの Marxdown が書いた可能性もある。
+    /// 読み込んだ値を信用しない。
+    /// ストアはユーザーが手で編集できるファイルであり、別バージョンの Marxdown が書いた可能性もある。
     fn sanitized(mut self) -> Self {
         if self.version != STORE_VERSION {
             return Self::default();
@@ -212,6 +216,7 @@ impl StoreData {
         self.recent.truncate(RECENT_LIMIT);
     }
 
+    /// 最近開いたファイルから 1 件外す。一致の判定は [`same_path`] に従う。
     pub fn remove_recent(&mut self, path: &str) {
         self.recent.retain(|e| !same_path(&e.path, path));
     }
@@ -228,16 +233,15 @@ fn same_path(a: &str, b: &str) -> bool {
 
 /// ストアファイルの置き場所。
 ///
-/// `tauri::Manager::path()` は `AppHandle` 構築後にしか使えないが、ウィンドウ生成の
-/// **前に**ウィンドウ状態が要る。よって Tauri の app_config_dir と同じ規則を自前で辿る。
-/// `identifier` は `tauri::generate_context!()` の config から渡すので、
-/// `tauri.conf.json` との二重管理にはならない。
+/// `tauri::Manager::path()` は `AppHandle` 構築後にしか使えないが、ウィンドウ状態はウィンドウ生成の前に必要になる。
+/// そのため Tauri の app_config_dir と同じ規則を自前で辿る。
+/// `identifier` は `tauri::generate_context!()` の config から渡すため、`tauri.conf.json` との二重管理にはならない。
 pub fn store_path(identifier: &str) -> Option<PathBuf> {
     Some(config_dir(identifier)?.join(FILE_NAME))
 }
 
 /// アプリのデータ置き場。`settings/mod.rs` も同じディレクトリを使う（02.architecture/04-rust-responsibilities.md §5）。
-/// 2 か所で辿ると、片方だけ規則が変わったときに設定と状態が別の場所に散る。
+/// 2 か所で辿ると、片方だけ規則が変わったときに設定と状態の保存先が分かれてしまう。
 pub fn config_dir(identifier: &str) -> Option<PathBuf> {
     #[cfg(windows)]
     let base = std::env::var_os("APPDATA").map(PathBuf::from);
@@ -260,7 +264,7 @@ pub fn config_dir(identifier: &str) -> Option<PathBuf> {
     Some(base?.join(identifier))
 }
 
-/// ストアを読む。**失敗しても既定値を返す。**
+/// ストアを読む。失敗しても既定値を返す。
 pub fn load(path: Option<&Path>) -> StoreData {
     let Some(path) = path else {
         return StoreData::default();
@@ -273,10 +277,9 @@ pub fn load(path: Option<&Path>) -> StoreData {
         .unwrap_or_default()
 }
 
-/// ストアを書く。失敗は握り潰して警告に留める。
+/// ストアを書く。失敗は警告の出力に留める。
 ///
-/// 本文の保存と同じ原子的書き込みを通すのは、書き込み中の電源断で
-/// 「壊れた JSON」ではなく「前回の JSON」が残るようにするため。
+/// 本文の保存と同じ原子的書き込みを通すのは、書き込み中の電源断で壊れた JSON ではなく前回の JSON が残るようにするためである。
 pub fn save(path: Option<&Path>, data: &StoreData) {
     let Some(path) = path else { return };
     if let Some(dir) = path.parent() {

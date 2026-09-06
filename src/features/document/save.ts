@@ -16,22 +16,22 @@ import { describeOpenError, openPath } from './open';
 import { documentStore, notifyInfo } from './store.svelte';
 import { getDocumentText } from './text';
 
-// 「保存してから別の文書へ移る」の実体を渡す（`discard.ts`）。
-// **こちらから名乗り出る。** `open.ts` がここを import すると循環する。
+// 「保存してから別の文書へ移る」の実体を登録する（`discard.ts`）。
+// こちらから登録するのは、`open.ts` がこのモジュールを import すると循環するためである。
 registerSaver(() => saveCurrent());
 
 /**
  * 保存する（`Ctrl+S`）。
  *
- * 何も開いていなければ何もしない。**ダーティでなくても保存する**のは、
- * 「押したのに何も起きない」を避けるため（ディスクの内容は変わらないので害が無い）。
+ * 何も開いていなければ何もしない。
+ * ダーティでなくても保存するのは、操作しても反応が無い状態を避けるためである（内容が同じならディスク上のバイト列は変わらない）。
  */
 export async function saveCurrent(): Promise<boolean> {
   const meta = documentStore.meta;
   if (meta === null) return false;
 
   // まだ一度も保存していない文書（`Ctrl+N` / `document/new.ts`）には保存先が無い。
-  // **`Ctrl+S` で名前を訊く**のが、どのエディターでも同じ振る舞いである（Familiar）。
+  // `Ctrl+S` で保存先を尋ねるのは一般的なエディターと同じ挙動である（Familiar）。
   if (meta.path === null) return saveAs();
 
   return writeTo(meta.path, meta.mtimeMs);
@@ -40,10 +40,9 @@ export async function saveCurrent(): Promise<boolean> {
 /**
  * 名前を付けて保存（`Ctrl+Shift+S` / F-EDIT-02）。
  *
- * 保存先はまだ存在しないことがあるので、`expectedMtimeMs` は `null` を送る。
- * **既存のファイルを選んだ場合は衝突として返ってくる**（Rust 側の `write`）。
- * それでよい。上書きの確認をもう一度出すことになるが、
- * 「選んだファイルを消してよいか」は確かに確認に値する。
+ * 保存先はまだ存在しないことがあるため、`expectedMtimeMs` には `null` を送る。
+ * 既存のファイルを選んだ場合は衝突として返る（Rust 側の `write`）。
+ * これは意図した挙動で、選んだファイルの内容を破棄してよいかは確認する価値がある。
  */
 export async function saveAs(): Promise<boolean> {
   const meta = documentStore.meta;
@@ -57,8 +56,8 @@ export async function saveAs(): Promise<boolean> {
   if (!saved) return false;
 
   // 保存できたら、そのファイルを開いている状態にする。
-  // **開く経路は 1 本しかない**（`open.ts`）ので、ここでメタ情報を組み立てない。
-  // 読み直すことで、正規化済みのパスと実際の mtime が手に入る。
+  // 開く経路は `open.ts` の 1 本だけであるため、ここでメタ情報を組み立てない。
+  // 読み直すことで、正規化済みのパスと実際の mtime が得られる。
   await openPath(target, { resetScroll: false, history: false });
   return true;
 }
@@ -72,13 +71,13 @@ async function writeTo(path: string, expected: number | null): Promise<boolean> 
   const meta = documentStore.meta;
   if (meta === null) return false;
 
-  // ステータスバーで変換を選んでいれば、そちらで書き戻す（`document/eol.ts`）。
-  // **選んでいなければ読み込み時のまま**（N-CMP-03）。
+  // ステータスバーで変換を選んでいれば、その改行コードで書き戻す（`document/eol.ts`）。
+  // 選んでいなければ読み込み時のままにする（N-CMP-03）。
   const eol = effectiveEol() ?? meta.eol;
 
   const request: WriteRequest = {
     path,
-    // **メモリ上は LF。** ディスクへ戻すときに `eol` と `bom` が使われる（F-EDIT-14）。
+    // メモリ上は常に LF である。ディスクへ書き戻すときに `eol` と `bom` を使う（F-EDIT-14）。
     content: getDocumentText(),
     eol,
     bom: meta.bom,
@@ -106,16 +105,15 @@ async function writeTo(path: string, expected: number | null): Promise<boolean> 
 /**
  * 保存できた事実を反映する。
  *
- * **`mtimeMs` の更新が要点**（このモジュールのコメント参照）。`size` も併せて直すのは、
- * ステータスバーが古い値を出したままにならないようにするため。
+ * `mtimeMs` の更新が要点である（モジュール冒頭のコメントを参照）。
+ * `size` も併せて更新するのは、ステータスバーが古い値を表示したままにならないようにするためである。
  */
 function applySaved(path: string, mtimeMs: number, size: number, eol: Eol): void {
   const meta = documentStore.meta;
   if (meta === null) return;
 
-  // **`eol` も書き戻す。** 変換して保存したなら、ディスクの姿はもう新しいほうである。
-  // ここを直さないと、次に `markClean()` が希望を落とした瞬間に
-  // ステータスバーの表示が古い改行コードへ戻る。
+  // `eol` も更新する。変換して保存した場合、ディスク上の改行コードは新しいほうになっている。
+  // 更新しないと、次に `markClean()` が変換の指定を破棄した時点でステータスバーの表示が古い改行コードへ戻る。
   documentStore.meta = { ...meta, path, mtimeMs, size, eol };
   markClean();
 }
@@ -132,14 +130,14 @@ function offerConflictChoice(path: string, diskMtimeMs: number): void {
     actions: [
       {
         label: ja.save.overwrite,
-        // ディスクの姿を `expected` に据え直して書き直す。
-        // **ここで初めて、ユーザーが「上書きしてよい」と言ったことになる。**
+        // ディスク上の mtime を `expected` に設定し直して書き込む。
+        // この選択が上書きの承諾にあたる。
         run: () => void writeTo(path, diskMtimeMs),
       },
       {
         label: ja.save.reloadInstead,
-        // **編集内容は失われる。** それを承知で選ぶための選択肢であり、
-        // 選ばなければ何も起きない（通知は消えない）。
+        // 編集内容は失われる。
+        // それを了解したうえで選ぶための選択肢であり、選ばなければ何も起きない（通知は消えない）。
         run: () => void discardAndReload(path),
       },
     ],
@@ -155,9 +153,9 @@ async function discardAndReload(path: string): Promise<void> {
 /**
  * 「保存して終了」（F-EDIT-03 / `close.rs` の `ask_then_quit`）。
  *
- * **保存に失敗したら終了しない。** ダーティのままなので、もう一度 `quitApp()` を
- * 呼んでも同じ確認が出る。失敗を握り潰して終わる経路を作らないことが要件そのもの
- * （N-REL-01）。
+ * 保存に失敗した場合は終了しない。
+ * ダーティのままであるため、もう一度 `quitApp()` を呼んでも同じ確認が表示される。
+ * 失敗を無視して終了する経路を作らないことが要件そのものである（N-REL-01）。
  */
 export async function saveThenQuit(): Promise<void> {
   const saved = await saveCurrent();
@@ -165,7 +163,7 @@ export async function saveThenQuit(): Promise<void> {
   await getPlatform().quitApp();
 }
 
-/** 保存の失敗をそのまま通知に出すためのラッパ。メニューとキーの両方から呼ばれる。 */
+/** 保存の失敗を通知に出すためのラッパー。メニューとキーの両方から呼ばれる。 */
 export async function saveSafely(): Promise<void> {
   try {
     await saveCurrent();
@@ -174,6 +172,7 @@ export async function saveSafely(): Promise<void> {
   }
 }
 
+/** `saveAs` の失敗を通知に出すためのラッパー。 */
 export async function saveAsSafely(): Promise<void> {
   try {
     await saveAs();

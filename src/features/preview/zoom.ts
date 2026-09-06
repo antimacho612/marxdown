@@ -8,14 +8,15 @@
 import { viewStore } from '@/features/view';
 import { getPlatform } from '@/platform';
 
-/** `src-tauri/src/store.rs` の `ZOOM_MIN` / `ZOOM_MAX` と揃える。 */
+/** 倍率の範囲と既定値。`src-tauri/src/store.rs` の `ZOOM_MIN` / `ZOOM_MAX` と一致させる。 */
 export const ZOOM_MIN = 0.5;
 export const ZOOM_MAX = 3;
 export const ZOOM_DEFAULT = 1;
 
 /**
- * 倍率の刻み。等比ではなく、よく使う値（100% / 125% / 150%）にきっちり止まるよう並べる。
- * 「押した回数」ではなく「見えている数字」で操作する道具にしたい。
+ * 倍率の刻み。
+ * 等比ではなく、使用頻度の高い値（100% / 125% / 150%）に一致するよう並べる。
+ * 操作の基準を操作回数ではなく表示される倍率に置くためである。
  */
 const STEPS = [0.5, 0.67, 0.75, 0.8, 0.9, 1, 1.1, 1.25, 1.5, 1.75, 2, 2.5, 3] as const;
 
@@ -38,14 +39,17 @@ export function applyZoom(zoom: number, persist = true): number {
   return next;
 }
 
+/** 1 段階拡大する。 */
 export function zoomIn(): number {
   return applyZoom(nextStep(viewStore.zoom, 1));
 }
 
+/** 1 段階縮小する。 */
 export function zoomOut(): number {
   return applyZoom(nextStep(viewStore.zoom, -1));
 }
 
+/** 等倍に戻す。 */
 export function zoomReset(): number {
   return applyZoom(ZOOM_DEFAULT);
 }
@@ -58,8 +62,7 @@ export function formatZoom(zoom: number): string {
 /**
  * 現在値から刻み 1 つぶん動かす。
  *
- * 現在値が刻みの上に無い場合（設定ファイルを手で書いた場合など）でも、
- * 「上へ」なら必ず大きい側の最も近い刻みに乗る。
+ * 現在値が刻みと一致しない場合（設定ファイルを手で編集した場合など）でも、拡大方向なら必ず現在値より大きい最も近い刻みになる。
  */
 function nextStep(current: number, direction: 1 | -1): number {
   if (direction === 1) {
@@ -74,8 +77,8 @@ function clamp(zoom: number): number {
 }
 
 /**
- * 保存を遅らせる。**1 回きりの `setTimeout` であって、ポーリングではない**
- * （05.performance-budget/04-targets.md §5）。
+ * 保存を遅らせる。
+ * 1 回だけの `setTimeout` であり、ポーリングではない（05.performance-budget/04-targets.md §5）。
  */
 function schedulePersist(zoom: number): void {
   if (persistTimer !== null) clearTimeout(persistTimer);

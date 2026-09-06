@@ -30,7 +30,7 @@ import { toMessage } from '@/lib/error';
 import { bindKeys } from '@/lib/shortcuts';
 import { getPlatform } from '@/platform';
 
-/** 文書を開いているか。**開いていないと意味を持たない**コマンドの一覧条件。 */
+/** 文書を開いているか。開いていないと意味を持たないコマンドの一覧条件として使う。 */
 function hasDocument(): boolean {
   return documentStore.meta !== null;
 }
@@ -38,19 +38,19 @@ function hasDocument(): boolean {
 /**
  * 実体の表。
  *
- * `isListed` は「一覧に出すか」であって「実行できるか」ではない
- * （`lib/commands.ts` の `Command` を参照）。キーは一覧に出ていなくても効く。
+ * `isListed` は一覧に出すかどうかであり、実行できるかどうかではない（`lib/commands.ts` の `Command` を参照）。
+ * キーは一覧に出ていなくても動作する。
  */
 const COMMANDS: Command[] = [
-  // 新規ファイル（`Ctrl+N` / 03.ux-spec/04-keybindings.md §3）。**何も開いていなくても押せる。**
+  // 新規ファイル（`Ctrl+N` / 03.ux-spec/04-keybindings.md §3）。何も開いていなくても実行できる。
   { id: 'document.new', run: () => void newDocument() },
 
   { id: 'document.open', run: () => void openViaDialogSafely() },
 
-  // 一覧（メニュー）には出さない。対象を指定して開く経路で、
-  // 「最近開いたファイル」の 1 件ごとがこれを呼ぶ。
+  // 一覧（メニュー）には出さない。
+  // 対象を指定して開く経路であり、「最近開いたファイル」の 1 件ごとがこれを呼ぶ。
   //
-  // 開けなかった場合の通知と履歴からの除去は `openPath` の担当。
+  // 開けなかった場合の通知と履歴からの除去は `openPath` が担当する。
   {
     id: 'document.openPath',
     run: (target) => {
@@ -60,55 +60,56 @@ const COMMANDS: Command[] = [
 
   { id: 'document.reload', run: () => void reloadCurrent(), isListed: hasDocument },
 
-  // 保存（F-EDIT-02）。**ダーティでなくても押せる。**
-  // 「押したのに何も起きない」を避けるためで、内容が同じならディスクは変わらない。
+  // 保存（F-EDIT-02）。ダーティでなくても実行できる。
+  // 操作しても反応が無い状態を避けるためで、内容が同じならディスク上のバイト列は変わらない。
   { id: 'document.save', run: () => void saveSafely(), isListed: hasDocument },
   { id: 'document.saveAs', run: () => void saveAsSafely(), isListed: hasDocument },
 
   // 改行コードの変換（F-EDIT-14 / 03.ux-spec/07-status-and-notifications.md §3）。
-  // 実体はステータスバーの `LF` / `CRLF` で、ここはコマンドとしての入口。
-  // **キーは割り当てない。** 押す頻度が低く、覚えるキーを増やす価値が無い。
+  // 実体はステータスバーの `LF` / `CRLF` で、ここはコマンドとしての入口である。
+  // キーは割り当てない。使用頻度が低く、覚えるキーを増やす利点がない。
   { id: 'document.toggleEol', run: () => toggleEol(), isListed: hasDocument },
 
-  // 戻る / 進む（F-NAV-07）。**辿れるときにしか一覧に出さない。**
+  // 戻る / 進む（F-NAV-07）。辿れるときにしか一覧に出さない。
   { id: 'history.back', run: () => void goBack(), isListed: canGoBack },
   { id: 'history.forward', run: () => void goForward(), isListed: canGoForward },
 
-  // ペインとビュー（03.ux-spec/06-panes.md §4）。**キーの意味が 2 系統に分かれている。**
-  //   ペイン: `pane.toggleRight` は「ライトペインを開閉する」。中身が何であれ。
-  //   ビュー: `outline.show` は「Outline を出してフォーカスする」。**閉じない。**
+  // ペインとビュー（03.ux-spec/06-panes.md §4）。キーの意味が 2 系統に分かれている。
+  //   ペイン: `pane.toggleRight` はライトペインを開閉する。中身が何であるかは問わない。
+  //   ビュー: `outline.show` は Outline を表示してフォーカスする。閉じる動作は持たない。
   //
-  // 後者がトグルでないのは、「アウトラインを見たい」という意図に対して
-  // 常に同じ結果を返すため。アウトラインを左ペインへ移しても意味が変わらない。
+  // 後者がトグルでないのは、アウトラインを見たいという意図に対して常に同じ結果を返すためである。
+  // アウトラインを左ペインへ移しても意味が変わらない。
   { id: 'pane.toggleRight', run: () => toggleRightPane(), isListed: hasDocument },
   { id: 'outline.show', run: () => void showOutline() },
 
-  // 見出しへジャンプ（03.ux-spec/04-keybindings.md §3「移動」）。中身は遅延チャンク。
-  // **コマンドパレット（`Ctrl+Shift+P` / M3）ではない。** 見出し専用。
+  // 見出しへジャンプ（03.ux-spec/04-keybindings.md §3「移動」）。実体は遅延チャンクにある。
+  // コマンドパレット（`Ctrl+Shift+P` / M3）ではなく、見出し専用である。
   { id: 'outline.jump', run: () => void openJumpLazily(), isListed: hasDocument },
 
   // 表示モードの切り替え（F-MODE-03, 06 / 03.ux-spec/02-view-modes.md §2）。
   //
-  // `Ctrl+Shift+V` は「Preview ⇄ 直前の編集モード」、`Ctrl+\` は Split のトグル、
-  // `Ctrl+Shift+M` は順送り。**3 つとも意味が違う**ので別のコマンドにしてある。
+  // `Ctrl+Shift+V` は Preview と直前の編集モードの往復、`Ctrl+\` は Split のトグル、`Ctrl+Shift+M` は順送りである。
+  // 3 つとも意味が違うため、別のコマンドにしてある。
   { id: 'view.togglePreview', run: () => void togglePreview(), isListed: hasDocument },
   { id: 'view.toggleSplit', run: () => void toggleSplit(), isListed: hasDocument },
-  // 順送りは**一覧に出さない。** キーを知っている人のためのもので、
-  // メニューには行き先の分かるトグル 2 つが既に並んでいる。
+  // 順送りは一覧に出さない。
+  // キーを知っている人のためのものであり、メニューには行き先の分かるトグル 2 つが既に並んでいる。
   { id: 'view.cycleMode', run: () => void cycleMode() },
 
-  // スクロール同期（F-MODE-05 / 03.ux-spec/03-split-mode.md §2）。**Split のときだけ意味を持つ。**
-  // 実体はステータスバーの `⇄` で、ここはコマンドとしての入口。
+  // スクロール同期（F-MODE-05 / 03.ux-spec/03-split-mode.md §2）。Split のときだけ意味を持つ。
+  // 実体はステータスバーの `⇄` で、ここはコマンドとしての入口である。
   {
     id: 'view.toggleScrollSync',
     run: () => (viewStore.scrollSync = !viewStore.scrollSync),
     isListed: () => viewStore.mode === 'split',
   },
 
-  // 検索と置換（F-VIEW-10 / F-EDIT-05）。**id が `preview.` でも `editor.` でもない**のは、
-  // 見ている面によって実体が変わるため。振り分けは `features/mode/find.ts`。
+  // 検索と置換（F-VIEW-10 / F-EDIT-05）。
+  // id が `preview.` でも `editor.` でもないのは、表示している面によって実体が変わるためである。
+  // 振り分けは `features/mode/find.ts` が行う。
   //
-  // 置換は Edit だけ。読んでいる面を書き換える経路は無い。
+  // 置換は Edit だけで有効であり、読んでいる面を書き換える経路は無い。
   { id: 'find.open', run: () => void openFind(), isListed: hasDocument },
   {
     id: 'find.replace',
@@ -116,20 +117,19 @@ const COMMANDS: Command[] = [
     isListed: () => hasDocument() && viewStore.mode !== 'preview',
   },
 
-  // 倍率は Preview 専用ではない。エディターの font-size にも `--mx-zoom` が乗っている
-  // （`features/editor/lazy/theme.ts`）。id の接頭辞が `preview.` なのは
-  // 実装の置き場所であって、効く範囲ではない。
+  // 倍率は Preview 専用ではない。
+  // エディターの font-size にも `--mx-zoom` が適用される（`features/editor/lazy/theme.ts`）。
+  // id の接頭辞が `preview.` なのは実装の置き場所を示すもので、適用範囲を示すものではない。
   { id: 'preview.zoomIn', run: () => void zoomIn(), isListed: hasDocument },
   { id: 'preview.zoomOut', run: () => void zoomOut(), isListed: hasDocument },
   { id: 'preview.zoomReset', run: () => void zoomReset(), isListed: hasDocument },
 
   { id: 'settings.open', run: () => void openSettingsLazily() },
 
-  // 終了（ADR-0007 論点 3）。**確実に終了できる導線を 3 つ**という決定のうち、
-  // キーとハンバーガーメニューの 2 つがこのコマンドを共有する（残りはトレイメニュー）。
+  // 終了（ADR-0007 論点 3）。
+  // 確実に終了できる導線を 3 つ用意するという決定のうち、キーとハンバーガーメニューの 2 つがこのコマンドを共有する（残りはトレイメニュー）。
   //
-  // 編集機能が入る M2 以降は、ここにダーティ状態の確認
-  // （03.ux-spec/07-status-and-notifications.md §1）が挟まる。**挟む場所が 1 か所で済む。**
+  // ダーティ状態の確認（03.ux-spec/07-status-and-notifications.md §1）もこの経路に入るため、確認を挟む場所は 1 か所で済む。
   { id: 'app.quit', run: () => void getPlatform().quitApp() },
 ];
 
@@ -141,14 +141,12 @@ interface KeyBinding {
 /**
  * アプリの再読み込みに置き換えるキー（03.ux-spec/04-keybindings.md §3）。
  *
- * **WebView の再読み込みは 1 つのキーに割り当たっているのではない。**
- * `F5` / `Ctrl+R` が通常の再読み込み、`Ctrl+Shift+R` / `Ctrl+F5` / `Shift+F5` が
- * キャッシュを無視した再読み込みで、Chromium 系ではどれも効く。
- * 1 つでも取りこぼすと、そこだけ「開いているファイルが消える」経路が残る。
+ * WebView の再読み込みは 1 つのキーだけに割り当たっているわけではない。
+ * `F5` / `Ctrl+R` が通常の再読み込み、`Ctrl+Shift+R` / `Ctrl+F5` / `Shift+F5` がキャッシュを無視した再読み込みで、Chromium 系ではいずれも動作する。
+ * 1 つでも取りこぼすと、そこだけ開いているファイルが失われる経路が残る。
  *
- * **トレイ常駐でプロセスの寿命が延びるほど、1 回の誤爆の被害が重くなる**。
- * 意味の違い（キャッシュを使うかどうか）はアプリ側の再読み込みには無いので、
- * 全部同じ動作に倒す。
+ * トレイ常駐でプロセスの寿命が延びるほど、1 回の誤操作による影響が大きくなる。
+ * キャッシュを使うかどうかの違いはアプリ側の再読み込みには存在しないため、すべて同じ動作にする。
  */
 const RELOAD_KEYS = ['F5', 'Ctrl+R', 'Ctrl+Shift+R', 'Ctrl+F5', 'Shift+F5'];
 
@@ -163,35 +161,34 @@ const RELOAD_KEYS = ['F5', 'Ctrl+R', 'Ctrl+Shift+R', 'Ctrl+F5', 'Shift+F5'];
  * この表と `features/editor/lazy/keymap.ts`（本文編集用）は重ならないよう、`keymap.ts` 側が重複キーを外している。
  */
 export const KEY_BINDINGS: KeyBinding[] = [
-  // 新規ファイル（03.ux-spec/04-keybindings.md §3）。素通りさせると WebView 自身の
-  // 「新しいウィンドウ」に当たる（`Ctrl+O` や `Ctrl+S` と同じ理由で必ず飲み込む）。
+  // 新規ファイル（03.ux-spec/04-keybindings.md §3）。
+  // そのまま通すと WebView 自身の「新しいウィンドウ」が動作するため、`Ctrl+O` や `Ctrl+S` と同じ理由で必ず既定動作を止める。
   { key: 'Ctrl+N', id: 'document.new' },
   { key: 'Ctrl+O', id: 'document.open' },
 
-  // 保存（F-EDIT-02）。素通りさせると WebView 自身の「名前を付けて保存」が開き、
-  // **アプリの本文と無関係な HTML が保存される**。
+  // 保存（F-EDIT-02）。
+  // そのまま通すと WebView 自身の「名前を付けて保存」が開き、アプリの本文と無関係な HTML が保存される。
   { key: 'Ctrl+S', id: 'document.save' },
   { key: 'Ctrl+Shift+S', id: 'document.saveAs' },
 
-  // 再読み込みのキーは**必ず飲み込む**。
+  // 再読み込みのキーは必ず既定動作を止める。
   //
-  // 素通しすると WebView がページごと再読み込みし、`initialization_script` に
-  // 載っている**起動時の** bootstrap が再適用される。コマンドラインで指定した
-  // ファイルが、その後に D&D やダイアログで開いたファイルを押しのけて戻ってくる。
+  // そのまま通すと WebView がページごと再読み込みし、`initialization_script` に載っている起動時の bootstrap が再適用される。
+  // その結果、コマンドラインで指定したファイルが、その後に D&D やダイアログで開いたファイルを置き換えて再表示される。
   //
-  // 何も開いていないときも同じ理由で飲み込む（`reloadCurrent` は何もしない）。
+  // 何も開いていないときも同じ理由で既定動作を止める（`reloadCurrent` は何もしない）。
   ...RELOAD_KEYS.map((key) => ({ key, id: 'document.reload' as const })),
 
-  // VS Code と同じ `Ctrl+,`（Familiar）。03.ux-spec/04-keybindings.md §3 の
-  // 一覧には無く、**設定 UI と一緒に足したキー**である。
+  // VS Code と同じ `Ctrl+,`（Familiar）。
+  // 03.ux-spec/04-keybindings.md §3 の一覧には無く、設定 UI と一緒に追加したキーである。
   { key: 'Ctrl+,', id: 'settings.open' },
 
   // Preview ⇄ 直前の編集モード（03.ux-spec/02-view-modes.md §2 の「最も使うトグル」）。
   { key: 'Ctrl+Shift+V', id: 'view.togglePreview' },
 
-  // Split（F-MODE-03 / 03.ux-spec/02-view-modes.md §2）。`Ctrl+\` は VS Code の
-  // 「エディターを分割」に対応する（Familiar）。`Ctrl+Shift+M` は 4 モードの順送りで、
-  // **`keymap.ts` が `vscodeKeymap` の同じキーを外してある**（Phase 3）。
+  // Split（F-MODE-03 / 03.ux-spec/02-view-modes.md §2）。
+  // `Ctrl+\` は VS Code の「エディターを分割」に対応する（Familiar）。
+  // `Ctrl+Shift+M` は表示モードの順送りで、`keymap.ts` が `vscodeKeymap` の同じキーを外してある（Phase 3）。
   { key: 'Ctrl+\\', id: 'view.toggleSplit' },
   { key: 'Ctrl+Shift+M', id: 'view.cycleMode' },
 
@@ -199,47 +196,42 @@ export const KEY_BINDINGS: KeyBinding[] = [
   { key: 'Ctrl+Shift+U', id: 'outline.show' },
   { key: 'Ctrl+Shift+O', id: 'outline.jump' },
 
-  // 戻る / 進む（F-NAV-07）。相対リンクで辿った先から帰ってくるための経路で、
-  // **スクロール位置も一緒に戻る**（`features/history/navigate.ts`）。
+  // 戻る / 進む（F-NAV-07）。
+  // 相対リンクで辿った先から戻るための経路で、スクロール位置も一緒に復元する（`features/history/navigate.ts`）。
   //
-  // Windows のエディターでは `Alt+←` は空いている（`vscodeKeymap` が
-  // `Mod-ArrowLeft` に単語移動を置いていて、`Alt` 側は mac だけ）。
+  // Windows のエディターでは `Alt+←` は未使用である（`vscodeKeymap` は `Mod-ArrowLeft` に単語移動を割り当てており、`Alt` 側は macOS のみ）。
   { key: 'Alt+ArrowLeft', id: 'history.back' },
   { key: 'Alt+ArrowRight', id: 'history.forward' },
 
-  // 表示倍率（F-VIEW-11）。素通りした `Ctrl+=` / `Ctrl+-` は **WebView 自身の
-  // ズーム**に当たるので、アプリの倍率と二重にかかる
+  // 表示倍率（F-VIEW-11）。
+  // そのまま通した `Ctrl+=` / `Ctrl+-` は WebView 自身のズームとして処理されるため、アプリの倍率と二重に適用される
   // （`lib/shortcuts.ts` の「既定動作を必ず止める」）。
   //
-  // 倍率は「いまどの面を見ているか」ではなく「この人の見え方の好み」なので、
-  // どこにフォーカスがあっても効くのが正しい（VS Code も同じ）。
+  // 倍率は表示中の面ではなく利用者ごとの表示設定であるため、どこにフォーカスがあっても動作するのが正しい（VS Code も同じ）。
   { key: 'Ctrl+=', id: 'preview.zoomIn' },
   { key: 'Ctrl+-', id: 'preview.zoomOut' },
   { key: 'Ctrl+0', id: 'preview.zoomReset' },
 
-  // 検索・置換（F-VIEW-10 / F-EDIT-05）。**開くキーだけがここにある。**
-  // 開いている間だけ効く `F3` / `Escape` は、Preview では検索モジュールが
-  // 自分で登録して自分で外し、Edit では `keymap.ts` が scope 付きで持っている。
+  // 検索・置換（F-VIEW-10 / F-EDIT-05）。ここにあるのは開くキーだけである。
+  // 開いている間だけ有効な `F3` / `Escape` は、Preview では検索モジュールが自分で登録して自分で解除し、Edit では `keymap.ts` が scope 付きで保持する。
   //
-  // `Ctrl+F` は WebView 自身の検索にも割り当たっているので、飲み込むこと自体に
-  // 意味がある。`Ctrl+H` が Preview で何もしないのに登録してあるのも同じ理由。
+  // `Ctrl+F` は WebView 自身の検索にも割り当たっているため、既定動作を止めること自体に意味がある。
+  // `Ctrl+H` が Preview では何もしないのに登録してあるのも同じ理由である。
   { key: 'Ctrl+F', id: 'find.open' },
   { key: 'Ctrl+H', id: 'find.replace' },
 
   // Marxdown を終了する（ADR-0007 論点 3 / 03.ux-spec/04-keybindings.md §3）。
   //
-  // **トレイ常駐では `✕` が「格納」の意味になる**ため、「本当に終わらせたい」を
-  // 表すキーが別に要る。
+  // トレイ常駐では `✕` が格納の意味になるため、明示的に終了するキーが別に必要になる。
   { key: 'Ctrl+Q', id: 'app.quit' },
 ];
 
 /**
  * コマンドだけを登録する。返り値を呼ぶと解除される。
  *
- * キーを割り当てない入口を分けてあるのは、**Storybook がここだけを呼ぶ**ため。
- * メニューは id しか持たないので、登録が無いと項目が 1 つも出ない。
- * かといって Storybook でグローバルキーまで有効にすると、`Ctrl+F` が
- * ブラウザの検索ではなくアプリの検索を開こうとして邪魔になる。
+ * キーを割り当てない入口を分けてあるのは、Storybook がここだけを呼ぶためである。
+ * メニューは id しか持たないため、登録が無いと項目が 1 つも表示されない。
+ * 一方で Storybook でグローバルキーまで有効にすると、`Ctrl+F` がブラウザの検索ではなくアプリの検索を開いてしまう。
  */
 export function registerAppCommands(): () => void {
   return registerCommands(COMMANDS);
@@ -271,7 +263,7 @@ export function installCommands(): () => void {
  * ダイアログを開く（F-OPEN-07）。
  *
  * ダイアログ自体の失敗（プラットフォーム側の異常）は通知に出す。
- * 「取り消した」は失敗ではないので何も出さない。
+ * 取り消しは失敗ではないため、何も表示しない。
  */
 async function openViaDialogSafely(): Promise<void> {
   try {

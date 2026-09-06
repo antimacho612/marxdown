@@ -26,7 +26,7 @@ use serde::Serialize;
 use crate::document::atomic;
 use crate::error::CoreResult;
 
-/// カスタム CSS が当たる面。**ファイル名と雛形だけを決める。**
+/// カスタム CSS を適用する面。ファイル名と雛形だけを決める。
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Surface {
     /// 本文（`@scope (#mx-preview)`）。
@@ -53,52 +53,50 @@ impl Surface {
 
 /// M1.5〜M3 のあいだ本文用カスタム CSS が名乗っていた名前。
 ///
-/// **エディター用が増えて `custom.css` が何に当たるのか名前から読めなくなった**ため、
-/// `preview.css` へ改名した（[ADR-0013](../../docs/adr/0013-surface-themes.md)）。
+/// エディター用が増えて `custom.css` がどの面に適用されるのか名前から判別できなくなったため、`preview.css` へ改名した（[ADR-0013](../../docs/adr/0013-surface-themes.md)）。
 /// 移行は起動時に 1 回だけ行う（[`migrate_legacy`]）。
 const LEGACY_FILE_NAME: &str = "custom.css";
 
 /// bootstrap へ同梱する上限（02.architecture/10-theming.md §3 の表）。
 ///
-/// **小さいうちに載せる理由は FOUC を防ぐこと。** ダークな背景を当てている
-/// カスタム CSS を `ready()` の後に適用すると、白い初期画面が一瞬見える。
-/// 読み取りは WebView 初期化と並行するので（02.architecture/05-startup-sequence.md §1）、クリティカルパスの時間は
-/// 実質増えない。
+/// 小さいうちに同梱するのは FOUC を防ぐためである。
+/// 暗い背景を指定したカスタム CSS を `ready()` の後に適用すると、白い初期画面が一瞬表示される。
+/// 読み取りは WebView 初期化と並行するため（02.architecture/05-startup-sequence.md §1）、クリティカルパスの時間は実質増えない。
 pub const INLINE_LIMIT: u64 = 64 * 1024;
 
 /// これを超えるものは読まない（02.architecture/10-theming.md §3）。通知バーで知らせて終わりにする。
 ///
-/// 本文の `MAX_READ_BYTES`（64MB）より 2 桁小さいのは、こちらが
-/// **1 打鍵ごとに再パースされるスタイルシート**だからで、
+/// 本文の `MAX_READ_BYTES`（64MB）より 2 桁小さいのは、こちらが 1 打鍵ごとに再パースされるスタイルシートだからである。
 /// 開いて読むだけのドキュメントと同じ上限を与える理由がない。
 pub const MAX_BYTES: u64 = 1024 * 1024;
 
 /// カスタム CSS の読み込み結果。
 ///
-/// 「無かった」と「大きすぎた」と「読めなかった」を**呼び出し側が区別できる形**で運ぶ。
-/// 混ぜると、初回起動（ファイルが無い）で通知バーが出る実装になる。
+/// 「無かった」と「大きすぎた」と「読めなかった」を呼び出し側が区別できる形で運ぶ。
+/// 区別しないと、初回起動（ファイルが無い）で通知バーが表示される実装になる。
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CustomCss {
     /// 読み込んだ CSS。`None` は「無い」か「読まなかった」。
     pub css: Option<String>,
-    /// bootstrap には載せなかったが、`read_custom_css` で取りに行けば読める
-    /// （64KB 超 1MB 以下）。
+    /// bootstrap には同梱しなかったが、`read_custom_css` で取得すれば読める（64KB 超 1MB 以下）。
     pub deferred: bool,
     /// 適用できなかった理由。通知バーに出す（02.architecture/10-theming.md §3 の表）。
     pub problem: Option<CustomCssProblem>,
 }
 
+/// 適用できなかった理由。通知バーの文言をフロントが組み立てるための値（03.ux-spec/07-status-and-notifications.md §2）。
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CustomCssProblem {
     pub kind: ProblemKind,
-    /// 表示用の文字列。`settings/mod.rs` と同じ理由で `PathBuf` にしない
-    /// （非 UTF-8 のパスで bootstrap のシリアライズごと落とさない）。
+    /// 表示用の文字列。
+    /// `settings/mod.rs` と同じ理由で `PathBuf` にしない（非 UTF-8 のパスで bootstrap のシリアライズを失敗させないため）。
     pub path: String,
     pub message: String,
 }
 
+/// 適用できなかった理由の種別。ファイルが無い状態はここに含めない（正常な状態のため）。
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum ProblemKind {
@@ -113,15 +111,13 @@ pub fn css_path(identifier: &str, surface: Surface) -> Option<PathBuf> {
     Some(crate::store::config_dir(identifier)?.join(surface.file_name()))
 }
 
-/// `custom.css` を `preview.css` へ改名する。**起動時に 1 回だけ呼ぶ。**
+/// `custom.css` を `preview.css` へ改名する。起動時に 1 回だけ呼ぶ。
 ///
-/// - `preview.css` が既にあるなら何もしない（**新しい側を正とする**）
-/// - `custom.css` が無いなら何もしない（初回起動が常にこれ）
-/// - 失敗しても起動は止めない。改名できなければ、旧ファイルが残って
-///   カスタム CSS が当たらないだけで、**ユーザーの書いたものは消えない**
+/// - `preview.css` が既にあるなら何もしない（新しい側を正とする）
+/// - `custom.css` が無いなら何もしない（初回起動が常にこれにあたる）
+/// - 失敗しても起動は止めない。旧ファイルが残ってカスタム CSS が適用されないだけで、ユーザーが書いた内容は失われない
 ///
-/// コピーではなく `rename` にしてあるのは、2 枚残すと
-/// 「どちらを編集すればよいか」がユーザーから見て決められなくなるため。
+/// コピーではなく `rename` にしてあるのは、2 枚残るとどちらを編集すべきかユーザーが判断できなくなるためである。
 pub fn migrate_legacy(identifier: &str) {
     let Some(dir) = crate::store::config_dir(identifier) else {
         return;
@@ -135,18 +131,17 @@ pub fn migrate_legacy(identifier: &str) {
     let _ = std::fs::rename(&legacy, &current);
 }
 
-/// 読む。**「無い」を失敗にしない**（02.architecture/10-theming.md §3）。
+/// 読む。「無い」を失敗として扱わない（02.architecture/10-theming.md §3）。
 ///
 /// `inline_limit` を超えたときは中身を読まずに `deferred` を立てる。
-/// 起動時は `INLINE_LIMIT`、`read_custom_css` からは `MAX_BYTES` を渡す
-/// （後者は「取りに来た」経路なので、読める上限まで読む）。
+/// 起動時は `INLINE_LIMIT`、`read_custom_css` からは `MAX_BYTES` を渡す。
+/// 後者は明示的に取得を要求された経路であるため、読める上限まで読む。
 pub fn load(path: Option<&Path>, inline_limit: u64) -> CustomCss {
     let Some(path) = path else {
         return CustomCss::default();
     };
 
-    // 先に大きさを見る。`read_to_string` してから捨てるのでは、
-    // 上限を設けている意味がない。
+    // 先にサイズを見る。`read_to_string` してから破棄するのでは、上限を設ける意味がない。
     let size = match std::fs::metadata(path) {
         Ok(meta) => meta.len(),
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => return CustomCss::default(),
@@ -191,11 +186,11 @@ fn unreadable(path: &Path, message: String) -> CustomCss {
     }
 }
 
-/// 無ければ雛形を作る。**既にあるファイルには 1 バイトも触らない。**
+/// 無ければ雛形を作る。既にあるファイルには一切書き込まない。
 ///
-/// 設定 UI の「カスタム CSS を開く」から呼ぶ。空のファイルではなく雛形にしてあるのは、
-/// 開いた人が最初に知る必要のあること（**本文にしか当たらない** / 変数は `:scope` に書く）が
-/// ファイルの中にしか書けないため。設定 UI に説明を並べる代わりにここへ置く。
+/// 設定 UI の「カスタム CSS を開く」から呼ぶ。
+/// 空のファイルではなく雛形にしてあるのは、開いた人が最初に知る必要のあること（適用対象は本文だけであること / 変数は `:scope` に書くこと）をファイルの中にしか書けないためである。
+/// 設定 UI に説明を並べる代わりにここへ置く。
 pub fn ensure_exists(path: &Path, surface: Surface) -> CoreResult<()> {
     if path.exists() {
         return Ok(());
@@ -206,9 +201,8 @@ pub fn ensure_exists(path: &Path, surface: Surface) -> CoreResult<()> {
     atomic::write(path, surface.template().as_bytes())
 }
 
-/// 雛形。**説明だけで、有効な宣言を 1 つも含めない。**
-/// 既定の見た目は既定のままであるべきで（F-CONF-02）、
-/// ここに例を「効く形」で書くと、開いた瞬間に見た目が変わる。
+/// 雛形。説明だけで、有効な宣言を 1 つも含めない。
+/// 既定の表示は既定のままであるべきで（F-CONF-02）、ここに有効な形で例を書くと、開いた時点で表示が変わってしまう。
 const TEMPLATE_PREVIEW: &str = "\
 /*
  * Marxdown のカスタム CSS（本文）。
@@ -229,10 +223,9 @@ const TEMPLATE_PREVIEW: &str = "\
 
 /// エディター用の雛形。
 ///
-/// **本文用と決定的に違うのは、色の届き方を説明する必要があること。**
-/// エディターの配色は Monaco が描いており、CSS の色をそのまま読んではいない。
-/// 効かせる手段はトークンの上書き（`:scope { --mx-color-* }`）であって、
-/// `.monaco-editor` を直接狙うことではない、と最初に書いておく。
+/// 本文用と違い、色がどう適用されるかを説明する必要がある。
+/// エディターの配色は Monaco が描画しており、CSS の色をそのまま参照してはいない。
+/// 変更する手段はトークンの上書き（`:scope { --mx-color-* }`）であって `.monaco-editor` を直接指定することではない、と冒頭に記す。
 const TEMPLATE_EDITOR: &str = "\
 /*
  * Marxdown のカスタム CSS（エディター）。

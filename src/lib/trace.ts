@@ -9,10 +9,12 @@ import type { TraceConfig, TraceMark } from '@/platform';
 let config: TraceConfig | null = null;
 const marks: TraceMark[] = [];
 
+/** 計測の設定を反映する。bootstrap を読んだ直後に 1 回だけ呼ぶ。 */
 export function initTrace(next: TraceConfig | null): void {
   config = next;
 }
 
+/** 計測が有効か。`--trace-startup` を付けた起動でだけ真になる。 */
 export function isTracing(): boolean {
   return config?.enabled === true;
 }
@@ -23,13 +25,14 @@ function toT0(now: number): number {
   return performance.timeOrigin + now - config.t0EpochMs;
 }
 
+/** マーカーを記録する。無効時は何もしない。 */
 export function mark(id: string, note?: string): void {
   if (!config?.enabled) return;
-  // performance.mark も打っておく。DevTools のタイムラインで見えるようにするため。
+  // performance.mark にも記録する。DevTools のタイムラインで確認できるようにするためである。
   try {
     performance.mark(`marxdown:${id}`);
   } catch {
-    // 計測が本体を壊してはいけない
+    // 計測の失敗でアプリ本体の動作を止めない
   }
   marks.push(note === undefined ? { id, atMs: toT0(performance.now()) } : { id, atMs: toT0(performance.now()), note });
 }
@@ -37,8 +40,8 @@ export function mark(id: string, note?: string): void {
 /**
  * initialization_script が打った T4 を取り込む。
  *
- * T4 は「初期スクリプト評価開始」であり、モジュールが評価されるより前の時刻。
- * だからこそ Rust 側の注入スクリプトで先に記録しておく必要がある。
+ * T4 は初期スクリプトの評価開始時点であり、モジュールが評価されるより前の時刻である。
+ * そのため Rust 側の注入スクリプトで先に記録しておく必要がある。
  */
 export function adoptT4(): void {
   if (!config?.enabled) return;
@@ -46,6 +49,7 @@ export function adoptT4(): void {
   if (typeof raw === 'number') marks.push({ id: 'T4', atMs: toT0(raw) });
 }
 
+/** 溜まったマーカーを取り出して空にする。Rust 側へ渡す直前に呼ぶ。 */
 export function drain(): TraceMark[] {
   const out = marks.slice();
   marks.length = 0;

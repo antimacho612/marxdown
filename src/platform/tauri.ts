@@ -1,5 +1,5 @@
 /**
- * Tauri 実装。**`invoke()` を呼んでよいのはこのファイルだけ**。
+ * Tauri 実装。`invoke()` を呼んでよいのはこのファイルだけである。
  *
  * 02.architecture/03-layers.md §1: 「どこからでも `invoke()` が呼ばれる」状態を防ぐ。
  * IPC 呼び出し回数は性能に直結する。
@@ -36,11 +36,10 @@ const EVENT_WINDOW_MAXIMIZED = 'marxdown://window-maximized';
 const EVENT_MAXIMIZE_HOVER = 'marxdown://maximize-hover';
 
 /**
- * Tauri の購読 API を「同期的に解除関数を返す」形に均す。
+ * Tauri の購読 API を、同期的に解除関数を返す形に揃える。
  *
- * `listen` 系は解除関数を Promise で返すため、購読が確立する前に解除された場合を
- * 取りこぼさないようにする。呼び出し側（Domain 層）は購読が非同期であることを
- * 知らずに済む。
+ * `listen` 系は解除関数を Promise で返すため、購読が確立する前に解除された場合も取りこぼさないようにする。
+ * 呼び出し側（Domain 層）は購読が非同期であることを意識せずに済む。
  */
 function subscribe(start: () => Promise<UnlistenFn>): () => void {
   let dispose: UnlistenFn | null = null;
@@ -59,12 +58,13 @@ function subscribe(start: () => Promise<UnlistenFn>): () => void {
 }
 
 declare global {
-  // `var` でなければならない。`let` / `const` は `globalThis` に生えず、
-  // Rust の initialization_script が注入した値を型として拾えない。
+  // `var` でなければならない。
+  // `let` / `const` は `globalThis` のプロパティにならず、Rust の initialization_script が注入した値を型として参照できない。
   var __MARXDOWN_BOOTSTRAP__: Bootstrap | undefined;
   var __MARXDOWN_T4__: number | undefined;
 }
 
+/** Tauri 上での Platform 実装。`isTauri()` が真のときに選ばれる（`platform/index.ts`）。 */
 export const tauriPlatform: Platform = {
   kind: 'tauri',
 
@@ -82,8 +82,8 @@ export const tauriPlatform: Platform = {
   },
 
   async resolveAsset(href, baseDir) {
-    // Rust が返すのは検証済みの絶対パス。`asset:` プロトコルの URL に変換して
-    // 初めて WebView が読める（CSP の `img-src` が許可しているのはこの形）。
+    // Rust が返すのは検証済みの絶対パスである。
+    // `asset:` プロトコルの URL へ変換して初めて WebView から読み込める（CSP の `img-src` が許可しているのはこの形式）。
     return convertFileSrc(await invoke<string>('resolve_asset', { href, baseDir }));
   },
 

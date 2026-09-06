@@ -1,7 +1,7 @@
 //! コマンド境界のエラー型。
 //!
 //! 02.architecture/README.md 原則 C に従い、Rust 側は「速いこと」だけを担当する。
-//! したがってエラーもフロントエンドが分岐できる最小限の種別に留め、
+//! エラーもフロントエンドが分岐できる最小限の種別に留める。
 //! ユーザー向けの文言生成は TypeScript 側（`src/i18n/ja.ts`）に置く。
 
 use serde::Serialize;
@@ -76,4 +76,5 @@ impl Serialize for CoreError {
     }
 }
 
+/// コマンド境界の `Result`。エラー側は必ず [`CoreError`] にする。
 pub type CoreResult<T> = Result<T, CoreError>;

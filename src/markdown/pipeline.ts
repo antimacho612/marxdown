@@ -1,7 +1,7 @@
 /**
  * markdown-it の構築（02.architecture/06-markdown-rendering-pipeline.md §1 / ADR-0003）。
  *
- * DOM に触れてはいけない（Worker 側で評価される前提。DOMPurify はメインスレッド側の担当）。
+ * この層は文字列の変換だけを行い、DOM には触れない（サニタイズは `paint.ts` が呼ぶ DOMPurify の担当 / ADR-0006）。
  * プラグイン構成は 04.tech-stack/04-markdown.md §2 の既定に従う。
  * 脚注・タスクリスト・GitHub Alerts は M4 から M2 へ前倒し済みである（OQ-27 / 06.roadmap/m2-editor.md §1.4）。
  *
@@ -17,6 +17,7 @@ import taskLists from 'markdown-it-task-lists';
 import { splitFrontMatter } from './plugins/front-matter';
 import { extractOutline, lineMapPlugin, type OutlineItem } from './plugins/line-map';
 
+/** `render` の結果。HTML と、そこから導出した派生値をまとめて返す。 */
 export interface RenderResult {
   html: string;
   outline: OutlineItem[];
@@ -27,6 +28,7 @@ export interface RenderResult {
 
 let cached: MarkdownIt | null = null;
 
+/** markdown-it を組み立てる。`use` の順序は仕様である（モジュール冒頭を参照）。 */
 export function createMarkdownIt(): MarkdownIt {
   const md = new MarkdownItCallable({
     // 02.architecture/09-security.md §1 Layer 2: html は通すが、出力は必ず Layer 3 (DOMPurify) を通す。
@@ -37,32 +39,32 @@ export function createMarkdownIt(): MarkdownIt {
     typographer: false, // 勝手な記号変換はしない（Markdown Is the Product）
   });
 
-  // 見出しに id を振るだけ。permalink（¶ リンク）は付けない。
-  // 本文に無い記号を勝手に足すのは Principle 2「Markdown Is the Product」に反する。
+  // 見出しに id を付与するだけで、permalink（¶ リンク）は付けない。
+  // 本文に無い記号を追加するのは Principle 2「Markdown Is the Product」に反する。
   md.use(anchor, { slugify: slugifyHeading });
 
   // GitHub Alerts（F-VIEW-14）。`> [!NOTE]` の blockquote を `alert_open` に書き換える。
-  // タイトルは GitHub と同じ英語のまま（Familiar）。ここは UI 文言ではなく
-  // **本文の一部として GitHub が描くもの**なので、i18n/ja.ts の対象にしない。
+  // タイトルは GitHub と同じ英語のままにする（Familiar）。
+  // これは UI 文言ではなく本文の一部として描画されるものであるため、`i18n/ja.ts` の対象にしない。
   md.use(githubAlerts);
 
-  // 脚注（F-VIEW-16）。生成されるブロックは本文の末尾に付く。
-  // **チャンク分割はこのブロックの中で切ってはいけない**（`renderChunks`）。
+  // 脚注（F-VIEW-16）。生成されるブロックは本文の末尾に追加される。
+  // チャンク分割はこのブロックの内側では行わない（`renderChunks`）。
   md.use(footnote);
 
-  // タスクリスト（F-VIEW-01 の GFM 相当）。`<input type="checkbox" disabled>` を出す。
-  // **既定のまま disabled で出す。** プレビュー上でチェックを許すか（OQ-05）は
-  // 未決着で、期限は M4。ここで `enabled: true` にすると、その決定を
-  // 先取りしたことになる（サニタイザ側も `markdown/sanitize.ts` で disabled を要求する）。
+  // タスクリスト（F-VIEW-01 の GFM 相当）。`<input type="checkbox" disabled>` を出力する。
+  // 既定のまま disabled で出力する。
+  // プレビュー上でチェックを許可するかは未決（OQ-05、期限は M4）であり、ここで `enabled: true` にすると決定を先取りすることになる
+  // （サニタイザ側も `markdown/sanitize.ts` で disabled を要求している）。
   md.use(taskLists);
 
-  // **最後に置く。** 上のプラグインが登録したレンダラごと包む必要がある。
+  // 最後に登録する。上のプラグインが登録したレンダラごと包む必要がある。
   md.use(lineMapPlugin);
 
   return md;
 }
 
-/** Worker のライフサイクル内で使い回す。構築コストは 1 回だけ払う。 */
+/** 構築済みのインスタンスを使い回す。構築コストは 1 回だけになる。 */
 export function getMarkdownIt(): MarkdownIt {
   cached ??= createMarkdownIt();
   return cached;
@@ -71,8 +73,8 @@ export function getMarkdownIt(): MarkdownIt {
 /**
  * 見出しのスラッグ化。GitHub と揃える（Familiar）。
  *
- * 日本語の見出しがそのまま残るのは意図的。GitHub も同じ挙動で、
- * `#見出し` のアンカーリンクが通る。
+ * 日本語の見出しがそのまま残るのは意図した挙動である。
+ * GitHub も同じ挙動であり、`#見出し` のアンカーリンクが機能する。
  */
 export function slugifyHeading(text: string): string {
   return text
@@ -85,8 +87,7 @@ export function slugifyHeading(text: string): string {
 /**
  * パースして HTML を作る。
  *
- * Front Matter を切り離したうえで、`data-line` が**元テキストの行番号**を
- * 指すように env でオフセットを渡す。
+ * Front Matter を切り離したうえで、`data-line` が元テキストの行番号を指すよう env でオフセットを渡す。
  */
 export function render(text: string): RenderResult {
   const md = getMarkdownIt();
@@ -142,19 +143,18 @@ export function renderChunks(
   let blocks = 0;
   let limit = firstChunkBlocks;
 
-  // 脚注ブロック（`markdown-it-footnote` が末尾に足す）より手前でしか切らない。
+  // 脚注ブロック（`markdown-it-footnote` が末尾に追加する）より手前でしか分割しない。
   //
-  // `footnote_anchor`（↩ の戻りリンク）は **level 0 / nesting 0** で、下の判定からは
-  // 「トップレベルブロックの終端」に見える。実際には `<li>` の中に居るので、
-  // ここで切ると `<section class="footnotes">` が閉じないまま次のチャンクへ渡る。
-  // 脚注ブロックは本文の末尾にしか出ないため、丸ごと最後のチャンクへ送れば足りる。
+  // `footnote_anchor`（戻りリンク）は level 0 / nesting 0 であり、下の判定ではトップレベルブロックの終端に該当する。
+  // 実際には `<li>` の内側にあるため、ここで分割すると `<section class="footnotes">` が閉じないまま次のチャンクへ渡る。
+  // 脚注ブロックは本文の末尾にしか出力されないため、まとめて最後のチャンクへ含める。
   const footnoteBlock = tokens.findIndex((t) => t.type === 'footnote_block_open');
   const cutEnd = footnoteBlock === -1 ? tokens.length : footnoteBlock;
 
   for (let i = 0; i < cutEnd; i++) {
     const token = tokens[i];
     if (!token) continue;
-    // level 0 かつ nesting が閉じたところがトップレベルブロックの終端
+    // level 0 かつ nesting が閉じた位置がトップレベルブロックの終端になる
     if (token.level === 0 && token.nesting <= 0) {
       blocks++;
       if (blocks >= limit) {

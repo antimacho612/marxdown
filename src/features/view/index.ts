@@ -1,12 +1,12 @@
 /**
  * view feature の公開面（02.architecture/03-layers.md §2）。
  *
- * ここが持つのは**ビューの状態**だけである。モードの切り替えそのもの（エディターを載せる・
- * ライブ描画を止める・検索を開く）は組み立ての仕事なので `features/mode/` にある。
- * 同居させると、`viewStore` を読むだけの側までその依存を引き込む（feature 単位で循環する）。
+ * ここが持つのはビューの状態だけである。
+ * モードの切り替えそのもの（エディターのマウント、ライブ描画の停止、検索を開く処理）は組み立ての担当であり `features/mode/` にある。
+ * 同居させると、`viewStore` を読むだけの側までその依存を引き込むことになり、feature 単位で循環する。
  *
- * 遅延チャンクを持たない。分割比もスクロール同期も初期フレームから要る。
- * 分割比の丸めと保存（`split.ts` の `setSplit` 以下）は `SplitDivider` の内側の都合なので出さない。
+ * 遅延チャンクは持たない。分割比もスクロール同期も初期フレームから必要になる。
+ * 分割比の丸めと保存（`split.ts` の `setSplit` 以降）は `SplitDivider` の内部の関心事であるため公開しない。
  */
 export { default as SplitDivider } from './SplitDivider.svelte';
 export { attachEditorScrollPort, jumpToEditorLine, startScrollSync, stopScrollSync } from './scroll-sync';

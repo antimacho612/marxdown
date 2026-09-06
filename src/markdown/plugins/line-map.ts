@@ -27,15 +27,13 @@ const BLOCK_OPEN_RULES = [
 /**
  * `renderToken` を通らないルールと、`data-line` を差し込む開始タグ。
  *
- * markdown-it の `fence` / `code_block` レンダラは `<pre><code ...>` を手で組み立て、
- * **トークンの属性を `<code>` 側に出す**。そのまま `attrSet` すると
- * `data-line` が `<code>` に付き、ブロック要素である `<pre>` に付かない。
- * スクロール同期は `<pre>` の位置を必要とするので、出力後に `<pre>` へ差し込む。
+ * markdown-it の `fence` / `code_block` レンダラは `<pre><code ...>` を文字列で組み立て、トークンの属性を `<code>` 側に出力する。
+ * そのまま `attrSet` すると `data-line` が `<code>` に付き、ブロック要素である `<pre>` には付かない。
+ * スクロール同期は `<pre>` の位置を必要とするため、出力後に `<pre>` へ差し込む。
  *
- * `alert_open`（GitHub Alerts / F-VIEW-14）も同じ形。あちらは
- * **`blockquote_open` を書き換えて作られる**（`markdown-it-github-alerts` の core ルール）ので、
- * `BLOCK_OPEN_RULES` の `blockquote_open` は当たらない。レンダラはタイトル行と
- * アイコンを含む `<div>` を文字列で組み立て、トークンの属性を見ない。
+ * `alert_open`（GitHub Alerts / F-VIEW-14）も同じ構造である。
+ * これは `blockquote_open` を書き換えて生成される（`markdown-it-github-alerts` の core ルール）ため、`BLOCK_OPEN_RULES` の `blockquote_open` には該当しない。
+ * レンダラはタイトル行とアイコンを含む `<div>` を文字列で組み立て、トークンの属性を参照しない。
  */
 const RAW_OPEN_RULES = [
   ['fence', '<pre'],
@@ -43,6 +41,7 @@ const RAW_OPEN_RULES = [
   ['alert_open', '<div'],
 ] as const;
 
+/** `data-line` を付けるレンダラで既存のルールを包む。`use` は他のプラグインより後に行う。 */
 export function lineMapPlugin(md: MarkdownIt): void {
   for (const rule of BLOCK_OPEN_RULES) {
     const original = md.renderer.rules[rule];
@@ -50,7 +49,7 @@ export function lineMapPlugin(md: MarkdownIt): void {
     const patched: RendererRule = (tokens, idx, options, env, self) => {
       const token = tokens[idx];
       if (token?.map) {
-        // token.map は [開始行, 終了行) の 0 始まり
+        // `token.map` は 0 始まりの [開始行, 終了行) である
         token.attrSet('data-line', String(token.map[0]));
       }
       return original ? original(tokens, idx, options, env, self) : self.renderToken(tokens, idx, options);
@@ -71,12 +70,7 @@ export function lineMapPlugin(md: MarkdownIt): void {
   }
 }
 
-/**
- * トークン列から見出しを抜き出す（アウトライン用）。
- *
- * レンダリングとは独立に呼べるようにしておく。Worker 側でパースした
- * 同じ Token[] を使い回すことで、2 回パースしなくて済む。
- */
+/** アウトライン 1 項目（F-VIEW-02）。`line` は元テキストの行番号（0 始まり）。 */
 export interface OutlineItem {
   level: number;
   text: string;
@@ -84,6 +78,12 @@ export interface OutlineItem {
   slug: string;
 }
 
+/**
+ * トークン列から見出しを抽出する（アウトライン用）。
+ *
+ * レンダリングとは独立に呼べるようにしてある。
+ * パース済みの同じ `Token[]` を使い回すことで、2 回パースせずに済む。
+ */
 export function extractOutline(tokens: Token[]): OutlineItem[] {
   const out: OutlineItem[] = [];
   for (let i = 0; i < tokens.length; i++) {

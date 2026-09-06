@@ -1,13 +1,13 @@
 /**
  * パース結果の形と、段階的描画の既定値。
  *
- * かつては Worker との受け渡しの取り決め（`WorkerRequest` / `WorkerResponse`）が
- * ここにあった。**M2 Phase 6 で Worker を畳んだ**ので、境界をまたぐ型ではなくなり、
- * 残ったのは結果の形だけになった（[ADR-0010](../../docs/adr/0010-parse-on-main-thread.md)）。
+ * かつては Worker との受け渡しの取り決め（`WorkerRequest` / `WorkerResponse`）がここにあった。
+ * M2 Phase 6 で Worker を撤去したため境界をまたぐ型ではなくなり、結果の形だけが残っている（[ADR-0010](../../docs/adr/0010-parse-on-main-thread.md)）。
  */
 import type { OutlineItem } from './plugins/line-map';
 import type { TextStats } from './text-stats';
 
+/** パースの結果。段階的描画に必要な情報と派生値をまとめて返す。 */
 export interface ParseResult {
   /** 要求の通し番号。開いた直後に投げたものかを呼び出し側が見分けるために持つ。 */
   id: number;

@@ -2,17 +2,15 @@
 @component
 ステータスバーの押せる項目（03.ux-spec/07-status-and-notifications.md §3.1）。
 
-**押せるものだけがこの見た目になる。** 押しても何も起きない項目をボタンに見せない
-（BOM・読み取り専用・カーソル位置・文字数は素の `<span>` のまま）。
+押せる項目だけがこの見た目になる。
+押しても何も起きない項目はボタンとして表示しない（BOM・読み取り専用・カーソル位置・文字数は `<span>` のままにする）。
 
-見た目をここ 1 つに閉じるための部品である。使う側が `StatusBar` と
-`StatusMenuButton` の 2 つに分かれているため、以前は `styles/shell.css` に
-グローバルなクラスとして置いてあった。**部品にすれば
-「コンポーネント固有の CSS は `src/styles/` に置かない」**（02.architecture/03-layers.md）
-に戻せる。
+見た目をこの 1 か所に閉じるための部品である。
+使う側が `StatusBar` と `StatusMenuButton` の 2 つに分かれているため、以前は `styles/shell.css` にグローバルなクラスとして置いてあった。
+部品にすることで、コンポーネント固有の CSS は `src/styles/` に置かないという方針（02.architecture/03-layers.md）に戻せる。
 
-属性はそのまま素通しする。メニューを開く側は `aria-haspopup` / `aria-expanded` と
-`onkeydown` を、押すだけの側は `title` と `onclick` だけを渡す。
+属性はそのまま渡す。
+メニューを開く側は `aria-haspopup` / `aria-expanded` と `onkeydown` を、押すだけの側は `title` と `onclick` だけを渡す。
 -->
 
 <script lang="ts">
@@ -20,7 +18,7 @@
   import type { HTMLButtonAttributes } from 'svelte/elements';
 
   interface Props extends HTMLButtonAttributes {
-    /** ボタンの実体。**位置を測る / フォーカスを戻す側だけ**が受け取る。 */
+    /** ボタンの実体。位置を測定する側とフォーカスを戻す側だけが受け取る。 */
     element?: HTMLButtonElement | undefined;
     children: Snippet;
   }
@@ -40,12 +38,12 @@
     background: none;
     color: inherit;
     font: inherit;
-    /* 桁を揃える。倍率やカーソル位置が揺れると、隣の項目が 1 文字ずつ動く。 */
+    /* 桁を揃える。倍率やカーソル位置の桁数が変わると、隣の項目が 1 文字ずつ移動する。 */
     font-variant-numeric: tabular-nums;
     cursor: pointer;
   }
 
-  /* 開いている間は押した項目を光らせたままにする（どこから開いたかが分かる）。 */
+  /* 開いている間は押した項目を強調したままにする（開いた元が分かるようにするため）。 */
   .mx-statusbar__button:hover,
   .mx-statusbar__button[aria-expanded='true'] {
     background: var(--mx-color-bg-hover);

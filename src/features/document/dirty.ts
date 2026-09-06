@@ -21,6 +21,7 @@ import { syncDocumentText } from './text';
  */
 let textDirty = false;
 
+/** 本文がディスクと違うかを設定する。合成後の値は `refreshDirty` が決める。 */
 export function setDirty(dirty: boolean): void {
   textDirty = dirty;
   refreshDirty();
@@ -29,12 +30,12 @@ export function setDirty(dirty: boolean): void {
 /**
  * 源のどれかが変わったので、ダーティ状態を出し直す。
  *
- * **値が変わらなければ何もしない。** 打鍵ごとにストアへ書いたり IPC を出したり
- * しないための門で、エディターは 1 打鍵ごとにここへ来る。
+ * 値が変わらなければ何もしない。
+ * エディターは 1 打鍵ごとにここを通るため、打鍵ごとにストアへ書き込んだり IPC を発行したりしないようにしている。
  */
 export function refreshDirty(): void {
-  // **`eol.ts` を import しない。** あちらは変換の意味を持つ側で、こちらを呼ぶ。
-  // 判定に要るのは「希望が置かれているか」だけなので、ストアを直接見て循環を避ける。
+  // `eol.ts` を import しない。`eol.ts` は変換を担当する側であり、こちらを呼び出す。
+  // 判定に必要なのは変換の指定が置かれているかどうかだけであるため、ストアを直接参照して循環を避ける。
   const dirty = textDirty || documentStore.eolOverride !== null;
   if (documentStore.isDirty === dirty) return;
   documentStore.isDirty = dirty;
@@ -49,11 +50,11 @@ export function markDirty(): void {
 /**
  * ディスクと一致した。保存の成功と、開く / 読み直しの完了で呼ばれる。
  *
- * **ここでダーティ判定の基準も動かす。** 動かさないと、保存した後に Undo で
- * 保存直前の内容まで戻ってもダーティのままになる。
+ * ここでダーティ判定の基準も更新する。
+ * 更新しないと、保存した後に Undo で保存直前の内容まで戻してもダーティのままになる。
  *
- * 改行コードの希望も落とす。**保存できたなら書き戻し済みで、
- * 開き直したなら別のファイルの話**なので、どちらでも持ち越す意味が無い。
+ * 改行コードの変換指定も破棄する。
+ * 保存できた場合は書き戻し済みであり、開き直した場合は別のファイルであるため、どちらでも引き継ぐ必要がない。
  */
 export function markClean(): void {
   textDirty = false;

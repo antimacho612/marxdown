@@ -1,8 +1,7 @@
 //! ドキュメントの読み書き。
 //!
-//! 02.architecture/04-rust-responsibilities.md §2 / 02.architecture/04-rust-responsibilities.md §3。`tauri-plugin-fs` を使わず自作しているのは、
-//! EOL / BOM / mtime / 原子性の制御が要件（F-EDIT-14 / N-REL-01 / N-CMP-03）だから
-//! （04.tech-stack/06-rust.md §3）。
+//! 02.architecture/04-rust-responsibilities.md §2 / §3。
+//! `tauri-plugin-fs` を使わず自作しているのは、EOL / BOM / mtime / 原子性の制御が要件だからである（F-EDIT-14 / N-REL-01 / N-CMP-03 / 04.tech-stack/06-rust.md §3）。
 
 pub mod atomic;
 pub mod encoding;
@@ -17,9 +16,8 @@ use crate::error::{CoreError, CoreResult};
 use encoding::{Detected, Encoding};
 use eol::Eol;
 
-/// 開けるファイルの上限。05.performance-budget/07-not-optimized.md は
-/// 「10MB を超えるファイルの快適な編集」を対象外としているが、
-/// 開くこと自体は許して「クラッシュしない」を保証する。
+/// 開けるファイルの上限。
+/// 05.performance-budget/07-not-optimized.md は「10MB を超えるファイルの快適な編集」を対象外としているが、開くこと自体は許可してクラッシュしないことを保証する。
 /// ここを超えるものはメタ情報だけ返し、本文は読まない。
 pub const MAX_READ_BYTES: u64 = 64 * 1024 * 1024;
 
@@ -27,6 +25,8 @@ pub const MAX_READ_BYTES: u64 = 64 * 1024 * 1024;
 /// これを超える場合はメタ情報のみ注入し、本文は非同期で受け取る。
 pub const INLINE_CONTENT_LIMIT: u64 = 256 * 1024;
 
+/// 本文を除いたドキュメントの情報（02.architecture/04-rust-responsibilities.md §2）。
+/// 保存時に読み込み時と同じバイト列へ戻すために必要な値をすべて含む（N-CMP-03）。
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DocumentMeta {
@@ -40,6 +40,7 @@ pub struct DocumentMeta {
     pub readonly: bool,
 }
 
+/// [`read`] の結果。メタ情報と、LF 正規化した本文の組。
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DocumentPayload {
@@ -49,6 +50,8 @@ pub struct DocumentPayload {
     pub content: String,
 }
 
+/// [`write`] への要求。
+/// `eol` / `bom` / `encoding` は読み込み時の値をそのまま返すことを前提とする（N-CMP-03）。
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct WriteRequest {
@@ -64,15 +67,13 @@ pub struct WriteRequest {
 
 /// 保存の結果。
 ///
-/// **`rename_all_fields` が要る。** enum に付けた `rename_all` が変えるのは
-/// **バリアント名だけ**で（`Saved` → `"saved"`）、中のフィールドは
-/// `mtime_ms` のまま送られる。構造体と同じつもりで書くと、
-/// フロント側の `mtimeMs` が `undefined` になる。
+/// `rename_all_fields` が必要である。
+/// enum に付けた `rename_all` が変えるのはバリアント名だけで（`Saved` → `"saved"`）、中のフィールドは `mtime_ms` のまま送られる。
+/// 構造体と同じつもりで書くと、フロント側の `mtimeMs` が `undefined` になる。
 ///
-/// これは**画面に出ない壊れ方**をする。1 回目の保存は通り、
-/// 2 回目が「別のプロセスが変更しています」になる（`expectedMtimeMs` が欠けるため、
-/// Rust 側が新規作成として扱い、既存ファイルとの衝突になる）。
-/// 下の `serializes_fields_in_camel_case` が見張っている。
+/// この不具合は画面上に現れない。
+/// 1 回目の保存は成功し、2 回目が「別のプロセスが変更しています」になる（`expectedMtimeMs` が欠けるため、Rust 側が新規作成として扱い、既存ファイルとの衝突になる）。
+/// `serializes_fields_in_camel_case` がこれを検証している。
 #[derive(Debug, Clone, Serialize)]
 #[serde(
     tag = "status",
@@ -108,8 +109,8 @@ pub fn canonicalize(path: &Path) -> CoreResult<PathBuf> {
     Ok(parent.join(name))
 }
 
-/// `pub` なのは、ファイル監視（`watch.rs`）が同じ規則で mtime を見る必要があるため。
-/// 自己イベントの照合が読み書きと 1ms でもずれると、弾けなくなる。
+/// `pub` なのは、ファイル監視（`watch.rs`）が同じ規則で mtime を見る必要があるためである。
+/// 自己イベントの照合が読み書きと 1ms でもずれると、自己イベントを除外できなくなる。
 pub fn mtime_ms(meta: &std::fs::Metadata) -> i64 {
     meta.modified()
         .ok()
@@ -120,11 +121,11 @@ pub fn mtime_ms(meta: &std::fs::Metadata) -> i64 {
 
 /// ファイルを読んで `DocumentPayload` を作る。
 ///
-/// この関数は**起動シーケンスのクリティカルパス上で、WebView 初期化と並行に**
-/// 呼ばれる（02.architecture/05-startup-sequence.md §1）。余計な仕事をしない。
+/// この関数は起動シーケンスのクリティカルパス上で、WebView 初期化と並行して呼ばれる（02.architecture/05-startup-sequence.md §1）。
+/// 余計な処理を追加しない。
 ///
 /// `forced` はエンコーディングの指定（03.ux-spec/07-status-and-notifications.md §3 の「再解釈」）。
-/// **`None` が通常の経路**で、そのときだけ推定が走る。
+/// `None` が通常の経路であり、そのときだけ推定を実行する。
 pub fn read(path: &Path, forced: Option<Encoding>) -> CoreResult<DocumentPayload> {
     let path = canonicalize(path)?;
     let fs_meta = std::fs::metadata(&path)?;
@@ -199,7 +200,6 @@ pub fn write(req: &WriteRequest) -> CoreResult<SaveResult> {
         },
     );
 
-    // 3. 一時ファイル経由で置き換える
     atomic::write(&path, &bytes)?;
 
     let after = std::fs::metadata(&path)?;

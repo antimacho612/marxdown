@@ -16,10 +16,10 @@ import { settingsStore, styleEpoch } from '@/features/settings';
 export function watchEditorSettings(reapply: () => void): () => void {
   return $effect.root(() => {
     $effect(() => {
-      // 依存を明示的に読む。`reapply` の中で読まれることに頼ると、
-      // 呼び出し側を差し替えたときに黙って追従しなくなる。
+      // 依存を明示的に読む。
+      // `reapply` の中で読まれることに依存すると、呼び出し側を差し替えたときに追従しなくなる。
       void settingsStore.values;
-      // `editor.css` の差し替え（ADR-0013）。**設定ではないので別の合図で来る。**
+      // `editor.css` の差し替え（ADR-0013）。設定ではないため別の経路で通知される。
       void styleEpoch.value;
       reapply();
     });

@@ -16,12 +16,13 @@ const DETECTION_LINE = 0.15;
 
 const HEADING_SELECTOR = 'h1, h2, h3, h4, h5, h6';
 
+/** 追従の操作。`followHeadings` が返す。 */
 export interface OutlineFollower {
   /**
    * 見出しを集め直す。
    *
-   * 段階的描画（02.architecture/06-markdown-rendering-pipeline.md §4）では、本文は idle 時に後から増える。
-   * 増え終わったところで呼び直さないと、後半の見出しを一生観測しない。
+   * 段階的描画（02.architecture/06-markdown-rendering-pipeline.md §4）では、本文が idle 時に後から追加される。
+   * 追加が完了した時点で呼び直さないと、後半の見出しが観測対象に入らない。
    */
   refresh: () => void;
   stop: () => void;
@@ -30,8 +31,8 @@ export interface OutlineFollower {
 /**
  * 追従を始める。返り値の `stop()` で必ず止めること。
  *
- * ペインを閉じている間は誰も呼ばないので、**観測は 1 つも動いていない**
- * （アイドル時のコストがゼロであることの根拠）。
+ * ペインを閉じている間はこの関数が呼ばれないため、観測は 1 つも動作しない
+ * （アイドル時のコストが発生しない根拠）。
  *
  * @param container 本文のスクロールコンテナ（`#mx-preview`）
  * @param onActive 現在位置が変わったときに呼ばれる。見出しが 1 つも無ければ `-1`
@@ -68,8 +69,8 @@ export function followHeadings(container: HTMLElement, onActive: (index: number)
   );
 
   function emit(): void {
-    // 越えているものの**最後**が現在位置。文書順に単調なので、
-    // 後ろから見て最初に見つかったものが答えになる。
+    // 通過済みのもののうち最後のものが現在位置になる。
+    // 文書順に単調であるため、末尾から探索して最初に見つかったものが該当する。
     let next = -1;
     for (let i = passed.length - 1; i >= 0; i--) {
       if (passed[i] === true) {
@@ -87,9 +88,9 @@ export function followHeadings(container: HTMLElement, onActive: (index: number)
 
     observer.disconnect();
     indexOf = new WeakMap();
-    // 既に観測済みだった見出しの状態は引き継ぐ。**捨てると、後半のチャンクが
-    // 入るたびに現在位置が先頭へ跳ね返る。** 観測を始めた直後に初回のコールバックが
-    // 全要素ぶん届くので、引き継がなかった部分もすぐ埋まる。
+    // 既に観測済みの見出しの状態は引き継ぐ。
+    // 破棄すると、後半のチャンクが追加されるたびに現在位置が先頭へ戻る。
+    // 観測を開始した直後に初回のコールバックが全要素ぶん届くため、引き継がなかった部分もすぐ更新される。
     passed = passed.slice(0, headings.length);
 
     for (const [index, heading] of headings.entries()) {
@@ -109,14 +110,14 @@ export function followHeadings(container: HTMLElement, onActive: (index: number)
 /**
  * その行を含む見出しの添字（Edit の現在位置 / #59）。
  *
- * **行番号より手前にある最後の見出し**が答えになる。見出しより前
- * （Front Matter / 前書き）に居るあいだは `-1`。そこはどの見出しの中でもない。
+ * 指定した行番号より手前にある最後の見出しが該当する。
+ * 最初の見出しより前（Front Matter や前書き）にある間は `-1` を返す。その範囲はどの見出しにも含まれない。
  *
  * カーソル行を使うのは、Edit で見えているのがエディターだからで、
  * VS Code のアウトラインが現在位置を示す基準と同じである。
  *
  * @param items アウトラインの項目。`line` は 0 始まり（`markdown/plugins/line-map.ts`）
- * @param line エディターのカーソル行。**1 始まり**
+ * @param line エディターのカーソル行。1 始まり
  */
 export function headingAtLine(items: readonly OutlineItem[], line: number): number {
   let found = -1;

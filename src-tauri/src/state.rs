@@ -1,7 +1,6 @@
 //! アプリケーション全体で共有する状態。
 //!
-//! 02.architecture/README.md 原則 C に従い、ここに置くのは
-//! 「Rust 側が速くやる仕事のために必要なもの」だけ。
+//! 02.architecture/README.md 原則 C に従い、ここに置くのは Rust 側の処理に必要なものだけである。
 //! タブ・カーソル・設定などの UI 状態は TypeScript 側にある。
 
 use std::collections::HashMap;
@@ -30,6 +29,7 @@ pub struct ConfigPaths {
     pub editor_css: Option<PathBuf>,
 }
 
+/// `manage` で 1 つだけ持つ共有状態。コマンドとウィンドウイベントの両方から参照する。
 pub struct AppState {
     pub args: CliArgs,
     pub trace: Trace,
@@ -39,7 +39,7 @@ pub struct AppState {
     /// 設定ファイルたちの置き場所。
     paths: ConfigPaths,
     /// ユーザー設定（02.architecture/04-rust-responsibilities.md §5）。
-    /// **「壊れている」という事実も一緒に保持する。** 書き戻しの可否がこれで決まる。
+    /// 「壊れている」という事実も一緒に保持し、書き戻しの可否をこれで決める。
     settings: Mutex<SettingsLoad>,
     /// アセット参照を許可するディレクトリ（N-SEC-05）。
     /// 開いたドキュメントの親ディレクトリを追加していく。
@@ -49,22 +49,22 @@ pub struct AppState {
     warm_counter: AtomicU64,
     /// 最後にフロントへ知らせた「最大化されているか」。
     ///
-    /// `Resized` はドラッグ中に毎フレーム飛んでくる。**変化したときだけ**
-    /// イベントを出すために、直前の値をここに置く。
+    /// `Resized` はドラッグ中に毎フレーム発火する。
+    /// 変化したときだけイベントを出すために、直前の値をここに保持する。
     maximized: AtomicBool,
     /// 未保存の変更があるか（F-EDIT-03 / 03.ux-spec/07-status-and-notifications.md §1）。
     ///
-    /// **本当の持ち主はフロントである。** ここに複製があるのは、終了の 3 経路
-    /// （トレイメニュー / ハンバーガーメニュー / `Ctrl+Q`）が Rust 側で合流していて
-    /// （`close.rs`）、**トレイメニューからの終了はフロントを経由しない**ため。
-    /// 確認をフロントに置くと、その経路だけ確認せずに終わる。
+    /// 値の所有者はフロントである。
+    /// ここに複製があるのは、終了の 3 経路（トレイメニュー / ハンバーガーメニュー / `Ctrl+Q`）が Rust 側で合流しており（`close.rs`）、トレイメニューからの終了がフロントを経由しないためである。
+    /// 確認をフロントに置くと、その経路だけ確認せずに終了することになる。
     ///
-    /// 更新は `false ⇄ true` の変わり目だけで、打鍵ごとの IPC にはならない
-    /// （`features/document/save.ts`）。
+    /// 更新は `false` と `true` の変わり目だけで、打鍵ごとの IPC にはならない（`features/document/save.ts`）。
     dirty: AtomicBool,
 }
 
 impl AppState {
+    /// 起動時に 1 回だけ作る。
+    /// `bootstrap` に初期ドキュメントがあれば、その親ディレクトリをアセットの許可スコープの初期値にする。
     pub fn new(
         args: CliArgs,
         trace: Trace,
@@ -95,13 +95,12 @@ impl AppState {
 
     /// ストアを書き換えて永続化する。
     ///
-    /// ロックを握ったままファイル I/O をしないよう、書き出す値を複製してから解放する。
-    /// ストアの更新は「最近開いたファイルに 1 件積む」程度の頻度なので、
-    /// 複製のコストより保持時間のほうが問題になる。
+    /// ロックを保持したままファイル I/O をしないよう、書き出す値を複製してから解放する。
+    /// ストアの更新は最近開いたファイルに 1 件追加する程度の頻度であり、複製のコストよりロックの保持時間のほうが問題になる。
     pub fn update_store<T>(&self, f: impl FnOnce(&mut StoreData) -> T) -> T {
         let (result, snapshot) = {
             let Ok(mut store) = self.store.lock() else {
-                // 毒されたロックで起動を止めない。永続化を諦めるだけにする。
+                // ロックが poisoned でも起動は止めない。永続化だけを諦める。
                 return f(&mut StoreData::default());
             };
             let result = f(&mut store);
@@ -111,6 +110,7 @@ impl AppState {
         result
     }
 
+    /// 最近開いたファイルの一覧。ロックを取れない場合は空を返す。
     pub fn recent(&self) -> Vec<RecentEntry> {
         self.store
             .lock()
@@ -120,9 +120,9 @@ impl AppState {
 
     /// 設定を読み直す（02.architecture/04-rust-responsibilities.md §5）。
     ///
-    /// **読めない内容に変わったときは既定値に戻さない。** 直前に読めていた値を保持し、
-    /// 壊れている事実だけを添えて返す。外部エディターで編集している最中の中間状態で
-    /// テーマが飛ぶのを防ぐため（ファイル監視も、この経路を通す）。
+    /// 読めない内容に変わったときは既定値に戻さない。
+    /// 直前に読めていた値を保持し、壊れている事実だけを添えて返す。
+    /// 外部エディターで編集している最中の中間状態でテーマが変わるのを防ぐためである（ファイル監視もこの経路を通す）。
     pub fn reload_settings(&self) -> SettingsLoad {
         let fresh = crate::settings::load(self.paths.settings.as_deref());
 
@@ -139,8 +139,8 @@ impl AppState {
 
     /// 変更したキーだけを当てて書き戻す（02.architecture/04-rust-responsibilities.md §1 `write_settings`）。
     ///
-    /// **壊れている間は拒否する**（02.architecture/04-rust-responsibilities.md §5 の 3 番目）。これが無いと、
-    /// ユーザーが直そうとしている最中に設定 UI がファイルごと吹き飛ばす。
+    /// 壊れている間は拒否する（02.architecture/04-rust-responsibilities.md §5 の 3 番目）。
+    /// これが無いと、ユーザーが修正している最中に設定 UI がファイルの内容を丸ごと消してしまう。
     pub fn patch_settings(
         &self,
         patch: serde_json::Map<String, serde_json::Value>,
@@ -149,8 +149,8 @@ impl AppState {
             return Err(CoreError::Io("設定の保存先が決まらない".into()));
         };
 
-        // ディスク上の状態を見てから判断する。起動時に読めていても、
-        // その後にユーザーが手で壊している可能性がある。
+        // ディスク上の状態を見てから判断する。
+        // 起動時に読めていても、その後にユーザーが編集して壊している可能性がある。
         let latest = self.reload_settings();
         if let Some(problem) = latest.broken {
             return Err(CoreError::SettingsBroken(problem.message));
@@ -166,11 +166,10 @@ impl AppState {
         Ok(next)
     }
 
-    /// `✕` の意味（ADR-0007 論点 1）。**メモリ上の設定を見る。**
+    /// `✕` の意味（ADR-0007 論点 1）。メモリ上の設定を見る。
     ///
-    /// ディスクを読み直さないのは、外部エディターでの編集をファイル監視が
-    /// 既に取り込んでいるため。`✕` を押すたびにファイル I/O をするのは、
-    /// 得られるものに対して高い。
+    /// ディスクを読み直さないのは、外部エディターでの編集をファイル監視が既に取り込んでいるためである。
+    /// `✕` を押すたびにファイル I/O を行うのは、得られる結果に対してコストが高い。
     pub fn close_behavior(&self) -> crate::settings::CloseBehavior {
         self.settings
             .lock()
@@ -183,9 +182,10 @@ impl AppState {
         self.store
             .lock()
             .map(|s| s.tray_intro_shown)
-            .unwrap_or(true) // 読めないなら「出した」側に倒す。二重に出すより害が小さい
+            .unwrap_or(true) // 読めない場合は表示済みとして扱う。二重に表示するより害が小さい
     }
 
+    /// トレイ常駐の説明を表示したことを記録する。`state.json` に永続化する。
     pub fn mark_tray_intro_shown(&self) {
         self.update_store(|s| s.tray_intro_shown = true);
     }
@@ -197,8 +197,8 @@ impl AppState {
 
     /// カスタム CSS の場所（02.architecture/10-theming.md §3）。
     ///
-    /// **パスをフロントに渡さない。** 開くのも読むのも Rust 側の 1 か所に閉じており、
-    /// `open_settings_file` と同じ理由で、任意のパスを受け取る口を作らずに済む。
+    /// パスをフロントには渡さない。
+    /// 開くのも読むのも Rust 側の 1 か所に閉じており、`open_settings_file` と同じ理由で、任意のパスを受け取る経路を作らずに済む。
     pub fn custom_css_path(&self) -> Option<&std::path::Path> {
         self.paths.custom_css.as_deref()
     }
@@ -225,11 +225,11 @@ impl AppState {
         Some(started.elapsed().as_secs_f64() * 1000.0)
     }
 
-    /// 最大化状態が**変化していれば** true を返し、新しい値を覚える。
+    /// 最大化状態が変化していれば true を返し、新しい値を保持する。
     ///
-    /// `WindowEvent::Resized` はウィンドウをドラッグしている間ずっと飛んでくる。
-    /// そのたびにイベントを出すと、フロントに意味のない IPC が毎フレーム届く。
-    /// 「変わったときだけ知らせる」の判定をここに閉じ込める。
+    /// `WindowEvent::Resized` はウィンドウをドラッグしている間ずっと発火する。
+    /// そのたびにイベントを出すと、フロントに不要な IPC が毎フレーム届く。
+    /// 変化したときだけ通知する判定をここに閉じ込める。
     pub fn note_maximized(&self, now: bool) -> bool {
         self.maximized.swap(now, Ordering::Relaxed) != now
     }
@@ -239,10 +239,12 @@ impl AppState {
         self.dirty.store(dirty, Ordering::Relaxed);
     }
 
+    /// 未保存の変更があるか。終了の確認（`close::request_quit`）の判断材料になる。
     pub fn is_dirty(&self) -> bool {
         self.dirty.load(Ordering::Relaxed)
     }
 
+    /// アセット参照を許可するディレクトリを 1 件加える（N-SEC-05）。同じパスは重複させない。
     pub fn allow_asset_root(&self, dir: PathBuf) {
         if let Ok(mut roots) = self.asset_roots.lock() {
             if !roots.contains(&dir) {
@@ -251,6 +253,7 @@ impl AppState {
         }
     }
 
+    /// 現在の許可ディレクトリ一覧。`scope::resolve_within` に渡す。
     pub fn asset_roots(&self) -> Vec<PathBuf> {
         self.asset_roots
             .lock()

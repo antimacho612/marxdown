@@ -1,9 +1,9 @@
 /**
  * 最近開いたファイル（F-OPEN-03 / F-OPEN-09）。
  *
- * 真実は Rust 側の永続化ストア（`src-tauri/src/store.rs`）にあり、ここはその写し。
- * 初期値は bootstrap に同梱されて届くので、Welcome 画面は**起動直後に**描ける。
- * IPC で取りに行く設計にすると、引数なし起動のたびに空の画面が 1 フレーム挟まる。
+ * 値の所有者は Rust 側の永続化ストア（`src-tauri/src/store.rs`）であり、ここはその複製である。
+ * 初期値は bootstrap に同梱されて届くため、Welcome 画面を起動直後に描画できる。
+ * IPC で取得する設計にすると、引数なしの起動のたびに空の画面が 1 フレーム表示される。
  *
  * 更新系のコマンドは更新後の一覧を返す。追加のたびに読み直す往復を省くため。
  */
@@ -13,13 +13,14 @@ class RecentStore {
   entries = $state<RecentEntry[]>([]);
 }
 
+/** 最近開いたファイル。モジュールの singleton として共有する。 */
 export const recentStore = new RecentStore();
 
 /**
  * 開いたファイルを記録する。
  *
- * **失敗しても呼び出し側に伝えない。** 履歴に残せなかったことでファイルを開く操作を
- * 失敗扱いにする理由がない。本文はもう画面に出ている。
+ * 失敗しても呼び出し側には伝えない。
+ * 履歴に記録できなかったことを理由にファイルを開く操作を失敗扱いにする必要はない。本文は既に表示されている。
  */
 export async function rememberRecent(path: string): Promise<void> {
   try {

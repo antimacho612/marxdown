@@ -12,7 +12,7 @@ import type { Encoding, ViewMode } from '@/platform';
 
 import type { StatusMenuKind } from '../props';
 
-/** メニューに並ぶ 1 行。**並べる側にしか要らない**ので `props.ts` には置かない。 */
+/** メニューに並ぶ 1 行。項目を組み立てる側だけが使うため `props.ts` には置かない。 */
 export interface StatusMenuItem {
   /** エンコーディングか表示モード。`{#each}` のキーになる。 */
   id: Encoding | ViewMode;
@@ -25,11 +25,12 @@ export interface StatusMenuItem {
 /**
  * 表示モードの選択肢（03.ux-spec/02-view-modes.md §1）。
  *
- * **WYSIWYG は並べない。** 実装は M5 で、押しても何も起きない位置を作らない
- * （`cycleMode` が順送りの並びから外しているのと同じ判断）。
+ * WYSIWYG は並べない。
+ * 実装は M5 であり、操作しても何も起きない項目を作らない（`cycleMode` が順送りの並びから外しているのと同じ判断）。
  */
 const MODES: readonly ViewMode[] = ['preview', 'edit', 'split'];
 
+/** 種別に応じた選択肢を組み立てる。現在の選択もここで判定する。 */
 export function statusMenuItems(kind: StatusMenuKind): StatusMenuItem[] {
   return kind === 'encoding' ? encodingItems() : modeItems();
 }

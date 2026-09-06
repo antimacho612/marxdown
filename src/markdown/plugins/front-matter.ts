@@ -2,11 +2,11 @@
  * Front Matter の分離（F-VIEW-09）。
  *
  * 先頭の `---` で囲まれたブロックを本文から切り離す。
- * **パースではなく分離だけ**を行い、YAML の解釈はしない。
- * 中身を構造として扱う必要が出るのは M4 以降で、それまで YAML パーサを
- * クリティカルパスに載せる理由がない（04.tech-stack/01-criteria.md）。
+ * 行うのは分離だけで、YAML の解釈はしない。
+ * 内容を構造として扱う必要が生じるのは M4 以降であり、それまで YAML パーサをクリティカルパスに載せる理由がない（04.tech-stack/01-criteria.md）。
  */
 
+/** Front Matter と本文を分離した結果。 */
 export interface SplitDocument {
   /** Front Matter の生テキスト（区切り線を含まない）。無ければ null。 */
   frontMatter: string | null;
@@ -22,8 +22,9 @@ export interface SplitDocument {
 const FENCE = /^---[ \t]*$/;
 const END_FENCE = /^(?:---|\.\.\.)[ \t]*$/;
 
+/** Front Matter を分離する。閉じられていない `---` は Front Matter として扱わない。 */
 export function splitFrontMatter(text: string): SplitDocument {
-  // BOM は Rust 側で除去済みだが、web プラットフォーム経由の入力も考慮する
+  // BOM は Rust 側で除去済みだが、web プラットフォーム経由の入力にも対応する
   const source = text.startsWith('﻿') ? text.slice(1) : text;
 
   const lines = source.split('\n');
@@ -43,7 +44,7 @@ export function splitFrontMatter(text: string): SplitDocument {
     }
   }
 
-  // 閉じられていない `---` は Front Matter ではなく、水平線＋本文として扱う。
-  // LLM の出力が途中で切れているケースで、本文が丸ごと消えるほうが害が大きい。
+  // 閉じられていない `---` は Front Matter ではなく、水平線と本文として扱う。
+  // LLM の出力が途中で切れている場合に、本文全体が失われるほうが影響が大きい。
   return { frontMatter: null, body: text, bodyStartLine: 0 };
 }

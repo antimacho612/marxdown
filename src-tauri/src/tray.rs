@@ -22,9 +22,10 @@ use tauri::{AppHandle, Emitter, Manager, Runtime};
 
 use crate::state::AppState;
 
+/// トレイアイコンの識別子。`tray_by_id` で引くときに使う。
 pub const TRAY_ID: &str = "marxdown-tray";
 
-/// メニュー項目の ID。文字列で照合するので、**この定数以外を書かない。**
+/// メニュー項目の ID。文字列で照合するため、この定数以外を書かない。
 const ID_OPEN: &str = "tray:open";
 const ID_QUIT: &str = "tray:quit";
 /// 最近開いたファイルは `tray:recent:<path>` の形。パスをそのまま後ろに付ける。
@@ -32,18 +33,17 @@ const PREFIX_RECENT: &str = "tray:recent:";
 
 /// トレイメニューに並べる「最近開いたファイル」の件数（03.ux-spec/07-status-and-notifications.md §4 は 5 件）。
 ///
-/// Welcome とハンバーガーメニューは 6 件だが、**トレイは 5 件のまま**にする。
-/// ここはマウスで開く小さなメニューであり、縦に伸びると OS のメニューが
-/// 画面端で折り返して読みにくくなる。
+/// Welcome とハンバーガーメニューは 6 件だが、トレイは 5 件のままにする。
+/// マウスで開く小さなメニューであり、縦に伸びると OS のメニューが画面端で折り返して読みにくくなる。
 const TRAY_RECENT_SHOWN: usize = 5;
 
 /// トレイアイコンを作る。
 ///
-/// **`ready()` の後に呼ぶ**（02.architecture/05-startup-sequence.md §1）。OS 側の UI であり、
-/// 本文表示に一切関与しない。ここでアイコンを焼くぶんだけ T3→T8 が伸びるのは
-/// 何の得にもならない。
+/// `ready()` の後に呼ぶ（02.architecture/05-startup-sequence.md §1）。
+/// OS 側の UI であり、本文表示には関与しない。
+/// ここでアイコンを構築するぶんだけ T3→T8 が伸びるが、それによる利点はない。
 pub fn install<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
-    // 既に居るなら作り直さない。`ready` は再読み込みで 2 回来ることがある。
+    // 既に存在するなら作り直さない。`ready` は再読み込みで 2 回発火することがある。
     if app.tray_by_id(TRAY_ID).is_some() {
         return Ok(());
     }
@@ -52,8 +52,8 @@ pub fn install<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
         .tooltip("Marxdown")
         .menu(&build_menu(app)?)
         // 左クリックでウィンドウを復帰（ADR-0007 論点 6）。
-        // `show_menu_on_left_click(false)` にしないと、左クリックでもメニューが出て
-        // 「アイコンを押したら戻る」という一番使う操作が奪われる。
+        // `show_menu_on_left_click(false)` にしないと、左クリックでもメニューが表示され、
+        // 「アイコンを押したら復帰する」という最も使用頻度の高い操作が実行できなくなる。
         .show_menu_on_left_click(false)
         .on_tray_icon_event(|tray, event| {
             let TrayIconEvent::Click {
@@ -69,7 +69,7 @@ pub fn install<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
         .on_menu_event(on_menu_event)
         .build(app)?;
 
-    // アイコンはウィンドウと同じものを使う。トレイだけ別の絵にする理由が無い。
+    // アイコンはウィンドウと同じものを使う。トレイだけ別のアイコンにする理由がない。
     if let Some(icon) = app.default_window_icon().cloned() {
         let _ = tray.set_icon(Some(icon));
     }
@@ -78,9 +78,9 @@ pub fn install<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
 
 /// 最近開いたファイルが変わったらメニューを組み直す。
 ///
-/// トレイメニューは作った時点の内容で固まる。**開くたびに作り直すフックが無い**ので、
-/// ストアを更新した側（`store_push_recent` / `store_remove_recent`）から呼ぶ。
-/// 頻度は「ファイルを開いたとき」だけで、アイドル時のコストはゼロ。
+/// トレイメニューは生成した時点の内容で固定される。
+/// 開くたびに作り直すフックが無いため、ストアを更新した側（`store_push_recent` / `store_remove_recent`）から呼ぶ。
+/// 呼ばれるのはファイルを開いたときだけで、アイドル時のコストはない。
 pub fn refresh<R: Runtime>(app: &AppHandle<R>) {
     let Some(tray) = app.tray_by_id(TRAY_ID) else {
         return;
@@ -108,8 +108,8 @@ fn build_menu<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<Menu<R>> {
     if !recent.is_empty() {
         let sub = Submenu::new(app, "最近開いたファイル", true)?;
         for entry in recent.iter().take(TRAY_RECENT_SHOWN) {
-            // ラベルはファイル名だけ。トレイのメニューは幅が取れず、
-            // 絶対パスを入れると画面外まで伸びる。
+            // ラベルはファイル名だけにする。
+            // トレイのメニューは幅が取れず、絶対パスを入れると画面外まで伸びる。
             let label = std::path::Path::new(&entry.path)
                 .file_name()
                 .map(|n| n.to_string_lossy().into_owned())
@@ -129,26 +129,25 @@ fn on_menu_event<R: Runtime>(app: &AppHandle<R>, event: MenuEvent) {
     let id = event.id().as_ref();
 
     if id == ID_QUIT {
-        // ADR-0007 論点 3 の 3 経路のうちの 1 つ。**論点 11 の保存もここを通る。**
+        // ADR-0007 論点 3 の 3 経路のうちの 1 つで、論点 11 の保存もここを通る。
         //
-        // **この経路はフロントを通らない。** 未保存の変更の確認を Rust 側に置いて
-        // あるのは、まさにここで取りこぼさないため（F-EDIT-03 / `close.rs`）。
+        // この経路はフロントを通らない。
+        // 未保存の変更の確認を Rust 側に置いてあるのは、ここで取りこぼさないためである（F-EDIT-03 / `close.rs`）。
         crate::close::request_quit(app);
         return;
     }
 
     if id == ID_OPEN {
-        // ウィンドウを先に戻してから、フロントの「開く」経路に載せる。
-        // ダイアログの親になるウィンドウが隠れたままだと、ダイアログが
-        // タスクバーのどこにも出ずに迷子になる。
+        // ウィンドウを先に復帰させてから、フロントの「開く」経路に載せる。
+        // ダイアログの親になるウィンドウが隠れたままだと、ダイアログがタスクバーにも表示されず操作できなくなる。
         crate::close::restore(app);
         let _ = app.emit_to(crate::window::MAIN_LABEL, crate::EVENT_TRAY_OPEN, ());
         return;
     }
 
     if let Some(path) = id.strip_prefix(PREFIX_RECENT) {
-        // **argv 転送と同じ経路に載せる。** 「外から 1 枚開かせる」という意味が
-        // まったく同じなので、別の入口を作ると片方だけ直す事故が起きる
+        // argv 転送と同じ経路に載せる。
+        // 「外から 1 枚開かせる」という意味が同じであり、別の入口を作ると片方だけ修正する漏れが発生する
         // （`open.ts` が 5 つの入口を 1 か所に集めているのと同じ理由）。
         crate::close::restore(app);
         crate::forward_open(app, vec![path.to_string()]);

@@ -4,9 +4,9 @@
  * 04.tech-stack/07-dev-tools.md §1: UI の反復を Tauri のビルドサイクルから切り離す。
  * Platform 層があることで、UI の 8 割はブラウザだけで開発できる。
  *
- * ファイルは `localStorage` 上の仮想 FS に置く。EOL/BOM/mtime のセマンティクスは
- * Rust 実装と同じ形で再現するが、**原子性と衝突検知の正しさは保証しない**。
- * そこは Rust 側のユニットテストの担当。
+ * ファイルは `localStorage` 上の仮想 FS に置く。
+ * EOL / BOM / mtime の扱いは Rust 実装と同じ形で再現するが、原子性と衝突検知の正しさは保証しない。
+ * そちらは Rust 側のユニットテストで検証する。
  */
 import { splitPath } from '@/lib/path';
 
@@ -48,17 +48,15 @@ function saveFs(fs: Record<string, VirtualFile>): void {
   try {
     localStorage.setItem(STORE_KEY, JSON.stringify(fs));
   } catch {
-    // 容量超過。dev 専用なので黙って諦める
+    // 容量超過。dev 専用のため何もしない
   }
 }
 
 /**
  * `src-tauri/src/store.rs` の `StoreData` と `settings/schema.rs` の `Settings` に対応するモック。
  *
- * 実装では 2 ファイルに分かれている（`state.json` / `settings.json`）が、
- * ここで再現したいのは値の往復だけなので 1 つのキーにまとめる。
- * **「壊れていたら上書きしない」という 02.architecture/04-rust-responsibilities.md §5 の肝は Rust 側の担当**であり、
- * ブラウザには壊しようがない。
+ * 実装では 2 ファイルに分かれている（`state.json` / `settings.json`）が、ここで再現するのは値の往復だけであるため 1 つのキーにまとめる。
+ * 壊れていたら上書きしないという 02.architecture/04-rust-responsibilities.md §5 の要点は Rust 側が担当しており、ブラウザ側では再現しない。
  */
 interface WebState {
   recent: RecentEntry[];
@@ -68,9 +66,9 @@ interface WebState {
   /** Split の分割比（03.ux-spec/03-split-mode.md §1）。 */
   split: number;
   settings: Settings;
-  /** `preview.css` の中身（02.architecture/10-theming.md §3）。空文字は「ファイルが無い」。 */
+  /** `preview.css` の中身（02.architecture/10-theming.md §3）。空文字はファイルが無いことを表す。 */
   customCss: string;
-  /** `editor.css` の中身（ADR-0013）。空文字は「ファイルが無い」。 */
+  /** `editor.css` の中身（ADR-0013）。空文字はファイルが無いことを表す。 */
   editorCss: string;
 }
 
@@ -177,7 +175,7 @@ async function adoptFile(file: File): Promise<string | null> {
   }
 }
 
-/** URL の `?file=` で内容を差し替えられるようにしておくと、fixture の確認が楽になる。 */
+/** URL の `?file=` で内容を差し替えられるようにしておくと、fixture を確認しやすくなる。 */
 function initialBootstrap(): Bootstrap {
   const params = new URLSearchParams(globalThis.location?.search ?? '');
   const path = params.get('file') ?? '/virtual/welcome.md';
@@ -207,9 +205,8 @@ function initialBootstrap(): Bootstrap {
     documentError: null,
     mode: (params.get('mode') as Bootstrap['mode']) ?? null,
     // `?benchInput` で計測経路をブラウザからも起動できるようにしておく。
-    // **数値は当てにならない**（dev サーバはモジュールを 1 つずつ配信し、
-    // Monaco の読み込みだけで数十秒かかる / 06.roadmap/m2-editor.md §5）。
-    // ここに口があるのは、経路が動くことを Tauri のビルドなしで確かめるため。
+    // 計測値は参考にならない（dev サーバはモジュールを 1 つずつ配信し、Monaco の読み込みだけで数十秒かかる / 06.roadmap/m2-editor.md §5）。
+    // この経路があるのは、処理が動作することを Tauri のビルドなしで確認するためである。
     benchInput: params.has('benchInput'),
     trace: { enabled: params.has('trace'), t0EpochMs: Date.now() },
     pendingPaths: [],
@@ -217,8 +214,7 @@ function initialBootstrap(): Bootstrap {
     recent: state.recent,
     zoom: state.zoom,
     // `?rightPane` でライトペインを開いた状態の起動を再現する。
-    // **実装と同じく bootstrap に載って届く**ので、dev:web でも
-    // 「本文が全幅で描かれてから横に詰まる」瞬間が無いことを確認できる。
+    // 実装と同じく bootstrap に載って届くため、dev:web でも本文が全幅で描画された後に幅が縮小する瞬間が無いことを確認できる。
     panes: params.has('rightPane') ? { ...state.panes, right: { ...state.panes.right, open: true } } : state.panes,
     split: state.split,
     settings: state.settings,
@@ -226,8 +222,8 @@ function initialBootstrap(): Bootstrap {
     // 通知バー（03.ux-spec/07-status-and-notifications.md §2）と設定 UI の読み取り専用状態を
     // ブラウザだけで確認できるようにするため。
     settingsError: brokenSettings(),
-    // 実装と同じく**同梱して届く**（02.architecture/10-theming.md §3）。
-    // 後から当てる形にすると、dev:web でだけ FOUC が見えない。
+    // 実装と同じく bootstrap に同梱して届く（02.architecture/10-theming.md §3）。
+    // 後から適用する形にすると、dev:web でだけ FOUC が再現しなくなる。
     customCss: customCssNow(),
     editorCss: editorCssNow(),
   };
@@ -236,10 +232,9 @@ function initialBootstrap(): Bootstrap {
 /**
  * dev:web のカスタム CSS（02.architecture/10-theming.md §3）。
  *
- * ブラウザに `%APPDATA%` は無いので、中身は `localStorage` に置く。
- * `?customCss` を付けると見本が入り、`@scope` の効き方
- * （**本文には効き、クロームには効かない**）をブラウザだけで確認できる。
- * `?customCss=escape` は**閉じ過ぎた CSS** で、適用を拒否する経路の再現。
+ * ブラウザに `%APPDATA%` は無いため、中身は `localStorage` に置く。
+ * `?customCss` を付けると見本が入り、`@scope` の適用範囲（本文には適用され、クロームには適用されない）をブラウザだけで確認できる。
+ * `?customCss=escape` はブロックを余分に閉じた CSS で、適用を拒否する経路を再現する。
  */
 function customCssNow(): CustomCss {
   const params = new URLSearchParams(globalThis.location?.search ?? '');
@@ -260,8 +255,8 @@ function customCssNow(): CustomCss {
 /**
  * dev:web のエディター用カスタム CSS（ADR-0013）。
  *
- * `?editorCss` を付けると見本が入る。**エディターの配色はトークン経由でしか変えられない**
- * ことを見本自身が示すため、色ではなく変数を上書きしてある。
+ * `?editorCss` を付けると見本が入る。
+ * エディターの配色はトークン経由でしか変更できないことを見本自身が示すため、色ではなく変数を上書きしてある。
  */
 function editorCssNow(): CustomCss {
   const params = new URLSearchParams(globalThis.location?.search ?? '');
@@ -269,7 +264,7 @@ function editorCssNow(): CustomCss {
   return { ...NO_CUSTOM_CSS, css: css === '' ? null : css };
 }
 
-/** 見本。**本文にしか当たらない**ことが分かるよう、見出しと本文幅の両方を触る。 */
+/** 見本。本文にしか適用されないことが分かるよう、見出しと本文幅の両方を変更する。 */
 const SAMPLE_CUSTOM_CSS = `:scope {
   --mx-content-width: 70ch;
 }
@@ -284,7 +279,7 @@ blockquote {
 }
 `;
 
-/** エディター用の見本。**変数の上書きだけ**で配色が変わることを示す。 */
+/** エディター用の見本。変数の上書きだけで配色が変わることを示す。 */
 const SAMPLE_EDITOR_CSS = `:scope {
   --mx-color-bg: #1a1b26;
   --mx-color-fg: #c0caf5;
@@ -294,10 +289,9 @@ const SAMPLE_EDITOR_CSS = `:scope {
 `;
 
 /**
- * **クロームを消そうとする CSS**（`}` でブロックを閉じて外へ出る）。
+ * クロームを非表示にしようとする CSS（`}` でブロックを閉じてスコープの外へ出る）。
  *
- * `applyCustomCss` がこれを拒否することがカスタム CSS の要点で、
- * 実アプリでも `?customCss=escape` と同じものを `custom.css` に書けば同じ結果になる。
+ * `applyCustomCss` がこれを拒否することがカスタム CSS の要点であり、実アプリでも同じ内容を `custom.css` に書けば同じ結果になる。
  */
 const ESCAPING_CUSTOM_CSS = `h1 { color: red }
 }
@@ -317,6 +311,7 @@ function brokenSettings(): SettingsProblem | null {
 
 let bootstrap: Bootstrap | null = null;
 
+/** ブラウザ上での Platform 実装。`pnpm dev:web` とテストで使う。 */
 export const webPlatform: Platform = {
   kind: 'web',
 
@@ -334,8 +329,8 @@ export const webPlatform: Platform = {
       content: file.content,
       eol: 'lf',
       bom: false,
-      // モックのファイルは常に UTF-8。**指定はそのまま名乗り返す**ので、
-      // 再解釈の UI（03.ux-spec/07-status-and-notifications.md §3）は `dev:web` でも動いて見える。
+      // モックのファイルは常に UTF-8 である。
+      // 指定された値をそのまま返すため、再解釈の UI（03.ux-spec/07-status-and-notifications.md §3）は `dev:web` でも動作する。
       encoding: encoding ?? 'utf8',
       mtimeMs: file.mtimeMs,
       size: new TextEncoder().encode(file.content).length,
@@ -394,9 +389,8 @@ export const webPlatform: Platform = {
   /**
    * `?brokenSettings` の間は「壊れている」と答え続ける。
    *
-   * 実装では**壊れた事実が保存を止める**（02.architecture/04-rust-responsibilities.md §5）。
-   * ブラウザには壊しようがないので、設定 UI の読み取り専用状態を
-   * dev:web で確認する手段がここしかない。
+   * 実装では壊れているという事実が保存を止める（02.architecture/04-rust-responsibilities.md §5）。
+   * ブラウザ側では壊れた状態を作れないため、設定 UI の読み取り専用状態を dev:web で確認する手段はここだけである。
    */
   async readSettings() {
     return { values: loadState().settings, broken: brokenSettings() };
@@ -421,7 +415,7 @@ export const webPlatform: Platform = {
   },
 
   async openSettingsFile() {
-    // ブラウザには既定アプリの概念が無い。呼ばれたことだけ分かるようにしておく
+    // ブラウザには既定アプリの概念が無い。呼び出されたことだけ分かるようにしておく
     console.info('[marxdown] openSettingsFile');
   },
 
@@ -481,8 +475,9 @@ export const webPlatform: Platform = {
   },
 
   /**
-   * 保存先（F-EDIT-02）。**ブラウザにはネイティブの保存ダイアログが無い**ので、
-   * 仮想 FS 上の名前を尋ねるだけにしてある。実際の書き込み先は `localStorage`。
+   * 保存先（F-EDIT-02）。
+   * ブラウザにはネイティブの保存ダイアログが無いため、仮想 FS 上の名前を入力させるだけにしてある。
+   * 実際の書き込み先は `localStorage` である。
    */
   async pickSavePath(suggested) {
     const base = suggested === null ? 'untitled.md' : splitPath(suggested).name || 'untitled.md';
@@ -491,19 +486,16 @@ export const webPlatform: Platform = {
   },
 
   /**
-   * dev:web には終了の経路もトレイも無い（`close.rs` に対応するものが無い）ので、
-   * 知らせる相手が居ない。**受け取って捨てる。**
+   * dev:web には終了の経路もトレイも無く（`close.rs` に対応するものが無い）、通知先が存在しないため何もしない。
    */
   setDirty() {
     return Promise.resolve();
   },
 
   /**
-   * ブラウザに 3 択のネイティブダイアログは無い。**「保存して開く」を落として
-   * 2 択にする**（`confirm` は真偽しか返さない）。
+   * ブラウザに 3 択のネイティブダイアログは無いため、「保存して開く」を除いた 2 択にする（`confirm` は真偽値しか返さない）。
    *
-   * 落としてよいのは、これが `dev:web` の経路だからで、**既定を
-   * 「移らない」側に倒す**点だけは製品と同じにしてある（N-REL-01）。
+   * 選択肢を減らせるのは `dev:web` の経路だからであり、既定を移らない側にする点だけは製品と同じにしてある（N-REL-01）。
    */
   confirmDiscard() {
     const discard = globalThis.confirm('保存していない変更があります。破棄して開きますか？');
@@ -511,13 +503,13 @@ export const webPlatform: Platform = {
   },
 
   onSaveAndQuit() {
-    // 終了の確認は Rust 側の経路（`close.rs`）。dev:web では起きない。
+    // 終了の確認は Rust 側の経路（`close.rs`）にあり、dev:web では発生しない。
     return () => {};
   },
 
   async watchPath() {
-    // 仮想 FS はこのタブの中にしかなく、外から書き換わることがない。
-    // 監視の有無で Domain 層の分岐が増えないよう、口だけ合わせておく
+    // 仮想 FS はこのタブの中にしかなく、外部から書き換わることがない。
+    // 監視の有無で Domain 層に分岐が増えないよう、インタフェースだけ揃えておく
   },
 
   async unwatchPath() {
@@ -562,9 +554,9 @@ export const webPlatform: Platform = {
   },
 
   /*
-   * ウィンドウ操作。ブラウザにはタブを最小化する概念も、閉じさせる権限も無い。
-   * **口だけ合わせて何もしない。** ここで `window.close()` を呼ぶような
-   * 「それらしい代用」をすると、dev:web でタイトルバーを触るたびに画面が消える。
+   * ウィンドウ操作。ブラウザにはタブを最小化する概念も、閉じる権限も無い。
+   * インタフェースだけ揃えて何もしない。
+   * ここで `window.close()` を呼ぶような代替動作を実装すると、dev:web でタイトルバーを操作するたびに画面が閉じてしまう。
    */
   async minimizeWindow() {},
 
@@ -572,8 +564,8 @@ export const webPlatform: Platform = {
 
   async closeWindow() {},
 
-  // ブラウザにはトレイもプロセスも無い。**握り潰さずログに出す**のは、
-  // `dev:web` で「終了」を押したときに何も起きない理由が分かるようにするため。
+  // ブラウザにはトレイもプロセスも無い。
+  // 無視せずログへ出力するのは、`dev:web` で「終了」を押したときに何も起きない理由が分かるようにするためである。
   async quitApp() {
     console.info('[marxdown] quitApp（ブラウザでは何も起きない）');
   },
@@ -614,8 +606,8 @@ export const webPlatform: Platform = {
     return null;
   },
 
-  // ブラウザには書き出し先も終わらせるプロセスも無い。**コンソールに出す。**
-  // `?benchInput` で経路そのものを確かめるためにあり、数値は使わない。
+  // ブラウザには書き出し先も終了するプロセスも無いため、コンソールへ出力する。
+  // `?benchInput` で経路そのものを確認するためのものであり、計測値は使わない。
   async benchInputDone(json) {
     console.info('[marxdown] benchInputDone', JSON.parse(json));
   },

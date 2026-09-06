@@ -1,11 +1,11 @@
 /**
  * パス文字列のちいさな道具。
  *
- * **依存を持たない純粋関数だけ**を置く。UI からも Domain からも使うため、
- * どちらかの下に置くと参照の向きが濁る（`features/` が `app/` を見に行く、など）。
+ * 依存を持たない純粋関数だけを置く。
+ * UI からも Domain からも使うため、どちらかの下に置くと参照の向きが崩れる（`features/` が `app/` を参照する、など）。
  *
- * パスの解決・正規化そのものは Rust 側の仕事（02.architecture/README.md 原則 C）。
- * ここでやるのは、既に正規化されたパスを**表示のために割る**ことだけ。
+ * パスの解決と正規化そのものは Rust 側が担当する（02.architecture/README.md 原則 C）。
+ * ここで行うのは、既に正規化されたパスを表示のために分割することだけである。
  */
 
 /** パスをディレクトリとファイル名に割る。Windows と POSIX の両方を受ける。 */
@@ -23,10 +23,9 @@ export function dirOf(path: string): string {
 /**
  * ベースと相対パスをつなぐ。
  *
- * **`..` の畳み込みはしない。** 正規化と symlink の解決は Rust 側の仕事であり
- * （`dunce::canonicalize` / `scope.rs`）、こちらで先に畳むと
- * 「JS が思う正規形」と「実際に解決される先」がずれる。
- * ずれた状態でスコープ検証をすると、そこが穴になる（N-SEC-05）。
+ * `..` の畳み込みは行わない。
+ * 正規化と symlink の解決は Rust 側が担当しており（`dunce::canonicalize` / `scope.rs`）、こちらで先に畳み込むと JS 側の正規形と実際の解決先が食い違う。
+ * 食い違った状態でスコープ検証を行うと、検証を通過してしまう経路ができる（N-SEC-05）。
  */
 export function joinPath(baseDir: string, relative: string): string {
   if (baseDir === '' || isAbsolutePath(relative)) return relative;
@@ -39,10 +38,9 @@ export function joinPath(baseDir: string, relative: string): string {
 /**
  * ドライブレター（`C:\`）/ UNC（`\\server`）/ 先頭が区切り文字。
  *
- * `[x](/docs/a.md)` のような先頭 `/` は、Web なら「サイトのルート」だが、
- * ローカルファイルビューアにルートは無い。**文字どおり絶対パスとして扱い**、
- * 実在しなければ Rust 側が not-found を返す。
- * 勝手に「開いているファイルからの相対」と読み替えるほうが驚きが大きい。
+ * `[x](/docs/a.md)` のような先頭の `/` は、Web ではサイトのルートを指すが、ローカルファイルビューアに相当するルートは無い。
+ * そのため絶対パスとして扱い、実在しなければ Rust 側が not-found を返す。
+ * 開いているファイルからの相対パスとして解釈し直すと、指定と結果が一致しなくなる。
  */
 export function isAbsolutePath(path: string): boolean {
   return /^[a-z]:[\\/]/i.test(path) || path.startsWith('/') || path.startsWith('\\');

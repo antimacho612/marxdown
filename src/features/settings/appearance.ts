@@ -9,20 +9,21 @@
 import { clampSetting, DEFAULT_SETTINGS, type NumericKey, type Palette, type Settings } from '@/platform';
 
 /**
- * 設定の全体を見た目に当てる。**差分は取らない。**
+ * 設定の全体を表示へ適用する。差分は計算しない。
  *
- * 当てる対象は少なく、差分を計算するほうが高くつく。
- * 外部エディターでの編集も設定 UI の操作も、同じこの 1 本を通る。
+ * 適用対象は少なく、差分を計算するほうがコストが高い。
+ * 外部エディターでの編集も設定 UI の操作も、すべてこの経路を通る。
  */
 export function applyAppearance(values: Settings): void {
   const root = document.documentElement;
 
   applyTheme(root, values.theme);
-  // 配色（F-CONF-08 / ADR-0013）。**面ごとに、面そのものへ属性を付ける。**
+  // 配色（F-CONF-08 / ADR-0013）。面ごとに、面そのものへ属性を付与する。
   applyPalette(document.querySelector(PREVIEW_ROOT), values['preview.theme']);
   applyPalette(document.querySelector(EDITOR_ROOT), values['editor.theme']);
 
-  // フォント名は**既定スタックの前に足す**（F-CONF-04）。置き換えてしまうと、そのフォントに無い字（日本語 / 記号）の落とし先が消える。
+  // フォント名は既定のスタックの前に追加する（F-CONF-04）。
+  // 置き換えると、そのフォントに含まれない文字（日本語 / 記号）のフォールバック先が失われる。
   const family = formatFontFamily(values['preview.fontFamily']);
   setVar(root, '--mx-font-content', family === null ? null : `${family}, var(--mx-font-content-stack)`);
 
@@ -31,13 +32,13 @@ export function applyAppearance(values: Settings): void {
 
   setVar(root, '--mx-font-size-content', numeric(values, 'preview.fontSize', 'px'));
   setVar(root, '--mx-line-height', numeric(values, 'preview.lineHeight', ''));
-  // 単位は `ch`。px にすると、文字サイズを変えたときに列幅が揺れる（02.architecture/10-theming.md §2）。
+  // 単位は `ch` にする。px にすると、文字サイズを変えたときに 1 行あたりの文字数が変わる（02.architecture/10-theming.md §2）。
   setVar(root, '--mx-content-width', numeric(values, 'preview.maxWidth', 'ch'));
 }
 
 /**
- * 配色の受け皿（ADR-0013）。**`index.html` にあり、起動時から存在する。**
- * ここが `null` になるのはテストの一部だけで、そのときは何もしない。
+ * 配色の適用先（ADR-0013）。`index.html` にあり、起動時から存在する。
+ * `null` になるのはテストの一部だけで、その場合は何もしない。
  */
 const PREVIEW_ROOT = '#mx-preview';
 const EDITOR_ROOT = '#mx-editor';
@@ -45,12 +46,11 @@ const EDITOR_ROOT = '#mx-editor';
 /**
  * 配色を当てる（F-CONF-08 / ADR-0013 / `styles/themes.css`）。
  *
- * **`:root` には決して付けない。** クロームの配色はテーマで動かさない。
- * 付ける先は面そのもの（`#mx-preview` / `#mx-editor`）で、
- * カスタムプロパティの継承で配下に降りていく。
+ * `:root` には付けない。クロームの配色はテーマの選択では変えない。
+ * 付与先は面そのもの（`#mx-preview` / `#mx-editor`）であり、カスタムプロパティの継承で配下へ伝わる。
  *
- * **`default` は属性ごと外す。** `applyTheme` が `system` で属性を外すのと
- * 同じ理由で、設定を触っていない状態の DOM を M2 と同一に保つ（F-CONF-02）。
+ * `default` のときは属性ごと削除する。
+ * `applyTheme` が `system` で属性を削除するのと同じ理由で、設定を変更していない状態の DOM を M2 と同一に保つ（F-CONF-02）。
  */
 function applyPalette(element: HTMLElement | null, palette: Palette): void {
   if (!element) return;
@@ -61,8 +61,8 @@ function applyPalette(element: HTMLElement | null, palette: Palette): void {
 /**
  * 見本に着せる配色（`data-mx-theme` の値）。
  *
- * **`default` は属性ごと外す**（`applyPalette` と同じ判断）。
- * 面ではなく設定ダイアログの中の見本に当てるので、DOM を触らず値だけ返す。
+ * `default` のときは属性を付けない（`applyPalette` と同じ判断）。
+ * 面ではなく設定ダイアログ内の見本に適用するため、DOM は変更せず値だけを返す。
  */
 export function paletteAttr(palette: Palette): string | undefined {
   return palette === 'default' ? undefined : palette;
@@ -71,10 +71,9 @@ export function paletteAttr(palette: Palette): string | undefined {
 /**
  * テーマ（F-CONF-01）。
  *
- * **`system` は属性ごと外す。** `tokens.css` の
- * `@media (prefers-color-scheme: dark)` が OS の設定を拾い、
- * OS 側で切り替えられた瞬間に CSS だけで追従する。
- * JS のリスナーも `setInterval` も要らない（N-PERF-05）。
+ * `system` のときは属性ごと削除する。
+ * `tokens.css` の `@media (prefers-color-scheme: dark)` が OS の設定を参照し、OS 側で切り替えられた時点で CSS だけで追従する。
+ * JS のリスナーもポーリングも不要になる（N-PERF-05）。
  */
 function applyTheme(root: HTMLElement, theme: Settings['theme']): void {
   if (theme === 'system') delete root.dataset['theme'];
@@ -82,9 +81,9 @@ function applyTheme(root: HTMLElement, theme: Settings['theme']): void {
 }
 
 /**
- * 既定値と同じなら `null`（＝トークン層の値をそのまま使う）。
+ * 既定値と同じなら `null` を返す（トークン層の値をそのまま使う）。
  *
- * 「既定値を書き込まない」ことが F-CONF-02 の担保になっている。
+ * 既定値を書き込まないことが F-CONF-02 の担保になっている。
  */
 function numeric(values: Settings, key: NumericKey, unit: string): string | null {
   const value = clampSetting(key, values[key]);
@@ -100,15 +99,13 @@ function setVar(root: HTMLElement, name: string, value: string | null): void {
 /**
  * フォント名を CSS の `font-family` に入れられる形にする。
  *
- * **ウェブフォントは読み込めない**（CSP の `font-src 'self'` / 02.architecture/10-theming.md §3）。
- * ここに書けるのは OS に入っているフォントのファミリ名だけで、
- * 見つからなければ後ろのスタックに落ちる。
+ * ウェブフォントは読み込めない（CSP の `font-src 'self'` / 02.architecture/10-theming.md §3）。
+ * ここに指定できるのは OS にインストールされているフォントのファミリ名だけで、見つからなければ後続のスタックにフォールバックする。
  *
- * すべて引用符で囲うのは、`Meiryo UI` のような空白入りの名前と
- * `MS UI Gothic` のような数字始まりを一様に扱うため。囲えない文字
- * （引用符・バックスラッシュ・`;` `{` `}` `(` `)`）を含むものは**捨てる**。
- * 設定ファイルは手で書ける以上、ここに来る文字列は検証されていない。
- * 宣言 1 つを壊すだけとはいえ、通す理由が無い。
+ * すべて引用符で囲うのは、`Meiryo UI` のような空白を含む名前と `MS UI Gothic` のような数字で始まる名前を同じ扱いにするためである。
+ * 囲えない文字（引用符・バックスラッシュ・`;` `{` `}` `(` `)`）を含むものは除外する。
+ * 設定ファイルは手で編集できるため、ここに渡る文字列は検証されていない。
+ * 影響が宣言 1 つに留まるとしても、通す理由がない。
  */
 export function formatFontFamily(input: string): string | null {
   const families = input

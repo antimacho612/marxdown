@@ -24,11 +24,11 @@
 
 use tauri::{Runtime, WebviewWindow};
 
-/// トレイへ格納する直前に呼ぶ。**`hide()` の後に呼ぶこと。**
+/// トレイへ格納する直前に呼ぶ。`hide()` の後に呼ぶこと。
 ///
-/// Windows 以外では何もしない。macOS / Linux（F-OS-07 / COULD）に同等の仕組みは無く、
-/// `hide()` だけになる。**プラットフォーム分岐を Platform 層ではなくここに閉じる**
-/// のは、これが「速いことだけを担当する」Rust 側の仕事だから（原則 C）。
+/// Windows 以外では何もしない。
+/// macOS / Linux（F-OS-07 / COULD）に同等の仕組みは無いため `hide()` だけになる。
+/// プラットフォーム分岐を Platform 層ではなくここに閉じるのは、これが「速いことだけを担当する」Rust 側の仕事だからである（原則 C）。
 #[cfg(windows)]
 pub fn suspend<R: Runtime>(window: &WebviewWindow<R>) {
     let _ = window.with_webview(|webview| {
@@ -50,8 +50,8 @@ pub fn suspend<R: Runtime>(window: &WebviewWindow<R>) {
                 return;
             };
             let handler = TrySuspendCompletedHandler::create(Box::new(|result, succeeded| {
-                // 失敗しても何もしない。**メモリが減らないだけで、格納は成立している。**
-                // ここで復帰させると「閉じたのにウィンドウが残る」ほうの事故になる。
+                // 失敗しても何もしない。メモリが解放されないだけで、格納自体は成立している。
+                // ここで復帰させると、閉じたはずのウィンドウが残ることになる。
                 if result.is_err() || !succeeded {
                     eprintln!("[marxdown] WebView2 のサスペンドに失敗（格納は継続）");
                 }
@@ -62,10 +62,10 @@ pub fn suspend<R: Runtime>(window: &WebviewWindow<R>) {
     });
 }
 
-/// トレイから復帰する直前に呼ぶ。**`show()` の前に呼ぶこと。**
+/// トレイから復帰する直前に呼ぶ。`show()` の前に呼ぶこと。
 ///
-/// 制約 2 のとおり Resume 自体は自動だが、`suspend` で倒した `IsVisible` は
-/// 戻してやる必要がある。ここを忘れると、ウィンドウは出るのに中身が真っ白になる。
+/// Resume 自体は自動だが、`suspend` で false にした `IsVisible` は戻す必要がある。
+/// 戻さないと、ウィンドウは表示されるが内容が描画されない。
 #[cfg(windows)]
 pub fn resume<R: Runtime>(window: &WebviewWindow<R>) {
     let _ = window.with_webview(|webview| {
@@ -76,8 +76,10 @@ pub fn resume<R: Runtime>(window: &WebviewWindow<R>) {
     });
 }
 
+/// Windows 以外では何もしない。同等の仕組みが無いため、`hide()` だけで済ませる。
 #[cfg(not(windows))]
 pub fn suspend<R: Runtime>(_window: &WebviewWindow<R>) {}
 
+/// Windows 以外では何もしない。[`suspend`] と対になる。
 #[cfg(not(windows))]
 pub fn resume<R: Runtime>(_window: &WebviewWindow<R>) {}

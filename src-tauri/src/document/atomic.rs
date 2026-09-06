@@ -24,7 +24,6 @@ pub fn write(path: &Path, bytes: &[u8]) -> CoreResult<()> {
         CoreError::InvalidArgument(format!("ファイル名が不正: {}", path.display()))
     })?;
 
-    // 既存ファイルのパーミッションを控えておく（存在しない場合は None）
     let original_permissions = fs::metadata(path).ok().map(|m| m.permissions());
 
     let tmp = unique_temp_path(dir, file_name);
@@ -54,7 +53,7 @@ pub fn write(path: &Path, bytes: &[u8]) -> CoreResult<()> {
 
 /// 同一ディレクトリ内で衝突しない一時ファイル名を作る。
 ///
-/// 乱数を持ち込みたくないので、プロセス ID と単調増加カウンタで作る。
+/// 乱数への依存を避け、プロセス ID と単調増加カウンタで組み立てる。
 /// 同一プロセス内の並行保存と、他プロセスとの衝突の両方を避けられる。
 fn unique_temp_path(dir: &Path, file_name: &str) -> std::path::PathBuf {
     use std::sync::atomic::{AtomicU64, Ordering};

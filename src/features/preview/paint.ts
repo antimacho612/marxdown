@@ -7,14 +7,15 @@
 import { requestIdle, type IdleDeadline } from '@/lib/idle';
 import { sanitize } from '@/markdown/sanitize';
 
+/** `paint` の結果。段階的描画の進み具合を呼び出し側へ伝える。 */
 export interface PaintResult {
   /** 最初のチャンクが入った時刻（performance.now()）。 */
   firstChunkAt: number;
   /**
    * すべてのチャンクが入ったら解決する。
    *
-   * **打ち切られた場合は解決しない。** 次の `paint()` が始まった時点で
-   * 前の描画は意味を失っており、そこに続きを繋げる呼び出し側は居ない。
+   * 打ち切られた場合は解決しない。
+   * 次の `paint()` が始まった時点で前の描画は不要になっており、続きを処理する呼び出し側も存在しない。
    */
   done: Promise<number>;
 }
@@ -31,8 +32,8 @@ let running: { cancelled: boolean } | null = null;
 /**
  * 実行中の段階的描画を打ち切る。
  *
- * `paint()` の冒頭が呼ぶので、通常は呼び出し側が意識しなくてよい。
- * **本文を捨てるだけで描き直さない**場面（タブを閉じる / M3）のために公開する。
+ * `paint()` の冒頭で呼ばれるため、通常は呼び出し側が意識する必要はない。
+ * 本文を破棄するだけで描き直さない場面（タブを閉じる / M3）のために公開している。
  */
 export function cancelPaint(): void {
   if (running) running.cancelled = true;
@@ -42,17 +43,17 @@ export function cancelPaint(): void {
 /**
  * チャンク列を container に描画する。
  *
- * 最初のチャンクは**同期的に**入れる。ここを非同期にすると
- * 「読める最初のフレーム」が 1 フレーム遅れる。
+ * 最初のチャンクは同期的に挿入する。
+ * ここを非同期にすると、本文が読める最初のフレームが 1 フレーム遅れる。
  */
 export function paint(container: HTMLElement, chunks: string[], frontMatter: string | null = null): PaintResult {
-  // **前の描画を先に止める。** ここを忘れると、古いループが切り離された
-  // ツリーへ追記し続ける（`running` のコメント参照 / OQ-18）。
+  // 前の描画を先に停止する。
+  // 停止しないと、古いループが DOM から切り離されたツリーへ追記し続ける（`running` のコメントを参照 / OQ-18）。
   cancelPaint();
   container.replaceChildren();
 
-  // Front Matter は本文と一緒にスクロールするため、プレビューの中に入れる（F-VIEW-09）。
-  // textContent で入れるので、中身がどんな文字列でもここから HTML にはならない。
+  // Front Matter は本文と一緒にスクロールするため、プレビューの中に挿入する（F-VIEW-09）。
+  // `textContent` で挿入するため、内容がどのような文字列でもここから HTML として解釈されることはない。
   if (frontMatter !== null) {
     const pre = document.createElement('pre');
     pre.className = 'mx-front-matter';
@@ -66,8 +67,8 @@ export function paint(container: HTMLElement, chunks: string[], frontMatter: str
     return { firstChunkAt, done: Promise.resolve(firstChunkAt) };
   }
 
-  // 本文幅の基準点（`.mx-content`）を 1 箇所に絞る。見出しごとに font-size が
-  // 違っても、`ch` はここでしか計算されないので列幅がずれない。
+  // 本文幅の基準点（`.mx-content`）を 1 か所に限定する。
+  // 見出しごとに font-size が異なっても、`ch` はここでしか計算されないため列幅が変わらない。
   const content = document.createElement('div');
   content.className = 'mx-content';
   container.append(content);
@@ -85,15 +86,14 @@ export function paint(container: HTMLElement, chunks: string[], frontMatter: str
   const done = new Promise<number>((resolve) => {
     let index = 0;
     const step = (deadline: IdleDeadline) => {
-      // 打ち切られたら、その場で手を離す。**解決もしない。**
+      // 打ち切られたらその時点で処理を終える。Promise も解決しない。
       //
-      // ここで `resolve` すると、呼び出し側（`open.ts`）の `.then` が走り、
-      // 切り離されたコンテナに対して `enhance` とアンカー復元をやり直す。
-      // 「もう誰も見ていない DOM を整える」ぶんだけ仕事が増える。
+      // ここで `resolve` すると呼び出し側（`open.ts`）の `.then` が実行され、
+      // DOM から切り離されたコンテナに対して `enhance` とアンカーの復元を再度実行することになる。
       if (token.cancelled) return;
 
-      // 1 回のアイドルで入れられるだけ入れる。1 チャンクずつだと
-      // huge.md で idle コールバックの往復回数が支配的になる。
+      // 1 回のアイドルで可能な限り挿入する。
+      // 1 チャンクずつ処理すると、`huge.md` では idle コールバックの往復回数が支配的になる。
       do {
         const chunk = rest[index];
         if (chunk === undefined) break;
@@ -105,8 +105,8 @@ export function paint(container: HTMLElement, chunks: string[], frontMatter: str
         requestIdle(step);
         return;
       }
-      // 最後まで入った。**自分が現役のときだけ**現役の座を空ける
-      // （既に次の `paint()` が始まっていたら、そちらを消してはいけない）。
+      // すべて挿入し終えた。
+      // 自分が実行中の描画である場合にだけ `running` を解除する（既に次の `paint()` が始まっていれば、そちらを解除してはいけない）。
       if (running === token) running = null;
       resolve(performance.now());
     };

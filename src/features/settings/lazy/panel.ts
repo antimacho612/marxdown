@@ -16,8 +16,7 @@ let opener: HTMLElement | null = null;
 /**
  * 開く。既に開いていればフォーカスを戻すだけ（`openSearch` と同じ）。
  *
- * `Ctrl+,` を続けて押したときに 2 枚出ないことと、
- * 押した人の関心がパネルにあることを両方満たす。
+ * `Ctrl+,` を続けて押したときにダイアログが 2 枚開かないこと、およびフォーカスがパネルにあることを両立させる。
  */
 export function openSettings(): void {
   if (host) {
@@ -28,14 +27,15 @@ export function openSettings(): void {
   opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
 
   host = document.createElement('div');
-  // body は 3 行の grid（`shell.css`）。**空の要素でも行が増えない**よう
-  // `#root` と同じく contents にしておく。ダイアログ自身はトップレイヤに乗る。
+  // body は 3 行の grid である（`shell.css`）。
+  // 空の要素でも行が増えないよう、`#root` と同じく `display: contents` にする。ダイアログ自身はトップレイヤに表示される。
   host.style.display = 'contents';
   document.body.append(host);
 
   instance = mount(SettingsDialog, { target: host, props: { onclose: closeSettings } });
 }
 
+/** 閉じる。フォーカスは開く前の位置へ戻す。 */
 export function closeSettings(): void {
   if (!instance || !host) return;
 
@@ -44,12 +44,13 @@ export function closeSettings(): void {
   instance = null;
   host = null;
 
-  // フォーカスを戻さないと `<body>` へ落ちる。キーボードだけで操作している人が
-  // 現在地を見失う（`MenuButton` の `hide` と同じ理由）。
+  // フォーカスを戻さないと `<body>` へ移る。
+  // キーボード操作での現在位置が分からなくなる（`MenuButton` の `hide` と同じ理由）。
   if (opener?.isConnected) opener.focus();
   opener = null;
 }
 
+/** 設定ダイアログが開いているか。 */
 export function isSettingsOpen(): boolean {
   return host !== null;
 }

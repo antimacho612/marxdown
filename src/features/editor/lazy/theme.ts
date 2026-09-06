@@ -13,22 +13,16 @@ import { monaco } from './monaco';
 /** Marxdown のトークンから組んだテーマ。名前は 1 つだけ。 */
 const THEME_NAME = 'marxdown';
 
-/* ------------------------------------------------------------------ */
-/* トークンの読み出し                                                   */
-/* ------------------------------------------------------------------ */
-
 /**
  * トークンを読み出す起点（ADR-0013）。
  *
- * **`#mx-editor` から読む。`documentElement` からではない。**
+ * 読み出しは `#mx-editor` から行い、`documentElement` からは行わない。
  *
- * エディターの配色（`editor.theme` / `editor.css`）は、面そのものに
- * カスタムプロパティを上書きする形で当たっている。`:root` から読むと、
- * **そこには何も乗っていない**ので、テーマを選んでも Monaco に届かない。
+ * エディターの配色（`editor.theme` / `editor.css`）は、面そのものにカスタムプロパティを上書きする形で適用されている。
+ * `:root` から読むとそれらが存在しないため、テーマを選んでも Monaco に反映されない。
  *
- * `--mx-zoom` や `--mx-font-code` は `:root` にあるが、
- * カスタムプロパティは継承で降りてくるので、読み出し位置を下げても値は同じ。
- * **下げて失うものは無く、拾えるものだけが増える。**
+ * `--mx-zoom` や `--mx-font-code` は `:root` にあるが、カスタムプロパティは継承されるため、読み出し位置を下げても値は変わらない。
+ * 読み出し位置を下げることで失う値は無く、取得できる値だけが増える。
  *
  * 面がまだ無い（テストの一部）ときは `documentElement` に落ちる。
  */
@@ -39,11 +33,10 @@ function tokenRoot(): HTMLElement {
 /**
  * `var()` を解決するための当て板。
  *
- * **トークンの起点の子でなければならない。** カスタムプロパティは
- * 継承で降りてくるので、切り離した要素では解決できない。
+ * トークンの起点の子要素でなければならない。
+ * カスタムプロパティは継承されるため、DOM から切り離した要素では解決できない。
  *
- * `display: none` の中に置くことになる（Preview モードのあいだ `#mx-editor` は
- * 隠れている）が、**計算値としての色は解決される**ので読み出せる。
+ * Preview モードの間は `#mx-editor` が非表示であるため `display: none` の内側に置かれるが、計算値としての色は解決されるため読み出せる。
  */
 let probe: HTMLElement | null = null;
 
@@ -60,15 +53,16 @@ function probeElement(): HTMLElement {
 /**
  * トークンの生の値（`16px` / `1.75` / フォント名の並びなど）。
  *
- * **`options.ts` からも使う。** テーマの色と同じで、
- * トークン層を JS 側へ読み出せる場所はこのファイルにしかない。
+ * `options.ts` からも使う。
+ * テーマの色と同じく、トークン層を JS 側へ読み出せる場所はこのファイルだけである。
  */
 export function readValue(name: string): string {
   return getComputedStyle(tokenRoot()).getPropertyValue(name).trim();
 }
 
+/** トークンを数値として読む。単位は落とす。読めなければ `fallback` を返す。 */
 export function readNumber(name: string, fallback: number): number {
-  // **`Number()` では読めない。** トークンには単位が付く（`16px` / `100ch`）。
+  // `Number()` では変換できない。トークンには単位が付く（`16px` / `100ch`）。
   // eslint-disable-next-line unicorn/prefer-number-coercion -- 単位を落とすために必要
   const value = Number.parseFloat(readValue(name));
   return Number.isFinite(value) ? value : fallback;
@@ -77,10 +71,10 @@ export function readNumber(name: string, fallback: number): number {
 /**
  * 色トークンを `#rrggbb` / `#rrggbbaa` にする。
  *
- * **トークンは hex とは限らない。** `--mx-color-selection` は
- * `rgb(59 91 219 / 18%)` で書かれている。当て板に `color` として当てて
- * `getComputedStyle` から読み戻すと、**ブラウザが正規化した rgb() が返る。**
- * 自前で色関数を解釈するより確かで、トークンの書き方に縛りを作らずに済む。
+ * トークンは hex とは限らない。
+ * `--mx-color-selection` は `rgb(59 91 219 / 18%)` で書かれている。
+ * 判定用の要素に `color` として適用し `getComputedStyle` から読み戻すと、ブラウザが正規化した rgb() が返る。
+ * 自前で色関数を解釈するより確実であり、トークンの記法に制約を設けずに済む。
  */
 function readColor(name: string, fallback: string): string {
   const element = probeElement();
@@ -117,21 +111,14 @@ function isDark(background: string): boolean {
   return (red * 299 + green * 587 + blue * 114) / 1000 < 128;
 }
 
-/* ------------------------------------------------------------------ */
-/* テーマの組み立て                                                     */
-/* ------------------------------------------------------------------ */
-
 /**
- * 記法の色。**プレビューのコードブロックと同じトークンを使う**
- * （`--mx-color-code-*` / 02.architecture/10-theming.md）。
+ * 記法の色。プレビューのコードブロックと同じトークンを使う（`--mx-color-code-*` / 02.architecture/10-theming.md）。
  *
- * トークン名は Monarch の Markdown 定義が出すもの
- * （`monaco-editor/languages/definitions/markdown`）。
+ * トークン名は Monarch の Markdown 定義が出力するものである（`monaco-editor/languages/definitions/markdown`）。
  *
- * > **見出しとリストの記号は、どちらも `keyword` で出てくる。**
- * > CodeMirror では Lezer の構文木から `tags.heading` と `tags.list` を
- * > 別々に取れていたが、Monarch は行頭の記法をまとめて 1 つのトークンにする。
- * > **色を 2 つに分けられないので、構造を表す 1 色に寄せている。**
+ * 見出しとリストの記号は、どちらも `keyword` として出力される。
+ * Monarch は行頭の記法をまとめて 1 つのトークンにするため、色を 2 つに分けられない。
+ * そのため、構造を表す 1 色に統一している。
  */
 function tokenRules(): monaco.editor.ITokenThemeRule[] {
   const structure = readColor('--mx-color-code-function', '#1d4ed8');
@@ -170,8 +157,7 @@ function buildTheme(): monaco.editor.IStandaloneThemeData {
 
   return {
     base: isDark(background) ? 'vs-dark' : 'vs',
-    // **継承する。** ここで名指ししていない色 ID は数百あり、
-    // 埋めずに残すと Monaco 側の既定（ライト / ダークそれぞれ）に落ちる。
+    // 継承する。ここで指定していない色 ID は数百あり、指定しなければ Monaco 側の既定（ライト / ダークそれぞれ）が使われる。
     inherit: true,
     rules: tokenRules(),
     colors: {
@@ -183,13 +169,13 @@ function buildTheme(): monaco.editor.IStandaloneThemeData {
       'editor.lineHighlightBackground': readColor('--mx-color-bg-subtle', '#f6f7f9'),
       'editor.lineHighlightBorder': '#00000000',
       'editor.selectionBackground': readColor('--mx-color-selection', '#3b5bdb2e'),
-      // 選択した語と同じもの。**一致より弱く**塗る。探しているのではなく、
-      // たまたま同じ語がそこにある、という情報でしかない。
+      // 選択した語と一致する箇所。検索の一致より弱く表示する。
+      // 検索の対象ではなく、同じ語が存在するという情報でしかない。
       'editor.selectionHighlightBackground': readColor('--mx-color-bg-hover', '#e3e6ea'),
       'editor.wordHighlightBackground': readColor('--mx-color-bg-hover', '#e3e6ea'),
       'editor.wordHighlightStrongBackground': readColor('--mx-color-bg-hover', '#e3e6ea'),
-      // 検索の一致（F-EDIT-05）。**プレビュー内検索と同じトークンを使う。**
-      // 同じ `Ctrl+F` で開くものが、面ごとに違う色で光ってはいけない。
+      // 検索の一致（F-EDIT-05）。プレビュー内検索と同じトークンを使う。
+      // 同じ `Ctrl+F` で開く機能が、面ごとに異なる色で表示されないようにする。
       'editor.findMatchBackground': readColor('--mx-color-search-current', '#3b5bdb'),
       'editor.findMatchHighlightBackground': readColor('--mx-color-search-match', '#ffc40073'),
       'editorBracketMatch.background': readColor('--mx-color-bg-hover', '#e3e6ea'),
@@ -212,20 +198,15 @@ function buildTheme(): monaco.editor.IStandaloneThemeData {
   };
 }
 
-/* ------------------------------------------------------------------ */
-/* 適用と追従                                                          */
-/* ------------------------------------------------------------------ */
-
 /**
  * いまのトークンからテーマを組み直して当てる。
  *
- * **フォントはここにない。** 文字サイズ・行間・フォント名は M2 まで
- * プレビューのトークンをそのまま着ていたが、読む面と書く面で別々に持つようにした
- * （ADR-0012）。いまは `options.ts` が設定から組む。
+ * フォントはここでは扱わない。
+ * 文字サイズ・行間・フォント名は M2 までプレビューのトークンをそのまま使っていたが、読む面と書く面で別々に持つようにした（ADR-0012）。
+ * 現在は `options.ts` が設定から組み立てる。
  *
- * エディターの実体を取らないのは、`defineTheme` / `setTheme` が
- * **Monaco 全体に対する操作**だから。インスタンスを渡す形にすると、
- * タブが増えたときに枚数ぶん呼ばれることになる（M3）。
+ * エディターの実体を引数に取らないのは、`defineTheme` / `setTheme` が Monaco 全体に対する操作だからである。
+ * インスタンスを渡す形にすると、タブが増えたときにその数だけ呼ばれることになる（M3）。
  */
 export function applyEditorTheme(): void {
   monaco.editor.defineTheme(THEME_NAME, buildTheme());
@@ -248,7 +229,7 @@ export function watchEditorTokens(reapply: () => void): () => void {
   observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme', 'style'] });
 
   // `theme` が `system` のとき、`data-theme` は付かない。OS 側の切り替えは
-  // CSS のメディアクエリが拾うが、**JS 側には何も飛んでこない**ので明示的に聞く。
+  // CSS のメディアクエリでは反映されるが、JS 側には通知が来ないため明示的に購読する。
   const media = globalThis.matchMedia('(prefers-color-scheme: dark)');
   media.addEventListener('change', reapply);
 

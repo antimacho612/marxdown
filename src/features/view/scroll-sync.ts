@@ -2,7 +2,7 @@
  * Split のスクロール同期と双方向ジャンプ（F-MODE-05 / 03.ux-spec/03-split-mode.md §2, §3）。
  *
  * プレビューのブロック要素には `data-line` が付いており（`markdown/plugins/line-map.ts`）、エディターも行番号を持つため、両者を結ぶのは行番号だけでよい。
- * このモジュールは `main` チャンクにいるためエディターを直接 import せず、行番号だけの窓口 `EditorScrollPort` を受け取る（座標計算はエンジン固有の `features/editor/lazy/scroll-port.ts` 側に置く）。
+ * このモジュールは `main` チャンクにあるためエディターを直接 import せず、行番号だけを扱うインタフェース `EditorScrollPort` を受け取る（座標計算はエンジン固有の `features/editor/lazy/scroll-port.ts` に置く）。
  * 行あたりの高さが要素ごとに違うため、`data-line` を持つ要素の間を線形補間する（§3）。
  *
  * 片方を動かすと相手の `scroll` が飛んでまた動くという循環が起きるため、これを防ぐために主導権は最後に操作した側が持ち、動かされた側からの同期を短時間停止する（§2）。
@@ -12,13 +12,13 @@ import { viewStore } from './store.svelte';
 const PREVIEW_SELECTOR = '#mx-preview';
 
 /**
- * エディター側の窓口。実装は `features/editor/lazy/scroll-port.ts`（`editor` チャンク）。
+ * エディター側のインタフェース。実装は `features/editor/lazy/scroll-port.ts`（`editor` チャンク）にある。
  *
- * **やり取りするのは行番号だけ。** 行番号は 1 始まりで、**端数を含む**
- * （`3.5` は 3 行目の高さの半分まで隠れている状態）。
- * 行あたりの高さが一定でない以上、整数に丸めると 1 行ぶんの跳ねが出る。
+ * やり取りするのは行番号だけである。
+ * 行番号は 1 始まりで端数を含む（`3.5` は 3 行目の高さの半分まで隠れている状態を表す）。
+ * 行あたりの高さが一定でないため、整数に丸めると 1 行ぶんのずれが生じる。
  *
- * 範囲外の行番号は**実装側が丸める**。呼び出し側が行数を知る必要は無い。
+ * 範囲外の行番号は実装側が丸める。呼び出し側が行数を知る必要はない。
  */
 export interface EditorScrollPort {
   /** ビューポート最上部に来ている行番号。 */
@@ -27,15 +27,15 @@ export interface EditorScrollPort {
   scrollToLine(line: number): void;
   /** カーソルをその行の先頭へ置き、見える位置まで運ぶ。 */
   revealLine(line: number, options?: { focus?: boolean }): void;
-  /** スクロールを購読する。**解除する関数を返す。** */
+  /** スクロールを購読する。解除する関数を返す。 */
   onScroll(listener: () => void): () => void;
 }
 
 /**
  * 動かされた側を黙らせておく時間。
  *
- * 短すぎると循環的な同期が起き、長すぎると「反対側を触ってもすぐ効かない」。
- * 慣性スクロールが落ち着くまでの実測（Windows のホイール）に合わせてある。
+ * 短すぎると循環的な同期が発生し、長すぎると反対側を操作しても即座に反映されない。
+ * 慣性スクロールが停止するまでの実測値（Windows のホイール）に合わせてある。
  */
 const SUPPRESS_MS = 120;
 
@@ -53,7 +53,7 @@ interface Sync {
 let active: Sync | null = null;
 
 /**
- * エディター側の窓口。載っているあいだずっと在る（スクロール同期の在り無しとは別）。
+ * エディター側のインタフェース。マウントされている間は常に保持する（スクロール同期の有無とは別に管理する）。
  *
  * 以前はここが `active`（Split のあいだだけ在るもの）の中に居たため、Edit ではジャンプの飛び先が無くアウトラインの見出しを押しても何も起きなかった（#59）。
  * 同期とジャンプは別の機能で、ジャンプはエディターが載っていれば成立する。
@@ -63,24 +63,24 @@ let active: Sync | null = null;
 let port: EditorScrollPort | null = null;
 
 /**
- * エディターが自分の窓口を登録する口（`features/editor/lazy/editor.ts` が呼ぶ）。
- * 破棄するときに `null` を渡す。
+ * エディターが自分のインタフェースを登録する（`features/editor/lazy/editor.ts` が呼ぶ）。
+ * 破棄するときは `null` を渡す。
  */
 export function attachEditorScrollPort(next: EditorScrollPort | null): void {
   port = next;
-  // 窓口が無くなったのに購読だけ残ると、動かせない相手を呼び続けることになる。
+  // インタフェースが解除されたのに購読だけ残ると、操作できない相手を呼び続けることになる。
   if (next === null) stopScrollSync();
 }
 
-/** どちら側が主導しているか。`null` は「どちらでもない（受け付ける）」。 */
+/** どちら側が主導しているか。`null` はどちらも主導しておらず、両側からの同期を受け付ける状態を表す。 */
 let leader: 'editor' | 'preview' | null = null;
 let leaderUntil = 0;
 
 /**
- * 同期を始める。**Split に入ったときに呼ぶ。**
+ * 同期を開始する。Split に入ったときに呼ぶ。
  *
- * 2 回目以降は何もしない。抜けるときは `stopScrollSync`。
- * 窓口（`attachEditorScrollPort`）が登録されていなければ何もしない。
+ * 2 回目以降は何もしない。終了するときは `stopScrollSync` を呼ぶ。
+ * インタフェース（`attachEditorScrollPort`）が登録されていなければ何もしない。
  */
 export function startScrollSync(): void {
   if (active) return;
@@ -100,7 +100,7 @@ export function startScrollSync(): void {
   };
 
   // プレビューの要素をダブルクリック → エディターの該当行へ（§3）。
-  // **Split のあいだだけ効く。** Preview だけで読んでいるときは飛ぶ先が無い。
+  // Split のときだけ動作する。Preview だけで表示しているときは移動先が存在しない。
   const onPreviewDoubleClick = (event: MouseEvent): void => {
     const line = lineAtEvent(event);
     if (line === null) return;
@@ -120,7 +120,7 @@ export function startScrollSync(): void {
   };
 }
 
-/** 同期をやめる。**Split を抜けたときに呼ぶ。** */
+/** 同期を停止する。Split を抜けたときに呼ぶ。 */
 export function stopScrollSync(): void {
   active?.dispose();
   active = null;
@@ -148,16 +148,12 @@ function take(side: 'editor' | 'preview'): boolean {
   return true;
 }
 
-/* ------------------------------------------------------------------ */
-/* 対応付け                                                            */
-/* ------------------------------------------------------------------ */
-
 /**
  * プレビューの `data-line` を、行番号の昇順に並べた表にする。
  *
- * **毎回組み直す。** 段階的描画（02.architecture/06-markdown-rendering-pipeline.md §4）で本文は後からも増えるので、
- * 作り置きすると増えたぶんを取りこぼす。`readme.md` で数百件、`huge.md` で
- * 数千件の `querySelectorAll` であり、スクロール 1 回のコストとして許容できる。
+ * 呼ばれるたびに組み立て直す。
+ * 段階的描画（02.architecture/06-markdown-rendering-pipeline.md §4）では本文が後から追加されるため、事前に構築しておくと追加分を検出できない。
+ * `readme.md` で数百件、`huge.md` で数千件の `querySelectorAll` であり、スクロール 1 回あたりのコストとして許容できる。
  */
 function anchorsOf(preview: HTMLElement): Anchor[] {
   const anchors: Anchor[] = [];
@@ -220,10 +216,6 @@ function lineForTop(anchors: Anchor[], top: number): number | null {
   return anchors.at(-1)?.line ?? null;
 }
 
-/* ------------------------------------------------------------------ */
-/* 同期                                                                */
-/* ------------------------------------------------------------------ */
-
 function syncPreviewToEditor(port: EditorScrollPort, preview: HTMLElement): void {
   const top = topForLine(anchorsOf(preview), port.topLine());
   if (top === null) return;
@@ -236,16 +228,11 @@ function syncEditorToPreview(port: EditorScrollPort, preview: HTMLElement): void
   port.scrollToLine(line);
 }
 
-/* ------------------------------------------------------------------ */
-/* 双方向ジャンプ（§3）                                                 */
-/* ------------------------------------------------------------------ */
-
 /**
  * 押された場所の行番号。`data-line` を持つ祖先を辿って探す。
  *
- * **インライン要素には `data-line` が無い**（数が爆発するので付けていない /
- * `markdown/plugins/line-map.ts`）。段落の中の `<code>` を叩いても、
- * 段落の行番号が返る。
+ * インライン要素には `data-line` を付けていない（要素数が過大になるため / `markdown/plugins/line-map.ts`）。
+ * 段落の中の `<code>` をクリックした場合も、段落の行番号が返る。
  */
 function lineAtEvent(event: MouseEvent): number | null {
   const target = event.target;
@@ -261,10 +248,10 @@ function lineAtEvent(event: MouseEvent): number | null {
 /**
  * プレビューの位置からエディターの行へ飛ぶ（プレビューのダブルクリック / §3）。
  *
- * **同期が OFF でも、Split で無くても効く。** §2 の但し書きどおり、これは
- * 明示的な操作である。アウトラインからのジャンプ（`features/outline/jump.ts`）は
- * Edit でも同じ経路を通るので、**必要なのはエディターが載っていることだけ**。
- * 飛んだあとはエディターが主導権を持つ（そのまま打ち始められる）。
+ * 同期が無効でも、Split でなくても動作する。
+ * §2 の但し書きのとおり、これは明示的な操作である。
+ * アウトラインからのジャンプ（`features/outline/jump.ts`）は Edit でも同じ経路を通るため、条件はエディターがマウントされていることだけである。
+ * 移動後はエディターが主導権を持つ（そのまま入力を続けられる）。
  */
 export function jumpToEditorLine(line: number, options: { focus?: boolean } = {}): void {
   if (!port) return;
@@ -272,8 +259,8 @@ export function jumpToEditorLine(line: number, options: { focus?: boolean } = {}
   leader = 'editor';
   leaderUntil = performance.now() + SUPPRESS_MS;
 
-  // **フォーカスは呼び出し側が決める。** プレビューを叩いたなら移すのが自然だが、
-  // アウトラインを叩いたのにエディターへ飛ばされると、続けて次の見出しを選べない。
+  // フォーカスの移動は呼び出し側が決める。
+  // プレビューをクリックした場合は移すのが自然だが、アウトラインをクリックしたときにエディターへフォーカスが移ると、続けて次の見出しを選べなくなる。
   port.revealLine(line, { focus: options.focus !== false });
 }
 
@@ -294,10 +281,10 @@ export function jumpToPreviewLine(line: number): void {
   preview.scrollTop = top;
 }
 
-/** Split で同期が動いているか。ジャンプの呼び出し側が「両方へ飛ばすか」を決めるのに使う。 */
+/** Split で同期が動作しているか。ジャンプの呼び出し側が両方へ移動させるかどうかの判断に使う。 */
 export function isScrollSyncActive(): boolean {
   return active !== null;
 }
 
-/** テスト用。 */
+/** テスト用。座標と行番号の変換だけを取り出して検証できるようにする。 */
 export const internals = { anchorsOf, lineForTop, topForLine };

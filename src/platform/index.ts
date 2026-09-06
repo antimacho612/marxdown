@@ -25,6 +25,7 @@ function isTauri(): boolean {
 
 let current: Platform = isTauri() ? tauriPlatform : webPlatform;
 
+/** 現在の Platform 実装。Domain 層と UI 層はここを経由してのみ Platform に触れる。 */
 export function getPlatform(): Platform {
   return current;
 }

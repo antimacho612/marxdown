@@ -22,6 +22,7 @@ import { setDocumentText } from './text';
 
 const PREVIEW_SELECTOR = '#mx-preview';
 
+/** 開く経路に注入する依存。起動時に `configureOpener` で 1 回だけ渡す。 */
 export interface OpenerConfig {
   parser: MarkdownParser;
 }
@@ -38,15 +39,16 @@ export function configureOpener(next: OpenerConfig): void {
 }
 
 /**
- * いま注入されているパーサ。**Split の描き直し（`live.ts`）が使う。**
+ * 現在注入されているパーサ。Split の再描画（`live.ts`）が使う。
  *
- * 開く経路を通さずにパースしたい場面はここだけで、
- * 他から呼ぶ用途ができたら「開く」の意味を薄めていないか先に疑うこと。
+ * 開く経路を通さずにパースする場面はここだけである。
+ * 他から呼ぶ用途が生じた場合は、開く経路を迂回していないかを先に確認すること。
  */
 export function getParser(): MarkdownParser | null {
   return config?.parser ?? null;
 }
 
+/** `openDocument` / `openPath` の振る舞いの差を表す。5 つの入口の違いはすべてここに現れる。 */
 export interface OpenOptions {
   /**
    * 経過時間の起点。既定は「読み込みを始めた時刻」。
@@ -63,56 +65,57 @@ export interface OpenOptions {
   /** 最近開いたファイルに積むか。既定 true。 */
   remember?: boolean;
   /**
-   * 描画後に飛ぶページ内アンカー（`./other.md#section` の `#` 以降）。
+   * 描画後に移動するページ内アンカー（`./other.md#section` の `#` 以降）。
    *
-   * `restoreScroll` と同時に指定しない。位置を「復元する」のと
-   * 「指定の見出しへ飛ぶ」のは、どちらか一方しか意味を持たない。
+   * `restoreScroll` と同時には指定しない。
+   * 位置の復元と指定した見出しへの移動は、どちらか一方しか成立しない。
    */
   anchor?: string;
   /**
-   * 戻る / 進むの履歴に積むか。既定 true（F-NAV-07）。
+   * 戻る / 進むの履歴に積むか。既定は true（F-NAV-07）。
    *
-   * false にするのは、**同じ場所に居続ける操作**だけ。再読み込み（`F5` /
-   * 外部変更）と、履歴そのものを辿る移動（`Alt+←` / `Alt+→`）がそれにあたる。
+   * false にするのは同じ位置を維持する操作だけである。
+   * 再読み込み（`F5` / 外部変更）と、履歴そのものを辿る移動（`Alt+←` / `Alt+→`）がこれにあたる。
    */
   history?: boolean;
   /** 起動計測の T6 / T7 / T8 を打つか。コールド起動だけが true。 */
   trace?: boolean;
   /**
-   * エンコーディングの**指定**（03.ux-spec/07-status-and-notifications.md §3「クリックで
-   * エンコーディング再解釈」）。省略すると Rust 側の推定に任せる。
+   * エンコーディングの指定（03.ux-spec/07-status-and-notifications.md §3「クリックでエンコーディング再解釈」）。
+   * 省略すると Rust 側の推定に任せる。
    *
    * 渡すのは `reinterpret()` だけ（`document/encoding.ts`）。
    */
   encoding?: Encoding;
   /**
-   * パースを投げた**直後**、結果を待つ前に呼ばれる。
+   * パースを開始した直後、結果を待つ前に呼ばれる。
    *
-   * 起動シーケンス（02.architecture/05-startup-sequence.md §1）がシェルを描くための穴。
-   * Worker への postMessage はほぼ即座に返るので、ここでの仕事はまるごと
-   * パース時間に重なる。この 1 点のためだけに存在する引数。
+   * 起動シーケンス（02.architecture/05-startup-sequence.md §1）がシェルを描画するための拡張点である。
+   * ここでの処理はパース時間と重なる。この用途のためだけに存在する引数である。
    */
   betweenParseAndPaint?: () => void;
 }
 
+/** `reloadCurrent` の振る舞いの差を表す。 */
 export interface ReloadOptions {
   /**
    * エンコーディングを指定して読み直す（再解釈 / `document/encoding.ts`）。
    *
-   * **外部変更による自動再読み込みでは渡さない。** あちらはファイルの中身が
-   * 変わったので、推定もやり直すのが正しい。指定が残り続けると、
-   * 書き換えられて別のエンコーディングになったファイルを、古い指定で読み続ける。
+   * 外部変更による自動再読み込みでは渡さない。
+   * その経路ではファイルの内容が変わっているため、推定もやり直すのが正しい。
+   * 指定が残り続けると、書き換えられて別のエンコーディングになったファイルを古い指定で読み続けることになる。
    */
   encoding?: Encoding;
   /**
    * 読み直した後に出す情報通知の文言。既定は「再読み込みしました」（`F5`）。
    *
-   * **文言だけを差し替えられれば足りる。** 自分で押したのか外から変わったのかで
-   * 変わるのは「何が起きたか」の説明であって、読み直しの手順ではない。
+   * 差し替えるのは文言だけで足りる。
+   * 操作によるものか外部変更によるものかで変わるのは何が起きたかの説明であり、読み直しの手順ではない。
    */
   notice?: string;
 }
 
+/** 開き終えたときの計測値。開発ビルドのステータスバーと起動計測が使う。 */
 export interface OpenOutcome {
   parseMs: number;
   /** 最初のチャンクが見えるまでの経過ミリ秒（`startedAt` 起点）。 */
@@ -123,25 +126,25 @@ export interface OpenOutcome {
 /**
  * 本文を手に持っている状態から開く。
  *
- * 起動時の bootstrap 経路がこれを使う。**ファイルを読み直さない**ことが要点で、
- * Rust が WebView 初期化と並行して読んでおいたものを、そのまま使い切る。
+ * 起動時の bootstrap 経路がこれを使う。
+ * ファイルを読み直さないことが要点で、Rust が WebView 初期化と並行して読んだ内容をそのまま使う。
  */
 export async function openDocument(payload: StoredPayload, options: OpenOptions = {}): Promise<OpenOutcome | null> {
   if (!config) throw new Error('configureOpener が呼ばれていない');
 
   const startedAt = options.startedAt ?? performance.now();
-  // パースを先に投げてから待つ（シェル描画と重ねるため）。
+  // パースを先に開始してから待つ（シェル描画と重ねるため）。
   traceMark(options, 'T6', `${payload.content.length} chars`);
   const parsing = config.parser.parse(payload.content);
 
-  // 本文を差し替える前に、いま読んでいた位置を履歴へ控える（F-NAV-07）。
-  // 無題の文書は戻り先として指せないので積まない。
+  // 本文を差し替える前に、現在のスクロール位置を履歴へ記録する（F-NAV-07）。
+  // 無題の文書は戻り先として指定できないため積まない。
   if (options.history !== false && payload.path !== null) pushHistory(payload.path, previewScrollTop());
 
   documentStore.meta = payload;
 
   // 本文はストアではなく素のモジュールへ（ADR-0005 / `document/text.ts`）。
-  // エディターが載っていれば CodeMirror の dispatch を伴うため、T6→T7 の並行処理を崩さないようパース送信の後に置く。
+  // エディターがマウントされていれば Monaco への書き込みを伴うため、T6→T7 の並行処理を維持できるようパースの開始後に置く。
   setDocumentText(payload.content);
 
   // ディスクと一致した状態から始める。開き直しでもここを通るので
@@ -222,7 +225,7 @@ export async function openDocument(payload: StoredPayload, options: OpenOptions 
 }
 
 /**
- * パスから開く。読み込みの失敗もここで面倒を見る。
+ * パスから開く。読み込みの失敗もここで処理する。
  *
  * 開けなかったファイルは履歴から外す。消えたファイルを一覧に残し続けると、
  * 次の起動でも同じ失敗を踏むことになる（03.ux-spec/08-empty-states.md §1 の一覧は道具であって記録ではない）。
@@ -255,8 +258,8 @@ export async function openViaDialog(): Promise<OpenOutcome | null> {
 /**
  * 落とされたファイルを開く（F-OPEN-08）。
  *
- * 複数落とされても**先頭 1 つだけ**を開く。タブ（M3）が入るまで、
- * 残りを開く先が無いため。黙って捨てずに、その旨を通知する。
+ * 複数ドロップされても先頭の 1 つだけを開く。
+ * タブ（M3）が入るまで残りを開く先が無いためで、破棄したことは通知する。
  */
 export async function openDropped(paths: string[]): Promise<OpenOutcome | null> {
   const first = paths[0];
@@ -284,7 +287,7 @@ export async function openDropped(paths: string[]): Promise<OpenOutcome | null> 
 export async function reloadCurrent(options: ReloadOptions = {}): Promise<OpenOutcome | null> {
   const meta = documentStore.meta;
   if (meta === null) return null;
-  // 無題の文書（`Ctrl+N`）には読み直す先が無い。F5 は何もしないのが正しい。
+  // 無題の文書（`Ctrl+N`）には読み直す対象が無いため、F5 では何もしない。
   if (meta.path === null) return null;
 
   const container = document.querySelector<HTMLElement>(PREVIEW_SELECTOR);
@@ -296,16 +299,16 @@ export async function reloadCurrent(options: ReloadOptions = {}): Promise<OpenOu
     resetScroll: false,
     restoreScroll: container?.scrollTop ?? 0,
     remember: false,
-    // 同じ場所に居続ける操作なので履歴に積まない（積むと `Alt+←` が段階的に効かなくなる）。
+    // 同じ位置を維持する操作であるため履歴に積まない（積むと `Alt+←` が期待どおりに戻らなくなる）。
     history: false,
   });
 
-  // 内容が同じで画面が動かなくても、操作が届いたことは伝える（3 秒で消える情報通知）。
+  // 内容が同じで画面が変化しない場合も、操作を受け付けたことは通知する（3 秒で消える情報通知）。
   if (outcome) notifyInfo(options.notice ?? ja.open.reloaded);
   return outcome;
 }
 
-/** 監視の付け替え。失敗しても開く操作は成功しているので握り潰す（`F5` で読み直せる）。 */
+/** 監視の付け替え。失敗しても開く操作自体は成功しているため無視する（`F5` で読み直せる）。 */
 async function watch(path: string): Promise<void> {
   try {
     await getPlatform().watchPath(path);
@@ -314,7 +317,7 @@ async function watch(path: string): Promise<void> {
   }
 }
 
-/** いま本文がどこまでスクロールされているか。履歴（F-NAV-07）が控える値。 */
+/** 本文の現在のスクロール位置。履歴（F-NAV-07）が記録する値。 */
 export function previewScrollTop(): number {
   return document.querySelector<HTMLElement>(PREVIEW_SELECTOR)?.scrollTop ?? 0;
 }
@@ -338,7 +341,7 @@ function kindOf(e: unknown): string | null {
   return null;
 }
 
-/** Rust の `CoreError` を日本語の 1 行に落とす。 */
+/** Rust の `CoreError` を日本語 1 行の文言に変換する。 */
 export function describeOpenError(e: unknown, path: string): string {
   const kind = kindOf(e);
   if (kind !== null) {

@@ -4,6 +4,7 @@
  * `setInterval` は使わないこと。
  */
 
+/** `requestIdleCallback` の締切。フォールバック経路でも同じ形で渡す。 */
 export interface IdleDeadline {
   timeRemaining(): number;
   didTimeout: boolean;
@@ -28,8 +29,8 @@ const SLICE_FLOOR = 4;
 /**
  * 配列を、アイドル時間の許す限り少しずつ処理する。
  *
- * 1 件ずつ `requestIdle` に戻すと、件数が多いときにコールバックの往復が
- * 支配的になる。締切まで回し続けて、切れたら次を予約する。
+ * 1 件ずつ `requestIdle` へ戻すと、件数が多いときにコールバックの往復が支配的になる。
+ * 締切まで処理を続け、締切を過ぎた時点で次を予約する。
  */
 export function processInIdle<T>(items: readonly T[], step: (item: T) => void): Promise<void> {
   if (items.length === 0) return Promise.resolve();

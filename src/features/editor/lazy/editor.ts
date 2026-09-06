@@ -31,21 +31,20 @@ let model: monaco.editor.ITextModel | null = null;
  * そのときの版へ動かす（`sync`）。
  *
  * 内容が変わったことだけを見ると、Undo で編集前の内容まで戻ってもダーティのままになる（#43）。
- * **`getAlternativeVersionId()` は Undo でその版へ戻ると同じ値に戻る**ので、
- * 本文を文字列で比較しなくても「基準と同じ内容か」が分かる。
+ * `getAlternativeVersionId()` は Undo でその版へ戻ると同じ値に戻るため、本文を文字列で比較しなくても基準と同じ内容かどうかを判定できる。
  */
 let cleanVersionId = 0;
 
-/** 本文を LF で読む。モデルが CRLF を持っていても、外へ出るのは LF。 */
+/** 本文を LF で読む。モデルが CRLF を保持していても、返すのは LF に正規化した文字列である。 */
 function readText(): string {
   return model?.getValue(monaco.editor.EndOfLinePreference.LF) ?? '';
 }
 
 /**
- * エディターを載せる。**2 回目以降は何もしない。**
+ * エディターをマウントする。2 回目以降は何もしない。
  *
- * 初期内容は `getDocumentText()` から取る。`attachEditor` より**前**に読むこと
- * （後にすると、控えを捨てたあとの空文字を読む）。
+ * 初期内容は `getDocumentText()` から取得する。
+ * `attachEditor` より前に読むこと（後にすると、保持分を破棄した後の空文字を読むことになる）。
  */
 export function mountEditor(host: HTMLElement): monaco.editor.IStandaloneCodeEditor {
   if (editor) return editor;
@@ -57,8 +56,8 @@ export function mountEditor(host: HTMLElement): monaco.editor.IStandaloneCodeEdi
 
   editor = monaco.editor.create(host, {
     model,
-    // 器の大きさに追随させる（ResizeObserver）。**隠れている間は効かない**ので、
-    // 面を出し直したときは `relayoutEditor()` で明示的に測り直す。
+    // コンテナのサイズに追随させる（ResizeObserver）。
+    // 非表示の間は動作しないため、面を表示し直したときは `relayoutEditor()` で明示的に測り直す。
     automaticLayout: true,
 
     // 見た目と編集の挙動は設定から来る（`options.ts` / F-CONF-04）。
@@ -66,43 +65,43 @@ export function mountEditor(host: HTMLElement): monaco.editor.IStandaloneCodeEdi
     ...editorOptions(settingsStore.values),
 
     /*
-     * ここから下は**設定にしないと決めたもの**。理由は 3 つに分かれる。
-     * 増やすときは `options.ts` の冒頭を読むこと。
+     * ここから下は設定項目にしないと決めたものである。理由は 3 つに分かれる。
+     * 追加するときは `options.ts` の冒頭を読むこと。
      */
 
-    // 概要ルーラは出さない。Markdown では意味を持つ印がほとんど載らず、
-    // 出すと本文の幅がそのぶん狭くなる（ADR-0001 から引き継ぐ判断）。
+    // 概要ルーラは表示しない。
+    // Markdown では表示する情報がほとんど無く、表示すると本文の幅がそのぶん狭くなる（ADR-0001 から引き継ぐ判断）。
     overviewRulerLanes: 0,
     overviewRulerBorder: false,
     hideCursorInOverviewRuler: true,
-    // 03.ux-spec/09-motion.md の禁則。スクロールに演出を足さない。
-    // **設定に出さない**のは、設定から禁則を破れる形にしないため。
+    // 03.ux-spec/09-motion.md の禁則。スクロールにアニメーションを追加しない。
+    // 設定項目にしないのは、設定から禁則を無効化できる形にしないためである。
     smoothScrolling: false,
 
-    // **触っていない箇所のバイト列を変えない**（N-CMP-03）。
-    // 以下はどれも「気を利かせて別の場所を書き換える」機能である。
-    // **不変条件の側にあるので、設定項目にしない。**
+    // 触っていない箇所のバイト列を変えない（N-CMP-03）。
+    // 以下はいずれも編集箇所以外を自動で書き換える機能である。
+    // 不変条件に属するため、設定項目にしない。
     detectIndentation: false,
     trimAutoWhitespace: false,
     formatOnPaste: false,
     formatOnType: false,
     autoIndent: 'keep',
 
-    // Markdown に補完は要らない。**editor worker を起こす経路でもある。**
-    // Non-goal（IDE）に寄るので設定に出さない。
+    // Markdown に補完は不要である。editor worker を起動する経路でもある。
+    // Non-goal（IDE）に近づくため設定項目にしない。
     quickSuggestions: false,
     suggestOnTriggerCharacters: false,
     wordBasedSuggestions: 'off',
-    // 語のハイライトは「選択と同じもの」だけでよい。`occurrencesHighlight` は
-    // 言語サービス（DocumentHighlightProvider）を要求するので切る。
+    // 語のハイライトは選択範囲と一致するものだけでよい。
+    // `occurrencesHighlight` は言語サービス（DocumentHighlightProvider）を必要とするため無効にする。
     occurrencesHighlight: 'off',
     selectionHighlight: true,
-    // 曖昧・不可視文字の警告は、日本語の本文では鳴りっぱなしになる。
-    // 点けられる設定を出す価値が無い。
+    // 曖昧な文字と不可視文字の警告は、日本語の本文では常時表示される。
+    // 有効化する設定を用意する利点がない。
     unicodeHighlight: { ambiguousCharacters: false, invisibleCharacters: false },
   });
 
-  // 載せた時点の内容がダーティ判定の基準（マウント前はダーティになりようがない）。
+  // マウントした時点の内容がダーティ判定の基準になる（マウント前にダーティにはならない）。
   cleanVersionId = model.getAlternativeVersionId();
 
   // ダーティ状態（F-EDIT-03）。boolean 1 つだけがリアクティビティを通り、本文そのものは通らない（ADR-0005）。
@@ -133,16 +132,16 @@ export function mountEditor(host: HTMLElement): monaco.editor.IStandaloneCodeEdi
   watchEditorSettings(refreshAppearance);
 
   // Markdown の書式（F-EDIT-08）とリストの継続入力（F-EDIT-09, 10）。
-  // **アプリが握るキーを Monaco から剥がすのもここ**（`keymap.ts`）。
+  // アプリ側が処理するキーを Monaco から外すのもここで行う（`keymap.ts`）。
   installEditorKeymap(editor);
   // 選択範囲への URL 貼り付け（F-EDIT-12）。
   installUrlPaste(editor);
-  // カーソル位置をステータスバーへ（03.ux-spec/07-status-and-notifications.md §3）。**rAF で間引く**（`cursor.ts`）。
+  // カーソル位置をステータスバーへ通知する（03.ux-spec/07-status-and-notifications.md §3）。更新は rAF で間引く（`cursor.ts`）。
   installCursorReport(editor);
 
-  // 行番号だけの窓口を渡す（`features/view/scroll-sync.ts`）。
-  // **Split に入る前から渡しておく。** アウトラインからのジャンプは Edit でも
-  // 効かなければならず、あれが要求するのは同期ではなく窓口そのものである（#59）。
+  // 行番号だけを扱うインタフェースを渡す（`features/view/scroll-sync.ts`）。
+  // Split に入る前から渡しておく。
+  // アウトラインからのジャンプは Edit でも動作する必要があり、そこで必要になるのは同期ではなくこのインタフェースそのものである（#59）。
   attachEditorScrollPort(createScrollPort(editor));
 
   // ここから先、本文の真実は Monaco のモデルにある（ADR-0005）。
@@ -151,7 +150,7 @@ export function mountEditor(host: HTMLElement): monaco.editor.IStandaloneCodeEdi
     replace: (text) => {
       const current = model;
       if (!current) return;
-      // **Undo の履歴に載せる。** ここを `setValue` にすると履歴ごと消える。
+      // Undo の履歴に残す。`setValue` にすると履歴が失われる。
       current.pushEditOperations(null, [{ range: current.getFullModelRange(), text }], () => null);
     },
     sync: () => {
@@ -162,12 +161,12 @@ export function mountEditor(host: HTMLElement): monaco.editor.IStandaloneCodeEdi
   return editor;
 }
 
-/** 載っているか。モード切り替えの判断に使う。 */
+/** マウント済みか。モード切り替えの判断に使う。 */
 export function isEditorMounted(): boolean {
   return editor !== null;
 }
 
-/** フォーカスを移す。Edit へ切り替えたら、そのまま打てるようにする。 */
+/** フォーカスを移す。Edit へ切り替えた直後から入力できるようにする。 */
 export function focusEditor(): void {
   editor?.focus();
 }
@@ -175,11 +174,10 @@ export function focusEditor(): void {
 /**
  * 器の大きさを測り直す（`features/mode/mode.ts` が面を出したときに呼ぶ）。
  *
- * **`display: none` のあいだ Monaco は寸法を失う。** `automaticLayout` の
- * ResizeObserver は隠れているあいだ動かないので、戻したときに測り直す。
+ * `display: none` の間、Monaco は寸法を保持しない。
+ * `automaticLayout` の ResizeObserver は非表示の間は動作しないため、表示を戻した時点で測り直す。
  *
- * 次のフレームで測るのは、属性を立てた直後はまだレイアウトが確定していないため
- * （`mode.ts` がプレビューのスクロール位置を戻すときと同じ理由）。
+ * 次のフレームで測るのは、属性を設定した直後はまだレイアウトが確定していないためである（`mode.ts` がプレビューのスクロール位置を戻すときと同じ理由）。
  */
 export function relayoutEditor(): void {
   const target = editor;
@@ -192,8 +190,8 @@ export function relayoutEditor(): void {
 /**
  * 検索・置換を開く（F-EDIT-05）。
  *
- * **載っていなければ何もしない。** Preview を見ているときの `Ctrl+F` は
- * 本文検索へ行くので、ここまで来ない（`features/mode/find.ts`）。
+ * マウントされていなければ何もしない。
+ * Preview を表示しているときの `Ctrl+F` は本文検索へ振り分けられるため、この関数には到達しない（`features/mode/find.ts`）。
  */
 export function openEditorSearch(replace: boolean): void {
   if (!editor) return;
@@ -204,13 +202,11 @@ export function openEditorSearch(replace: boolean): void {
 /**
  * 検索・置換を閉じる（Split でプレビュー側の検索へ移るとき / `features/mode/find.ts`）。
  *
- * **`getAction` では引けない。** 閉じる側は `registerEditorAction` ではなく
- * `registerEditorCommand` で登録されており（`contrib/find/browser/findController.js`）、
- * アクション一覧には出てこない。`trigger` はアクションを見たあと
- * エディターコマンドを見るので、こちらなら引ける。
+ * `getAction` では取得できない。
+ * 閉じる処理は `registerEditorAction` ではなく `registerEditorCommand` で登録されており（`contrib/find/browser/findController.js`）、アクション一覧には含まれない。
+ * `trigger` はアクションの次にエディターコマンドを検索するため、こちらなら実行できる。
  *
- * ウィジェットが出ていなければ precondition（`CONTEXT_FIND_WIDGET_VISIBLE`）で
- * 弾かれるので、呼ぶ側が状態を持つ必要はない。
+ * ウィジェットが表示されていない場合は precondition（`CONTEXT_FIND_WIDGET_VISIBLE`）で実行されないため、呼び出し側が状態を持つ必要はない。
  */
 export function closeEditorSearch(): void {
   editor?.trigger('marxdown.find', 'closeFindWidget', null);
@@ -228,10 +224,10 @@ export function typeForBench(text: string): void {
 }
 
 /**
- * カーソルを末尾へ置く（`features/bench/input.ts` / **計測専用**）。
+ * カーソルを末尾へ置く（`features/bench/input.ts` / 計測専用）。
  *
- * 打つ場所を決めておかないと、`huge.md` では 1 行目の見出しを延々と伸ばすことになる。
- * **人は自分が見ているところを打つ**ので、そこへ寄せてから始める。
+ * 入力位置を決めておかないと、`huge.md` では 1 行目の見出しを伸ばし続けることになる。
+ * 実際の入力は表示している位置に対して行われるため、そこへ移動してから計測を始める。
  */
 export function moveToEndForBench(): void {
   const current = model;
