@@ -10,7 +10,7 @@
  * 判定は `app/commands.ts` の `isListed` が唯一の根拠で、メニューとパレットで結論がずれない。
  */
 import { viewStore } from '@/features/view';
-import { recentStore } from '@/features/workspace/recent.svelte';
+import { recentStore } from '@/features/workspace';
 import { ja } from '@/i18n/ja';
 import { isCommandListed, runCommand, type CommandId } from '@/lib/commands';
 import { splitPath } from '@/lib/path';

@@ -8,7 +8,7 @@
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { recentStore } from '@/features/workspace/recent.svelte';
+import { recentStore } from '@/features/workspace';
 import type { MarkdownParser } from '@/markdown/parser';
 import { getPlatform, setPlatform, type Platform } from '@/platform';
 

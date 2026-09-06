@@ -8,7 +8,7 @@ import { pushHistory } from '@/features/history';
 import { scrollToAnchor } from '@/features/preview/anchor';
 import { enhance } from '@/features/preview/enhance';
 import { paint } from '@/features/preview/paint';
-import { forgetRecent, rememberRecent } from '@/features/workspace/recent.svelte';
+import { forgetRecent, rememberRecent } from '@/features/workspace';
 import { ja } from '@/i18n/ja';
 import { toMessage } from '@/lib/error';
 import { dirOf } from '@/lib/path';

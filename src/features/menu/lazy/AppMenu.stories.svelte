@@ -13,7 +13,7 @@
   import { defineMeta } from '@storybook/addon-svelte-csf';
 
   import { documentStore } from '@/features/document/store.svelte';
-  import { recentStore } from '@/features/workspace/recent.svelte';
+  import { recentStore } from '@/features/workspace';
   import type { DocumentMeta } from '@/platform';
 
   import AppMenu from './AppMenu.svelte';

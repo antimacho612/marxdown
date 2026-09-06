@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { registerAppCommands } from '@/app/commands';
 import { documentStore } from '@/features/document/store.svelte';
 import { viewStore } from '@/features/view';
-import { recentStore } from '@/features/workspace/recent.svelte';
+import { recentStore } from '@/features/workspace';
 import type { DocumentMeta } from '@/platform';
 
 import { buildMenu, MENU_RECENT_SHOWN, type MenuGroup } from './items';

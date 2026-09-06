@@ -9,7 +9,7 @@
   import { Outline } from '@/features/outline';
   import { RightPane } from '@/features/panes';
   import { SplitDivider, viewStore } from '@/features/view';
-  import Welcome from '@/features/workspace/Welcome.svelte';
+  import { Welcome } from '@/features/workspace';
 
   import NoticeBar from './NoticeBar.svelte';
   import StatusBar from './StatusBar.svelte';
