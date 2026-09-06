@@ -7,7 +7,7 @@
 <script module lang="ts">
   import { defineMeta } from '@storybook/addon-svelte-csf';
 
-  import { documentStore } from '@/features/document/store.svelte';
+  import { documentStore } from '@/features/document';
   import { viewStore } from '@/features/view';
   import type { DocumentMeta, ViewMode } from '@/platform';
 

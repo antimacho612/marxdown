@@ -2,7 +2,7 @@
 // 適用の結果（注入された `<style>`）まで見るので DOM が要る。
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { documentStore } from '@/features/document/store.svelte';
+import { documentStore } from '@/features/document';
 import { ja } from '@/i18n/ja';
 import { getPlatform, NO_CUSTOM_CSS, setPlatform, type CustomCss, type Platform } from '@/platform';
 

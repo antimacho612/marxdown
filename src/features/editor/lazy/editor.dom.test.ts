@@ -12,9 +12,7 @@
  */
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import { markClean } from '@/features/document/dirty';
-import { documentStore } from '@/features/document/store.svelte';
-import { resetDocumentText, setDocumentText } from '@/features/document/text';
+import { documentStore, markClean, resetDocumentText, setDocumentText } from '@/features/document';
 
 import { mountEditor } from './editor';
 import { monaco } from './monaco';

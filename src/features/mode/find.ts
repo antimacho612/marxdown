@@ -2,13 +2,13 @@
  * `Ctrl+F` / `Ctrl+H` の振り分け（F-VIEW-10 / F-EDIT-05）。
  *
  * 検索は面ごとに別実装（Preview は Range 検索、Edit は Monaco の find ウィジェット）だが、同じキーで見ているほうが開く。
- * `features/editor/keymap.ts` が `Ctrl+F` を Monaco から剥がしているのはこのためである（外すと Edit で二重に開く）。
+ * `features/editor/lazy/keymap.ts` が `Ctrl+F` を Monaco から剥がしているのはこのためである（外すと Edit で二重に開く）。
  *
  * Split では両方見えるため `viewStore.mode` では判定できず、フォーカスのある側を探す（03.ux-spec/04-keybindings.md §4。既定はエディター検索）。
  * プレビュー検索の `F3`/`Escape` はグローバルに効き続けるため、開くほうがもう片方を閉じて同時進行を防ぐ。
  * `Ctrl+H`（置換）は Edit と Split のみで、Preview では書き換える経路が無いため何もしない。
  */
-import { closeEditorSearchLazily, openEditorSearchLazily } from '@/features/editor/open-editor';
+import { closeEditorSearchLazily, openEditorSearchLazily } from '@/features/editor';
 import { openSearchLazily } from '@/features/preview';
 import { viewStore } from '@/features/view';
 

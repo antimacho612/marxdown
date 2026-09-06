@@ -82,7 +82,7 @@ class DocumentStore {
    *
    * 更新は **rAF で間引く**（ADR-0005 / 02.architecture/08-state-management.md §1）。
    * 押しっぱなしの矢印キーは 1 フレームに何度も位置を動かすが、
-   * 画面に出るのはフレームに 1 回でよい。間引きは `features/editor/cursor.ts`。
+   * 画面に出るのはフレームに 1 回でよい。間引きは `features/editor/lazy/cursor.ts`。
    */
   cursor = $state<CursorPosition | null>(null);
   /**

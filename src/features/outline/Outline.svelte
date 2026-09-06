@@ -8,8 +8,7 @@
 <script lang="ts">
   import { untrack } from 'svelte';
 
-  import { refreshOutlineOnOpen } from '@/features/document/live';
-  import { documentStore } from '@/features/document/store.svelte';
+  import { documentStore, refreshOutlineOnOpen } from '@/features/document';
   import { viewStore } from '@/features/view';
   import { ja } from '@/i18n/ja';
   import { registerOutlineRefresher, setOutlineOnScreen } from '@/lib/refresh';
@@ -101,7 +100,7 @@
   /**
    * Edit での現在位置。**カーソルのある行を含む見出し**（VS Code のアウトラインと同じ）。
    *
-   * カーソル位置は既にストアに来ている（`features/editor/cursor.ts` が rAF で
+   * カーソル位置は既にストアに来ている（`features/editor/lazy/cursor.ts` が rAF で
    * 間引いて入れる / ADR-0005）。**購読を新しく増やさずに済む**のが要点で、
    * ペインを閉じてもエディター側に外し忘れが残らない。
    */

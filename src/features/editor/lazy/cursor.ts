@@ -6,7 +6,7 @@
  * rAF で間引くのは、キーリピートで毎フレーム飛ぶ更新を最後の値だけ次の描画に反映すればよいためである（デバウンスだと止まってから遅れて出て「追いついていない」ように見える）。
  * 選択の文字数は表示しない（03.ux-spec/07-status-and-notifications.md §3 が要求していない情報を常時 UI に足さない）。
  */
-import { documentStore } from '@/features/document/store.svelte';
+import { documentStore } from '@/features/document';
 
 import type { monaco } from './monaco';
 

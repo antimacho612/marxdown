@@ -10,9 +10,7 @@
  * `#mx-editor` は `index.html` にあり Svelte 管理下に無い（`#mx-preview` と同じ理由 / ADR-0005）。
  * Monaco はモデルの EOL を自分で推定するため、明示的に LF を指定して読み書きしないと CRLF が混ざる（N-CMP-03）。
  */
-import { setDirty } from '@/features/document/dirty';
-import { scheduleLiveRender } from '@/features/document/live';
-import { attachEditor, getDocumentText } from '@/features/document/text';
+import { attachEditor, getDocumentText, scheduleLiveRender, setDirty } from '@/features/document';
 import { settingsStore } from '@/features/settings';
 import { attachEditorScrollPort, startScrollSync, stopScrollSync } from '@/features/view';
 

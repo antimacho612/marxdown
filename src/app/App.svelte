@@ -5,7 +5,7 @@
   レイアウトは DOM 順ではなく `shell.css` の `grid-template-areas` が決める。
 -->
 <script lang="ts">
-  import { documentStore } from '@/features/document/store.svelte';
+  import { documentStore } from '@/features/document';
   import { Outline } from '@/features/outline';
   import { RightPane } from '@/features/panes';
   import { SplitDivider, viewStore } from '@/features/view';

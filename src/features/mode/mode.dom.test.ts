@@ -15,7 +15,7 @@ const mountEditorLazily = vi.fn(() => Promise.resolve());
 const setSplitSyncLazily = vi.fn((_on: boolean) => Promise.resolve());
 const relayoutEditorLazily = vi.fn(() => Promise.resolve());
 
-vi.mock('@/features/editor/open-editor', () => ({
+vi.mock('@/features/editor', () => ({
   mountEditorLazily: () => mountEditorLazily(),
   preloadEditor: () => Promise.resolve(),
   relayoutEditorLazily: () => relayoutEditorLazily(),

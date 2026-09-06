@@ -175,7 +175,7 @@ export const ja = {
   },
   /*
    * エディター自身が出す文言（検索・置換パネルなど）は **Monaco が日本語を同梱している**
-   * ので、ここには置かない（`features/editor/monaco.ts` が `nls/lang/ja.js` を読む）。
+   * ので、ここには置かない（`features/editor/lazy/monaco.ts` が `nls/lang/ja.js` を読む）。
    *
    * CodeMirror のときは `EditorState.phrases` に「原文 → 日本語」の対応表を
    * 自前で持っていた。[ADR-0009](../../docs/adr/0009-editor-engine-monaco.md) で

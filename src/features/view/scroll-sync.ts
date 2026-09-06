@@ -2,7 +2,7 @@
  * Split のスクロール同期と双方向ジャンプ（F-MODE-05 / 03.ux-spec/03-split-mode.md §2, §3）。
  *
  * プレビューのブロック要素には `data-line` が付いており（`markdown/plugins/line-map.ts`）、エディターも行番号を持つため、両者を結ぶのは行番号だけでよい。
- * このモジュールは `main` チャンクにいるためエディターを直接 import せず、行番号だけの窓口 `EditorScrollPort` を受け取る（座標計算はエンジン固有の `features/editor/scroll-port.ts` 側に置く）。
+ * このモジュールは `main` チャンクにいるためエディターを直接 import せず、行番号だけの窓口 `EditorScrollPort` を受け取る（座標計算はエンジン固有の `features/editor/lazy/scroll-port.ts` 側に置く）。
  * 行あたりの高さが要素ごとに違うため、`data-line` を持つ要素の間を線形補間する（§3）。
  *
  * 片方を動かすと相手の `scroll` が飛んでまた動くという循環が起きるため、これを防ぐために主導権は最後に操作した側が持ち、動かされた側からの同期を短時間停止する（§2）。
@@ -12,7 +12,7 @@ import { viewStore } from './store.svelte';
 const PREVIEW_SELECTOR = '#mx-preview';
 
 /**
- * エディター側の窓口。実装は `features/editor/scroll-port.ts`（`editor` チャンク）。
+ * エディター側の窓口。実装は `features/editor/lazy/scroll-port.ts`（`editor` チャンク）。
  *
  * **やり取りするのは行番号だけ。** 行番号は 1 始まりで、**端数を含む**
  * （`3.5` は 3 行目の高さの半分まで隠れている状態）。
@@ -63,7 +63,7 @@ let active: Sync | null = null;
 let port: EditorScrollPort | null = null;
 
 /**
- * エディターが自分の窓口を登録する口（`features/editor/editor.ts` が呼ぶ）。
+ * エディターが自分の窓口を登録する口（`features/editor/lazy/editor.ts` が呼ぶ）。
  * 破棄するときに `null` を渡す。
  */
 export function attachEditorScrollPort(next: EditorScrollPort | null): void {

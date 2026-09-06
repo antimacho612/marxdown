@@ -8,7 +8,7 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import { run } from '../../../tests/editor-harness';
+import { run } from '../../../../tests/editor-harness';
 import { isPastedUrl, linkFromUrl } from './paste';
 
 describe('URL の判定', () => {

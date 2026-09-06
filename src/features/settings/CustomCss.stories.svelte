@@ -18,7 +18,7 @@
   import { defineMeta } from '@storybook/addon-svelte-csf';
 
   import TitleBar from '@/app/TitleBar.svelte';
-  import { documentStore } from '@/features/document/store.svelte';
+  import { documentStore } from '@/features/document';
   import type { DocumentMeta } from '@/platform';
 
   import { applyCustomCss } from './custom-css';

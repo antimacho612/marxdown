@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { documentStore } from '@/features/document/store.svelte';
+import { documentStore } from '@/features/document';
 import { DEFAULT_SETTINGS, getPlatform, setPlatform, type Platform, type Settings } from '@/platform';
 
 import { settingsStore } from '../store.svelte';
