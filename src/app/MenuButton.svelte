@@ -5,7 +5,7 @@
   中身（項目・見た目）は押されるまでロードしない（動的 import / M1.5 完了条件）。
 -->
 <script lang="ts">
-  import type { AppMenu } from '@/features/menu/props';
+  import type { AppMenu } from '@/features/menu';
   import { ja } from '@/i18n/ja';
 
   /**
@@ -23,7 +23,7 @@
   async function show(last = false): Promise<void> {
     focusLast = last;
     if (!menu) {
-      const loaded = await import('@/features/menu/AppMenu.svelte');
+      const loaded = await import('@/features/menu/lazy/AppMenu.svelte');
       menu = loaded.default;
     }
     open = true;

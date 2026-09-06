@@ -6,7 +6,7 @@
  * 登録元がここ（`app/`）にあるのは、各 feature を把握してよい composition root だからである。
  *
  * クリティカルパスに載るのは `id → run` と `key → id` の 2 表のみである（§1.2 の制約）。
- * ラベルは遅延チャンク側（`features/menu/items.ts`）に置いてある。
+ * ラベルは遅延チャンク側（`features/menu/lazy/items.ts`）に置いてある。
  */
 import { toggleEol } from '@/features/document/eol';
 import { newDocument } from '@/features/document/new';

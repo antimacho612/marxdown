@@ -10,8 +10,8 @@
 <script lang="ts">
   import { onMount } from 'svelte';
 
+  import type { AppMenuProps } from '../props';
   import { buildMenu, type MenuAction } from './items';
-  import type { AppMenuProps } from './props';
 
   const { onclose, focusLast }: AppMenuProps = $props();
 
