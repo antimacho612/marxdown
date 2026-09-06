@@ -1,11 +1,3 @@
-<!--
-  真偽値の項目。
-
-  **ラベルが「〜する」の形になっている**ことが要点。
-  「ミニマップ [✓]」だと、チェックが「表示」なのか「有効」なのか読めない。
-  ラベル列を使わず 1 列に伸ばすのも同じ理由で、左に名前・右に四角では
-  同じ言葉を 2 回書くことになる。
--->
 <script module lang="ts">
   import { defineMeta } from '@storybook/addon-svelte-csf';
 
@@ -18,7 +10,9 @@
     component: ToggleField,
     parameters: { layout: 'padded' },
     args: {
-      label: ja.settings.editor.minimap,
+      key: 'editor.minimap',
+      label: ja.settings.editor.minimap.label,
+      description: ja.settings.editor.minimap.description,
       checked: false,
       onChange: () => {},
     },
@@ -31,15 +25,39 @@
 
 <Story name="既定のまま" />
 
-<Story name="調整済み" args={{ checked: true, onReset: () => {} }} />
+<Story name="調整済み" args={{ checked: true }} />
 
 <!-- 他の項目と並べたときに、ラベルの太さと行の高さが揃っていることを見る。 -->
 {#snippet stacked()}
   <div style="display: flex; flex-direction: column; gap: 12px;">
-    <ToggleField label={ja.settings.editor.fontLigatures} checked={true} onChange={() => {}} onReset={() => {}} />
-    <ToggleField label={ja.settings.editor.guidesIndentation} checked={true} onChange={() => {}} />
-    <ToggleField label={ja.settings.editor.minimap} checked={false} onChange={() => {}} />
-    <ToggleField label={ja.settings.editor.scrollBeyondLastLine} checked={false} onChange={() => {}} />
+    <ToggleField
+      key="editor.fontLigatures"
+      label={ja.settings.editor.fontLigatures.label}
+      description={ja.settings.editor.fontLigatures.description}
+      checked={true}
+      onChange={() => {}}
+    />
+    <ToggleField
+      key="editor.guidesIndentation"
+      label={ja.settings.editor.guidesIndentation.label}
+      description={ja.settings.editor.guidesIndentation.description}
+      checked={true}
+      onChange={() => {}}
+    />
+    <ToggleField
+      key="editor.minimap"
+      label={ja.settings.editor.minimap.label}
+      description={ja.settings.editor.minimap.description}
+      checked={false}
+      onChange={() => {}}
+    />
+    <ToggleField
+      key="editor.scrollBeyondLastLine"
+      label={ja.settings.editor.scrollBeyondLastLine.label}
+      description={ja.settings.editor.scrollBeyondLastLine.description}
+      checked={false}
+      onChange={() => {}}
+    />
   </div>
 {/snippet}
 
@@ -47,10 +65,11 @@
 
 {#snippet live()}
   <ToggleField
-    label={ja.settings.editor.fontLigatures}
+    key="editor.ligatures"
+    label={ja.settings.editor.fontLigatures.label}
+    description={ja.settings.editor.fontLigatures.description}
     checked={ligatures}
     onChange={(checked) => (ligatures = checked)}
-    onReset={ligatures ? () => (ligatures = false) : undefined}
   />
 {/snippet}
 

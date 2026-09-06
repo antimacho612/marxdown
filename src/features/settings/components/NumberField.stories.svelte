@@ -1,11 +1,3 @@
-<!--
-  数値の項目。
-
-  **単位は付くものと付かないものがある。** 行間は倍率（無次元）なので、
-  `px` と並べると誤解を招く。
-  範囲外は当てない（`min` / `max` は `appearance.ts` の `LIMITS` から来る）ので、
-  「打てる」story で 8 未満や 72 超を入れても値は動かない。
--->
 <script module lang="ts">
   import { defineMeta } from '@storybook/addon-svelte-csf';
 
@@ -19,10 +11,10 @@
     component: NumberField,
     parameters: { layout: 'padded' },
     args: {
-      label: ja.settings.fontSize,
+      label: ja.settings.fontSize.label,
+      description: ja.settings.fontSize.description,
       value: 16,
       ...LIMITS['preview.fontSize'],
-      unit: ja.settings.unitPx,
       onInput: () => {},
     },
   });
@@ -36,29 +28,25 @@
 
 <Story name="調整済み" args={{ value: 18, onReset: () => {} }} />
 
-<!-- 行間。**単位を書かない**（倍率なので `px` と並べると誤解を招く）。 -->
-<Story
-  name="単位なし"
-  args={{ label: ja.settings.lineHeight, value: 1.7, unit: '', ...LIMITS['preview.lineHeight'] }}
-/>
+<Story name="単位なし" args={{ label: ja.settings.lineHeight.label, value: 1.7, ...LIMITS['preview.lineHeight'] }} />
 
 <Story
   name="補足あり"
   args={{
-    label: ja.settings.maxWidth,
+    label: ja.settings.maxWidth.label,
+    description: ja.settings.maxWidth.description,
     value: 72,
-    unit: ja.settings.unitCh,
-    hint: ja.settings.maxWidthHint,
     ...LIMITS['preview.maxWidth'],
   }}
 />
 
 {#snippet live()}
   <NumberField
-    label={ja.settings.fontSize}
+    key="preview.fontSize"
+    label={ja.settings.fontSize.label}
+    description={ja.settings.fontSize.description}
     value={size}
     {...LIMITS['preview.fontSize']}
-    unit={ja.settings.unitPx}
     onInput={(value) => (size = value)}
     onReset={size === 16 ? undefined : () => (size = 16)}
   />

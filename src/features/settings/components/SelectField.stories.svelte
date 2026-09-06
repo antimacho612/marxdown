@@ -1,10 +1,3 @@
-<!--
-  選択肢の項目。
-
-  **一覧と値を突き合わせ直さない。** 妥当性は Rust 側が持っていて、
-  知らない綴りは既定値に落ちる。ここで見たいのは幅（`min-width: 14rem`）と、
-  「既定に戻す」が隣に並んだときの収まり。
--->
 <script module lang="ts">
   import { defineMeta } from '@storybook/addon-svelte-csf';
 
@@ -18,10 +11,11 @@
     component: SelectField,
     parameters: { layout: 'padded' },
     args: {
+      key: 'palette',
       label: ja.settings.palette,
+      description: 'description',
       value: 'default',
       options: [],
-      hint: ja.settings.paletteHint,
       onChange: () => {},
     },
   });
@@ -42,13 +36,14 @@
 
 <Story name="調整済み" args={{ options: PALETTES, value: 'nord', onReset: () => {} }} />
 
-<Story name="補足なし" args={{ label: ja.settings.editor.wordWrap, options: WORD_WRAP, value: 'on', hint: '' }} />
+<Story name="補足なし" args={{ label: ja.settings.editor.wordWrap, options: WORD_WRAP, value: 'on' }} />
 
 {#snippet live()}
   <SelectField
+    key="palette"
     label={ja.settings.palette}
+    description="description"
     options={PALETTES}
-    hint={ja.settings.paletteHint}
     value={palette}
     onChange={(value) => (palette = value)}
     onReset={palette === 'default' ? undefined : () => (palette = 'default')}

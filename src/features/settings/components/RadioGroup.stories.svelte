@@ -1,10 +1,3 @@
-<!--
-  排他の選択肢（テーマ / 閉じるときの動作）。
-
-  **素のラジオボタンにしてある。** 矢印キーでの移動も `Tab` の扱い
-  （グループ全体で 1 つ）もブラウザ側が実装しているので、ここで確かめられる。
-  2 つ並べた story は、`name` が実体ごとに振られていて**混ざらない**ことを見るためのもの。
--->
 <script module lang="ts">
   import { defineMeta } from '@storybook/addon-svelte-csf';
 
@@ -30,6 +23,7 @@
     parameters: { layout: 'padded' },
     args: {
       label: ja.settings.theme,
+      description: 'description',
       value: 'system',
       options: THEMES,
       onChange: () => {},
@@ -43,13 +37,19 @@
 
 <Story name="既定のまま" />
 
-<Story name="調整済み" args={{ value: 'dark', onReset: () => {} }} />
+<Story name="調整済み" args={{ value: 'dark' }} />
 
 <!-- 2 つ置いても `name` が別なので、片方を選んでももう片方は動かない。 -->
 {#snippet twoGroups()}
   <div style="display: flex; flex-direction: column; gap: 12px;">
-    <RadioGroup label={ja.settings.theme} value="system" options={THEMES} onChange={() => {}} />
-    <RadioGroup label={ja.settings.window.closeBehavior} value="tray" options={CLOSE_BEHAVIORS} onChange={() => {}} />
+    <RadioGroup label={ja.settings.theme} description="" value="system" options={THEMES} onChange={() => {}} />
+    <RadioGroup
+      label={ja.settings.window.closeBehavior}
+      description=""
+      value="tray"
+      options={CLOSE_BEHAVIORS}
+      onChange={() => {}}
+    />
   </div>
 {/snippet}
 
@@ -58,10 +58,10 @@
 {#snippet live()}
   <RadioGroup
     label={ja.settings.theme}
+    description=""
     options={THEMES}
     value={theme}
     onChange={(value) => (theme = value)}
-    onReset={theme === 'system' ? undefined : () => (theme = 'system')}
   />
 {/snippet}
 

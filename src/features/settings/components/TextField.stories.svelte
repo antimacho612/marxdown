@@ -1,9 +1,3 @@
-<!--
-  文字列の項目（フォント名・縦罫線）。
-
-  **「既定に戻す」は `onReset` を渡した時だけ出る。** 既定のままの項目に
-  押しても何も起きないボタンを並べないための仕組みが、この 2 つの story の差になっている。
--->
 <script module lang="ts">
   import { defineMeta } from '@storybook/addon-svelte-csf';
 
@@ -16,9 +10,10 @@
     component: TextField,
     parameters: { layout: 'padded' },
     args: {
+      key: 'fontFamily',
       label: ja.settings.fontFamily,
+      description: 'description',
       value: '',
-      hint: ja.settings.fontFamilyHint,
       placeholder: ja.settings.fontFamilyPlaceholder,
       onInput: () => {},
     },
@@ -33,17 +28,12 @@
 
 <Story name="調整済み" args={{ value: 'Noto Sans JP', onReset: () => {} }} />
 
-<Story name="補足なし" args={{ hint: '' }} />
-
-<!--
-  縦罫線。**打っている途中の文字列をそのまま持つ**（`80,` でカンマが消えない）。
-  実アプリでこの state を持っているのは `SettingsDialog` の側。
--->
 {#snippet live()}
   <TextField
-    label={ja.settings.editor.rulers}
-    hint={ja.settings.editor.rulersHint}
-    placeholder={ja.settings.editor.rulersPlaceholder}
+    key="editor.rulers"
+    label={ja.settings.editor.rulers.label}
+    description={ja.settings.editor.rulers.description}
+    placeholder={ja.settings.editor.rulers.placeholder}
     inputmode="numeric"
     value={rulers}
     onInput={(value) => (rulers = value)}
