@@ -57,7 +57,7 @@ describe('EOL の変換', () => {
   it('打鍵して Undo で戻しても、変換の希望は残る', () => {
     toggleEol();
 
-    // エディターが 1 打鍵ごとに呼ぶ経路（`features/editor/editor.ts`）。
+    // エディターが 1 打鍵ごとに呼ぶ経路（`features/editor/lazy/editor.ts`）。
     setDirty(true);
     setDirty(false); // Undo で基準まで戻った
 

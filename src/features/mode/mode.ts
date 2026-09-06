@@ -7,7 +7,7 @@
  * `display: none` された要素は `scrollTop` を保てないため、隠す直前にスクロール位置を控えて戻すときに当て直す。
  */
 import { cancelLiveRender, renderNow } from '@/features/document/live';
-import { mountEditorLazily, relayoutEditorLazily, setSplitSyncLazily } from '@/features/editor/open-editor';
+import { mountEditorLazily, relayoutEditorLazily, setSplitSyncLazily } from '@/features/editor';
 import { viewStore } from '@/features/view';
 import type { Bootstrap, DocumentMeta, ViewMode } from '@/platform';
 

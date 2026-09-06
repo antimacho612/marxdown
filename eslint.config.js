@@ -82,6 +82,7 @@ const UNICORN_NOT_ENFORCED_BEFORE = [
  * feature を 1 つ整理するたびに 1 行増やす。
  */
 const FEATURE_BARREL_ENFORCED = [
+  'editor',
   'history',
   'menu',
   'mode',
@@ -215,7 +216,7 @@ export default tseslint.config(
     // CSS の副作用インポートと、テストのセットアップは代入しようがない。
     // `features/editor/monaco.ts` は **Monaco から何を取るかの一覧**そのもので、
     // contrib の登録は副作用インポート以外の書き方が無い（ADR-0009）。
-    files: ['src/main.ts', 'tests/setup.ts', 'src/features/editor/monaco.ts', '.storybook/**'],
+    files: ['src/main.ts', 'tests/setup.ts', 'src/features/editor/lazy/monaco.ts', '.storybook/**'],
     rules: { 'import-x/no-unassigned-import': 'off' },
   },
 

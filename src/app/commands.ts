@@ -112,7 +112,7 @@ const COMMANDS: Command[] = [
   },
 
   // 倍率は Preview 専用ではない。エディターの font-size にも `--mx-zoom` が乗っている
-  // （`features/editor/theme.ts`）。id の接頭辞が `preview.` なのは
+  // （`features/editor/lazy/theme.ts`）。id の接頭辞が `preview.` なのは
   // 実装の置き場所であって、効く範囲ではない。
   { id: 'preview.zoomIn', run: () => void zoomIn(), isListed: hasDocument },
   { id: 'preview.zoomOut', run: () => void zoomOut(), isListed: hasDocument },
@@ -155,7 +155,7 @@ const RELOAD_KEYS = ['F5', 'Ctrl+R', 'Ctrl+Shift+R', 'Ctrl+F5', 'Shift+F5'];
  *
  * ここに書いたキーはどこにフォーカスがあっても効く。
  * 以前は Edit モードで `whenEditing: true` を個別に足していたが、境界を「入力中かどうか」ではなく「どちらの表に書いてあるか」に変えたことで例外が無くなった。
- * この表と `features/editor/keymap.ts`（本文編集用）は重ならないよう、`keymap.ts` 側が重複キーを外している。
+ * この表と `features/editor/lazy/keymap.ts`（本文編集用）は重ならないよう、`keymap.ts` 側が重複キーを外している。
  */
 export const KEY_BINDINGS: KeyBinding[] = [
   // 新規ファイル（03.ux-spec/04-keybindings.md §3）。素通りさせると WebView 自身の

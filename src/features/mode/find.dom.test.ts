@@ -15,7 +15,7 @@ const closeEditorSearchLazily = vi.fn(() => Promise.resolve());
 const closePreview = vi.fn();
 const openSearchLazily = vi.fn(() => Promise.resolve(closePreview));
 
-vi.mock('@/features/editor/open-editor', () => ({
+vi.mock('@/features/editor', () => ({
   openEditorSearchLazily: (replace: boolean) => openEditorSearchLazily(replace),
   closeEditorSearchLazily: () => closeEditorSearchLazily(),
 }));

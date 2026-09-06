@@ -11,7 +11,7 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import { run } from '../../../tests/editor-harness';
+import { run } from '../../../../tests/editor-harness';
 import { continuationOf, continueList, deleteMarkupBackward } from './enter';
 
 describe('継続の組み立て (continuationOf)', () => {

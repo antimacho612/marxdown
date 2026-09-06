@@ -164,7 +164,7 @@ export default defineConfig(({ mode }) => ({
         manualChunks(id) {
           // Monaco をまとめて `editor` へ寄せる（ADR-0009）。
           // **予算の対象外だが、無審査に増やしてよいという意味ではない**
-          // （何を取っているかは `src/features/editor/monaco.ts`）。
+          // （何を取っているかは `src/features/editor/lazy/monaco.ts`）。
           if (id.includes('node_modules/monaco-editor')) {
             return 'editor';
           }

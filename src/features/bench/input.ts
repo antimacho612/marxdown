@@ -189,7 +189,7 @@ export async function runInputBench(): Promise<void> {
     // `live.ts` が描き直さない（N-PERF-05）。
     if (viewStore.mode !== 'split') await setMode('split');
 
-    const editor = await import('@/features/editor/editor');
+    const editor = await import('@/features/editor/lazy/editor');
     const mounted = await waitFor(() => editor.isEditorMounted(), 60_000);
     if (!mounted) throw new Error('エディターが載らなかった');
 

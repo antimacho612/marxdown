@@ -8,7 +8,7 @@ import { configureOpener, openDocument, openDropped, openPath, previewScrollTop 
 import { saveThenQuit } from '@/features/document/save';
 import { documentStore } from '@/features/document/store.svelte';
 import { installFileWatch } from '@/features/document/watch';
-import { mountEditorLazily, preloadEditor, setSplitSyncLazily } from '@/features/editor/open-editor';
+import { mountEditorLazily, preloadEditor, setSplitSyncLazily } from '@/features/editor';
 import { configureHistory } from '@/features/history';
 import { decideInitialMode, initMode } from '@/features/mode';
 import { initPanes } from '@/features/panes';

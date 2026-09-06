@@ -11,7 +11,7 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import { run, runAt } from '../../../tests/editor-harness';
+import { run, runAt } from '../../../../tests/editor-harness';
 import {
   insertLink,
   setHeading,
