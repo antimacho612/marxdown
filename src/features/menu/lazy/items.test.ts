@@ -2,7 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { registerAppCommands } from '@/app/commands';
-import { documentStore } from '@/features/document/store.svelte';
+import { documentStore } from '@/features/document';
 import { viewStore } from '@/features/view';
 import { recentStore } from '@/features/workspace';
 import type { DocumentMeta } from '@/platform';

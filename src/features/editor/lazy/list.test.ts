@@ -9,7 +9,7 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import { run } from '../../../tests/editor-harness';
+import { run } from '../../../../tests/editor-harness';
 import { indentList, outdentList, stepOf } from './list';
 
 describe('一段ぶんの幅 (stepOf)', () => {

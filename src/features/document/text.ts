@@ -60,7 +60,7 @@ export function syncDocumentText(): void {
 /**
  * エディターの読み書き口を登録する。**控えはここで捨てる。**
  *
- * 登録する側（`features/editor/editor.ts`）は、`getDocumentText()` で
+ * 登録する側（`features/editor/lazy/editor.ts`）は、`getDocumentText()` で
  * 初期内容を受け取ってから呼ぶこと。順序を逆にすると空の本文で載る。
  */
 export function attachEditor(next: EditorTextPort): void {

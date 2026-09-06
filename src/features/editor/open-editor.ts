@@ -10,7 +10,7 @@ const EDITOR_SELECTOR = '#mx-editor';
 export async function mountEditorLazily(): Promise<void> {
   const host = document.querySelector<HTMLElement>(EDITOR_SELECTOR);
   if (!host) return;
-  const { mountEditor, focusEditor } = await import('./editor');
+  const { mountEditor, focusEditor } = await import('./lazy/editor');
   mountEditor(host);
   focusEditor();
 }
@@ -24,7 +24,7 @@ export async function mountEditorLazily(): Promise<void> {
  * 新たに落ちてくることはない（既に `mountEditorLazily` を通っている）。
  */
 export async function relayoutEditorLazily(): Promise<void> {
-  const { relayoutEditor } = await import('./editor');
+  const { relayoutEditor } = await import('./lazy/editor');
   relayoutEditor();
 }
 
@@ -41,7 +41,7 @@ export async function relayoutEditorLazily(): Promise<void> {
  * （05.performance-budget/04-targets.md §3）に収まらない。
  */
 export async function preloadEditor(): Promise<void> {
-  await import('./editor');
+  await import('./lazy/editor');
 }
 
 /**
@@ -53,7 +53,7 @@ export async function preloadEditor(): Promise<void> {
  * （振り分けは `features/mode/find.ts`）。
  */
 export async function openEditorSearchLazily(replace: boolean): Promise<void> {
-  const { openEditorSearch } = await import('./editor');
+  const { openEditorSearch } = await import('./lazy/editor');
   openEditorSearch(replace);
 }
 
@@ -66,7 +66,7 @@ export async function openEditorSearchLazily(replace: boolean): Promise<void> {
  * （プレビュー側の `closePreviewFind` と同じ形）。
  */
 export async function closeEditorSearchLazily(): Promise<void> {
-  const { closeEditorSearch } = await import('./editor');
+  const { closeEditorSearch } = await import('./lazy/editor');
   closeEditorSearch();
 }
 
@@ -77,6 +77,6 @@ export async function closeEditorSearchLazily(): Promise<void> {
  * Preview だけで読んでいる起動でも `editor` チャンクが落ちてくる。
  */
 export async function setSplitSyncLazily(on: boolean): Promise<void> {
-  const { setSplitSync } = await import('./editor');
+  const { setSplitSync } = await import('./lazy/editor');
   setSplitSync(on);
 }

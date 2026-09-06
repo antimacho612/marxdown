@@ -6,7 +6,7 @@
  * ここが見るのは配線のほうで、「どちらが主導するか」「ダブルクリックがどの行になるか」「抜けたときに外れるか」を並べる。
  *
  * 受け取るのが `EditorScrollPort`（行番号だけの窓口）なので、Monaco を載せずに配線を全部見られる。
- * ポートの Monaco 側の実装は `features/editor/scroll-port.dom.test.ts` が本物のエディターで見ている。
+ * ポートの Monaco 側の実装は `features/editor/lazy/scroll-port.dom.test.ts` が本物のエディターで見ている。
  *
  * `getBoundingClientRect()` が jsdom では全部 0 を返すため、`data-line` のアンカーは位置を持てない。
  * そこは差し替える（`stubRects`）。

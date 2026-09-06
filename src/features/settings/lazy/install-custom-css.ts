@@ -4,7 +4,7 @@
  * `custom-css.ts`（適用そのもの）は FOUC 回避のため `main` に残るが、それ以外（64KB 超で bootstrap に載らなかった CSS の取得・読み込み失敗の通知・外部編集の購読）はすべてここにある。
  * `ready()` の後に動的 import される `settings` チャンクで、どれも IPC を伴い数十 ms 遅れても実害が無い。
  */
-import { documentStore } from '@/features/document/store.svelte';
+import { documentStore } from '@/features/document';
 import { ja } from '@/i18n/ja';
 import { getPlatform, type CustomCss } from '@/platform';
 

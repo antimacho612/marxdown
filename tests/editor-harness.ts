@@ -15,8 +15,8 @@
  * jsdom に無いもの（`ResizeObserver` / `matchMedia` / `queryCommandSupported`）は
  * `tests/setup.ts` にある。`overviewRulerLanes: 0` は canvas を触らせないため。
  */
-import { offsetsOf, runEdit, selectionAt, type MarkdownEdit } from '@/features/editor/edits';
-import { monaco } from '@/features/editor/monaco';
+import { offsetsOf, runEdit, selectionAt, type MarkdownEdit } from '@/features/editor/lazy/edits';
+import { monaco } from '@/features/editor/lazy/monaco';
 
 import { parseMarks, printMarks, type MarkedRange } from './marks';
 
