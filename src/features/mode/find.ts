@@ -9,7 +9,7 @@
  * `Ctrl+H`（置換）は Edit と Split のみで、Preview では書き換える経路が無いため何もしない。
  */
 import { closeEditorSearchLazily, openEditorSearchLazily } from '@/features/editor/open-editor';
-import { openSearchLazily } from '@/features/preview/open-search';
+import { openSearchLazily } from '@/features/preview';
 import { viewStore } from '@/features/view';
 
 const EDITOR_SELECTOR = '#mx-editor';

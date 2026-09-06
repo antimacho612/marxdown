@@ -25,7 +25,7 @@ const PREVIEW_SELECTOR = '#mx-preview';
 export async function openSearchLazily(): Promise<(() => void) | null> {
   const container = document.querySelector<HTMLElement>(PREVIEW_SELECTOR);
   if (!container) return null;
-  const { openSearch, closeSearch } = await import('./search');
+  const { openSearch, closeSearch } = await import('./lazy/search');
   openSearch(container);
   return closeSearch;
 }

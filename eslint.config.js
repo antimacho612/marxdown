@@ -87,6 +87,7 @@ const FEATURE_BARREL_ENFORCED = [
   'mode',
   'outline',
   'panes',
+  'preview',
   'settings',
   'status',
   'view',

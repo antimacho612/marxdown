@@ -50,7 +50,7 @@ async function enhanceCodeBlocks(container: HTMLElement): Promise<void> {
   // ハイライトは**遅延チャンク**。コードブロックが 1 つも無いドキュメントでは
   // ここに到達しないので、`highlight` チャンクはロードすらされない
   // （02.architecture/05-startup-sequence.md §3 の分割境界）。
-  const { highlightElement, languageOf } = await import('./highlight');
+  const { highlightElement, languageOf } = await import('./lazy/highlight');
   const targets = blocks.filter((code) => languageOf(code) !== null);
 
   await processInIdle(targets, (code) => {

@@ -9,10 +9,10 @@
   import { untrack } from 'svelte';
 
   import { refreshOutlineOnOpen } from '@/features/document/live';
-  import { registerOutlineRefresher, setOutlineOnScreen } from '@/features/document/refresh';
   import { documentStore } from '@/features/document/store.svelte';
   import { viewStore } from '@/features/view';
   import { ja } from '@/i18n/ja';
+  import { registerOutlineRefresher, setOutlineOnScreen } from '@/lib/refresh';
   import type { OutlineItem } from '@/markdown/plugins/line-map';
 
   import { followHeadings, headingAtLine } from './follow';
@@ -113,7 +113,7 @@
   });
 
   /**
-   * アウトラインが画面に出ていることを名乗る（`document/refresh.ts`）。
+   * アウトラインが画面に出ていることを名乗る（`lib/refresh.ts`）。
    *
    * Edit では、これが出ているあいだだけ見出しを取り直すためのパースが回る。
    * 開いた時点の見出しは打鍵ぶんだけ古いので、1 回取り直してから始める。

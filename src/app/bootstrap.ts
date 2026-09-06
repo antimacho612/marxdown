@@ -12,8 +12,7 @@ import { mountEditorLazily, preloadEditor, setSplitSyncLazily } from '@/features
 import { configureHistory } from '@/features/history';
 import { decideInitialMode, initMode } from '@/features/mode';
 import { initPanes } from '@/features/panes';
-import { installLinkHandler } from '@/features/preview/links';
-import { applyZoom } from '@/features/preview/zoom';
+import { applyZoom, installLinkHandler } from '@/features/preview';
 import { applyCustomCss, initSettings, installSettingsWatch, reportSettingsProblem } from '@/features/settings';
 import { initSplit, viewStore } from '@/features/view';
 import { recentStore } from '@/features/workspace';
@@ -234,7 +233,17 @@ function installInitialEditor(): void {
  */
 function installLinks(): void {
   const container = document.querySelector<HTMLElement>(PREVIEW_SELECTOR);
-  if (container) installLinkHandler(container);
+  if (!container) return;
+
+  // 開くのも知らせるのも `document` の仕事で、あちらは本文を描くために `preview` を
+  // 参照している。呼び返す向きはここで繋ぐ（`configureHistory` と同じ形）。
+  installLinkHandler(container, {
+    currentPath: () => documentStore.meta?.path ?? '',
+    open: (path, anchor) => void openPath(path, anchor === undefined ? {} : { anchor }),
+    notify: (notice) => {
+      documentStore.notice = notice;
+    },
+  });
 }
 
 /**

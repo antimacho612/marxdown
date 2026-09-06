@@ -1,8 +1,11 @@
 /**
  * 本文が描き変わったことを知りたい側が名乗り出る口。
  *
- * `open.ts` から分けたのは、知らせる側と聞く側（`preview/search.ts` / `outline/Outline.svelte`）が同じモジュールを見ると登録口が聞く側から import され循環するためである。
- * 動的 import で呼びに行かないのは、一度も使っていない機能のチャンク（`search` 等）を無駄に取得しないためで、聞く側から登録させる形にしている。
+ * 知らせる側（`document/open.ts` / `document/live.ts`）と聞く側（`preview/lazy/search.ts` /
+ * `outline/Outline.svelte`）が別の feature にあるため、どちらかに置くと feature 同士が
+ * 互いを名指しすることになる。**どの feature も知らない登録簿**として `lib/` に置く。
+ * 動的 import で呼びに行かないのは、一度も使っていない機能のチャンク（`search` 等）を
+ * 無駄に取得しないためで、聞く側から登録させる形にしている。
  */
 
 /** 検索（F-VIEW-10）。開いたまま新しい本文で引き直す。 */

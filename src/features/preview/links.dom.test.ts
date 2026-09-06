@@ -8,8 +8,12 @@ import { installLinkHandler } from './links';
 
 const original = getPlatform();
 
-const openPathSpy = vi.hoisted(() => vi.fn(() => Promise.resolve(null)));
-vi.mock('@/features/document/open', () => ({ openPath: openPathSpy }));
+/**
+ * 開く先。**モジュールのモックではなく、注入する手をそのまま覗く**
+ * （`installLinkHandler` が `document` を知らなくなったため）。
+ * 引数の形は `bootstrap.ts` が `openPath` へ渡すものに合わせてある。
+ */
+const openPathSpy = vi.fn((_path: string, _options: { anchor?: string }) => Promise.resolve(null));
 
 interface Spies {
   openExternal: ReturnType<typeof vi.fn>;
@@ -37,7 +41,14 @@ beforeEach(() => {
   openPathSpy.mockClear();
   document.body.innerHTML = '<div id="mx-preview"></div>';
   container = document.querySelector('#mx-preview') as HTMLElement;
-  dispose = installLinkHandler(container);
+  // 実アプリで `bootstrap.ts` が繋ぐ配線を、ここでも同じ形で組み立てる。
+  dispose = installLinkHandler(container, {
+    currentPath: () => documentStore.meta?.path ?? '',
+    open: (path, anchor) => void openPathSpy(path, anchor === undefined ? {} : { anchor }),
+    notify: (notice) => {
+      documentStore.notice = notice;
+    },
+  });
 
   documentStore.meta = {
     path: 'C:\\work\\docs\\index.md',

@@ -8,7 +8,7 @@
     "src/main.ts",
     "src/features/editor/monaco.ts",
     "src/features/document/save.ts",
-    "src/features/preview/search.ts"
+    "src/features/preview/lazy/search.ts"
   ],
   "scripts": {
     "dev": "tauri dev",

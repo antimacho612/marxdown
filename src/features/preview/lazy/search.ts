@@ -5,8 +5,8 @@
  * 一致箇所を `<mark>` で包む実装にはしない（段階的描画で増える DOM と混ざる／`huge.md` で本文の DOM が作り直され続ける／`data-line` の行マッピングが壊れる）。
  * 代わりに CSS Custom Highlight API で `Range` を登録するだけにし、DOM には触れない（WebView2 Evergreen / WKWebView のみが対象のため前提にしてよい）。
  */
-import { registerSearchRefresher } from '@/features/document/refresh';
 import { ja } from '@/i18n/ja';
+import { registerSearchRefresher } from '@/lib/refresh';
 import { bindKeys } from '@/lib/shortcuts';
 
 /**

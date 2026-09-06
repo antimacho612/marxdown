@@ -17,7 +17,7 @@ import { canGoBack, canGoForward, goBack, goForward } from '@/features/history';
 import { cycleMode, openFind, openReplace, togglePreview, toggleSplit } from '@/features/mode';
 import { openJumpLazily, showOutline } from '@/features/outline';
 import { toggleRightPane } from '@/features/panes';
-import { zoomIn, zoomOut, zoomReset } from '@/features/preview/zoom';
+import { zoomIn, zoomOut, zoomReset } from '@/features/preview';
 import { openSettingsLazily } from '@/features/settings';
 import { viewStore } from '@/features/view';
 import { registerCommands, runCommand, type Command, type CommandId } from '@/lib/commands';

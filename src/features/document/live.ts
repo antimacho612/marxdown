@@ -6,15 +6,14 @@
  * 本文の DOM 再構築はパース本体よりコストが高いため、打鍵ごとには描かず打ち終わりを待つ（N-PERF-03）。
  * `paint` は受け皿を差し替えて表示位置を先頭に戻すため、スクロール位置は自分で保持して再設定する。
  */
-import { enhance } from '@/features/preview/enhance';
-import { paint } from '@/features/preview/paint';
+import { enhance, paint } from '@/features/preview';
 import { viewStore } from '@/features/view';
 import { ja } from '@/i18n/ja';
 import { toMessage } from '@/lib/error';
 import { dirOf } from '@/lib/path';
+import { isOutlineOnScreen, refreshOutline, refreshSearch } from '@/lib/refresh';
 
 import { getParser } from './open';
-import { isOutlineOnScreen, refreshOutline, refreshSearch } from './refresh';
 import { documentStore } from './store.svelte';
 import { getDocumentText } from './text';
 
@@ -111,7 +110,7 @@ export function scheduleLiveRender(): void {
  * いま打った内容を追いかける相手が居るか（上の表）。
  *
  * **ペインの開閉を直接見に行かない。** アウトラインが出ているかどうかは
- * あちらから名乗ってもらう（`document/refresh.ts`）。
+ * あちらから名乗ってもらう（`lib/refresh.ts`）。
  */
 function wantsRender(): boolean {
   const mode = viewStore.mode;

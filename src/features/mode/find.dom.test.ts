@@ -20,7 +20,7 @@ vi.mock('@/features/editor/open-editor', () => ({
   closeEditorSearchLazily: () => closeEditorSearchLazily(),
 }));
 
-vi.mock('@/features/preview/open-search', () => ({
+vi.mock('@/features/preview', () => ({
   openSearchLazily: () => openSearchLazily(),
 }));
 

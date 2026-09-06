@@ -6,8 +6,6 @@
  * どの分岐でも必ず `preventDefault()` する。
  * WebView がページ遷移するとアプリのシェルごと差し替わり復帰できないためである（N-SEC-04）。
  */
-import { openPath } from '@/features/document/open';
-import { documentStore } from '@/features/document/store.svelte';
 import { ja } from '@/i18n/ja';
 import { dirOf, isMarkdownPath, joinPath } from '@/lib/path';
 import { getPlatform } from '@/platform';
@@ -21,12 +19,40 @@ const EXTERNAL = /^(?:https?|mailto):/i;
 const SCHEME = /^([a-z][a-z0-9+.-]*):/i;
 
 /**
+ * リンクから本文の外へ出るときの手（`app/bootstrap.ts` が起動時に渡す）。
+ *
+ * 開くのも知らせるのも `document` の仕事だが、あちらは本文を描くために
+ * この feature を参照している。直接呼び返すと feature 単位で循環するため、
+ * 向きを一方向（`document → preview`）に保つ目的で注入にしてある
+ * （`features/history` の `configureHistory` と同じ形）。
+ */
+export interface LinkTargets {
+  /** いま開いているファイルのパス。相対リンクの基点。無題なら空文字。 */
+  currentPath: () => string;
+  /** Markdown をアプリ内で開く。 */
+  open: (path: string, anchor: string | undefined) => void;
+  /**
+   * 通知バーに出す。**構造だけ `documentStore.notice` と合わせてある。**
+   * 渡す側の代入が型で照合されるので、食い違えば `bootstrap.ts` で落ちる。
+   */
+  notify: (notice: {
+    level: 'info' | 'error';
+    message: string;
+    actions?: { label: string; run: () => void }[];
+  }) => void;
+}
+
+let targets: LinkTargets | null = null;
+
+/**
  * プレビュー内のクリックを 1 か所で受ける。
  *
  * 個々の `<a>` にハンドラを付けないのは、段階的描画で後から増える要素にも
  * 効かせるため。イベント委譲なら「まだ描かれていない本文」にも最初から効く。
  */
-export function installLinkHandler(container: HTMLElement): () => void {
+export function installLinkHandler(container: HTMLElement, next: LinkTargets): () => void {
+  targets = next;
+
   const onClick = (event: MouseEvent) => {
     // 修飾クリックと中クリックは「別の場所で開く」意図。タブが実装されるまでは、
     // 何もしないほうが、既定の挙動（＝ナビゲーション）が漏れるより安全。
@@ -68,7 +94,7 @@ function handle(href: string, container: HTMLElement): void {
   const localPath = toLocalPath(href, scheme);
   if (localPath === null) return; // 未知のスキーム。何もしない
 
-  const baseDir = dirOf(documentStore.meta?.path ?? '');
+  const baseDir = dirOf(targets?.currentPath() ?? '');
   const resolved = joinPath(baseDir, localPath);
 
   if (isMarkdownPath(resolved)) {
@@ -77,7 +103,7 @@ function handle(href: string, container: HTMLElement): void {
     // （相互リンクされた文書群では、節を名指しするリンクが普通に出てくる）。
     const [path, anchor] = splitFragment(resolved);
     // 相対パスの正規化は Rust 側（`read_document` の canonicalize）に任せる。
-    void openPath(path, anchor === undefined ? {} : { anchor });
+    targets?.open(path, anchor);
     return;
   }
 
@@ -92,7 +118,7 @@ function handle(href: string, container: HTMLElement): void {
  * モーダルにしないのは、データ消失の可能性が無いから（03.ux-spec/07-status-and-notifications.md §2）。
  */
 function confirmOpenExternally(path: string): void {
-  documentStore.notice = {
+  targets?.notify({
     level: 'info',
     message: ja.link.confirmOpen(path),
     actions: [
@@ -103,7 +129,7 @@ function confirmOpenExternally(path: string): void {
             .openLocalFile(path)
             .catch(() => {
               // 許可ディレクトリの外だと Rust 側が拒む。何が起きたか黙らない。
-              documentStore.notice = { level: 'error', message: ja.link.outOfScope(path) };
+              targets?.notify({ level: 'error', message: ja.link.outOfScope(path) });
             });
         },
       },
@@ -114,7 +140,7 @@ function confirmOpenExternally(path: string): void {
         },
       },
     ],
-  };
+  });
 }
 
 /** `path#fragment` を割る。フラグメントが無ければ `undefined`。 */
