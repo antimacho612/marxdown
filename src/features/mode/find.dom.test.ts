@@ -8,7 +8,7 @@
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { viewStore } from '@/features/view/store.svelte';
+import { viewStore } from '@/features/view';
 
 const openEditorSearchLazily = vi.fn((_replace: boolean) => Promise.resolve());
 const closeEditorSearchLazily = vi.fn(() => Promise.resolve());

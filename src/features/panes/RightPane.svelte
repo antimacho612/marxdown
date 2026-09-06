@@ -8,7 +8,7 @@
 <script lang="ts">
   import type { Snippet } from 'svelte';
 
-  import { viewStore } from '@/features/view/store.svelte';
+  import { viewStore } from '@/features/view';
   import { ja } from '@/i18n/ja';
 
   import { PANE_WIDTH_DEFAULT, PANE_WIDTH_MAX, PANE_WIDTH_MIN, setRightPaneWidth } from './panes';

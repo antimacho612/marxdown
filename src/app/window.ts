@@ -7,7 +7,7 @@
  * 最大化状態はボタン以外（`Win+↑` / ダブルクリック / 画面端ドラッグ）でも変わる。
  * そのため押した側でフラグを反転させず、OS 側の変化を Rust 経由で受け取って反映する。
  */
-import { viewStore } from '@/features/view/store.svelte';
+import { viewStore } from '@/features/view';
 import { getPlatform } from '@/platform';
 
 export function minimizeWindow(): void {

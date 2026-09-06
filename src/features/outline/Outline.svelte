@@ -11,7 +11,7 @@
   import { refreshOutlineOnOpen } from '@/features/document/live';
   import { registerOutlineRefresher, setOutlineOnScreen } from '@/features/document/refresh';
   import { documentStore } from '@/features/document/store.svelte';
-  import { viewStore } from '@/features/view/store.svelte';
+  import { viewStore } from '@/features/view';
   import { ja } from '@/i18n/ja';
   import type { OutlineItem } from '@/markdown/plugins/line-map';
 

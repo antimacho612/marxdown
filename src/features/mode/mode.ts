@@ -8,9 +8,10 @@
  */
 import { cancelLiveRender, renderNow } from '@/features/document/live';
 import { mountEditorLazily, relayoutEditorLazily, setSplitSyncLazily } from '@/features/editor/open-editor';
-import { closePreviewFind } from '@/features/view/find';
-import { viewStore } from '@/features/view/store.svelte';
+import { viewStore } from '@/features/view';
 import type { Bootstrap, DocumentMeta, ViewMode } from '@/platform';
+
+import { closePreviewFind } from './find';
 
 const PREVIEW_SELECTOR = '#mx-preview';
 
@@ -87,7 +88,7 @@ export async function setMode(mode: ViewMode): Promise<void> {
   if (wasVisible && !willBeVisible) {
     previewScroll = previewScrollTop();
     // プレビュー内検索を閉じる。パネルは `document.body` にあるので、
-    // 隠れた面の上に浮いたまま残ってしまう（`features/view/find.ts`）。
+    // 隠れた面の上に浮いたまま残ってしまう（`features/mode/find.ts`）。
     closePreviewFind();
   }
 

@@ -14,8 +14,6 @@
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { viewStore } from '@/features/view/store.svelte';
-
 import {
   attachEditorScrollPort,
   isScrollSyncActive,
@@ -25,6 +23,7 @@ import {
   stopScrollSync,
   type EditorScrollPort,
 } from './scroll-sync';
+import { viewStore } from './store.svelte';
 
 const scrollToLine = vi.fn();
 const revealLine = vi.fn();

@@ -4,11 +4,11 @@
   `role="slider"` なのは、Svelte の a11y 検査が `separator` を「押せない要素」と見なすためである。
 -->
 <script lang="ts">
-  import { viewStore } from '@/features/view/store.svelte';
   import { ja } from '@/i18n/ja';
   import { SPLIT_MAX, SPLIT_MIN } from '@/platform';
 
   import { resetSplit, setSplit } from './split';
+  import { viewStore } from './store.svelte';
 
   /** キーボードで動かすときの刻み。ドラッグより粗くてよい。 */
   const KEY_STEP = 0.02;

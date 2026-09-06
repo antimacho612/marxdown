@@ -10,7 +10,7 @@ import { DEFAULT_PANES, SPLIT_DEFAULT, type Panes, type ViewMode } from '@/platf
 
 class ViewStore {
   /**
-   * 表示モード（F-MODE-01, 02, 03）。切り替えは `features/view/mode.ts`。
+   * 表示モード（F-MODE-01, 02, 03）。切り替えは `features/mode/mode.ts`。
    *
    * **ここは値だけを持つ。** 面の出し分けは `<html data-mx-mode>` を見る CSS が行い、
    * エディターの実体は遅延チャンクにいる。UI（ステータスバー）はこの値だけを購読する。

@@ -10,7 +10,7 @@
  */
 import { closeEditorSearchLazily, openEditorSearchLazily } from '@/features/editor/open-editor';
 import { openSearchLazily } from '@/features/preview/open-search';
-import { viewStore } from '@/features/view/store.svelte';
+import { viewStore } from '@/features/view';
 
 const EDITOR_SELECTOR = '#mx-editor';
 
@@ -70,7 +70,7 @@ export async function openReplace(): Promise<void> {
 }
 
 /**
- * Preview を離れるときに呼ぶ（`features/view/mode.ts`）。
+ * Preview を離れるときに呼ぶ（`features/mode/mode.ts`）。
  *
  * 一度も検索していなければ何も起きない。**`search` チャンクを落とさない**のが要点で、
  * 閉じる相手が居るのは、開いたことがある場合だけである。

@@ -42,7 +42,7 @@ const KEYBOARD_SOURCE = 'keyboard';
 const REMOVED: { keybinding: number; why: string }[] = [
   // 検索を開くのはアプリの仕事。**見ている面によって開くものが変わる**ので
   // （Preview なら本文検索 / Edit ならエディター検索）、エディターが自分で受けると
-  // 二重に開く（`features/view/find.ts`）。
+  // 二重に開く（`features/mode/find.ts`）。
   { keybinding: KeyMod.CtrlCmd | KeyCode.KeyF, why: 'アプリの Ctrl+F が面ごとに振り分ける' },
   { keybinding: KeyMod.CtrlCmd | KeyCode.KeyH, why: 'Ctrl+H も同じ経路を通す' },
 

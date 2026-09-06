@@ -78,7 +78,7 @@ export const ja = {
     /**
      * 検索（F-VIEW-10 / F-EDIT-05）。**ラベルは探す対象を言う。**
      * Preview では本文の DOM を、Edit ではエディターのテキストを探す
-     * （`features/view/find.ts`）。同じ `Ctrl+F` でも別物なので、名前を分ける。
+     * （`features/mode/find.ts`）。同じ `Ctrl+F` でも別物なので、名前を分ける。
      */
     search: 'プレビュー内を検索',
     find: '検索',

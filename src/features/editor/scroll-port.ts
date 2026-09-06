@@ -5,7 +5,7 @@
  * `document/text.ts` の `EditorTextPort` と同じ形で、`main` 側が interface を持ち `editor` 側が実装を渡す。
  * CodeMirror では `scrollDOM.scrollTop` と `lineBlockAt*` の座標系がパディング分ズレていたが、Monaco の `getTopForLineNumber` / `getScrollTop` は同じ座標系なので補正が要らない。
  */
-import type { EditorScrollPort } from '@/features/view/scroll-sync';
+import type { EditorScrollPort } from '@/features/view';
 
 import type { monaco } from './monaco';
 

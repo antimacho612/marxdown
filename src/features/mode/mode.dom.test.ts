@@ -8,7 +8,7 @@
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { viewStore } from '@/features/view/store.svelte';
+import { viewStore } from '@/features/view';
 import type { Bootstrap, DocumentMeta } from '@/platform';
 
 const mountEditorLazily = vi.fn(() => Promise.resolve());

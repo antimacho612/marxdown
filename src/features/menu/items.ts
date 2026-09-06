@@ -9,7 +9,7 @@
  * 押せない項目（例: ファイル未オープン時の再読み込み・倍率・検索）は存在ごと消す（Principle 3）。
  * 判定は `app/commands.ts` の `isListed` が唯一の根拠で、メニューとパレットで結論がずれない。
  */
-import { viewStore } from '@/features/view/store.svelte';
+import { viewStore } from '@/features/view';
 import { recentStore } from '@/features/workspace/recent.svelte';
 import { ja } from '@/i18n/ja';
 import { isCommandListed, runCommand, type CommandId } from '@/lib/commands';
@@ -111,7 +111,7 @@ const MENU: MenuSection[] = [
         shortcut: 'Ctrl+\\',
       },
       { id: 'reload', command: 'document.reload', label: ja.menu.reload, shortcut: 'F5' },
-      // 検索は面によって実体が変わる（`features/view/find.ts`）。ラベルも変える。
+      // 検索は面によって実体が変わる（`features/mode/find.ts`）。ラベルも変える。
       {
         id: 'search',
         command: 'find.open',

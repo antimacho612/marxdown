@@ -9,7 +9,7 @@
   import { effectiveEol, nextEol as nextEolOf, toggleEol } from '@/features/document/eol';
   import { documentStore } from '@/features/document/store.svelte';
   import { formatZoom, zoomReset } from '@/features/preview/zoom';
-  import { viewStore } from '@/features/view/store.svelte';
+  import { viewStore } from '@/features/view';
   import { ja } from '@/i18n/ja';
 
   import StatusBarButton from './StatusBarButton.svelte';

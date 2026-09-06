@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { viewStore } from '@/features/view/store.svelte';
+import { viewStore } from '@/features/view';
 import {
   DEFAULT_PANES,
   DEFAULT_SETTINGS,

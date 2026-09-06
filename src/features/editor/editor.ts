@@ -14,7 +14,7 @@ import { setDirty } from '@/features/document/dirty';
 import { scheduleLiveRender } from '@/features/document/live';
 import { attachEditor, getDocumentText } from '@/features/document/text';
 import { settingsStore } from '@/features/settings';
-import { attachEditorScrollPort, startScrollSync, stopScrollSync } from '@/features/view/scroll-sync';
+import { attachEditorScrollPort, startScrollSync, stopScrollSync } from '@/features/view';
 
 import { installCursorReport } from './cursor';
 import { installEditorKeymap } from './keymap';
@@ -175,7 +175,7 @@ export function focusEditor(): void {
 }
 
 /**
- * 器の大きさを測り直す（`features/view/mode.ts` が面を出したときに呼ぶ）。
+ * 器の大きさを測り直す（`features/mode/mode.ts` が面を出したときに呼ぶ）。
  *
  * **`display: none` のあいだ Monaco は寸法を失う。** `automaticLayout` の
  * ResizeObserver は隠れているあいだ動かないので、戻したときに測り直す。
@@ -195,7 +195,7 @@ export function relayoutEditor(): void {
  * 検索・置換を開く（F-EDIT-05）。
  *
  * **載っていなければ何もしない。** Preview を見ているときの `Ctrl+F` は
- * 本文検索へ行くので、ここまで来ない（`features/view/find.ts`）。
+ * 本文検索へ行くので、ここまで来ない（`features/mode/find.ts`）。
  */
 export function openEditorSearch(replace: boolean): void {
   if (!editor) return;
@@ -204,7 +204,7 @@ export function openEditorSearch(replace: boolean): void {
 }
 
 /**
- * 検索・置換を閉じる（Split でプレビュー側の検索へ移るとき / `features/view/find.ts`）。
+ * 検索・置換を閉じる（Split でプレビュー側の検索へ移るとき / `features/mode/find.ts`）。
  *
  * **`getAction` では引けない。** 閉じる側は `registerEditorAction` ではなく
  * `registerEditorCommand` で登録されており（`contrib/find/browser/findController.js`）、

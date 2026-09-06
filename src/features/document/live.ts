@@ -8,7 +8,7 @@
  */
 import { enhance } from '@/features/preview/enhance';
 import { paint } from '@/features/preview/paint';
-import { viewStore } from '@/features/view/store.svelte';
+import { viewStore } from '@/features/view';
 import { ja } from '@/i18n/ja';
 import { toMessage } from '@/lib/error';
 import { dirOf } from '@/lib/path';
@@ -138,7 +138,7 @@ export function cancelLiveRender(): void {
 }
 
 /**
- * いますぐ描き直す。プレビューの面へ戻った直後に 1 回だけ呼ぶ（`features/view/mode.ts`）。
+ * いますぐ描き直す。プレビューの面へ戻った直後に 1 回だけ呼ぶ（`features/mode/mode.ts`）。
  *
  * **Edit では paint まで行かない。** 見えない面の DOM は作り直さず、
  * パースの結果（見出し・文字数）だけをストアへ入れる。
@@ -169,7 +169,7 @@ export async function renderNow(): Promise<void> {
     const parsedAt = observer ? performance.now() : 0;
 
     // **見えていない面の DOM は作り直さない**（N-PERF-05）。Edit で要るのは
-    // パースの結果だけで、本文は Preview へ戻るときに 1 回だけ描く（`features/view/mode.ts`）。
+    // パースの結果だけで、本文は Preview へ戻るときに 1 回だけ描く（`features/mode/mode.ts`）。
     const visible = viewStore.mode !== 'edit';
 
     if (visible) {

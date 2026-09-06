@@ -8,8 +8,7 @@
   import { documentStore } from '@/features/document/store.svelte';
   import { Outline } from '@/features/outline';
   import { RightPane } from '@/features/panes';
-  import SplitDivider from '@/features/view/SplitDivider.svelte';
-  import { viewStore } from '@/features/view/store.svelte';
+  import { SplitDivider, viewStore } from '@/features/view';
   import Welcome from '@/features/workspace/Welcome.svelte';
 
   import NoticeBar from './NoticeBar.svelte';

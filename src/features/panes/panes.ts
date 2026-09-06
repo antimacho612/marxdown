@@ -7,7 +7,7 @@
  * ADR-0005 が禁じるのは本文をリアクティブな状態に置くことで、数値 1 つは対象外である。
  * ドラッグ中は rAF で間引き、永続化は 400ms デバウンスで受ける。
  */
-import { viewStore } from '@/features/view/store.svelte';
+import { viewStore } from '@/features/view';
 import { getPlatform, type Bootstrap, type Panes } from '@/platform';
 
 /** `src-tauri/src/store.rs` の `PANE_WIDTH_*` と揃える（03.ux-spec/06-panes.md §3）。 */

@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { registerAppCommands } from '@/app/commands';
 import { documentStore } from '@/features/document/store.svelte';
-import { viewStore } from '@/features/view/store.svelte';
+import { viewStore } from '@/features/view';
 import { recentStore } from '@/features/workspace/recent.svelte';
 import type { DocumentMeta } from '@/platform';
 
@@ -89,7 +89,7 @@ describe('ハンバーガーメニューの項目 (03.ux-spec/01-screen-layout.m
 
   /**
    * 検索は**どちらの面でも押せる**。探す対象が変わるだけで、
-   * 実体の振り分けは `features/view/find.ts` が持つ（F-VIEW-10 / F-EDIT-05）。
+   * 実体の振り分けは `features/mode/find.ts` が持つ（F-VIEW-10 / F-EDIT-05）。
    *
    * **ラベルは対象を言う。** Preview では「プレビュー内を検索」、Edit では「検索」。
    */
