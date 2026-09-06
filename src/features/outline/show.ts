@@ -7,7 +7,7 @@
  */
 import { tick } from 'svelte';
 
-import { openRightPane } from '@/features/panes/panes';
+import { openRightPane } from '@/features/panes';
 
 let focusOutline: (() => void) | null = null;
 

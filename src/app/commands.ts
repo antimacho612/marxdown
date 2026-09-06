@@ -16,7 +16,7 @@ import { documentStore } from '@/features/document/store.svelte';
 import { canGoBack, canGoForward, goBack, goForward } from '@/features/history/navigate';
 import { openJumpLazily } from '@/features/outline/open-jump';
 import { showOutline } from '@/features/outline/show';
-import { toggleRightPane } from '@/features/panes/panes';
+import { toggleRightPane } from '@/features/panes';
 import { zoomIn, zoomOut, zoomReset } from '@/features/preview/zoom';
 import { openSettingsLazily } from '@/features/settings';
 import { openFind, openReplace } from '@/features/view/find';

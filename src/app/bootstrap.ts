@@ -9,7 +9,7 @@ import { saveThenQuit } from '@/features/document/save';
 import { documentStore } from '@/features/document/store.svelte';
 import { installFileWatch } from '@/features/document/watch';
 import { mountEditorLazily, preloadEditor, setSplitSyncLazily } from '@/features/editor/open-editor';
-import { initPanes } from '@/features/panes/panes';
+import { initPanes } from '@/features/panes';
 import { installLinkHandler } from '@/features/preview/links';
 import { applyZoom } from '@/features/preview/zoom';
 import { applyCustomCss, initSettings, installSettingsWatch, reportSettingsProblem } from '@/features/settings';
