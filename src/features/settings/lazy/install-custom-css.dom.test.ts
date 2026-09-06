@@ -6,7 +6,7 @@ import { documentStore } from '@/features/document/store.svelte';
 import { ja } from '@/i18n/ja';
 import { getPlatform, NO_CUSTOM_CSS, setPlatform, type CustomCss, type Platform } from '@/platform';
 
-import { installCustomCss, refreshCustomCss } from './custom-css-late';
+import { installCustomCss, refreshCustomCss } from './install-custom-css';
 
 const original = getPlatform();
 

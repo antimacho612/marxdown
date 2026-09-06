@@ -12,20 +12,31 @@
 @prop onChange
 -->
 
-<script lang="ts">
-  import type { Choice } from './types';
+<script lang="ts" generics="K extends EnumKey">
+  import { settingChoices, type EnumKey, type Settings } from '@/platform';
 
   interface Props {
+    settingKey: K;
     label: string;
     description: string;
-    value: string;
-    options: Choice[];
-    onChange: (value: string) => void;
+    value: Settings[K];
+    /**
+     * 選択肢のラベル。**並びは決めない**（スキーマの `values` が決める）。
+     *
+     * `Partial` なのは、`SettingsDialog` が項目の union をそのまま流し込むため。
+     * 過不足なく揃っていることは `layout.ts` の `Labels<K>` と `layout.test.ts` が見張る。
+     */
+    labels: Readonly<Partial<Record<Settings[K] & string, string>>>;
+    onChange: (value: Settings[K]) => void;
   }
 
-  let { label, description, value, options, onChange }: Props = $props();
+  let { settingKey, label, description, value, labels, onChange }: Props = $props();
 
   const name = $props.id();
+
+  const options = $derived(
+    settingChoices(settingKey).map((choice) => ({ value: choice, label: labels[choice] ?? choice })),
+  );
 </script>
 
 <fieldset class="mx-settings__field">

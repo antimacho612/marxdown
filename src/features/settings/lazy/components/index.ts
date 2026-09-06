@@ -7,4 +7,3 @@ export { default as Section } from './Section.svelte';
 export { default as SelectField } from './SelectField.svelte';
 export { default as TextField } from './TextField.svelte';
 export { default as ToggleField } from './ToggleField.svelte';
-export type { Choice } from './types';

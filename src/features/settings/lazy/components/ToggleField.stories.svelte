@@ -10,7 +10,7 @@
     component: ToggleField,
     parameters: { layout: 'padded' },
     args: {
-      key: 'editor.minimap',
+      settingKey: 'editor.minimap.enabled',
       label: ja.settings.editor.minimap.label,
       description: ja.settings.editor.minimap.description,
       checked: false,
@@ -31,28 +31,28 @@
 {#snippet stacked()}
   <div style="display: flex; flex-direction: column; gap: 12px;">
     <ToggleField
-      key="editor.fontLigatures"
+      settingKey="editor.fontLigatures"
       label={ja.settings.editor.fontLigatures.label}
       description={ja.settings.editor.fontLigatures.description}
       checked={true}
       onChange={() => {}}
     />
     <ToggleField
-      key="editor.guidesIndentation"
+      settingKey="editor.guides.indentation"
       label={ja.settings.editor.guidesIndentation.label}
       description={ja.settings.editor.guidesIndentation.description}
       checked={true}
       onChange={() => {}}
     />
     <ToggleField
-      key="editor.minimap"
+      settingKey="editor.minimap.enabled"
       label={ja.settings.editor.minimap.label}
       description={ja.settings.editor.minimap.description}
       checked={false}
       onChange={() => {}}
     />
     <ToggleField
-      key="editor.scrollBeyondLastLine"
+      settingKey="editor.scrollBeyondLastLine"
       label={ja.settings.editor.scrollBeyondLastLine.label}
       description={ja.settings.editor.scrollBeyondLastLine.description}
       checked={false}
@@ -65,7 +65,7 @@
 
 {#snippet live()}
   <ToggleField
-    key="editor.ligatures"
+    settingKey="editor.fontLigatures"
     label={ja.settings.editor.fontLigatures.label}
     description={ja.settings.editor.fontLigatures.description}
     checked={ligatures}

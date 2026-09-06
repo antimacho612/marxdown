@@ -8,7 +8,7 @@
  * 真偽値の項目に `<select>` を当てたり、選択肢のラベルを 1 つ書き忘れたりすると型が通らない。
  * 網羅と重複は `layout.test.ts` が実体で見張る（型で書くとエラーが読めなくなる）。
  *
- * このファイルは遅延チャンク（`panel.ts` から先）にあり、`ja` を引き込むためクリティカルパスからは参照しない。
+ * このファイルは遅延チャンク（`lazy/` の中）にあり、`ja` を引き込むためクリティカルパスからは参照しない。
  */
 import { ja } from '@/i18n/ja';
 import type { SettingKey, SettingKind, Settings } from '@/platform';
@@ -66,6 +66,9 @@ export interface Category {
   entries: readonly Entry[];
 }
 
+/** 左のカテゴリの ID。`LAYOUT` に書いた綴りがそのまま型になる。 */
+export type CategoryId = (typeof LAYOUT)[number]['id'];
+
 /** 折り返し桁は、折り返しの設定が桁を見る 2 つの値のときだけ意味を持つ。 */
 function wrapsByColumn(values: Settings): boolean {
   const wrap = values['editor.wordWrap'];
@@ -73,7 +76,7 @@ function wrapsByColumn(values: Settings): boolean {
 }
 
 /** 左のカテゴリ（ADR-0011）。**並びは「触る頻度」ではなく「対象の大きさ」順**。 */
-export const LAYOUT: readonly Category[] = [
+export const LAYOUT = [
   {
     id: 'appearance',
     label: ja.settings.categories.appearance,
@@ -344,4 +347,4 @@ export const LAYOUT: readonly Category[] = [
       },
     ],
   },
-];
+] as const satisfies readonly Category[];

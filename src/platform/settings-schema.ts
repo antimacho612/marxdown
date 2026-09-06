@@ -6,7 +6,7 @@
  * 以前は 3 つが別々に書かれていて、キーを足すときに片方だけ直すと型は通るのに既定値が欠ける状態になっていた。
  *
  * ここに置くのは Rust 側と対応が取れるものだけである。
- * 部品の種類（ラジオか `<select>` か）・入力欄の刻み幅・ラベル・カテゴリは UI の都合なので `features/settings/layout.ts` に置く。
+ * 部品の種類（ラジオか `<select>` か）・入力欄の刻み幅・ラベル・カテゴリは UI の都合なので `features/settings/lazy/layout.ts` に置く。
  *
  * キーはフラットなドット区切りで、ネストしたオブジェクトにしない（F-CONF-06）。
  * `editor.guides.indentation` のように 3 階層に見えるキーも、JSON の上では 1 本の文字列キーである。
@@ -184,6 +184,12 @@ export type SettingsPatch = { [K in SettingKey]?: Settings[K] | null };
 /** 数値の項目。許容範囲を持つのはこれだけで、`clampSetting` の対象もこれだけ。 */
 export type NumericKey = { [K in keyof Schema]: Schema[K] extends { kind: 'number' } ? K : never }[keyof Schema];
 
+/** 選択肢を持つ項目。`settingChoices` が空でない配列を返すのはこれだけ。 */
+export type EnumKey = { [K in keyof Schema]: Schema[K] extends { kind: 'enum' } ? K : never }[keyof Schema];
+
+/** 真偽の項目。 */
+export type BooleanKey = { [K in keyof Schema]: Schema[K] extends { kind: 'boolean' } ? K : never }[keyof Schema];
+
 export type Theme = Settings['theme'];
 export type WindowCloseBehavior = Settings['window.closeBehavior'];
 export type WordWrap = Settings['editor.wordWrap'];
@@ -223,8 +229,13 @@ export function clampSetting(key: NumericKey, value: number): number {
   return Math.min(max, Math.max(min, value));
 }
 
-/** 選択肢の並び。**表示順もこれに従う**（i18n のオブジェクトのキー順に依存させない）。 */
-export function settingChoices(key: SettingKey): readonly string[] {
+/**
+ * 選択肢の並び。**表示順もこれに従う**（i18n のオブジェクトのキー順に依存させない）。
+ *
+ * 戻り値をキーで狭めておくと、設定 UI が `<select>` の値をストアへ戻すときのキャストが要らなくなる。
+ * `ValueOf` が同じ `values` から値の型を作っているので、ここでの絞り込みは実体と一致する。
+ */
+export function settingChoices<K extends SettingKey>(key: K): readonly (Settings[K] & string)[] {
   const entry: SettingSchemaEntry = SETTINGS_SCHEMA[key];
-  return entry.kind === 'enum' ? entry.values : [];
+  return (entry.kind === 'enum' ? entry.values : []) as readonly (Settings[K] & string)[];
 }

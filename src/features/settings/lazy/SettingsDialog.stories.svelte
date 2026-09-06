@@ -21,9 +21,9 @@
 <script module lang="ts">
   import { defineMeta } from '@storybook/addon-svelte-csf';
 
-  import { settingsStore } from '@/features/settings/store.svelte';
   import { DEFAULT_SETTINGS, getPlatform, setPlatform, type Platform, type Settings } from '@/platform';
 
+  import { settingsStore } from '../store.svelte';
   import SettingsDialog from './SettingsDialog.svelte';
 
   const { Story } = defineMeta({

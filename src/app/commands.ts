@@ -18,7 +18,7 @@ import { openJumpLazily } from '@/features/outline/open-jump';
 import { showOutline } from '@/features/outline/show';
 import { toggleRightPane } from '@/features/panes/panes';
 import { zoomIn, zoomOut, zoomReset } from '@/features/preview/zoom';
-import { openSettingsLazily } from '@/features/settings/open-settings';
+import { openSettingsLazily } from '@/features/settings';
 import { openFind, openReplace } from '@/features/view/find';
 import { cycleMode, togglePreview, toggleSplit } from '@/features/view/mode';
 import { viewStore } from '@/features/view/store.svelte';

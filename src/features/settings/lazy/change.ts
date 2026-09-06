@@ -17,8 +17,8 @@ import {
   type SettingsPatch,
 } from '@/platform';
 
-import { applyAppearance } from './appearance';
-import { settingsStore } from './store.svelte';
+import { applyAppearance } from '../appearance';
+import { settingsStore } from '../store.svelte';
 
 /** 保存を待つ時間。`zoom.ts` の `PERSIST_DEBOUNCE_MS` と同じ理由・同じ値。 */
 const PERSIST_DEBOUNCE_MS = 400;

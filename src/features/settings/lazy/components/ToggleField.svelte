@@ -10,17 +10,19 @@
 -->
 
 <script lang="ts">
+  import type { BooleanKey } from '@/platform';
+
   import Field from './Field.svelte';
 
   interface Props {
-    key: string;
+    settingKey: BooleanKey;
     label: string;
     description: string;
     checked: boolean;
     onChange: (checked: boolean) => void;
   }
 
-  let { key, label, description, checked, onChange }: Props = $props();
+  let { settingKey, label, description, checked, onChange }: Props = $props();
 
   const id = $props.id();
 
@@ -38,7 +40,7 @@
   }
 </script>
 
-<Field {label} labelFor={id} tooltip={key} {description}>
+<Field {label} labelFor={id} tooltip={settingKey} {description}>
   <button
     type="button"
     role="switch"

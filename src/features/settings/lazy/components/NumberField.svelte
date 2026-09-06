@@ -14,24 +14,28 @@
 -->
 
 <script lang="ts">
+  import { SETTINGS_SCHEMA, type NumericKey } from '@/platform';
+
   import Field from './Field.svelte';
 
   interface Props {
-    key: string;
+    settingKey: NumericKey;
     label: string;
     description: string;
     value: number;
-    min: number;
-    max: number;
+    /** 刻み幅。スキーマには無く、`layout.ts` が UI の都合で決める。 */
     step: number;
     onInput: (value: number) => void;
     /** リセット時のコールバック。未指定時は「既定に戻す」ボタン自体表示されない。 */
     onReset?: (() => void) | undefined;
   }
 
-  let { key, label, description, value, min, max, step, onInput, onReset }: Props = $props();
+  let { settingKey, label, description, value, step, onInput, onReset }: Props = $props();
 
   const id = $props.id();
+
+  /** 許容範囲はキーから決まる。呼び出し側に渡させるとスキーマと二重管理になる。 */
+  const range = $derived(SETTINGS_SCHEMA[settingKey]);
 
   function handleInput(event: Event & { currentTarget: HTMLInputElement }): void {
     const next = event.currentTarget.valueAsNumber;
@@ -39,7 +43,7 @@
       return;
     }
 
-    if (next < min || next > max) {
+    if (next < range.min || next > range.max) {
       return;
     }
 
@@ -47,8 +51,17 @@
   }
 </script>
 
-<Field {label} labelFor={id} tooltip={key} {description} {onReset}>
-  <input {id} type="number" class="mx-settings__number" {min} {max} {step} {value} oninput={handleInput} />
+<Field {label} labelFor={id} tooltip={settingKey} {description} {onReset}>
+  <input
+    {id}
+    type="number"
+    class="mx-settings__number"
+    min={range.min}
+    max={range.max}
+    {step}
+    {value}
+    oninput={handleInput}
+  />
 </Field>
 
 <style>

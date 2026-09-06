@@ -13,7 +13,7 @@
   import { ja } from '@/i18n/ja';
   import type { Palette } from '@/platform';
 
-  import { formatFontFamily, paletteAttr } from '../appearance';
+  import { formatFontFamily, paletteAttr } from '../../appearance';
 
   interface Props {
     palette: Palette;

@@ -2,15 +2,8 @@
   import { defineMeta } from '@storybook/addon-svelte-csf';
 
   import { ja } from '@/i18n/ja';
-  import { SETTINGS_SCHEMA, type NumericKey } from '@/platform';
 
   import NumberField from './NumberField.svelte';
-
-  /** 刻み幅はスキーマに無い（UI の都合なので `features/settings/layout.ts` が持つ）。 */
-  function range(key: NumericKey, step: number): { min: number; max: number; step: number } {
-    const { min, max } = SETTINGS_SCHEMA[key];
-    return { min, max, step };
-  }
 
   const { Story } = defineMeta({
     title: '設定/components/数値の項目',
@@ -20,7 +13,8 @@
       label: ja.settings.fontSize.label,
       description: ja.settings.fontSize.description,
       value: 16,
-      ...range('preview.fontSize', 1),
+      settingKey: 'preview.fontSize',
+      step: 1,
       onInput: () => {},
     },
   });
@@ -36,7 +30,12 @@
 
 <Story
   name="単位なし"
-  args={{ label: ja.settings.lineHeight.label, value: 1.7, ...range('preview.lineHeight', 0.05) }}
+  args={{
+    label: ja.settings.lineHeight.label,
+    value: 1.7,
+    settingKey: 'preview.lineHeight',
+    step: 0.05,
+  }}
 />
 
 <Story
@@ -45,17 +44,18 @@
     label: ja.settings.maxWidth.label,
     description: ja.settings.maxWidth.description,
     value: 72,
-    ...range('preview.maxWidth', 1),
+    settingKey: 'preview.maxWidth',
+    step: 1,
   }}
 />
 
 {#snippet live()}
   <NumberField
-    key="preview.fontSize"
+    settingKey="preview.fontSize"
     label={ja.settings.fontSize.label}
     description={ja.settings.fontSize.description}
     value={size}
-    {...range('preview.fontSize', 1)}
+    step={1}
     onInput={(value) => (size = value)}
     onReset={size === 16 ? undefined : () => (size = 16)}
   />

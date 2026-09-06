@@ -13,7 +13,7 @@
 import { setDirty } from '@/features/document/dirty';
 import { scheduleLiveRender } from '@/features/document/live';
 import { attachEditor, getDocumentText } from '@/features/document/text';
-import { settingsStore } from '@/features/settings/store.svelte';
+import { settingsStore } from '@/features/settings';
 import { attachEditorScrollPort, startScrollSync, stopScrollSync } from '@/features/view/scroll-sync';
 
 import { installCursorReport } from './cursor';

@@ -7,8 +7,7 @@
  *
  * 設定変化の購読（`watchEditorSettings`）はルーンを使うため `watch-settings.svelte.ts` に分けてあり、このファイルは素の `.ts` のまま Svelte も Monaco も通さずテストできる。
  */
-import { formatFontFamily } from '@/features/settings/appearance';
-import { settingsStore } from '@/features/settings/store.svelte';
+import { formatFontFamily, settingsStore } from '@/features/settings';
 import type { Settings } from '@/platform';
 
 import type { monaco } from './monaco';

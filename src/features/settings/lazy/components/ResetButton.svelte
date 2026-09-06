@@ -6,7 +6,6 @@
   import { ja } from '@/i18n/ja';
 
   interface Props {
-    title?: string;
     onClick: () => void;
   }
 

@@ -13,10 +13,16 @@
 -->
 
 <script lang="ts">
+  import type { SettingKey } from '@/platform';
+
   import Field from './Field.svelte';
 
   interface Props {
-    key: string;
+    /**
+     * どの項目か。値の型は縛らない。
+     * 文字列の項目のほか、縦罫線（`number[]`）が打っている途中の文字列を流し込む先でもある。
+     */
+    settingKey: SettingKey;
     label: string;
     description: string;
     value: string;
@@ -27,12 +33,21 @@
     onReset?: (() => void) | undefined;
   }
 
-  let { key, label, description, value, placeholder = '', inputmode = 'text', onInput, onReset }: Props = $props();
+  let {
+    settingKey,
+    label,
+    description,
+    value,
+    placeholder = '',
+    inputmode = 'text',
+    onInput,
+    onReset,
+  }: Props = $props();
 
   const id = $props.id();
 </script>
 
-<Field {label} labelFor={id} tooltip={key} {description} {onReset}>
+<Field {label} labelFor={id} tooltip={settingKey} {description} {onReset}>
   <input
     {id}
     type="text"

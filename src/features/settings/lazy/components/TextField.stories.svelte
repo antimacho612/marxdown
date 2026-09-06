@@ -10,7 +10,7 @@
     component: TextField,
     parameters: { layout: 'padded' },
     args: {
-      key: 'fontFamily',
+      settingKey: 'preview.fontFamily',
       label: ja.settings.fontFamily,
       description: 'description',
       value: '',
@@ -30,7 +30,7 @@
 
 {#snippet live()}
   <TextField
-    key="editor.rulers"
+    settingKey="editor.rulers"
     label={ja.settings.editor.rulers.label}
     description={ja.settings.editor.rulers.description}
     placeholder={ja.settings.editor.rulers.placeholder}

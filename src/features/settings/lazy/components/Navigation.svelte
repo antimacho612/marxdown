@@ -2,14 +2,16 @@
 @component 設定ダイアログのナビゲーション
 -->
 
-<script lang="ts" generics="T extends string">
+<script lang="ts">
   import { ja } from '@/i18n/ja';
   import { getPlatform } from '@/platform';
 
+  import type { CategoryId } from '../layout';
+
   interface Props {
-    items: { id: T; label: string }[];
-    selected?: T;
-    onSelectionChange?: (id: T) => void;
+    items: readonly { id: CategoryId; label: string }[];
+    selected?: CategoryId;
+    onSelectionChange?: (id: CategoryId) => void;
   }
 
   let { items, selected, onSelectionChange }: Props = $props();

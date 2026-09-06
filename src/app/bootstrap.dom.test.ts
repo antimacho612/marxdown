@@ -2,7 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { documentStore } from '@/features/document/store.svelte';
-import { settingsStore } from '@/features/settings/store.svelte';
+import { settingsStore } from '@/features/settings';
 import { ja } from '@/i18n/ja';
 import { resetCommands } from '@/lib/commands';
 import { resetShortcuts } from '@/lib/shortcuts';

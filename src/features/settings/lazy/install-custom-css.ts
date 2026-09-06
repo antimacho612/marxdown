@@ -8,7 +8,7 @@ import { documentStore } from '@/features/document/store.svelte';
 import { ja } from '@/i18n/ja';
 import { getPlatform, type CustomCss } from '@/platform';
 
-import { applyCustomCss, type CssSurface, type CustomCssResult } from './custom-css';
+import { applyCustomCss, type CssSurface, type CustomCssResult } from '../custom-css';
 
 /**
  * 面ごとの窓口。**違うのはこの 3 つだけ**で、残りの処理は共有する（ADR-0013）。

@@ -9,6 +9,6 @@
  * ここに置いても `settings` チャンクは遅延のまま。押されるまで何もロードされない。
  */
 export async function openSettingsLazily(): Promise<void> {
-  const { openSettings } = await import('./panel');
+  const { openSettings } = await import('./lazy/panel');
   openSettings();
 }

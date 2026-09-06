@@ -23,24 +23,16 @@ Rust 側も拒否するが、UI が「保存できたように見せる」のを
    * 「さっき見ていた場所」は、設定ファイルに残すほどの寿命を持たない。
    * 同じセッションで開き直したときに戻れば足りる。
    */
-  let lastCategory = 'appearance';
+  let lastCategory: CategoryId = 'appearance';
 </script>
 
 <script lang="ts">
   import { onMount } from 'svelte';
 
   import { ja } from '@/i18n/ja';
-  import {
-    DEFAULT_SETTINGS,
-    getPlatform,
-    settingChoices,
-    SETTINGS_SCHEMA,
-    type NumericKey,
-    type SettingKey,
-    type Settings,
-    type SettingsProblem,
-  } from '@/platform';
+  import { DEFAULT_SETTINGS, getPlatform, type SettingKey, type SettingsProblem } from '@/platform';
 
+  import { settingsStore } from '../store.svelte';
   import { changeSetting } from './change';
   import {
     ContentSample,
@@ -52,19 +44,12 @@ Rust 側も拒否するが、UI が「保存できたように見せる」のを
     SelectField,
     TextField,
     ToggleField,
-    type Choice,
   } from './components';
-  import { LAYOUT, type FieldEntry } from './layout';
-  import { settingsStore } from './store.svelte';
+  import { LAYOUT, type CategoryId, type FieldEntry } from './layout';
 
   const { onclose }: { onclose: () => void } = $props();
 
   const values = $derived(settingsStore.values);
-
-  /** 値が文字列のキー。選択肢（`<select>` / ラジオ）とテキスト欄が該当する。 */
-  type ChoiceKey = { [K in keyof Settings]: Settings[K] extends string ? K : never }[keyof Settings];
-  /** 値が真偽のキー。チェックボックスが該当する。 */
-  type ToggleKey = { [K in keyof Settings]: Settings[K] extends boolean ? K : never }[keyof Settings];
 
   /**
    * `settings.json` を読めていない事実。**ストアには置かない。**
@@ -86,16 +71,6 @@ Rust 側も拒否するが、UI が「保存できたように見せる」のを
   const CATEGORIES = LAYOUT.map(({ id, label }) => ({ id, label }));
 
   const entries = $derived(LAYOUT.find((c) => c.id === category)?.entries ?? []);
-
-  /**
-   * 選択肢。**並びはスキーマの `values` が決める。**
-   *
-   * i18n のオブジェクトのキー順に頼ると、翻訳を並べ替えただけで画面の並びが変わる。
-   * 綴りは VS Code の値と 1:1。
-   */
-  function choices(key: SettingKey, labels: Readonly<Record<string, string>>): Choice[] {
-    return settingChoices(key).map((value) => ({ value, label: labels[value] ?? value }));
-  }
 
   async function reload(): Promise<void> {
     try {
@@ -159,17 +134,6 @@ Rust 側も拒否するが、UI が「保存できたように見せる」のを
   /** 背景（`::backdrop`）を押したら閉じる。**中身を押したときは閉じない。** */
   function onBackdropClick(event: MouseEvent): void {
     if (event.target === dialog) close();
-  }
-
-  /**
-   * 選択肢の変更。
-   *
-   * `<select>` から返るのは素の `string` なので、ここで 1 回だけ狭める。
-   * **値の妥当性は Rust 側が持っている**（知らない綴りは既定値に落ちる）ので、
-   * ここで一覧と突き合わせ直さない。
-   */
-  function changeChoice(key: ChoiceKey, value: string): void {
-    changeSetting(key, value as Settings[ChoiceKey]);
   }
 
   /**
@@ -315,56 +279,55 @@ Rust 側も拒否するが、UI が「保存できたように見せる」のを
   {@const description = entry.description ?? ''}
   {#if entry.widget === 'text'}
     <TextField
-      key={entry.key}
+      settingKey={entry.key}
       label={entry.label}
       {description}
       value={values[entry.key]}
       placeholder={entry.placeholder ?? ''}
-      onInput={(value) => changeChoice(entry.key, value)}
+      onInput={(value) => changeSetting(entry.key, value)}
       onReset={resetOf(entry.key)}
     />
   {:else if entry.widget === 'number'}
     <NumberField
-      key={entry.key}
+      settingKey={entry.key}
       label={entry.label}
       {description}
       value={values[entry.key]}
-      min={SETTINGS_SCHEMA[entry.key].min}
-      max={SETTINGS_SCHEMA[entry.key].max}
       step={entry.step}
-      onInput={(value) => changeSetting(entry.key as NumericKey, value)}
+      onInput={(value) => changeSetting(entry.key, value)}
       onReset={resetOf(entry.key)}
     />
   {:else if entry.widget === 'select'}
     <SelectField
-      key={entry.key}
+      settingKey={entry.key}
       label={entry.label}
       {description}
-      options={choices(entry.key, entry.labels)}
+      labels={entry.labels}
       value={values[entry.key]}
-      onChange={(value) => changeChoice(entry.key, value)}
+      onChange={(value) => changeSetting(entry.key, value)}
       onReset={resetOf(entry.key)}
     />
   {:else if entry.widget === 'toggle'}
     <ToggleField
-      key={entry.key}
+      settingKey={entry.key}
       label={entry.label}
-      description={`${description}（既定値: ${String(DEFAULT_SETTINGS[entry.key as ToggleKey])}）`}
+      description={`${description}（既定値: ${String(DEFAULT_SETTINGS[entry.key])}）`}
       checked={values[entry.key]}
-      onChange={(checked) => changeSetting(entry.key as ToggleKey, checked)}
+      onChange={(checked) => changeSetting(entry.key, checked)}
     />
   {:else if entry.widget === 'radio'}
     <RadioGroup
+      settingKey={entry.key}
       label={entry.label}
       {description}
-      options={choices(entry.key, entry.labels)}
+      labels={entry.labels}
       value={values[entry.key]}
-      onChange={(value) => changeChoice(entry.key, value)}
+      onChange={(value) => changeSetting(entry.key, value)}
     />
   {:else}
     <!-- 縦罫線だけは**打っている途中の文字列**を渡す（上の `rulersText` を参照）。 -->
     <TextField
-      key={entry.key}
+      settingKey={entry.key}
       label={entry.label}
       {description}
       value={rulersText}

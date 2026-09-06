@@ -12,8 +12,7 @@ import { mountEditorLazily, preloadEditor, setSplitSyncLazily } from '@/features
 import { initPanes } from '@/features/panes/panes';
 import { installLinkHandler } from '@/features/preview/links';
 import { applyZoom } from '@/features/preview/zoom';
-import { applyCustomCss } from '@/features/settings/custom-css';
-import { initSettings, installSettingsWatch, reportSettingsProblem } from '@/features/settings/store.svelte';
+import { applyCustomCss, initSettings, installSettingsWatch, reportSettingsProblem } from '@/features/settings';
 import { decideInitialMode, initMode } from '@/features/view/mode';
 import { initSplit } from '@/features/view/split';
 import { viewStore } from '@/features/view/store.svelte';
@@ -175,7 +174,7 @@ export async function startup(renderShell: () => void): Promise<void> {
   // カスタム CSS の残り（遅延取得・監視・通知）は**遅延チャンク**に置いてある
   // （06.roadmap/m1.5-shell-and-settings.md §3）。`main` に残っているのは適用そのものだけ。
   // ここで待たないのは、いずれも本文の表示に関与しないため。
-  void import('@/features/settings/custom-css-late').then(({ installCustomCss }) => {
+  void import('@/features/settings/lazy/install-custom-css').then(({ installCustomCss }) => {
     installCustomCss('preview', customCss, customCssResult);
     installCustomCss('editor', editorCss, editorCssResult);
     return null;
