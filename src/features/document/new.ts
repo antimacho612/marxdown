@@ -5,8 +5,6 @@
  * パス無しによる分岐（最近のファイル・履歴・監視・相対パス画像を扱わない）はすべて `open.ts` 側にある。
  * 既定は Preview だが空の本文は読めないため Edit モードで開き、確認は `openPath` と同じ `confirmDiscard()` を通す（単一文書アプリでは「新しく作る」も「いまの文書を閉じる」ことになるため / F-EDIT-03）。
  */
-import { setMode } from '@/features/mode';
-
 import { confirmDiscard } from './discard';
 import { openDocument } from './open';
 import type { StoredPayload } from './store.svelte';
@@ -35,6 +33,20 @@ function untitled(): StoredPayload {
 }
 
 /**
+ * 作った後に移る先（`app/bootstrap.ts` が渡す）。
+ *
+ * モードの切り替えは `features/mode` の仕事だが、あちらは編集の実体（Monaco）を
+ * 抱えており、その先が本文の読み書きでこの feature へ戻ってくる。
+ * 直接呼ぶと feature 単位で循環するため注入で受け取る
+ * （`configureHistory` / `installLinkHandler` と同じ形）。
+ */
+let toEditMode: (() => Promise<void>) | null = null;
+
+export function configureNewDocument(next: () => Promise<void>): void {
+  toEditMode = next;
+}
+
+/**
  * 空の文書を開く。**取り消されたら何もしない。**
  *
  * 返り値は「作ったか」。失敗（描画の例外）は `openDocument` が通知に出す。
@@ -46,6 +58,6 @@ export async function newDocument(): Promise<boolean> {
   if (outcome === null) return false;
 
   // 空の本文を読む面に居ても仕方がない。**打てる場所へ移す。**
-  await setMode('edit');
+  await toEditMode?.();
   return true;
 }

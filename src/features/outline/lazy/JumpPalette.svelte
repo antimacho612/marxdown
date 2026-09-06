@@ -6,7 +6,7 @@
   アウトラインを見るのと見出しへ飛ぶのは別の意図なので、ペインは開かない（開くと飛んだ後に本文の幅が縮小したままになる）。
 -->
 <script lang="ts">
-  import { documentStore } from '@/features/document/store.svelte';
+  import { documentStore } from '@/features/document';
   import { ja } from '@/i18n/ja';
 
   import { jumpToHeading } from '../jump';

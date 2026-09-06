@@ -6,7 +6,7 @@
  * 表示の切り替えは `data-mx-mode` 属性で CSS が行い要素の付け外しはしない（エディターを壊すと Undo 履歴が消え §4 に反する）。
  * `display: none` された要素は `scrollTop` を保てないため、隠す直前にスクロール位置を控えて戻すときに当て直す。
  */
-import { cancelLiveRender, renderNow } from '@/features/document/live';
+import { cancelLiveRender, renderNow } from '@/features/document';
 import { mountEditorLazily, relayoutEditorLazily, setSplitSyncLazily } from '@/features/editor';
 import { viewStore } from '@/features/view';
 import type { Bootstrap, DocumentMeta, ViewMode } from '@/platform';

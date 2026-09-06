@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-import { documentStore } from '@/features/document/store.svelte';
+import { documentStore } from '@/features/document';
 import { hasCommand, isCommandListed, runCommand } from '@/lib/commands';
 import type { DocumentMeta } from '@/platform';
 

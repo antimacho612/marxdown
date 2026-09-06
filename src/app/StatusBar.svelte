@@ -6,8 +6,7 @@
   計測値は開発ビルドのみ表示する（06.roadmap/invariants.md）。
 -->
 <script lang="ts">
-  import { effectiveEol, nextEol as nextEolOf, toggleEol } from '@/features/document/eol';
-  import { documentStore } from '@/features/document/store.svelte';
+  import { documentStore, effectiveEol, nextEol as nextEolOf, toggleEol } from '@/features/document';
   import { formatZoom, zoomReset } from '@/features/preview';
   import { viewStore } from '@/features/view';
   import { ja } from '@/i18n/ja';

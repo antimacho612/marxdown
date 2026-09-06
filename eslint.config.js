@@ -82,6 +82,7 @@ const UNICORN_NOT_ENFORCED_BEFORE = [
  * feature を 1 つ整理するたびに 1 行増やす。
  */
 const FEATURE_BARREL_ENFORCED = [
+  'document',
   'editor',
   'history',
   'menu',

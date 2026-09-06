@@ -4,8 +4,7 @@
  * どちらのメニューも選ばれている行に印を付ける。
  * 押す前に「いまどれか」が分からないと 5 つ並んだエンコーディングの意味が読めないためである（Principle 3）。
  */
-import { ENCODINGS, reinterpret } from '@/features/document/encoding';
-import { documentStore } from '@/features/document/store.svelte';
+import { documentStore, ENCODINGS, reinterpret } from '@/features/document';
 import { setMode } from '@/features/mode';
 import { viewStore } from '@/features/view';
 import { ja } from '@/i18n/ja';

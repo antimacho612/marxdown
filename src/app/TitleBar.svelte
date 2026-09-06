@@ -8,7 +8,7 @@
 <script lang="ts">
   import type { Snippet } from 'svelte';
 
-  import { documentStore } from '@/features/document/store.svelte';
+  import { documentStore } from '@/features/document';
   import { ja } from '@/i18n/ja';
   import { splitPath } from '@/lib/path';
 

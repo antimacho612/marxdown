@@ -10,7 +10,7 @@
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { documentStore } from '@/features/document/store.svelte';
+import { documentStore } from '@/features/document';
 
 import { installCursorReport, stopCursorReport } from './cursor';
 import type { monaco } from './monaco';

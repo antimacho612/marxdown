@@ -7,7 +7,7 @@
 -->
 
 <script lang="ts">
-  import { documentStore, type Notice, type NoticeAction } from '@/features/document/store.svelte';
+  import { documentStore, type Notice, type NoticeAction } from '@/features/document';
   import { ja } from '@/i18n/ja';
 
   const { notice }: { notice: Notice } = $props();

@@ -8,8 +8,7 @@
 <script lang="ts">
   import { untrack } from 'svelte';
 
-  import { refreshOutlineOnOpen } from '@/features/document/live';
-  import { documentStore } from '@/features/document/store.svelte';
+  import { documentStore, refreshOutlineOnOpen } from '@/features/document';
   import { viewStore } from '@/features/view';
   import { ja } from '@/i18n/ja';
   import { registerOutlineRefresher, setOutlineOnScreen } from '@/lib/refresh';

@@ -5,7 +5,7 @@
  * 初期値は bootstrap に同梱されて届くため IPC で取りに行く経路は作らない（往復を挟むと FOUC になる）。
  * 「壊れている」という事実は通知バー（`documentStore.notice`）に流すだけでここには残さない（ADR-0005。状態を 2 か所に持つと直した後に片方だけ残る）。
  */
-import { documentStore } from '@/features/document/store.svelte';
+import { documentStore } from '@/features/document';
 import { ja } from '@/i18n/ja';
 import { DEFAULT_SETTINGS, getPlatform, type Bootstrap, type Settings, type SettingsProblem } from '@/platform';
 

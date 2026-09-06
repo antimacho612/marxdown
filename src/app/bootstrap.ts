@@ -4,13 +4,20 @@
  * `parse` をシェル描画より前に投げ、その取得・評価とシェル描画を重ねる（`openDocument` の `betweenParseAndPaint` / ADR-0010）。
  * 開く経路自体は `features/document/open.ts` に一本化されており、このファイルは起動固有の処理（bootstrap 読み取り・ウィンドウ表示・購読登録）のみを扱う。
  */
-import { configureOpener, openDocument, openDropped, openPath, previewScrollTop } from '@/features/document/open';
-import { saveThenQuit } from '@/features/document/save';
-import { documentStore } from '@/features/document/store.svelte';
-import { installFileWatch } from '@/features/document/watch';
+import {
+  configureNewDocument,
+  configureOpener,
+  documentStore,
+  installFileWatch,
+  openDocument,
+  openDropped,
+  openPath,
+  previewScrollTop,
+  saveThenQuit,
+} from '@/features/document';
 import { mountEditorLazily, preloadEditor, setSplitSyncLazily } from '@/features/editor';
 import { configureHistory } from '@/features/history';
-import { decideInitialMode, initMode } from '@/features/mode';
+import { decideInitialMode, initMode, setMode } from '@/features/mode';
 import { initPanes } from '@/features/panes';
 import { applyZoom, installLinkHandler } from '@/features/preview';
 import { applyCustomCss, initSettings, installSettingsWatch, reportSettingsProblem } from '@/features/settings';
@@ -77,6 +84,10 @@ export async function startup(renderShell: () => void): Promise<void> {
   const editorCssResult = applyCustomCss(editorCss?.css ?? null, 'editor');
 
   configureOpener({ parser: createParser() });
+
+  // 新規作成のあとに移る先（`features/document/new.ts`）。
+  // 空の本文を Preview で開いても何も見えないので、打てる場所へ移す。
+  configureNewDocument(() => setMode('edit'));
 
   // 履歴を辿るときの開き直し（F-NAV-07）。**引数の意味はここでしか決まらない。**
   //

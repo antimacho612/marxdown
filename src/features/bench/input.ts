@@ -13,9 +13,13 @@
  * 計測そのものが意味を失う。ここでの逐次 await は非効率ではなく仕様である。
  */
 /* eslint-disable no-await-in-loop */
-import { liveRenderDebug, observeLiveRender, type LiveRenderTiming } from '@/features/document/live';
-import { getParser } from '@/features/document/open';
-import { documentStore } from '@/features/document/store.svelte';
+import {
+  documentStore,
+  getParser,
+  liveRenderDebug,
+  observeLiveRender,
+  type LiveRenderTiming,
+} from '@/features/document';
 import { setMode } from '@/features/mode';
 import { viewStore } from '@/features/view';
 import { getPlatform } from '@/platform';

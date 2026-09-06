@@ -8,11 +8,16 @@
  * クリティカルパスに載るのは `id → run` と `key → id` の 2 表のみである（§1.2 の制約）。
  * ラベルは遅延チャンク側（`features/menu/lazy/items.ts`）に置いてある。
  */
-import { toggleEol } from '@/features/document/eol';
-import { newDocument } from '@/features/document/new';
-import { openPath, openViaDialog, reloadCurrent } from '@/features/document/open';
-import { saveAsSafely, saveSafely } from '@/features/document/save';
-import { documentStore } from '@/features/document/store.svelte';
+import {
+  documentStore,
+  newDocument,
+  openPath,
+  openViaDialog,
+  reloadCurrent,
+  saveAsSafely,
+  saveSafely,
+  toggleEol,
+} from '@/features/document';
 import { canGoBack, canGoForward, goBack, goForward } from '@/features/history';
 import { cycleMode, openFind, openReplace, togglePreview, toggleSplit } from '@/features/mode';
 import { openJumpLazily, showOutline } from '@/features/outline';

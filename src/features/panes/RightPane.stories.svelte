@@ -14,7 +14,7 @@
   import { defineMeta } from '@storybook/addon-svelte-csf';
 
   import TitleBar from '@/app/TitleBar.svelte';
-  import { documentStore } from '@/features/document/store.svelte';
+  import { documentStore } from '@/features/document';
   import { Outline } from '@/features/outline';
   import { viewStore } from '@/features/view';
   import type { OutlineItem } from '@/markdown/plugins/line-map';

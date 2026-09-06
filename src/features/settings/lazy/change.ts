@@ -6,8 +6,7 @@
  * 1 文字ごとに `settings.json` を書かないためである。
  * 書き戻しの結果を待たずに楽観的にストアへ入れるのは、Rust 側も同じ範囲（`SETTINGS_SCHEMA`）で潰すため返り値が一致するからである。
  */
-import { describeOpenError } from '@/features/document/open';
-import { documentStore } from '@/features/document/store.svelte';
+import { describeOpenError, documentStore } from '@/features/document';
 import {
   clampSetting,
   DEFAULT_SETTINGS,

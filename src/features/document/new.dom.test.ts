@@ -13,16 +13,13 @@ import type { MarkdownParser } from '@/markdown/parser';
 import { getPlatform, setPlatform, type Platform } from '@/platform';
 
 /**
- * モードの切り替えはモックする。**実体は Monaco をロードする**（`open-editor.ts`）ので、
- * ここで通すと本題と関係のない数秒がかかる。見たいのは「Edit へ移すこと」だけ。
+ * 移る先は注入で差し替える。**実体は Monaco をロードする**（`open-editor.ts`）ので、
+ * ここで通すと本題と関係のない数秒がかかる。見たいのは「移すこと」だけ。
  */
-const setMode = vi.fn((_mode: string) => Promise.resolve());
-vi.mock('@/features/mode', () => ({
-  setMode: (mode: string) => setMode(mode),
-}));
+const toEditMode = vi.fn(() => Promise.resolve());
 
 const { configureOpener } = await import('./open');
-const { newDocument } = await import('./new');
+const { configureNewDocument, newDocument } = await import('./new');
 const { documentStore } = await import('./store.svelte');
 const { setDirty } = await import('./dirty');
 
@@ -61,7 +58,8 @@ beforeEach(() => {
   setDirty(false);
   recentStore.entries = [];
 
-  setMode.mockClear();
+  toEditMode.mockClear();
+  configureNewDocument(toEditMode);
   pushRecent.mockClear();
   watchPath.mockClear();
   confirmDiscard.mockClear();
@@ -99,7 +97,7 @@ describe('新規ファイル', () => {
   it('打てる場所へ移す（空の本文を Preview で開いても何も見えない）', async () => {
     await newDocument();
 
-    expect(setMode).toHaveBeenCalledWith('edit');
+    expect(toEditMode).toHaveBeenCalled();
   });
 
   it('未保存の変更があるときは確認を通る', async () => {
@@ -111,6 +109,6 @@ describe('新規ファイル', () => {
     expect(confirmDiscard).toHaveBeenCalled();
     // 取り消したので、文書は差し替わっていない。
     expect(documentStore.meta).toBeNull();
-    expect(setMode).not.toHaveBeenCalled();
+    expect(toEditMode).not.toHaveBeenCalled();
   });
 });
