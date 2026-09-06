@@ -6,7 +6,7 @@
   ボタン 1 つぶんの見た目と作法は `CaptionButton.svelte` が持つ。ここが決めるのは並びと絵だけ。
 -->
 <script lang="ts">
-  import { viewStore } from '@/features/view/store.svelte';
+  import { viewStore } from '@/features/view';
   import { ja } from '@/i18n/ja';
 
   import CaptionButton from './CaptionButton.svelte';

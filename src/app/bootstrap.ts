@@ -4,20 +4,18 @@
  * `parse` をシェル描画より前に投げ、その取得・評価とシェル描画を重ねる（`openDocument` の `betweenParseAndPaint` / ADR-0010）。
  * 開く経路自体は `features/document/open.ts` に一本化されており、このファイルは起動固有の処理（bootstrap 読み取り・ウィンドウ表示・購読登録）のみを扱う。
  */
-import { configureOpener, openDocument, openDropped, openPath } from '@/features/document/open';
+import { configureOpener, openDocument, openDropped, openPath, previewScrollTop } from '@/features/document/open';
 import { saveThenQuit } from '@/features/document/save';
 import { documentStore } from '@/features/document/store.svelte';
 import { installFileWatch } from '@/features/document/watch';
 import { mountEditorLazily, preloadEditor, setSplitSyncLazily } from '@/features/editor/open-editor';
-import { initPanes } from '@/features/panes/panes';
-import { installLinkHandler } from '@/features/preview/links';
-import { applyZoom } from '@/features/preview/zoom';
-import { applyCustomCss } from '@/features/settings/custom-css';
-import { initSettings, installSettingsWatch, reportSettingsProblem } from '@/features/settings/store.svelte';
-import { decideInitialMode, initMode } from '@/features/view/mode';
-import { initSplit } from '@/features/view/split';
-import { viewStore } from '@/features/view/store.svelte';
-import { recentStore } from '@/features/workspace/recent.svelte';
+import { configureHistory } from '@/features/history';
+import { decideInitialMode, initMode } from '@/features/mode';
+import { initPanes } from '@/features/panes';
+import { applyZoom, installLinkHandler } from '@/features/preview';
+import { applyCustomCss, initSettings, installSettingsWatch, reportSettingsProblem } from '@/features/settings';
+import { initSplit, viewStore } from '@/features/view';
+import { recentStore } from '@/features/workspace';
 import { ja } from '@/i18n/ja';
 import { runCommand } from '@/lib/commands';
 import { toMessage } from '@/lib/error';
@@ -79,6 +77,17 @@ export async function startup(renderShell: () => void): Promise<void> {
   const editorCssResult = applyCustomCss(editorCss?.css ?? null, 'editor');
 
   configureOpener({ parser: createParser() });
+
+  // 履歴を辿るときの開き直し（F-NAV-07）。**引数の意味はここでしか決まらない。**
+  //
+  // 履歴を辿る移動そのものは履歴に積まない（積むと二度と抜け出せない）。
+  // 最近開いたファイル（F-OPEN-09）の順序は「最後に開いた順」であって
+  // 「最後に見た順」ではないので、戻っただけでは先頭に来ない。
+  configureHistory({
+    scrollTop: previewScrollTop,
+    reopen: async (path, scrollTop) =>
+      Boolean(await openPath(path, { resetScroll: false, restoreScroll: scrollTop, history: false, remember: false })),
+  });
 
   // リンクハンドラとキーバインドは**本文を描くより前**に登録する。
   //
@@ -175,7 +184,7 @@ export async function startup(renderShell: () => void): Promise<void> {
   // カスタム CSS の残り（遅延取得・監視・通知）は**遅延チャンク**に置いてある
   // （06.roadmap/m1.5-shell-and-settings.md §3）。`main` に残っているのは適用そのものだけ。
   // ここで待たないのは、いずれも本文の表示に関与しないため。
-  void import('@/features/settings/custom-css-late').then(({ installCustomCss }) => {
+  void import('@/features/settings/lazy/install-custom-css').then(({ installCustomCss }) => {
     installCustomCss('preview', customCss, customCssResult);
     installCustomCss('editor', editorCss, editorCssResult);
     return null;
@@ -224,7 +233,17 @@ function installInitialEditor(): void {
  */
 function installLinks(): void {
   const container = document.querySelector<HTMLElement>(PREVIEW_SELECTOR);
-  if (container) installLinkHandler(container);
+  if (!container) return;
+
+  // 開くのも知らせるのも `document` の仕事で、あちらは本文を描くために `preview` を
+  // 参照している。呼び返す向きはここで繋ぐ（`configureHistory` と同じ形）。
+  installLinkHandler(container, {
+    currentPath: () => documentStore.meta?.path ?? '',
+    open: (path, anchor) => void openPath(path, anchor === undefined ? {} : { anchor }),
+    notify: (notice) => {
+      documentStore.notice = notice;
+    },
+  });
 }
 
 /**

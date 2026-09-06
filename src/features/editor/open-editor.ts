@@ -16,7 +16,7 @@ export async function mountEditorLazily(): Promise<void> {
 }
 
 /**
- * 面を出したあとに器を測り直させる（`features/view/mode.ts` が呼ぶ）。
+ * 面を出したあとに器を測り直させる（`features/mode/mode.ts` が呼ぶ）。
  *
  * **`display: none` のあいだ Monaco は寸法を失う**
  * （[ADR-0009](../../../docs/adr/0009-editor-engine-monaco.md) の受け入れコスト 3）。
@@ -50,7 +50,7 @@ export async function preloadEditor(): Promise<void> {
  * **エディターが載っていなければ何も起きない。** ここでわざわざ載せないのは、
  * Preview を見ているときの `Ctrl+F` は本文検索へ行くからで、
  * この関数まで来た時点で Edit に居ることが決まっている
- * （振り分けは `features/view/find.ts`）。
+ * （振り分けは `features/mode/find.ts`）。
  */
 export async function openEditorSearchLazily(replace: boolean): Promise<void> {
   const { openEditorSearch } = await import('./editor');
@@ -62,7 +62,7 @@ export async function openEditorSearchLazily(replace: boolean): Promise<void> {
  *
  * **一度も開いていなければ呼ばないこと。** ここを無条件に通すと、
  * Preview だけで読んでいる起動でも初めての `Ctrl+F` で `editor` チャンクが落ちてくる。
- * 閉じる相手が居るのは開いたことがある場合だけで、その判定は `features/view/find.ts` が持つ
+ * 閉じる相手が居るのは開いたことがある場合だけで、その判定は `features/mode/find.ts` が持つ
  * （プレビュー側の `closePreviewFind` と同じ形）。
  */
 export async function closeEditorSearchLazily(): Promise<void> {
@@ -71,7 +71,7 @@ export async function closeEditorSearchLazily(): Promise<void> {
 }
 
 /**
- * Split のスクロール同期を始める / やめる（F-MODE-05 / `features/view/mode.ts` が呼ぶ）。
+ * Split のスクロール同期を始める / やめる（F-MODE-05 / `features/mode/mode.ts` が呼ぶ）。
  *
  * **やめる側もこの入口を通す。** `mode.ts` から `./editor` を import すると、
  * Preview だけで読んでいる起動でも `editor` チャンクが落ちてくる。

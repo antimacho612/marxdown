@@ -41,12 +41,3 @@ export interface StatusMenuProps {
 }
 
 export type StatusMenu = Component<StatusMenuProps>;
-
-/** メニューに並ぶ 1 行。 */
-export interface StatusMenuItem {
-  id: string;
-  label: string;
-  /** いま選ばれているか。`aria-checked` と印に使う。 */
-  checked: boolean;
-  run: () => void;
-}

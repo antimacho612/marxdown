@@ -10,9 +10,9 @@
  */
 import { splitPath } from '@/lib/path';
 
+import { DEFAULT_SETTINGS, type Settings } from './settings-schema';
 import {
   DEFAULT_PANES,
-  DEFAULT_SETTINGS,
   NO_CUSTOM_CSS,
   SPLIT_DEFAULT,
   type Bootstrap,
@@ -24,7 +24,6 @@ import {
   type Platform,
   type RecentEntry,
   type SaveResult,
-  type Settings,
   type SettingsProblem,
   type WriteRequest,
 } from './types';

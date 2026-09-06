@@ -6,22 +6,20 @@
  * 登録元がここ（`app/`）にあるのは、各 feature を把握してよい composition root だからである。
  *
  * クリティカルパスに載るのは `id → run` と `key → id` の 2 表のみである（§1.2 の制約）。
- * ラベルは遅延チャンク側（`features/menu/items.ts`）に置いてある。
+ * ラベルは遅延チャンク側（`features/menu/lazy/items.ts`）に置いてある。
  */
 import { toggleEol } from '@/features/document/eol';
 import { newDocument } from '@/features/document/new';
 import { openPath, openViaDialog, reloadCurrent } from '@/features/document/open';
 import { saveAsSafely, saveSafely } from '@/features/document/save';
 import { documentStore } from '@/features/document/store.svelte';
-import { canGoBack, canGoForward, goBack, goForward } from '@/features/history/navigate';
-import { openJumpLazily } from '@/features/outline/open-jump';
-import { showOutline } from '@/features/outline/show';
-import { toggleRightPane } from '@/features/panes/panes';
-import { zoomIn, zoomOut, zoomReset } from '@/features/preview/zoom';
-import { openSettingsLazily } from '@/features/settings/open-settings';
-import { openFind, openReplace } from '@/features/view/find';
-import { cycleMode, togglePreview, toggleSplit } from '@/features/view/mode';
-import { viewStore } from '@/features/view/store.svelte';
+import { canGoBack, canGoForward, goBack, goForward } from '@/features/history';
+import { cycleMode, openFind, openReplace, togglePreview, toggleSplit } from '@/features/mode';
+import { openJumpLazily, showOutline } from '@/features/outline';
+import { toggleRightPane } from '@/features/panes';
+import { zoomIn, zoomOut, zoomReset } from '@/features/preview';
+import { openSettingsLazily } from '@/features/settings';
+import { viewStore } from '@/features/view';
 import { registerCommands, runCommand, type Command, type CommandId } from '@/lib/commands';
 import { toMessage } from '@/lib/error';
 import { bindKeys } from '@/lib/shortcuts';
@@ -103,7 +101,7 @@ const COMMANDS: Command[] = [
   },
 
   // 検索と置換（F-VIEW-10 / F-EDIT-05）。**id が `preview.` でも `editor.` でもない**のは、
-  // 見ている面によって実体が変わるため。振り分けは `features/view/find.ts`。
+  // 見ている面によって実体が変わるため。振り分けは `features/mode/find.ts`。
   //
   // 置換は Edit だけ。読んでいる面を書き換える経路は無い。
   { id: 'find.open', run: () => void openFind(), isListed: hasDocument },

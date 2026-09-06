@@ -8,6 +8,6 @@
  * ここに置いても `outline` チャンクは遅延のまま。押されるまで何もロードされない。
  */
 export async function openJumpLazily(): Promise<void> {
-  const { openJumpPalette } = await import('./jump-palette');
+  const { openJumpPalette } = await import('./lazy/jump-palette');
   openJumpPalette();
 }

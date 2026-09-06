@@ -5,7 +5,8 @@
       "dist/assets/main-*.js",
       "dist/assets/shared-*.js",
       "dist/assets/pipeline-*.js",
-      "dist/assets/index-*.css"
+      "dist/assets/index-*.css",
+      "dist/assets/workspace-*.css"
     ],
     "limit": "150 KB",
     "gzip": true

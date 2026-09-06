@@ -3,8 +3,7 @@
  * 当てる値の組み立ては `options.ts` にあり、ここはルーン（`$effect.root`）を使う購読だけを持つ。
  * Monaco も設定の意味も持ち込まない。
  */
-import { settingsStore } from '@/features/settings/store.svelte';
-import { styleEpoch } from '@/features/settings/style-epoch.svelte';
+import { settingsStore, styleEpoch } from '@/features/settings';
 
 /**
  * 設定の変化に追従する。解除する関数を返す。

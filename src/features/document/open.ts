@@ -4,21 +4,19 @@
  * 開く入口は 5 つ（起動時の bootstrap / argv 転送 / ダイアログ / D&D / 相対リンク）あり、個別に実装すると記録漏れやスクロール位置の戻し忘れが入口ごとに起きるため、振る舞いの差はすべて引数で表す。
  * 描いた HTML も Markdown テキストもこの層は保持せず（ADR-0005）、ストアへ渡すのはメタ情報・アウトライン・計測値などの派生値だけである。
  */
-import { pushHistory } from '@/features/history/history';
-import { scrollToAnchor } from '@/features/preview/anchor';
-import { enhance } from '@/features/preview/enhance';
-import { paint } from '@/features/preview/paint';
-import { forgetRecent, rememberRecent } from '@/features/workspace/recent.svelte';
+import { pushHistory } from '@/features/history';
+import { enhance, paint, scrollToAnchor } from '@/features/preview';
+import { forgetRecent, rememberRecent } from '@/features/workspace';
 import { ja } from '@/i18n/ja';
 import { toMessage } from '@/lib/error';
 import { dirOf } from '@/lib/path';
+import { refreshOutline, refreshSearch } from '@/lib/refresh';
 import { mark } from '@/lib/trace';
 import type { MarkdownParser } from '@/markdown/parser';
 import { getPlatform, type DocumentPayload, type Encoding } from '@/platform';
 
 import { markClean } from './dirty';
 import { confirmDiscard } from './discard';
-import { refreshOutline, refreshSearch } from './refresh';
 import { documentStore, INFO_NOTICE_MS, notifyInfo, type StoredPayload } from './store.svelte';
 import { setDocumentText } from './text';
 

@@ -16,8 +16,8 @@
 import { liveRenderDebug, observeLiveRender, type LiveRenderTiming } from '@/features/document/live';
 import { getParser } from '@/features/document/open';
 import { documentStore } from '@/features/document/store.svelte';
-import { setMode } from '@/features/view/mode';
-import { viewStore } from '@/features/view/store.svelte';
+import { setMode } from '@/features/mode';
+import { viewStore } from '@/features/view';
 import { getPlatform } from '@/platform';
 
 /* ------------------------------------------------------------------ */

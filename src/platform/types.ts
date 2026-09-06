@@ -2,8 +2,10 @@
  * Platform 層の型。Rust 側（`src-tauri/src/`）の serde 定義と 1:1 で対応する。
  *
  * ここが唯一の対応表なので、Rust 側を変えたらここも必ず変える。
- * 設定の既定値（`DEFAULT_SETTINGS`）だけは値だが、同じ理由でここに置いている。
+ * ユーザー設定だけは `settings-schema.ts` に分けてある。
+ * キー・既定値・選択肢・許容範囲が 1 つの表から導出される形になっており、型だけをここへ写すと表が 2 枚になる。
  */
+import type { Settings, SettingsPatch } from './settings-schema';
 
 export type Eol = 'lf' | 'crlf';
 
@@ -108,137 +110,6 @@ export const SPLIT_MAX = 0.8;
 /* ------------------------------------------------------------------ */
 /* ユーザー設定（02.architecture/04-rust-responsibilities.md §5）                               */
 /* ------------------------------------------------------------------ */
-
-export type Theme = 'system' | 'light' | 'dark';
-
-/** ウィンドウを閉じたときの挙動（ADR-0007）。 */
-export type WindowCloseBehavior = 'tray' | 'exit';
-
-/*
- * エディターの選択肢（VS Code と同じ綴り / `src-tauri/src/settings/schema.rs` の列挙）。
- *
- * **値の文字列を Marxdown 独自のものにしない。** VS Code の `settings.json` から
- * そのまま写して効くことが、この設定群の存在理由そのものである（F-CONF-06）。
- */
-export type WordWrap = 'off' | 'on' | 'wordWrapColumn' | 'bounded';
-export type LineNumbers = 'off' | 'on' | 'relative' | 'interval';
-export type RenderWhitespace = 'none' | 'boundary' | 'selection' | 'trailing' | 'all';
-export type RenderLineHighlight = 'none' | 'gutter' | 'line' | 'all';
-export type CursorStyle = 'line' | 'block' | 'underline' | 'line-thin' | 'block-outline' | 'underline-thin';
-export type CursorBlinking = 'blink' | 'smooth' | 'phase' | 'expand' | 'solid';
-
-/**
- * 配色（ADR-0013 / `src/styles/themes.css`）。
- *
- * **明暗を含まない。** 明暗を決めるのは `theme` だけで、各パレットは
- * ライトとダークの両方を持つ。プレビューとエディターは同じカタログから独立に選ぶ。
- *
- * `'default'` は**属性を付けない状態**で、`tokens.css` のトークンがそのまま降りてくる。
- */
-export type Palette = 'default' | 'github' | 'solarized' | 'nord' | 'gruvbox';
-
-/**
- * `settings.json` の中身（`src-tauri/src/settings/schema.rs` の `Settings`）。
- *
- * **キーは VS Code と同じフラットなドット区切り**（F-CONF-06）。
- * ネストしたオブジェクトにしないのは、手で書く / 部分的に上書きする / 未知のキーを
- * 保持する、のすべてが 1 階層のほうが素直になるため。
- * `editor.guides.indentation` のように 3 階層に見えるキーも、JSON の上では 1 本の文字列キー。
- *
- * ここに現れないキーもファイルには入りうる（未知のキーは保持される）。
- */
-export interface Settings {
-  theme: Theme;
-
-  'editor.bracketPairColorization.enabled': boolean;
-  'editor.cursorBlinking': CursorBlinking;
-  'editor.cursorStyle': CursorStyle;
-  'editor.cursorSurroundingLines': number;
-  /** 空文字は「トークン層のコードスタックを使う」。 */
-  'editor.fontFamily': string;
-  'editor.fontLigatures': boolean;
-  'editor.fontSize': number;
-  'editor.guides.indentation': boolean;
-  'editor.insertSpaces': boolean;
-  'editor.letterSpacing': number;
-  /** 行の高さ。**倍率**（Monaco は 0 より大きく 8 未満なら倍率として解釈する）。 */
-  'editor.lineHeight': number;
-  'editor.lineNumbers': LineNumbers;
-  'editor.minimap.enabled': boolean;
-  'editor.padding.top': number;
-  'editor.renderControlCharacters': boolean;
-  'editor.renderLineHighlight': RenderLineHighlight;
-  'editor.renderWhitespace': RenderWhitespace;
-  /** 縦罫線を引く桁。空なら引かない。`preview.maxWidth` と対で使う。 */
-  'editor.rulers': number[];
-  'editor.scrollBeyondLastLine': boolean;
-  /** エディターの配色。**`preview.theme` とは独立に選べる。** */
-  'editor.theme': Palette;
-  'editor.tabSize': number;
-  'editor.wordWrap': WordWrap;
-  'editor.wordWrapColumn': number;
-
-  /** 空文字は「トークン層の既定スタックを使う」。 */
-  'preview.codeFontFamily': string;
-  'preview.fontFamily': string;
-  'preview.fontSize': number;
-  'preview.lineHeight': number;
-  /** 本文幅。単位は `ch`（02.architecture/10-theming.md §2）。 */
-  'preview.maxWidth': number;
-  /** 本文の配色。 */
-  'preview.theme': Palette;
-
-  'window.closeBehavior': WindowCloseBehavior;
-}
-
-/**
- * 既定値。`src-tauri/src/settings/schema.rs` の `Settings::default()` と 1:1 で対応する。
- *
- * 実際に届く値は Rust 側で既定値を埋めた後のものなので、これが要るのは
- * bootstrap を持たない経路（`dev:web` の初回・テスト）だけ。
- *
- * **エディターのタイポグラフィはプレビューと別の値**（ADR-0012）。
- * 16px / 1.75 は読むための値で、書く面では行が離れすぎる。
- */
-export const DEFAULT_SETTINGS: Settings = {
-  theme: 'system',
-
-  'editor.bracketPairColorization.enabled': false,
-  'editor.cursorBlinking': 'blink',
-  'editor.cursorStyle': 'line',
-  'editor.cursorSurroundingLines': 0,
-  'editor.fontFamily': '',
-  'editor.fontLigatures': true,
-  'editor.fontSize': 14,
-  'editor.guides.indentation': true,
-  'editor.insertSpaces': true,
-  'editor.letterSpacing': 0,
-  'editor.lineHeight': 1.6,
-  'editor.lineNumbers': 'on',
-  'editor.minimap.enabled': false,
-  'editor.padding.top': 12,
-  'editor.renderControlCharacters': true,
-  'editor.renderLineHighlight': 'line',
-  'editor.renderWhitespace': 'none',
-  'editor.rulers': [],
-  'editor.scrollBeyondLastLine': true,
-  'editor.theme': 'default',
-  'editor.tabSize': 2,
-  'editor.wordWrap': 'on',
-  'editor.wordWrapColumn': 80,
-
-  'preview.codeFontFamily': '',
-  'preview.fontFamily': '',
-  'preview.fontSize': 16,
-  'preview.lineHeight': 1.75,
-  'preview.maxWidth': 100,
-  'preview.theme': 'default',
-
-  'window.closeBehavior': 'tray',
-};
-
-/** 変更したキーだけを渡す。**`null` はキーを消す**（既定値に戻る）。 */
-export type SettingsPatch = { [K in keyof Settings]?: Settings[K] | null };
 
 /**
  * `settings.json` を読めなかった事実（03.ux-spec/07-status-and-notifications.md §2）。

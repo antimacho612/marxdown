@@ -1,9 +1,9 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import { DEFAULT_SETTINGS, type Settings } from '@/platform';
+import { clampSetting, DEFAULT_SETTINGS, type Settings } from '@/platform';
 
-import { applyAppearance, clampSetting, formatFontFamily } from './appearance';
+import { applyAppearance, formatFontFamily } from './appearance';
 
 function root(): HTMLElement {
   return document.documentElement;

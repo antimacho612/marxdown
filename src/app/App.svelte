@@ -6,11 +6,10 @@
 -->
 <script lang="ts">
   import { documentStore } from '@/features/document/store.svelte';
-  import Outline from '@/features/outline/Outline.svelte';
-  import RightPane from '@/features/panes/RightPane.svelte';
-  import SplitDivider from '@/features/view/SplitDivider.svelte';
-  import { viewStore } from '@/features/view/store.svelte';
-  import Welcome from '@/features/workspace/Welcome.svelte';
+  import { Outline } from '@/features/outline';
+  import { RightPane } from '@/features/panes';
+  import { SplitDivider, viewStore } from '@/features/view';
+  import { Welcome } from '@/features/workspace';
 
   import NoticeBar from './NoticeBar.svelte';
   import StatusBar from './StatusBar.svelte';

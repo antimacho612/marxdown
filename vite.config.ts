@@ -71,9 +71,9 @@ export default defineConfig(({ mode }) => ({
            * 設定 UI（M1.5 Phase 4）。menu と同じく**名前付けだけ**。
            *
            * `src/features/settings/` には `main` 側のモジュール
-           * （`store.svelte.ts` / `appearance.ts` / `open-settings.ts`）も同居している。
-           * ここで名前が付くのは動的 import の入口（`panel.ts`）から始まるチャンクだけで、
-           * `main` が静的に import しているものは `main` に残る。
+           * （`store.svelte.ts` / `appearance.ts` / `custom-css.ts` / `open-settings.ts`）も同居している。
+           * ここで名前が付くのは動的 import の入口（`lazy/panel.ts` と `lazy/install-custom-css.ts`）から
+           * 始まるチャンクだけで、`main` が静的に import しているものは `main` に残る。
            * `manualChunks` で寄せると、その境界が壊れる（menu で実測済み）。
            */
           const isSettings = /[\\/]src[\\/]features[\\/]settings[\\/]/.test(chunk.facadeModuleId ?? '');
@@ -92,9 +92,9 @@ export default defineConfig(({ mode }) => ({
           /*
            * ステータスバーのポップアップメニュー（M2 Phase 7）。他と同じく**名前付けだけ**。
            *
-           * `src/features/status/` に置いてあるのは**押されるまで要らないもの**だけで、
+           * `src/features/status/lazy/` に置いてあるのは**押されるまで要らないもの**だけで、
            * `main` 側は `app/StatusMenuButton.svelte`（ボタン 1 つ）しか持たない。
-           * ここに `main` から静的に import されるものを足すと、境界が壊れる。
+           * feature 直下の `props.ts` と `index.ts` は型だけなので、評価されるものは残らない。
            */
           const isStatusMenu = /[\\/]src[\\/]features[\\/]status[\\/]/.test(chunk.facadeModuleId ?? '');
           if (isStatusMenu) return 'assets/status-[hash].js';

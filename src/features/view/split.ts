@@ -6,8 +6,9 @@
  * 永続化は `panes.ts` と同じ形である（ドラッグ中は書かず離した時点で 1 回）。
  * 数値 1 つをリアクティブな状態に置くのは ADR-0005 の禁止（本文を置くこと）には当たらない。
  */
-import { viewStore } from '@/features/view/store.svelte';
 import { getPlatform, SPLIT_DEFAULT, SPLIT_MAX, SPLIT_MIN, type Bootstrap } from '@/platform';
+
+import { viewStore } from './store.svelte';
 
 /**
  * CSS 側が読む変数（`styles/shell.css` の Split の列幅）。

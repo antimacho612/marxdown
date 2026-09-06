@@ -5,7 +5,7 @@
  * WebView 自身のズームはクロームごと拡大するため使わず、`shortcuts.ts` が `preventDefault()` で既定動作を止めて二重に掛からないようにする。
  * 適用は CSS カスタムプロパティの書き換え 1 回で終わり、ストアに書くのはステータスバー表示のためだけである。
  */
-import { viewStore } from '@/features/view/store.svelte';
+import { viewStore } from '@/features/view';
 import { getPlatform } from '@/platform';
 
 /** `src-tauri/src/store.rs` の `ZOOM_MIN` / `ZOOM_MAX` と揃える。 */

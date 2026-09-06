@@ -3,7 +3,7 @@
  *
  * `id`（`markdown-it-anchor`）は記号だけの見出しで空になりうるうえ重複連番が Markdown 側の都合で変わるため、行に 1 ブロックしか始まらず一意な `data-line`（`line-map.ts`）を優先し、`id` は保険として後ろに置く。
  */
-import { jumpToEditorLine } from '@/features/view/scroll-sync';
+import { jumpToEditorLine } from '@/features/view';
 import type { OutlineItem } from '@/markdown/plugins/line-map';
 
 const PREVIEW_SELECTOR = '#mx-preview';
@@ -32,7 +32,7 @@ export function jumpToHeading(item: OutlineItem): void {
   target.scrollIntoView({ block: 'start', behavior: prefersReducedMotion() ? 'auto' : 'smooth' });
 }
 
-export function findHeading(container: HTMLElement | null, item: OutlineItem): HTMLElement | null {
+function findHeading(container: HTMLElement | null, item: OutlineItem): HTMLElement | null {
   if (!container) return null;
 
   const byLine = container.querySelector<HTMLElement>(`:is(${HEADINGS})[data-line="${item.line}"]`);

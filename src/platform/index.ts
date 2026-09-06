@@ -8,6 +8,7 @@ import { tauriPlatform } from './tauri';
 import type { Platform } from './types';
 import { webPlatform } from './web';
 
+export * from './settings-schema';
 export * from './types';
 
 /**

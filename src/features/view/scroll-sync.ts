@@ -7,7 +7,7 @@
  *
  * 片方を動かすと相手の `scroll` が飛んでまた動くという循環が起きるため、これを防ぐために主導権は最後に操作した側が持ち、動かされた側からの同期を短時間停止する（§2）。
  */
-import { viewStore } from '@/features/view/store.svelte';
+import { viewStore } from './store.svelte';
 
 const PREVIEW_SELECTOR = '#mx-preview';
 

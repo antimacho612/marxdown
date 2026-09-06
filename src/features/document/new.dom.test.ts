@@ -8,7 +8,7 @@
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { recentStore } from '@/features/workspace/recent.svelte';
+import { recentStore } from '@/features/workspace';
 import type { MarkdownParser } from '@/markdown/parser';
 import { getPlatform, setPlatform, type Platform } from '@/platform';
 
@@ -17,7 +17,7 @@ import { getPlatform, setPlatform, type Platform } from '@/platform';
  * ここで通すと本題と関係のない数秒がかかる。見たいのは「Edit へ移すこと」だけ。
  */
 const setMode = vi.fn((_mode: string) => Promise.resolve());
-vi.mock('@/features/view/mode', () => ({
+vi.mock('@/features/mode', () => ({
   setMode: (mode: string) => setMode(mode),
 }));
 

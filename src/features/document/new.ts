@@ -5,7 +5,7 @@
  * パス無しによる分岐（最近のファイル・履歴・監視・相対パス画像を扱わない）はすべて `open.ts` 側にある。
  * 既定は Preview だが空の本文は読めないため Edit モードで開き、確認は `openPath` と同じ `confirmDiscard()` を通す（単一文書アプリでは「新しく作る」も「いまの文書を閉じる」ことになるため / F-EDIT-03）。
  */
-import { setMode } from '@/features/view/mode';
+import { setMode } from '@/features/mode';
 
 import { confirmDiscard } from './discard';
 import { openDocument } from './open';

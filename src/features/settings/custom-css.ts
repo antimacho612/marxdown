@@ -2,7 +2,7 @@
  * カスタム CSS の適用（F-CONF-07 / 02.architecture/10-theming.md §3 / ADR-0006 / ADR-0013）。
  *
  * 当てる面は 2 つ（本文 `preview.css` / エディター `editor.css`）だが閉じ込めの仕組みは 1 つで根が違うだけである。
- * 遅延取得・監視・通知は `custom-css-late.ts` にあるが、ここだけは `main` に残る。
+ * 遅延取得・監視・通知は `lazy/install-custom-css.ts` にあるが、ここだけは `main` に残る。
  * 64KB 以下は bootstrap に同梱され、本文を描く前に当てないと FOUC になるためである。
  *
  * CSS サニタイザは置かない（ADR-0006。ユーザー自身が置いたファイルであり、検証を足すと壊れるのは正当なテーマのほう）。

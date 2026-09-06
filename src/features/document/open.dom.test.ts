@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { recentStore } from '@/features/workspace/recent.svelte';
+import { recentStore } from '@/features/workspace';
 import { ja } from '@/i18n/ja';
 import type { MarkdownParser } from '@/markdown/parser';
 import type { ParseResult } from '@/markdown/protocol';

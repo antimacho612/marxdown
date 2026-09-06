@@ -6,15 +6,14 @@
  * 本文の DOM 再構築はパース本体よりコストが高いため、打鍵ごとには描かず打ち終わりを待つ（N-PERF-03）。
  * `paint` は受け皿を差し替えて表示位置を先頭に戻すため、スクロール位置は自分で保持して再設定する。
  */
-import { enhance } from '@/features/preview/enhance';
-import { paint } from '@/features/preview/paint';
-import { viewStore } from '@/features/view/store.svelte';
+import { enhance, paint } from '@/features/preview';
+import { viewStore } from '@/features/view';
 import { ja } from '@/i18n/ja';
 import { toMessage } from '@/lib/error';
 import { dirOf } from '@/lib/path';
+import { isOutlineOnScreen, refreshOutline, refreshSearch } from '@/lib/refresh';
 
 import { getParser } from './open';
-import { isOutlineOnScreen, refreshOutline, refreshSearch } from './refresh';
 import { documentStore } from './store.svelte';
 import { getDocumentText } from './text';
 
@@ -111,7 +110,7 @@ export function scheduleLiveRender(): void {
  * いま打った内容を追いかける相手が居るか（上の表）。
  *
  * **ペインの開閉を直接見に行かない。** アウトラインが出ているかどうかは
- * あちらから名乗ってもらう（`document/refresh.ts`）。
+ * あちらから名乗ってもらう（`lib/refresh.ts`）。
  */
 function wantsRender(): boolean {
   const mode = viewStore.mode;
@@ -138,7 +137,7 @@ export function cancelLiveRender(): void {
 }
 
 /**
- * いますぐ描き直す。プレビューの面へ戻った直後に 1 回だけ呼ぶ（`features/view/mode.ts`）。
+ * いますぐ描き直す。プレビューの面へ戻った直後に 1 回だけ呼ぶ（`features/mode/mode.ts`）。
  *
  * **Edit では paint まで行かない。** 見えない面の DOM は作り直さず、
  * パースの結果（見出し・文字数）だけをストアへ入れる。
@@ -169,7 +168,7 @@ export async function renderNow(): Promise<void> {
     const parsedAt = observer ? performance.now() : 0;
 
     // **見えていない面の DOM は作り直さない**（N-PERF-05）。Edit で要るのは
-    // パースの結果だけで、本文は Preview へ戻るときに 1 回だけ描く（`features/view/mode.ts`）。
+    // パースの結果だけで、本文は Preview へ戻るときに 1 回だけ描く（`features/mode/mode.ts`）。
     const visible = viewStore.mode !== 'edit';
 
     if (visible) {
