@@ -6,7 +6,8 @@
 //! `editor.guides.indentation` のように 3 階層に見えるキーも、JSON の上では 1 本の文字列キーであり、VS Code の `settings.json` からそのまま転記できる。
 //!
 //! 既定値は 3 か所で一致させる必要がある。
-//! ここ（ファイルを読み込むときの既定）、`src/platform/types.ts` の `DEFAULT_SETTINGS`（bootstrap を経由しない経路の既定）、`src/styles/tokens.css`（プレビューの見た目の既定）の 3 か所である。
+//! ここ（ファイルを読み込むときの既定）、`src/platform/settings-schema.ts` の `SETTINGS_SCHEMA`（bootstrap を経由しない経路の既定）、`src/styles/tokens.css`（プレビューの見た目の既定）の 3 か所である。
+//! 前 2 者の一致は `the_defaults_match_the_frontend_table` が `tests/settings-default.json` 越しに固定している。
 //! プレビューの 3 項目（文字サイズ・行間・本文幅）だけはトークン層にも既定があり、ここがずれると設定ファイルが無いときと「既定値を明示的に書いたとき」で見た目が変わる。
 //! エディターの既定値はトークン層に無い。
 //! M2 まではプレビューのトークンをそのまま使用していたが、読む面と書く面でタイポグラフィを分けた（ADR-0012）。
@@ -75,7 +76,7 @@ pub const DEFAULT_EDITOR_WORD_WRAP_COLUMN: f64 = 80.0;
 /* ------------------------------------------------------------------ */
 
 /// 数値の許容範囲。0 や負数がそのまま CSS / Monaco に流れるとレイアウトが壊れるため、
-/// 読んだ時点で潰す。**`src/features/settings/appearance.ts` の `LIMITS` と揃える。**
+/// 読んだ時点で潰す。**`src/platform/settings-schema.ts` の `min` / `max` と揃える。**
 ///
 /// **読むだけならファイルは変わらない。** ただし設定 UI から保存すると、
 /// 丸めた後の値が書き戻る（`patched` はメモリ上の値を土台にするため）。
@@ -499,6 +500,30 @@ fn take_rulers(map: &mut Map<String, Value>) -> Option<Vec<f64>> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// 既定値がフロント側（`src/platform/settings-schema.ts`）と一致することを、
+    /// 突き合わせ用の JSON 1 枚を挟んで固定する。
+    /// 反対側から同じファイルを読むのは `src/platform/settings-schema.test.ts` である。
+    /// 食い違ったときは、どちらが正しいかを決めてから `UPDATE_SETTINGS_FIXTURE=1 cargo test` で焼き直す。
+    #[test]
+    fn the_defaults_match_the_frontend_table() {
+        let path =
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/settings-default.json");
+        let actual = serde_json::to_value(Settings::default()).unwrap();
+
+        if std::env::var_os("UPDATE_SETTINGS_FIXTURE").is_some() {
+            std::fs::write(
+                &path,
+                format!("{}\n", serde_json::to_string_pretty(&actual).unwrap()),
+            )
+            .unwrap();
+            return;
+        }
+
+        let expected: Value =
+            serde_json::from_str(&std::fs::read_to_string(&path).unwrap()).unwrap();
+        assert_eq!(actual, expected, "{}", path.display());
+    }
 
     #[test]
     fn missing_keys_fall_back_to_defaults() {

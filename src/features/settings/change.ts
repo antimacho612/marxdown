@@ -4,13 +4,20 @@
  *
  * 見た目は即座に当て、保存はデバウンスする（`zoom.ts` と同じ）。
  * 1 文字ごとに `settings.json` を書かないためである。
- * 書き戻しの結果を待たずに楽観的にストアへ入れるのは、Rust 側も同じ範囲（`LIMITS`）で潰すため返り値が一致するからである。
+ * 書き戻しの結果を待たずに楽観的にストアへ入れるのは、Rust 側も同じ範囲（`SETTINGS_SCHEMA`）で潰すため返り値が一致するからである。
  */
 import { describeOpenError } from '@/features/document/open';
 import { documentStore } from '@/features/document/store.svelte';
-import { DEFAULT_SETTINGS, getPlatform, type Settings, type SettingsPatch } from '@/platform';
+import {
+  clampSetting,
+  DEFAULT_SETTINGS,
+  getPlatform,
+  isNumericKey,
+  type Settings,
+  type SettingsPatch,
+} from '@/platform';
 
-import { applyAppearance, clampSetting, LIMITS } from './appearance';
+import { applyAppearance } from './appearance';
 import { settingsStore } from './store.svelte';
 
 /** 保存を待つ時間。`zoom.ts` の `PERSIST_DEBOUNCE_MS` と同じ理由・同じ値。 */
@@ -27,10 +34,6 @@ let timer: ReturnType<typeof setTimeout> | null = null;
  * 既定値が変わったときに追従させるため（02.architecture/04-rust-responsibilities.md §5）。
  */
 let pending: SettingsPatch = {};
-
-function isNumeric(key: keyof Settings): key is keyof typeof LIMITS {
-  return key in LIMITS;
-}
 
 /**
  * 1 項目を変える。`null` を渡すと既定に戻る。
@@ -56,7 +59,7 @@ export function changeSetting<K extends keyof Settings>(key: K, value: Settings[
 /** 見た目に当てる値を決める。`null`（既定に戻す）は既定値そのもの。 */
 function resolve<K extends keyof Settings>(key: K, value: Settings[K] | null): Settings[K] {
   if (value === null) return DEFAULT_SETTINGS[key];
-  if (isNumeric(key) && typeof value === 'number') {
+  if (isNumericKey(key) && typeof value === 'number') {
     return clampSetting(key, value) as Settings[K];
   }
   return value;

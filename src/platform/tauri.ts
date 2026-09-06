@@ -8,6 +8,7 @@ import { convertFileSrc, invoke } from '@tauri-apps/api/core';
 import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import { getCurrentWebview } from '@tauri-apps/api/webview';
 
+import type { Settings } from './settings-schema';
 import type {
   Bootstrap,
   CustomCss,
@@ -18,7 +19,6 @@ import type {
   Platform,
   RecentEntry,
   SaveResult,
-  Settings,
   SettingsLoad,
   TraceMark,
   WriteRequest,

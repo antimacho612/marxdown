@@ -8,6 +8,9 @@
 背後が見えなくなる代わりに、フォントまわりだけ見本を内蔵する（本文幅・折り返し・タブ幅は見本に出せないため出していない）。
 フォーカストラップ・inert 化・`::backdrop` はブラウザの `<dialog>` に任せる。
 
+並べる中身は `layout.ts` にあり、このファイルが持つのは「どの部品で描くか」だけである。
+項目を足すときにここを触る必要はない。
+
 「既定に戻す」ボタンは既定でないときだけ出す（押しても無意味なボタンを並べない）。
 settings.json が壊れている間は保存を試みない。
 Rust 側も拒否するが、UI が「保存できたように見せる」のを避けるため入力欄ごと止め、ファイルへの導線だけ残す。
@@ -20,16 +23,24 @@ Rust 側も拒否するが、UI が「保存できたように見せる」のを
    * 「さっき見ていた場所」は、設定ファイルに残すほどの寿命を持たない。
    * 同じセッションで開き直したときに戻れば足りる。
    */
-  let lastCategory: CategoryId = 'appearance';
+  let lastCategory = 'appearance';
 </script>
 
 <script lang="ts">
   import { onMount } from 'svelte';
 
   import { ja } from '@/i18n/ja';
-  import { DEFAULT_SETTINGS, getPlatform, type Settings, type SettingsProblem } from '@/platform';
+  import {
+    DEFAULT_SETTINGS,
+    getPlatform,
+    settingChoices,
+    SETTINGS_SCHEMA,
+    type NumericKey,
+    type SettingKey,
+    type Settings,
+    type SettingsProblem,
+  } from '@/platform';
 
-  import { LIMITS, type NumericKey } from './appearance';
   import { changeSetting } from './change';
   import {
     ContentSample,
@@ -43,13 +54,12 @@ Rust 側も拒否するが、UI が「保存できたように見せる」のを
     ToggleField,
     type Choice,
   } from './components';
+  import { LAYOUT, type FieldEntry } from './layout';
   import { settingsStore } from './store.svelte';
 
   const { onclose }: { onclose: () => void } = $props();
 
   const values = $derived(settingsStore.values);
-
-  type CategoryId = 'appearance' | 'preview' | 'editor' | 'window';
 
   /** 値が文字列のキー。選択肢（`<select>` / ラジオ）とテキスト欄が該当する。 */
   type ChoiceKey = { [K in keyof Settings]: Settings[K] extends string ? K : never }[keyof Settings];
@@ -67,42 +77,25 @@ Rust 側も拒否するが、UI が「保存できたように見せる」のを
 
   let dialog: HTMLDialogElement;
 
-  let category = $state<CategoryId>(lastCategory);
+  let category = $state(lastCategory);
 
   $effect(() => {
     lastCategory = category;
   });
 
-  const CATEGORIES: { id: CategoryId; label: string }[] = [
-    { id: 'appearance', label: ja.settings.categories.appearance },
-    { id: 'preview', label: ja.settings.categories.preview },
-    { id: 'editor', label: ja.settings.categories.editor },
-    { id: 'window', label: ja.settings.categories.window },
-  ];
+  const CATEGORIES = LAYOUT.map(({ id, label }) => ({ id, label }));
 
-  const THEMES: Choice[] = [
-    { value: 'system', label: ja.settings.themeSystem },
-    { value: 'light', label: ja.settings.themeLight },
-    { value: 'dark', label: ja.settings.themeDark },
-  ];
+  const entries = $derived(LAYOUT.find((c) => c.id === category)?.entries ?? []);
 
-  const CLOSE_BEHAVIORS: Choice[] = [
-    { value: 'tray', label: ja.settings.window.closeBehaviorTray },
-    { value: 'exit', label: ja.settings.window.closeBehaviorExit },
-  ];
-
-  /** 選択肢は i18n のオブジェクトをそのまま並べる。**綴りは VS Code の値と 1:1**。 */
-  function choices(labels: Record<string, string>): Choice[] {
-    return Object.entries(labels).map(([value, label]) => ({ value, label }));
+  /**
+   * 選択肢。**並びはスキーマの `values` が決める。**
+   *
+   * i18n のオブジェクトのキー順に頼ると、翻訳を並べ替えただけで画面の並びが変わる。
+   * 綴りは VS Code の値と 1:1。
+   */
+  function choices(key: SettingKey, labels: Readonly<Record<string, string>>): Choice[] {
+    return settingChoices(key).map((value) => ({ value, label: labels[value] ?? value }));
   }
-
-  const WORD_WRAP = choices(ja.settings.editor.wordWrapOptions);
-  const LINE_NUMBERS = choices(ja.settings.editor.lineNumbersOptions);
-  const RENDER_WHITESPACE = choices(ja.settings.editor.renderWhitespaceOptions);
-  const RENDER_LINE_HIGHLIGHT = choices(ja.settings.editor.renderLineHighlightOptions);
-  const CURSOR_STYLE = choices(ja.settings.editor.cursorStyleOptions);
-  const CURSOR_BLINKING = choices(ja.settings.editor.cursorBlinkingOptions);
-  const PALETTES = choices(ja.settings.paletteOptions);
 
   async function reload(): Promise<void> {
     try {
@@ -185,7 +178,7 @@ Rust 側も拒否するが、UI が「保存できたように見せる」のを
    * **配列は中身で比べる。** `editor.rulers` は毎回別のオブジェクトになるので、
    * 参照で比べると触っていなくても「戻す」が出続ける。
    */
-  function customized(key: keyof Settings): boolean {
+  function customized(key: SettingKey): boolean {
     const current = values[key];
     const initial = DEFAULT_SETTINGS[key];
     if (Array.isArray(current) && Array.isArray(initial)) {
@@ -200,9 +193,14 @@ Rust 側も拒否するが、UI が「保存できたように見せる」のを
    * 出すか出さないかの判断はここ 1 か所にしかない。部品の側は
    * 「渡されたら出す」だけを知っていればよく、設定の既定値を知らずに済む。
    */
-  function resetOf(key: keyof Settings): (() => void) | undefined {
+  function resetOf(key: SettingKey): (() => void) | undefined {
     if (!customized(key)) return undefined;
     return () => changeSetting(key, null);
+  }
+
+  /** 出す条件を持たない項目は常に出す。 */
+  function visible(entry: FieldEntry): boolean {
+    return entry.visibleWhen?.(values) ?? true;
   }
 
   /* ---------------------------------------------------------------- */
@@ -274,126 +272,27 @@ Rust 側も拒否するが、UI が「保存できたように見せる」のを
 
     <!-- settings.json が壊れているときは `fieldset` でまとめて非活性にする。項目追加時の書き忘れ防止のため。 -->
     <fieldset class="mx-settings__pane" disabled={broken !== null}>
-      {#if category === 'appearance'}
-        {@render radioGroup('theme', ja.settings.theme, ja.settings.themeHint, THEMES)}
-      {:else if category === 'preview'}
-        {@render selectField('preview.theme', ja.settings.palette, ja.settings.paletteHint, PALETTES)}
-        {@render textField('preview.fontFamily', ja.settings.fontFamily, ja.settings.fontFamilyHint)}
-        {@render textField('preview.codeFontFamily', ja.settings.codeFontFamily, ja.settings.fontFamilyHint)}
-        {@render numberField('preview.fontSize', ja.settings.fontSize.label, ja.settings.fontSize.description)}
-        {@render numberField('preview.lineHeight', ja.settings.lineHeight.label, ja.settings.lineHeight.description)}
-        {@render numberField('preview.maxWidth', ja.settings.maxWidth.label, ja.settings.maxWidth.description)}
-        <ContentSample palette={values['preview.theme']} />
-      {:else if category === 'editor'}
-        {@render selectField('editor.theme', ja.settings.palette, ja.settings.paletteHint, PALETTES)}
-        <EditorSample
-          palette={values['editor.theme']}
-          fontFamily={values['editor.fontFamily']}
-          fontSize={values['editor.fontSize']}
-          lineHeight={values['editor.lineHeight']}
-          letterSpacing={values['editor.letterSpacing']}
-          ligatures={values['editor.fontLigatures']}
-          showLineNumbers={values['editor.lineNumbers'] !== 'off'}
-        />
-
-        <Section label={ja.settings.sections.font} />
-        {@render textField('editor.fontFamily', ja.settings.editor.fontFamily, ja.settings.fontFamilyHint)}
-        {@render numberField(
-          'editor.fontSize',
-          ja.settings.editor.fontSize.label,
-          ja.settings.editor.fontSize.description,
-        )}
-        {@render numberField(
-          'editor.lineHeight',
-          ja.settings.editor.lineHeight.label,
-          ja.settings.editor.lineHeight.description,
-        )}
-        {@render numberField(
-          'editor.letterSpacing',
-          ja.settings.editor.letterSpacing.label,
-          ja.settings.editor.letterSpacing.description,
-        )}
-        {@render toggleField(
-          'editor.fontLigatures',
-          ja.settings.editor.fontLigatures.label,
-          ja.settings.editor.fontLigatures.description,
-        )}
-
-        <Section label={ja.settings.sections.display} />
-        {@render selectField('editor.lineNumbers', ja.settings.editor.lineNumbers, '', LINE_NUMBERS)}
-        {@render selectField('editor.renderWhitespace', ja.settings.editor.renderWhitespace, '', RENDER_WHITESPACE)}
-        {@render selectField(
-          'editor.renderLineHighlight',
-          ja.settings.editor.renderLineHighlight,
-          '',
-          RENDER_LINE_HIGHLIGHT,
-        )}
-        {@render toggleField(
-          'editor.renderControlCharacters',
-          ja.settings.editor.renderControlCharacters.label,
-          ja.settings.editor.renderControlCharacters.description,
-        )}
-        {@render toggleField(
-          'editor.guides.indentation',
-          ja.settings.editor.guidesIndentation.label,
-          ja.settings.editor.guidesIndentation.description,
-        )}
-        {@render toggleField(
-          'editor.bracketPairColorization.enabled',
-          ja.settings.editor.bracketPairColorization.label,
-          ja.settings.editor.bracketPairColorization.description,
-        )}
-        {@render toggleField(
-          'editor.minimap.enabled',
-          ja.settings.editor.minimap.label,
-          ja.settings.editor.minimap.description,
-        )}
-        {@render rulersField()}
-        {@render numberField(
-          'editor.padding.top',
-          ja.settings.editor.paddingTop.label,
-          ja.settings.editor.paddingTop.description,
-        )}
-
-        <Section label={ja.settings.sections.input} />
-        {@render selectField('editor.wordWrap', ja.settings.editor.wordWrap, '', WORD_WRAP)}
-        {#if values['editor.wordWrap'] === 'wordWrapColumn' || values['editor.wordWrap'] === 'bounded'}
-          {@render numberField(
-            'editor.wordWrapColumn',
-            ja.settings.editor.wordWrapColumn.label,
-            ja.settings.editor.wordWrapColumn.description,
-          )}
+      {#each entries as entry, index (index)}
+        {#if entry.kind === 'section'}
+          <Section label={entry.label} />
+        {:else if entry.kind === 'sample'}
+          {#if entry.sample === 'content'}
+            <ContentSample palette={values['preview.theme']} />
+          {:else}
+            <EditorSample
+              palette={values['editor.theme']}
+              fontFamily={values['editor.fontFamily']}
+              fontSize={values['editor.fontSize']}
+              lineHeight={values['editor.lineHeight']}
+              letterSpacing={values['editor.letterSpacing']}
+              ligatures={values['editor.fontLigatures']}
+              showLineNumbers={values['editor.lineNumbers'] !== 'off'}
+            />
+          {/if}
+        {:else if visible(entry)}
+          {@render field(entry)}
         {/if}
-        {@render numberField(
-          'editor.tabSize',
-          ja.settings.editor.tabSize.label,
-          ja.settings.editor.tabSize.description,
-        )}
-        {@render toggleField(
-          'editor.insertSpaces',
-          ja.settings.editor.insertSpaces.label,
-          ja.settings.editor.insertSpaces.description,
-        )}
-        {@render selectField('editor.cursorStyle', ja.settings.editor.cursorStyle, '', CURSOR_STYLE)}
-        {@render selectField('editor.cursorBlinking', ja.settings.editor.cursorBlinking, '', CURSOR_BLINKING)}
-        {@render numberField(
-          'editor.cursorSurroundingLines',
-          ja.settings.editor.cursorSurroundingLines.label,
-          ja.settings.editor.cursorSurroundingLines.description,
-        )}
-        {@render toggleField(
-          'editor.scrollBeyondLastLine',
-          ja.settings.editor.scrollBeyondLastLine.label,
-          ja.settings.editor.scrollBeyondLastLine.description,
-        )}
-      {:else}
-        {@render radioGroup(
-          'window.closeBehavior',
-          ja.settings.window.closeBehavior,
-          ja.settings.window.closeBehaviorHint,
-          CLOSE_BEHAVIORS,
-        )}
-      {/if}
+      {/each}
     </fieldset>
   </div>
 
@@ -412,70 +311,69 @@ Rust 側も拒否するが、UI が「保存できたように見せる」のを
 
 <!-- MARK: Snippets -->
 
-{#snippet textField(key: ChoiceKey, label: string, description: string)}
-  <TextField
-    {key}
-    {label}
-    {description}
-    value={values[key]}
-    placeholder={ja.settings.fontFamilyPlaceholder}
-    onInput={(value) => changeChoice(key, value)}
-    onReset={resetOf(key)}
-  />
-{/snippet}
-
-{#snippet numberField(key: NumericKey, label: string, description: string)}
-  <NumberField
-    {key}
-    {label}
-    {description}
-    value={values[key]}
-    min={LIMITS[key].min}
-    max={LIMITS[key].max}
-    step={LIMITS[key].step}
-    onInput={(value) => changeSetting(key, value)}
-    onReset={resetOf(key)}
-  />
-{/snippet}
-
-{#snippet selectField(key: ChoiceKey, label: string, description: string, options: Choice[])}
-  <SelectField
-    {key}
-    {label}
-    {options}
-    {description}
-    value={values[key]}
-    onChange={(value) => changeChoice(key, value)}
-    onReset={resetOf(key)}
-  />
-{/snippet}
-
-{#snippet toggleField(key: ToggleKey, label: string, description: string)}
-  <ToggleField
-    {key}
-    {label}
-    description={`${description}（既定値: ${DEFAULT_SETTINGS[key]}）`}
-    checked={values[key]}
-    onChange={(checked) => changeSetting(key, checked)}
-  />
-{/snippet}
-
-{#snippet radioGroup(key: ChoiceKey, label: string, description: string, options: Choice[])}
-  <RadioGroup {label} {description} {options} value={values[key]} onChange={(value) => changeChoice(key, value)} />
-{/snippet}
-
-<!-- 縦罫線だけは**打っている途中の文字列**を渡す（上の `rulersText` を参照）。 -->
-{#snippet rulersField()}
-  <TextField
-    key="editor.rulers"
-    label={ja.settings.editor.rulers.label}
-    description={ja.settings.editor.rulers.description}
-    value={rulersText}
-    placeholder={ja.settings.editor.rulers.placeholder}
-    inputmode="numeric"
-    onInput={onRulersInput}
-    onReset={resetOf('editor.rulers')}
-  />
+{#snippet field(entry: FieldEntry)}
+  {@const description = entry.description ?? ''}
+  {#if entry.widget === 'text'}
+    <TextField
+      key={entry.key}
+      label={entry.label}
+      {description}
+      value={values[entry.key]}
+      placeholder={entry.placeholder ?? ''}
+      onInput={(value) => changeChoice(entry.key, value)}
+      onReset={resetOf(entry.key)}
+    />
+  {:else if entry.widget === 'number'}
+    <NumberField
+      key={entry.key}
+      label={entry.label}
+      {description}
+      value={values[entry.key]}
+      min={SETTINGS_SCHEMA[entry.key].min}
+      max={SETTINGS_SCHEMA[entry.key].max}
+      step={entry.step}
+      onInput={(value) => changeSetting(entry.key as NumericKey, value)}
+      onReset={resetOf(entry.key)}
+    />
+  {:else if entry.widget === 'select'}
+    <SelectField
+      key={entry.key}
+      label={entry.label}
+      {description}
+      options={choices(entry.key, entry.labels)}
+      value={values[entry.key]}
+      onChange={(value) => changeChoice(entry.key, value)}
+      onReset={resetOf(entry.key)}
+    />
+  {:else if entry.widget === 'toggle'}
+    <ToggleField
+      key={entry.key}
+      label={entry.label}
+      description={`${description}（既定値: ${String(DEFAULT_SETTINGS[entry.key as ToggleKey])}）`}
+      checked={values[entry.key]}
+      onChange={(checked) => changeSetting(entry.key as ToggleKey, checked)}
+    />
+  {:else if entry.widget === 'radio'}
+    <RadioGroup
+      label={entry.label}
+      {description}
+      options={choices(entry.key, entry.labels)}
+      value={values[entry.key]}
+      onChange={(value) => changeChoice(entry.key, value)}
+    />
+  {:else}
+    <!-- 縦罫線だけは**打っている途中の文字列**を渡す（上の `rulersText` を参照）。 -->
+    <TextField
+      key={entry.key}
+      label={entry.label}
+      {description}
+      value={rulersText}
+      placeholder={ja.settings.editor.rulers.placeholder}
+      inputmode="numeric"
+      onInput={onRulersInput}
+      onReset={resetOf(entry.key)}
+    />
+  {/if}
 {/snippet}
 
 <style>
@@ -593,7 +491,11 @@ Rust 側も拒否するが、UI が「保存できたように見せる」のを
     gap: var(--mx-space-3);
   }
 
-  .mx-settings__pane > * {
+  /*
+   * 中身は `{@render}` 越しに入るため、Svelte の静的解析からは子要素が見えない。
+   * `:global` を外すとこの規則ごと未使用と判定されて落ち、項目が縦に潰れる。
+   */
+  .mx-settings__pane > :global(*) {
     flex: none;
   }
 
