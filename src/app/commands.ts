@@ -14,8 +14,7 @@ import { openPath, openViaDialog, reloadCurrent } from '@/features/document/open
 import { saveAsSafely, saveSafely } from '@/features/document/save';
 import { documentStore } from '@/features/document/store.svelte';
 import { canGoBack, canGoForward, goBack, goForward } from '@/features/history';
-import { openJumpLazily } from '@/features/outline/open-jump';
-import { showOutline } from '@/features/outline/show';
+import { openJumpLazily, showOutline } from '@/features/outline';
 import { toggleRightPane } from '@/features/panes';
 import { zoomIn, zoomOut, zoomReset } from '@/features/preview/zoom';
 import { openSettingsLazily } from '@/features/settings';

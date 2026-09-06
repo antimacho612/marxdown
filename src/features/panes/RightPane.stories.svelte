@@ -15,7 +15,7 @@
 
   import TitleBar from '@/app/TitleBar.svelte';
   import { documentStore } from '@/features/document/store.svelte';
-  import Outline from '@/features/outline/Outline.svelte';
+  import { Outline } from '@/features/outline';
   import { viewStore } from '@/features/view/store.svelte';
   import type { OutlineItem } from '@/markdown/plugins/line-map';
   import type { DocumentMeta } from '@/platform';

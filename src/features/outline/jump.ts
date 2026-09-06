@@ -32,7 +32,7 @@ export function jumpToHeading(item: OutlineItem): void {
   target.scrollIntoView({ block: 'start', behavior: prefersReducedMotion() ? 'auto' : 'smooth' });
 }
 
-export function findHeading(container: HTMLElement | null, item: OutlineItem): HTMLElement | null {
+function findHeading(container: HTMLElement | null, item: OutlineItem): HTMLElement | null {
   if (!container) return null;
 
   const byLine = container.querySelector<HTMLElement>(`:is(${HEADINGS})[data-line="${item.line}"]`);

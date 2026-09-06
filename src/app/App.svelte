@@ -6,7 +6,7 @@
 -->
 <script lang="ts">
   import { documentStore } from '@/features/document/store.svelte';
-  import Outline from '@/features/outline/Outline.svelte';
+  import { Outline } from '@/features/outline';
   import { RightPane } from '@/features/panes';
   import SplitDivider from '@/features/view/SplitDivider.svelte';
   import { viewStore } from '@/features/view/store.svelte';

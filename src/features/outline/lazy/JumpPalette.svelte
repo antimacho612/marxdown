@@ -8,10 +8,9 @@
 <script lang="ts">
   import { documentStore } from '@/features/document/store.svelte';
   import { ja } from '@/i18n/ja';
-  import type { OutlineItem } from '@/markdown/plugins/line-map';
 
+  import { jumpToHeading } from '../jump';
   import { fuzzyFilter } from './fuzzy';
-  import { jumpToHeading } from './jump';
 
   interface Props {
     onclose: () => void;
@@ -33,12 +32,7 @@
   let list: HTMLElement | null = $state(null);
 
   const items = $derived(documentStore.outline);
-  const matches = $derived(
-    fuzzyFilter(
-      items.map((item) => item.text),
-      query,
-    ).slice(0, SHOWN),
-  );
+  const matches = $derived(fuzzyFilter(items, query).slice(0, SHOWN));
 
   /** 絞り込みが変わると、いま選んでいる行は意味を失う。先頭へ戻す。 */
   let seenQuery = '';
@@ -58,14 +52,8 @@
     input?.focus();
   });
 
-  function itemAt(offset: number): OutlineItem | null {
-    const match = matches[offset];
-    if (!match) return null;
-    return items[match.index] ?? null;
-  }
-
   function commit(offset: number): void {
-    const item = itemAt(offset);
+    const item = matches[offset];
     if (!item) return;
     // 閉じてから飛ぶ。順序を逆にすると、飛んだ先がパレットの下に隠れる
     onclose();
@@ -136,22 +124,19 @@
       という当たり前をここでも崩さない。
     -->
     <div class="mx-jump__list" id="mx-jump-list" role="listbox" bind:this={list}>
-      {#each matches as match, offset (match.index)}
-        {@const item = items[match.index]}
-        {#if item}
-          <button
-            type="button"
-            role="option"
-            tabindex="-1"
-            aria-selected={offset === selected}
-            class:mx-jump__item--selected={offset === selected}
-            style:padding-inline-start="calc(var(--mx-space-3) + {(item.level - 1) * 12}px)"
-            onclick={() => commit(offset)}
-          >
-            <span class="mx-jump__text">{item.text}</span>
-            <span class="mx-jump__level">H{item.level}</span>
-          </button>
-        {/if}
+      {#each matches as item, offset (item.line)}
+        <button
+          type="button"
+          role="option"
+          tabindex="-1"
+          aria-selected={offset === selected}
+          class:mx-jump__item--selected={offset === selected}
+          style:padding-inline-start="calc(var(--mx-space-3) + {(item.level - 1) * 12}px)"
+          onclick={() => commit(offset)}
+        >
+          <span class="mx-jump__text">{item.text}</span>
+          <span class="mx-jump__level">H{item.level}</span>
+        </button>
       {/each}
     </div>
   {/if}

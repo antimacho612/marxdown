@@ -81,7 +81,7 @@ const UNICORN_NOT_ENFORCED_BEFORE = [
  * **`UNICORN_NOT_ENFORCED_BEFORE` と逆で、こちらは足していく側。**
  * feature を 1 つ整理するたびに 1 行増やす。
  */
-const FEATURE_BARREL_ENFORCED = ['history', 'panes', 'settings'];
+const FEATURE_BARREL_ENFORCED = ['history', 'outline', 'panes', 'settings'];
 
 /** プロジェクト共通のルール。`.ts` と `.svelte` の両方に効かせる。 */
 const rules = {

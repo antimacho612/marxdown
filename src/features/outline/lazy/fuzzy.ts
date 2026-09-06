@@ -5,12 +5,7 @@
  * fzf 系のライブラリ（数十 KB）は入れず、「打った文字が順番に含まれるか」と「近いほうを上に出す」だけを自作する（04.tech-stack/05-frontend.md）。
  * 日本語の見出しは単語境界が無いため、単語境界ボーナスは付けず連続と位置だけでスコアする。
  */
-
-export interface FuzzyMatch {
-  /** 元の配列での添字。 */
-  index: number;
-  score: number;
-}
+import type { OutlineItem } from '@/markdown/plugins/line-map';
 
 /**
  * 部分列としての一致を測る。一致しなければ `null`。
@@ -44,17 +39,20 @@ export function fuzzyScore(text: string, query: string): number | null {
 }
 
 /**
- * 一致した項目を、スコアの高い順に返す。
+ * 一致した見出しを、スコアの高い順に返す。
  *
  * 同点は**元の順序**（＝文書内の並び）で決める。空クエリでは全件が
  * 文書順のまま返るので、開いた直後は「アウトラインそのもの」に見える。
+ *
+ * 添字ではなく見出しそのものを返す。呼ぶ側は `documentStore.outline` を持っており、
+ * 添字を返すと 1 打鍵ごとに文字列の配列を作り直したうえで引き直すことになる。
  */
-export function fuzzyFilter(texts: readonly string[], query: string): FuzzyMatch[] {
-  const matches: FuzzyMatch[] = [];
-  for (const [index, text] of texts.entries()) {
-    const score = fuzzyScore(text, query);
-    if (score !== null) matches.push({ index, score });
+export function fuzzyFilter(items: readonly OutlineItem[], query: string): OutlineItem[] {
+  const matches: { item: OutlineItem; index: number; score: number }[] = [];
+  for (const [index, item] of items.entries()) {
+    const score = fuzzyScore(item.text, query);
+    if (score !== null) matches.push({ item, index, score });
   }
-  if (query === '') return matches;
-  return matches.toSorted((a, b) => b.score - a.score || a.index - b.index);
+  const ordered = query === '' ? matches : matches.toSorted((a, b) => b.score - a.score || a.index - b.index);
+  return ordered.map((match) => match.item);
 }
