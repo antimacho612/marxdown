@@ -5,6 +5,7 @@
 
 use serde::{Deserialize, Serialize};
 
+/// 改行コード。CR 単独は扱わず、読み込み時に LF へ寄せる（[`normalize`]）。
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum Eol {
@@ -13,6 +14,7 @@ pub enum Eol {
 }
 
 impl Eol {
+    /// 実際に書き出す文字列。
     pub fn as_str(self) -> &'static str {
         match self {
             Self::Lf => "\n",
@@ -32,9 +34,8 @@ impl Eol {
 
 /// 支配的な改行コードを判定する。
 ///
-/// 混在している場合は**多数派**を採る。同数なら CRLF を優先する
-/// （Windows 第一優先であり、CRLF ファイルの一部が LF になっている方が
-/// その逆より頻度が高いという判断）。
+/// 混在している場合は多数派を採り、同数なら CRLF を優先する。
+/// Windows を第一優先とすること、および CRLF ファイルの一部が LF になっている状況のほうが逆より頻度が高いことによる。
 ///
 /// 改行が 1 つも無いファイルはプラットフォーム既定を返す。
 /// 1 行だけのファイルを保存したときに、その環境で自然な改行が入ってほしいため。
@@ -65,8 +66,8 @@ pub fn detect(text: &str) -> Eol {
 
 /// すべての改行を LF に正規化する。
 ///
-/// CR 単独（古い Mac）も LF に寄せる。復元時は検出した Eol に戻すため、
-/// CR 単独のファイルは CRLF か LF のどちらかに正規化されることになるが、
+/// CR 単独（古い Mac）も LF に変換する。
+/// 復元時は検出した Eol に戻すため、CR 単独のファイルは CRLF か LF のどちらかになる。
 /// 対象ユーザー（開発者）の環境では実質的に発生しない。
 pub fn normalize(text: &str) -> String {
     if !text.contains('\r') {

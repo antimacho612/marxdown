@@ -22,48 +22,44 @@ const PREVIEW_SELECTOR = '#mx-preview';
 /**
  * 打ち終わりを待つ時間。
  *
- * **短いほど「書いたそばから出る」が、短すぎると打鍵のたびに描き直す。**
- * 日本語入力では 1 文字が確定するまでに何度も `docChanged` が飛ぶので、
- * その揺れを吸収できる長さにしてある。
+ * 短いほど反映は速くなるが、短すぎると打鍵のたびに再描画する。
+ * 日本語入力では 1 文字が確定するまでに変更イベントが何度も発火するため、それを吸収できる長さにしてある。
  */
 const DEBOUNCE_MS = 120;
 
 let timer: ReturnType<typeof setTimeout> | null = null;
-/** 走っている描き直し。**重ねて走らせない**（後から来たほうが正しい）。 */
+/** 実行中の再描画。並行して実行しない（後から要求されたほうが正しい）。 */
 let running = false;
 let again = false;
 
 /**
  * 描き直し 1 回ぶんの時刻（`features/bench/input.ts` が読む / 計測専用）。
  *
- * OQ-15 の判定基準は「打ち終わってから画面が変わるまで」であり、
- * そこには debounce・パース・paint が含まれる。**内訳が無いと、
- * 差が出たときに Worker のせいなのか paint のせいなのかが分からない。**
+ * OQ-15 の判定基準は入力を終えてから画面が変わるまでであり、そこには debounce・パース・paint が含まれる。
+ * 内訳が無いと、差が出たときにパースと paint のどちらが原因か判別できない。
  */
 export interface LiveRenderTiming {
-  /** 描き直しを予約した最後の時刻。**打ち終わりの時刻**そのもの。 */
+  /** 再描画を予約した最後の時刻。入力を終えた時刻にあたる。 */
   scheduledAt: number;
-  /** debounce が明けて描き直しに入った時刻。 */
+  /** debounce が終了して再描画を開始した時刻。 */
   startedAt: number;
   /**
-   * パースを投げてから結果が返るまで。**そのままメインスレッドの占有時間。**
+   * パースを開始してから結果が返るまでの時間で、そのままメインスレッドの占有時間になる。
    *
-   * `parseMs`（パイプライン自身の申告値）との差が、その外側の仕事
-   * （チャンクの解決 / 文字数の集計）になる。
+   * `parseMs`（パイプライン自身が報告する値）との差が、その外側の処理（チャンクの解決 / 文字数の集計）にあたる。
    */
   parseWaitMs: number;
   /** パイプライン自身が申告したパース時間（`ParseResult.parseMs`）。 */
   parseMs: number;
-  /** paint と enhance を終えた時刻。**画面に出るのはこの次のフレーム。** */
+  /** paint と enhance を終えた時刻。画面に反映されるのは次のフレームである。 */
   paintedAt: number;
 }
 
 /**
- * 描き直しの時刻を受け取る先。**計測が付いていないときは時刻を取らない。**
+ * 再描画の時刻を受け取る先。計測が有効でないときは時刻を取得しない。
  *
- * `scheduleLiveRender` は打鍵ごとに呼ばれるので、無条件に `performance.now()` を
- * 置くと計測していない普段の入力にも乗る。安くはあるが、**入力レスポンスを
- * 測るための仕掛けが入力レスポンスを食う**のは筋が悪い。
+ * `scheduleLiveRender` は打鍵ごとに呼ばれるため、無条件に `performance.now()` を呼ぶと計測していない通常の入力にもコストが乗る。
+ * コスト自体は小さいが、入力レスポンスを測る仕組みが入力レスポンスを悪化させるのは避ける。
  */
 let observer: ((timing: LiveRenderTiming) => void) | null = null;
 let scheduledAt = 0;
@@ -71,12 +67,12 @@ let scheduledAt = 0;
 /**
  * 診断用の内訳（`features/bench/input.ts` / 計測専用）。
  *
- * **描き直しが起きなかったとき、どこで止まったかが分からない**という問題が
- * 実際に起きた。予約されていないのか、始まって落ちたのかで原因がまるで違う。
+ * 再描画が発生しなかったときに、どこで止まったか判別できない問題が実際に発生した。
+ * 予約されていないのか、開始後に失敗したのかで原因が異なる。
  */
 const debug = { scheduled: 0, started: 0, finished: 0, lastError: null as string | null };
 
-/** 診断用。**計測専用。** */
+/** 診断用。計測専用。 */
 export function liveRenderDebug(): typeof debug {
   return { ...debug };
 }
@@ -109,8 +105,8 @@ export function scheduleLiveRender(): void {
 /**
  * いま打った内容を追いかける相手が居るか（上の表）。
  *
- * **ペインの開閉を直接見に行かない。** アウトラインが出ているかどうかは
- * あちらから名乗ってもらう（`lib/refresh.ts`）。
+ * ペインの開閉を直接参照しない。
+ * アウトラインが表示されているかどうかはアウトライン側から登録してもらう（`lib/refresh.ts`）。
  */
 function wantsRender(): boolean {
   const mode = viewStore.mode;
@@ -121,9 +117,9 @@ function wantsRender(): boolean {
 /**
  * アウトラインが出た時点で見出しを取り直す（`Outline.svelte` がマウント時に呼ぶ）。
  *
- * **Edit のあいだだけ意味がある。** 閉じているアウトラインのためにパースは
- * していないので、開いた時点の見出しは打鍵ぶんだけ古い。プレビューの面が
- * 見えているモードでは描き直しの経路を通っているので、取り直すものは無い。
+ * Edit のときだけ意味を持つ。
+ * 閉じているアウトラインのためにパースはしていないため、開いた時点の見出しは打鍵の回数だけ古くなっている。
+ * プレビューの面が表示されているモードでは再描画の経路を通っているため、取り直す対象は無い。
  */
 export async function refreshOutlineOnOpen(): Promise<void> {
   if (viewStore.mode !== 'edit') return;
@@ -139,11 +135,11 @@ export function cancelLiveRender(): void {
 /**
  * いますぐ描き直す。プレビューの面へ戻った直後に 1 回だけ呼ぶ（`features/mode/mode.ts`）。
  *
- * **Edit では paint まで行かない。** 見えない面の DOM は作り直さず、
- * パースの結果（見出し・文字数）だけをストアへ入れる。
+ * Edit では paint を行わない。
+ * 表示していない面の DOM は作り直さず、パースの結果（見出し・文字数）だけをストアへ入れる。
  *
- * 走っている最中にもう一度来たら、**いまのぶんが終わってから 1 回だけやり直す。**
- * パースは非同期なので、重ねると古い結果があとから届いて本文が巻き戻る。
+ * 実行中に再度呼ばれた場合は、実行中の処理が終わってから 1 回だけやり直す。
+ * パースは非同期であるため、並行して実行すると古い結果が後から届いて本文が巻き戻る。
  */
 export async function renderNow(): Promise<void> {
   if (running) {
@@ -158,21 +154,21 @@ export async function renderNow(): Promise<void> {
 
   running = true;
   debug.started++;
-  // **入った時点の値を控える。** 描いているあいだも打鍵は続き、`scheduledAt` は
-  // そのたびに先へ進む。控えないと「打ち終わってから画面が変わるまで」が
-  // 次の打鍵からの差になり、値が縮む（`huge.md` では負にもなる）。
+  // 開始時点の値を保持する。
+  // 描画中も打鍵は続き、`scheduledAt` はそのたびに更新される。
+  // 保持しないと、入力を終えてから画面が変わるまでの時間が次の打鍵からの差になり、値が小さくなる（`huge.md` では負の値にもなる）。
   const scheduledFor = scheduledAt;
   const startedAt = observer ? performance.now() : 0;
   try {
     const parsed = await parser.parse(getDocumentText());
     const parsedAt = observer ? performance.now() : 0;
 
-    // **見えていない面の DOM は作り直さない**（N-PERF-05）。Edit で要るのは
-    // パースの結果だけで、本文は Preview へ戻るときに 1 回だけ描く（`features/mode/mode.ts`）。
+    // 表示していない面の DOM は作り直さない（N-PERF-05）。
+    // Edit で必要なのはパースの結果だけで、本文は Preview へ戻るときに 1 回だけ描画する（`features/mode/mode.ts`）。
     const visible = viewStore.mode !== 'edit';
 
     if (visible) {
-      // `paint` は中身を差し替える。控えてから当て直す。
+      // `paint` は中身を差し替えるため、スクロール位置を保持してから設定し直す。
       const scrollTop = container.scrollTop;
       paint(container, parsed.chunks, parsed.frontMatter);
       container.scrollTop = scrollTop;
@@ -183,8 +179,8 @@ export async function renderNow(): Promise<void> {
     documentStore.outline = parsed.outline;
 
     if (visible) {
-      // 無題の文書（`Ctrl+N`）には基点が無い。相対パスの画像は解決できないので、
-      // `enhance` はスコープ外として扱う（`preview/enhance.ts`）。
+      // 無題の文書（`Ctrl+N`）には基準となるディレクトリが無い。
+      // 相対パスの画像は解決できないため、`enhance` はスコープ外として扱う（`preview/enhance.ts`）。
       enhance(container, { baseDir: dirOf(meta.path ?? '') });
       refreshSearch();
       refreshOutline();
@@ -199,9 +195,9 @@ export async function renderNow(): Promise<void> {
     });
     debug.finished++;
   } catch (e) {
-    // **黙って止まらないようにする。** ここは `void renderNow()` で呼ばれるので、
-    // 投げた例外は誰にも拾われない。本文は前の内容のまま残るが、**打っても
-    // 右が変わらない**状態になり、原因が読めない（M2 Phase 6 で実際に踏んだ）。
+    // 例外を通知に出す。
+    // ここは `void renderNow()` で呼ばれるため、投げた例外はどこにも捕捉されない。
+    // 本文は前の内容のまま残るが、入力しても右側が更新されない状態になり、原因を特定できない（M2 Phase 6 で実際に発生した）。
     debug.lastError = toMessage(e);
     documentStore.notice = { level: 'error', message: `${ja.error.renderFailed}: ${toMessage(e)}` };
   } finally {
@@ -214,7 +210,7 @@ export async function renderNow(): Promise<void> {
   }
 }
 
-/** テスト用。 */
+/** テスト用。予約と実行状態を初期化する。 */
 export function resetLiveRender(): void {
   cancelLiveRender();
   running = false;

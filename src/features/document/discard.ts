@@ -10,19 +10,19 @@ import { getPlatform } from '@/platform';
 
 import { documentStore } from './store.svelte';
 
-/** 「保存する」が選ばれたときに呼ぶもの。成否を返す。 */
+/** 「保存する」が選ばれたときに呼ぶ関数。成否を返す。 */
 let saver: (() => Promise<boolean>) | null = null;
 
+/** 保存の実体を登録する。`null` を渡すと解除される。 */
 export function registerSaver(save: (() => Promise<boolean>) | null): void {
   saver = save;
 }
 
 /**
- * 進めてよいか。**ダーティでなければ何も出さずに `true`。**
+ * 進めてよいか。ダーティでなければ何も表示せずに `true` を返す。
  *
  * 「保存する」を選んだのに保存が失敗した場合は `false` を返す。
- * 失敗を握り潰して進むと、確認した意味が無くなる（`save.ts` の `saveThenQuit`
- * が終了しないのと同じ判断 / N-REL-01）。
+ * 失敗を無視して進むと確認した意味が無くなる（`save.ts` の `saveThenQuit` が終了しないのと同じ判断 / N-REL-01）。
  */
 export async function confirmDiscard(): Promise<boolean> {
   if (!documentStore.isDirty) return true;
@@ -31,11 +31,11 @@ export async function confirmDiscard(): Promise<boolean> {
   if (choice === 'cancel') return false;
   if (choice === 'discard') return true;
 
-  // 保存してから進む。**保存できるのはフロントだけ**（本文は `EditorState` にある）。
+  // 保存してから進む。保存できるのはフロントだけである（本文は Monaco の `ITextModel` にある）。
   return (await saver?.()) ?? false;
 }
 
-/** テスト用。 */
+/** テスト用。登録済みの保存処理を解除する。 */
 export function resetDiscardGuard(): void {
   saver = null;
 }

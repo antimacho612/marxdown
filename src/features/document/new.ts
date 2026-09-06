@@ -12,12 +12,11 @@ import type { StoredPayload } from './store.svelte';
 /**
  * 無題の文書の初期値。
  *
- * **UTF-8 / LF / BOM なし。** 新しく作るものに、既存ファイルの都合を継がせない
- * （N-CMP-03 が守るのは「読んだファイルのバイト列」であって、
- * 新規作成の既定値はこちらで決めてよい）。
+ * UTF-8 / LF / BOM なしとする。
+ * 新しく作る文書に既存ファイルの設定を引き継がせない（N-CMP-03 が対象とするのは読み込んだファイルのバイト列であり、新規作成の既定値はここで決めてよい）。
  *
- * `mtimeMs` は 0。保存時は `expectedMtimeMs: null`（新規作成）で書きに行くので、
- * この値が読まれることはない（`save.ts` の `saveAs`）。
+ * `mtimeMs` は 0 にする。
+ * 保存時は `expectedMtimeMs: null`（新規作成）で書き込むため、この値が参照されることはない（`save.ts` の `saveAs`）。
  */
 function untitled(): StoredPayload {
   return {
@@ -35,21 +34,20 @@ function untitled(): StoredPayload {
 /**
  * 作った後に移る先（`app/bootstrap.ts` が渡す）。
  *
- * モードの切り替えは `features/mode` の仕事だが、あちらは編集の実体（Monaco）を
- * 抱えており、その先が本文の読み書きでこの feature へ戻ってくる。
- * 直接呼ぶと feature 単位で循環するため注入で受け取る
- * （`configureHistory` / `installLinkHandler` と同じ形）。
+ * モードの切り替えは `features/mode` が担当するが、そちらは編集の実体（Monaco）を保持しており、その先で本文の読み書きのためにこの feature を参照する。
+ * 直接呼ぶと feature 単位で循環するため、注入で受け取る（`configureHistory` / `installLinkHandler` と同じ形）。
  */
 let toEditMode: (() => Promise<void>) | null = null;
 
+/** 作成後に移るモードを注入する。起動時に 1 回だけ呼ぶ。 */
 export function configureNewDocument(next: () => Promise<void>): void {
   toEditMode = next;
 }
 
 /**
- * 空の文書を開く。**取り消されたら何もしない。**
+ * 空の文書を開く。確認で取り消された場合は何もしない。
  *
- * 返り値は「作ったか」。失敗（描画の例外）は `openDocument` が通知に出す。
+ * 返り値は作成したかどうかを表す。描画時の例外は `openDocument` が通知に出す。
  */
 export async function newDocument(): Promise<boolean> {
   if (!(await confirmDiscard())) return false;
@@ -57,7 +55,7 @@ export async function newDocument(): Promise<boolean> {
   const outcome = await openDocument(untitled(), { resetScroll: true });
   if (outcome === null) return false;
 
-  // 空の本文を読む面に居ても仕方がない。**打てる場所へ移す。**
+  // 空の本文は Preview で表示しても内容が無いため、編集できるモードへ移す。
   await toEditMode?.();
   return true;
 }

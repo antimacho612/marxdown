@@ -14,16 +14,15 @@ import { documentStore } from './store.svelte';
 /**
  * 表示と選択に出す順序（`src-tauri/src/document/encoding.rs` の `Encoding` と同じ 5 つ）。
  *
- * UTF-8 を先頭に置いているのは、中心ユースケース（LLM が生成したファイル）が
- * ほぼ常に UTF-8 であり、**間違えて選んだときに戻る先**でもあるため。
+ * UTF-8 を先頭に置いているのは、中心ユースケース（LLM が生成したファイル）がほぼ常に UTF-8 であり、誤って選んだときに戻す先でもあるためである。
  */
 export const ENCODINGS: readonly Encoding[] = ['utf8', 'utf16-le', 'utf16-be', 'shift-jis', 'euc-jp'];
 
 /**
  * 指定したエンコーディングで読み直す。
  *
- * いまと同じものを選んだときは何もしない。**読み直しはスクロールも通知も伴う**ので、
- * 「選んだが変わらなかった」ときに画面が動くのは正しくない。
+ * 現在と同じものを選んだときは何もしない。
+ * 読み直しはスクロールと通知を伴うため、選択しても結果が変わらない場合に画面が変化するのは適切でない。
  */
 export async function reinterpret(encoding: Encoding): Promise<void> {
   const meta = documentStore.meta;

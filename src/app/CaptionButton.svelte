@@ -2,32 +2,30 @@
 @component
 ウィンドウ操作ボタン 1 つ（03.ux-spec/01-screen-layout.md §1）。
 
-Windows の作法にそのまま合わせる（幅 46px・閉じるのホバーのみ赤 /
-Principle 5「Familiar Over Novel」）。
+Windows の作法にそのまま合わせる（幅 46px・閉じるのホバーのみ赤 / Principle 5「Familiar Over Novel」）。
 
-**角までいっぱいに押せる。** 内側に余白を作らない。最大化中は画面の右上隅が
-そのまま「閉じる」になり、マウスを放り投げるだけで閉じられる（Fitts の法則）。
+角まで押せるよう、内側に余白を作らない。
+最大化中は画面の右上隅がそのまま「閉じる」になり、端まで動かすだけで到達できる（Fitts の法則）。
 
-絵は呼び出し側が `children` に置く（`<svg>` ごと渡す）。
+アイコンは呼び出し側が `children` に置く（`<svg>` ごと渡す）。
 -->
 
 <script lang="ts">
   import type { Snippet } from 'svelte';
 
   interface Props {
-    /** 読み上げの名前とツールチップ。**絵しか出さない**ので、両方ここから来る。 */
+    /** 読み上げの名前とツールチップ。表示するのはアイコンだけであるため、両方をここから受け取る。 */
     label: string;
-    /** 閉じるボタン。**ホバーだけ赤くなる**（Windows の作法）。 */
+    /** 閉じるボタン。ホバー時だけ赤くなる（Windows の作法）。 */
     close?: boolean;
     /**
      * 外から与えるホバー。
      *
-     * Snap Layouts の矩形（＝最大化ボタン）には WebView のマウスイベントが
-     * 届かないので、素の `:hover` が効かない。Rust 側からの通知で塗る
-     * （`app/window.ts` / `snap_layouts.rs`）。
+     * Snap Layouts の矩形（最大化ボタン）には WebView のマウスイベントが届かないため、`:hover` が動作しない。
+     * Rust 側からの通知を受けて描画する（`app/window.ts` / `snap_layouts.rs`）。
      */
     hovered?: boolean;
-    /** ボタンの実体。**Snap Layouts の相手として登録する側だけ**が受け取る。 */
+    /** ボタンの実体。Snap Layouts の対象として登録する側だけが受け取る。 */
     element?: HTMLButtonElement | undefined;
     onClick: () => void;
     children: Snippet;
@@ -81,7 +79,7 @@ Principle 5「Familiar Over Novel」）。
     color: var(--mx-color-caption-close-fg);
   }
 
-  /* キーボードで到達したときは、ホバーの塗りだけでは位置が分からない。 */
+  /* キーボードで到達したときは、ホバー時の背景色だけでは現在位置が判別できない。 */
   .mx-caption__button:focus-visible {
     outline: 2px solid var(--mx-color-accent);
     outline-offset: -2px;

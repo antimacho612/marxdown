@@ -8,15 +8,15 @@
  * `Ctrl+=` / `Ctrl+-` / `Ctrl+F` は WebView 自身の機能にも割り当たっているため、一致したバインドでは必ず `preventDefault()` して二重動作を防ぐ。
  */
 
+/** キー 1 つに対する割り当て。登録は `bindKeys` を通す。 */
 export interface Binding {
   /**
-   * `Ctrl+Shift+P` 形式。修飾子は **Ctrl → Shift → Alt** の順で書く。
+   * `Ctrl+Shift+P` 形式。修飾子は Ctrl、Shift、Alt の順で書く。
    * 単キーは `F11` / `Escape` のようにそのまま書く。
    */
   key: string;
   /**
-   * 実行する。`false` を返すと「自分は扱わなかった」とみなし、
-   * 同じキーに登録された 1 つ前のバインドへ処理が渡る。
+   * 実行する。`false` を返すと処理しなかったものとみなし、同じキーに登録された 1 つ前のバインドへ処理を渡す。
    */
   run: (event: KeyboardEvent) => boolean | void;
 }
@@ -27,9 +27,8 @@ let listening = false;
 /**
  * バインドを登録する。返り値を呼ぶと解除される。
  *
- * 同じキーに複数登録された場合、**後から登録したものが先に試される**。
- * 遅延ロードされた機能（検索パネルなど）が、既存のバインドを一時的に
- * 上書きしてから元へ戻せるようにするため。
+ * 同じキーに複数登録された場合、後から登録したものが先に試される。
+ * 遅延ロードされた機能（検索パネルなど）が、既存のバインドを一時的に上書きしてから元へ戻せるようにするためである。
  */
 export function bindKeys(bindings: Binding[]): () => void {
   for (const binding of bindings) {
@@ -59,7 +58,7 @@ function install(): void {
 }
 
 function dispatch(event: KeyboardEvent): void {
-  // IME 変換中のキーはアプリのものではない。日本語入力では必ず通る経路。
+  // IME 変換中のキーはアプリのバインドとして扱わない。日本語入力では必ずこの経路を通る。
   if (event.isComposing || event.keyCode === 229) return;
 
   const list = registry.get(comboOf(event));
@@ -77,15 +76,15 @@ function dispatch(event: KeyboardEvent): void {
 /**
  * イベントを `Ctrl+Shift+P` 形式に落とす。
  *
- * `metaKey` を Ctrl と同一視しているのは、Windows 第一優先のまま
- * macOS で最低限動かすため。macOS 固有の割り当ては M6 の担当。
+ * `metaKey` を Ctrl と同一視しているのは、Windows を第一優先としたまま macOS でも動作させるためである。
+ * macOS 固有の割り当ては M6 で扱う。
  */
 function comboOf(event: KeyboardEvent): string {
   const key = canonicalKey(event.key);
   const parts: string[] = [];
   if (event.ctrlKey || event.metaKey) parts.push('Ctrl');
-  // `=` は Shift の有無で `+` になる。倍率の拡大は両方で効いてほしいので
-  // Shift を修飾子として数えない（03.ux-spec/04-keybindings.md §3 の `Ctrl+=`）。
+  // `=` は Shift の有無で `+` になる。
+  // 倍率の拡大はどちらでも動作させるため、Shift を修飾子として数えない（03.ux-spec/04-keybindings.md §3 の `Ctrl+=`）。
   if (event.shiftKey && key !== '=') parts.push('Shift');
   if (event.altKey) parts.push('Alt');
   parts.push(key);
@@ -102,7 +101,7 @@ function canonicalCombo(combo: string): string {
  * キー名を正規化する。
  *
  * - 英字 1 文字は大文字に揃える（Shift の有無で `p` / `P` が変わるため）
- * - テンキーと Shift 経由の `+` は `=` に寄せる（`Ctrl+=` の実体は「拡大」）
+ * - テンキーと Shift 経由の `+` は `=` に統一する（`Ctrl+=` の実体は拡大操作）
  */
 function canonicalKey(key: string): string {
   if (key === '+') return '=';
@@ -110,7 +109,7 @@ function canonicalKey(key: string): string {
   return key;
 }
 
-/** テスト用。登録済みバインドを全部落とす。 */
+/** テスト用。登録済みのバインドをすべて削除する。 */
 export function resetShortcuts(): void {
   registry.clear();
 }

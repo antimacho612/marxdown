@@ -10,12 +10,12 @@
 import { viewStore } from '@/features/view';
 import { getPlatform, type Bootstrap, type Panes } from '@/platform';
 
-/** `src-tauri/src/store.rs` の `PANE_WIDTH_*` と揃える（03.ux-spec/06-panes.md §3）。 */
+/** ペイン幅の既定値と下限。`src-tauri/src/store.rs` の `PANE_WIDTH_*` と一致させる（03.ux-spec/06-panes.md §3）。 */
 export const PANE_WIDTH_DEFAULT = 240;
 export const PANE_WIDTH_MIN = 180;
 /**
- * 上限は §3 に無い。**本文が主役である**（Principle 2）ことを守るための歯止め。
- * Rust 側にも同じ値があり、手で書いた `state.json` はそちらで丸められる。
+ * 上限は §3 には無い。
+ * 本文の領域を確保するため（Principle 2）の制限であり、Rust 側にも同じ値があるため、手で書いた `state.json` はそちらで丸められる。
  */
 export const PANE_WIDTH_MAX = 640;
 
@@ -25,10 +25,10 @@ const PERSIST_DEBOUNCE_MS = 400;
 let persistTimer: ReturnType<typeof setTimeout> | null = null;
 
 /**
- * bootstrap から**同期的に**初期化する。シェルを描くより前に呼ぶこと。
+ * bootstrap から同期的に初期化する。シェルを描画するより前に呼ぶこと。
  *
- * **記録が無いときは閉じた状態で出る**（F-NAV-04 / §3 の引用ブロック）。
- * 既定値は Rust 側で埋まっているので、ここに来る `panes` は常に完全な形をしている。
+ * 記録が無いときは閉じた状態にする（F-NAV-04 / §3 の引用ブロック）。
+ * 既定値は Rust 側で埋められているため、ここに渡る `panes` は常にすべての値を持つ。
  */
 export function initPanes(bootstrap: Bootstrap | null): void {
   const panes = bootstrap?.panes;
@@ -45,11 +45,12 @@ export function toggleRightPane(): void {
   setRightPaneOpen(!viewStore.panes.right.open);
 }
 
-/** ライトペインを開く。既に開いていれば何もしない（**閉じない**。§4）。 */
+/** ライトペインを開く。既に開いていれば何もしない（閉じる動作は持たない / §4）。 */
 export function openRightPane(): void {
   setRightPaneOpen(true);
 }
 
+/** ライトペインの開閉を設定する。値が変わらなければ何もしない。 */
 export function setRightPaneOpen(open: boolean): void {
   if (viewStore.panes.right.open === open) return;
   viewStore.panes.right.open = open;
@@ -59,8 +60,8 @@ export function setRightPaneOpen(open: boolean): void {
 /**
  * 幅を変える（ドラッグ / キーボード）。
  *
- * `persist` を false にすると保存しない。ドラッグ中の 1 フレームごとの更新が
- * これにあたり、離した時点で 1 回だけ保存する。
+ * `persist` を false にすると保存しない。
+ * ドラッグ中の 1 フレームごとの更新がこれにあたり、離した時点で 1 回だけ保存する。
  */
 export function setRightPaneWidth(width: number, persist = true): number {
   const next = clampPaneWidth(width);
@@ -69,17 +70,18 @@ export function setRightPaneWidth(width: number, persist = true): number {
   return next;
 }
 
+/** 幅を許容範囲へ丸める。有限でない値は既定値に戻す。 */
 export function clampPaneWidth(width: number): number {
   if (!Number.isFinite(width)) return PANE_WIDTH_DEFAULT;
   return Math.min(PANE_WIDTH_MAX, Math.max(PANE_WIDTH_MIN, Math.round(width)));
 }
 
 /**
- * 保存を遅らせる。**1 回きりの `setTimeout` であって、ポーリングではない**
- * （05.performance-budget/04-targets.md §5）。
+ * 保存を遅らせる。
+ * 1 回だけの `setTimeout` であり、ポーリングではない（05.performance-budget/04-targets.md §5）。
  *
- * 左右をまとめて送るのは、`state.json` に載る形と単位を合わせるため。
- * 左（M3）の値は誰も書き換えないので、送り返しても内容は変わらない。
+ * 左右をまとめて送るのは、`state.json` に載る形と呼び出しの単位を合わせるためである。
+ * 左（M3）の値は書き換えられないため、送り返しても内容は変わらない。
  */
 function schedulePersist(): void {
   if (persistTimer !== null) clearTimeout(persistTimer);
@@ -89,7 +91,7 @@ function schedulePersist(): void {
   }, PERSIST_DEBOUNCE_MS);
 }
 
-/** ルーンのプロキシを剥がした素のオブジェクト。IPC に渡せる形にする。 */
+/** ルーンのプロキシを外したプレーンなオブジェクト。IPC に渡せる形にする。 */
 function snapshot(): Panes {
   const panes = viewStore.panes;
   return { left: { ...panes.left }, right: { ...panes.right } };

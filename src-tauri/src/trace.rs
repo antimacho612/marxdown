@@ -1,6 +1,6 @@
 //! 起動計測ハーネス（05.performance-budget/05-operations.md §2）。
 //!
-//! Rust 側の T0〜T3（main() 冒頭 / 引数解析完了 / ファイル読み込み完了 / ウィンドウ生成呼び出し完了）と、フロント側の T4〜T9（初期スクリプト評価開始 / bootstrap 読み取り完了 / Worker へ parse 送信 / Worker から HTML 受信 / 本文 DOM 挿入完了 + 次の rAF / window.show()）を、同一の時間軸に統一して JSON へ出力する。
+//! Rust 側の T0〜T3（main() 冒頭 / 引数解析完了 / ファイル読み込み完了 / ウィンドウ生成呼び出し完了）と、フロント側の T4〜T9（初期スクリプト評価開始 / bootstrap 読み取り完了 / パース開始 / パース完了 / 本文 DOM 挿入完了 + 次の rAF / window.show()）を、同一の時間軸に統一して JSON へ出力する。
 //!
 //! `Instant` は単調増加だがプロセス間・言語間で共有できない。
 //! そこで T0 の時点の UNIX epoch ミリ秒を bootstrap でフロントへ渡し、フロント側は `performance.timeOrigin + mark.startTime - t0EpochMs` を計算して送り返す。
@@ -12,6 +12,7 @@ use std::time::{Instant, SystemTime, UNIX_EPOCH};
 
 use serde::{Deserialize, Serialize};
 
+/// 計測点 1 つ。Rust 側とフロント側の両方から積まれ、同じ時間軸に揃えて記録する。
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Mark {
@@ -24,6 +25,7 @@ pub struct Mark {
     pub note: Option<String>,
 }
 
+/// 書き出す JSON の全体。マーカーは時刻順に並ぶ（[`Trace::report`]）。
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TraceReport {
@@ -36,6 +38,8 @@ pub struct TraceReport {
     pub document: Option<TraceDocument>,
 }
 
+/// 計測対象として開いたドキュメントの情報。
+/// 起動時間はファイルサイズと埋め込みの有無に左右されるため、レポートに残す。
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TraceDocument {
@@ -45,6 +49,7 @@ pub struct TraceDocument {
     pub inlined: bool,
 }
 
+/// 計測の状態。`--trace-startup` が無い間はすべての操作がほぼ無コストになる。
 pub struct Trace {
     enabled: bool,
     out: Option<PathBuf>,
@@ -76,7 +81,7 @@ impl Trace {
     /// CLI 引数の解析後に設定を反映する。
     pub fn configure(&mut self, out: Option<PathBuf>, exit_after: bool) {
         self.enabled = out.is_some();
-        // `nul` / `/dev/null` は「計測はするが書き出さない」。hyperfine から回すとき用。
+        // `nul` / `/dev/null` は計測だけ行って書き出さない。hyperfine から実行するとき用。
         self.out = out.filter(|p| {
             let s = p.file_name().and_then(|s| s.to_str()).unwrap_or("");
             !s.eq_ignore_ascii_case("nul") && !s.eq_ignore_ascii_case("null")
@@ -84,14 +89,17 @@ impl Trace {
         self.exit_after = exit_after;
     }
 
+    /// 計測が有効か。`--trace-startup` の指定で決まる。
     pub fn enabled(&self) -> bool {
         self.enabled
     }
 
+    /// 書き出し後にプロセスを終了するか（`--exit-after-trace`）。
     pub fn exit_after(&self) -> bool {
         self.exit_after
     }
 
+    /// T0 の UNIX epoch ミリ秒。フロントが自分の時刻を同じ軸へ変換するために使う。
     pub fn t0_epoch_ms(&self) -> f64 {
         self.t0_epoch_ms
     }
@@ -131,13 +139,14 @@ impl Trace {
         }
     }
 
+    /// 計測対象のドキュメント情報を記録する。無効時も保持するだけで副作用はない。
     pub fn set_document(&self, doc: TraceDocument) {
         if let Ok(mut d) = self.document.lock() {
             *d = Some(doc);
         }
     }
 
-    /// レポートを組み立てる。マーカーは id 順ではなく**時刻順**に並べる。
+    /// レポートを組み立てる。マーカーは id 順ではなく時刻順に並べる。
     pub fn report(&self, kind: &str) -> TraceReport {
         let mut marks = self.marks.lock().map(|m| m.clone()).unwrap_or_default();
         marks.sort_by(|a, b| {

@@ -12,9 +12,9 @@ import { bindKeys } from '@/lib/shortcuts';
 /**
  * 一度に登録する一致の上限。
  *
- * `huge.md`（2MB）で `e` を検索すると数十万件になる。Range をその数だけ作ると
- * 応答が止まる。上限で切って、**切ったことを件数表示で明示する**
- * （黙って打ち切ると「全部見つけた」と誤解される）。
+ * `huge.md`（2MB）で `e` を検索すると数十万件になる。
+ * Range をその数だけ生成すると応答が停止するため、上限で打ち切り、打ち切ったことを件数表示に明示する
+ * （表示しないと、すべての一致を検出したものと受け取られる）。
  */
 const MAX_MATCHES = 2000;
 
@@ -29,7 +29,7 @@ interface SearchState {
   ranges: Range[];
   index: number;
   truncated: boolean;
-  /** 開いている間だけ効くキーバインドの解除。 */
+  /** 開いている間だけ有効なキーバインドの解除関数。 */
   unbind: () => void;
 }
 
@@ -43,8 +43,7 @@ function supported(): boolean {
 /**
  * 検索を開く。既に開いていれば入力欄を選択し直す。
  *
- * `Ctrl+F` を続けて押したときに「今の語を選び直して打ち直せる」のは
- * ブラウザや VS Code と同じ挙動（Familiar）。
+ * `Ctrl+F` を続けて押したときに現在の語を選択し直して入力できるのは、ブラウザや VS Code と同じ挙動である（Familiar）。
  */
 export function openSearch(container: HTMLElement): void {
   if (state) {
@@ -56,6 +55,7 @@ export function openSearch(container: HTMLElement): void {
   state.input.focus();
 }
 
+/** 検索を閉じる。ハイライトとキーバインドも解除する。 */
 export function closeSearch(): void {
   if (!state) return;
   state.unbind();
@@ -64,6 +64,7 @@ export function closeSearch(): void {
   state = null;
 }
 
+/** 検索パネルが開いているか。 */
 export function isOpen(): boolean {
   return state !== null;
 }
@@ -71,20 +72,16 @@ export function isOpen(): boolean {
 /**
  * 本文が差し替わったときに呼ぶ。
  *
- * 開いたままにして再検索する。別のファイルを開いても探している語は
- * 変わらないことが多く、閉じられるとかえって手数が増える。
+ * 開いたまま再検索する。
+ * 別のファイルを開いても検索語は変わらないことが多く、閉じると操作が増える。
  */
 export function refresh(): void {
   if (state) run(state, 0);
 }
 
-// このチャンクが読み込まれた時点で、開き直しに追従できるようにしておく。
-// 読み込まれていない＝一度も検索していない、ということなので何も起きない。
+// このチャンクが読み込まれた時点で、本文の差し替えに追従できるようにしておく。
+// 読み込まれていない場合は一度も検索していない状態であり、何も起きない。
 registerSearchRefresher(refresh);
-
-/* ------------------------------------------------------------------ */
-/* パネル                                                              */
-/* ------------------------------------------------------------------ */
 
 function mount(container: HTMLElement): SearchState {
   const panel = document.createElement('div');
@@ -108,8 +105,8 @@ function mount(container: HTMLElement): SearchState {
   panel.append(input, counter, prev, next, close);
   document.body.append(panel);
 
-  // 開いている間だけ効くキー（03.ux-spec/04-keybindings.md §3「F3 / Shift+F3 で次 / 前」）。
-  // 閉じたら外す。使っていない機能のキーをグローバルに残さない。
+  // 開いている間だけ有効なキー（03.ux-spec/04-keybindings.md §3「F3 / Shift+F3 で次 / 前」）。
+  // 閉じたら解除する。使用していない機能のキーをグローバルに残さない。
   const unbind = bindKeys([
     { key: 'F3', run: () => step(1) },
     { key: 'Shift+F3', run: () => step(-1) },
@@ -128,7 +125,7 @@ function mount(container: HTMLElement): SearchState {
   };
 
   input.addEventListener('input', () => run(created, 0));
-  // Enter は入力欄固有。グローバルに置くと、他の場所の Enter まで奪う。
+  // Enter は入力欄に限定する。グローバルに登録すると、他の場所の Enter まで処理してしまう。
   input.addEventListener('keydown', (event) => {
     if (event.key !== 'Enter') return;
     event.preventDefault();
@@ -147,10 +144,6 @@ function button(className: string, label: string, aria: string, onClick: () => v
   el.addEventListener('click', onClick);
   return el;
 }
-
-/* ------------------------------------------------------------------ */
-/* 検索                                                                */
-/* ------------------------------------------------------------------ */
 
 function run(current: SearchState, index: number): void {
   const query = current.input.value;
@@ -187,13 +180,12 @@ function step(delta: number): void {
 /**
  * 本文のテキストノードを 1 本の文字列として見て、一致位置を `Range` に変換する。
  *
- * ノードをまたぐ一致（`<em>` で割れている語など）も拾えるように、
- * 連結した文字列の上で探してから、オフセットをノードに割り戻す。
+ * ノードをまたぐ一致（`<em>` で分割されている語など）も検出できるよう、連結した文字列の上で検索してから、オフセットを各ノードへ割り当て直す。
  */
 function findRanges(container: HTMLElement, query: string): { ranges: Range[]; truncated: boolean } {
   const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT, {
     acceptNode(node) {
-      // 空白だけのノードと、非表示の要素の中は飛ばす
+      // 空のノードと、検索パネル自身の中は対象外にする
       if ((node.textContent ?? '') === '') return NodeFilter.FILTER_REJECT;
       const parent = node.parentElement;
       if (!parent) return NodeFilter.FILTER_REJECT;
@@ -224,14 +216,14 @@ function findRanges(container: HTMLElement, query: string): { ranges: Range[]; t
 
     const range = toRange(nodes, starts, at, at + needle.length);
     if (range) ranges.push(range);
-    // 空文字は上でも弾いているが、念のため無限ループを作らない
+    // 空文字は手前でも除外しているが、無限ループを避けるためここでも確認する
     from = at + Math.max(1, needle.length);
   }
 
   return { ranges, truncated: false };
 }
 
-/** 連結文字列上の [start, end) を DOM の Range に戻す。 */
+/** 連結文字列上の `[start, end)` を DOM の `Range` に変換する。 */
 function toRange(nodes: Text[], starts: number[], start: number, end: number): Range | null {
   const startAt = locate(nodes, starts, start);
   const endAt = locate(nodes, starts, end);
@@ -244,7 +236,7 @@ function toRange(nodes: Text[], starts: number[], start: number, end: number): R
 }
 
 function locate(nodes: Text[], starts: number[], position: number): { node: Text; offset: number } | null {
-  // starts は昇順なので二分探索できる
+  // `starts` は昇順であるため二分探索できる
   let lo = 0;
   let hi = nodes.length - 1;
   let found = -1;
@@ -268,10 +260,6 @@ function locate(nodes: Text[], starts: number[], position: number): { node: Text
   const length = node.textContent?.length ?? 0;
   return { node, offset: Math.min(position - base, length) };
 }
-
-/* ------------------------------------------------------------------ */
-/* 表示                                                                */
-/* ------------------------------------------------------------------ */
 
 function paintHighlights(current: SearchState): void {
   if (!supported()) return;
@@ -301,7 +289,7 @@ function render(current: SearchState): void {
   current.panel.dataset['mxEmpty'] = current.input.value !== '' && count === 0 ? 'true' : 'false';
 }
 
-/** 現在の一致が画面の外なら、そこへ寄せる。 */
+/** 現在の一致が表示範囲の外にあればスクロールする。 */
 function reveal(current: SearchState): void {
   const range = current.ranges[current.index];
   if (!range) return;

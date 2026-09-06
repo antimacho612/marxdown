@@ -1,11 +1,10 @@
 /**
  * DOMPurify の設定（02.architecture/09-security.md §1 Layer 3 / ADR-0006）。
  *
- * 中心ユースケースは「LLM が生成した、自分が書いていないファイルを開く」こと。
- * 開いた瞬間に何かが実行される経路を全部塞ぐ。
+ * 中心ユースケースは「LLM が生成した、自分が書いていないファイルを開く」ことであり、開いた時点で何かが実行される経路をすべて塞ぐ。
  *
- * このモジュールは **DOM を必要とする**ため Worker では動かない。
- * メインスレッド固定。クリティカルパスから外せるかは OQ-10。
+ * このモジュールは DOM を必要とするため、メインスレッドでのみ動作する。
+ * クリティカルパスから外せるかどうかは OQ-10 で扱う。
  */
 import DOMPurify, { type Config } from 'dompurify';
 
@@ -42,12 +41,11 @@ function isAllowedUri(value: string): boolean {
 /**
  * 生き残ってよい `<input>` か（タスクリストのチェックボックスだけ / F-VIEW-01）。
  *
- * `markdown-it-task-lists` が出すのは `<input class="..." disabled type="checkbox">` の 1 形だけ。
- * **それ以外の `<input>` は本文の中に居てよい理由が無い**ので落とす。
+ * `markdown-it-task-lists` が出力するのは `<input class="..." disabled type="checkbox">` の 1 種類だけである。
+ * それ以外の `<input>` を本文に含める理由が無いため除去する。
  *
- * `disabled` を必須にしているのは、プレビュー上でチェックを許すか（OQ-05）が
- * まだ決まっていないため。決まる前に、生 HTML を書いたドキュメントが
- * 操作可能なチェックボックスを本文へ持ち込めてしまう状態を作らない。
+ * `disabled` を必須にしているのは、プレビュー上でチェックを許可するかどうか（OQ-05）が未決だからである。
+ * 決定する前に、生 HTML を書いたドキュメントが操作可能なチェックボックスを本文へ持ち込める状態を作らない。
  */
 function isTaskListCheckbox(node: Element): boolean {
   if (node.tagName !== 'INPUT') return true;
@@ -60,8 +58,8 @@ function configure(): void {
   if (configured) return;
   configured = true;
 
-  // `input` は許可タグに戻してあるが、通ってよいのは上の 1 形だけ。
-  // **タグの許可と、その中の絞り込みを別の場所に置かない**ため、ここで一緒に落とす。
+  // `input` は許可タグに含めているが、通過してよいのは上の 1 種類だけである。
+  // タグの許可とその絞り込みを別の場所に分散させないため、ここで併せて除去する。
   DOMPurify.addHook('uponSanitizeElement', (node) => {
     if (!(node instanceof Element)) return;
     if (!isTaskListCheckbox(node)) node.remove();
@@ -70,11 +68,10 @@ function configure(): void {
   DOMPurify.addHook('afterSanitizeAttributes', (node) => {
     if (!(node instanceof Element)) return;
 
-    // href / src の許可リスト検証。未知のスキームは属性ごと落とす。
+    // href / src の許可リスト検証。未知のスキームは属性ごと除去する。
     //
-    // DOMPurify 自身も javascript: / vbscript: を落とすが、それは
-    // DOMPurify の許可リストであってこちらの許可リストではない。
-    // 二重に見ることで、DOMPurify の既定が緩んだときの影響を受けない。
+    // DOMPurify 自身も javascript: / vbscript: を除去するが、それは DOMPurify の許可リストであって、こちらの許可リストではない。
+    // 二重に判定することで、DOMPurify の既定が変わった場合の影響を受けない。
     for (const attr of ['href', 'src'] as const) {
       const value = node.getAttribute(attr);
       if (value === null) continue;
@@ -84,8 +81,8 @@ function configure(): void {
       }
     }
 
-    // 外部リンクは新規ウィンドウ扱いにしない（ナビゲーションは全面禁止）。
-    // クリックは JS が捕捉して `open_external` に流す。
+    // 外部リンクを新規ウィンドウ扱いにしない（ナビゲーションは全面的に禁止している）。
+    // クリックは JS 側で捕捉し、`open_external` へ渡す。
     if (node.tagName === 'A' && node.hasAttribute('href')) {
       node.setAttribute('rel', 'noopener noreferrer');
       node.removeAttribute('target');
@@ -96,14 +93,13 @@ function configure(): void {
 const CONFIG: Config = {
   // script / iframe / object / embed / form を除去（§1 Layer 3）
   //
-  // `button` 以降は仕様が要求していない上積みで、「本文に操作可能な部品を置かない」
-  // ための保険である。**`input` だけはここから外してある。** タスクリストの
-  // チェックボックス（F-VIEW-01）が唯一の例外で、絞り込みは `isTaskListCheckbox`
-  // が `uponSanitizeElement` で行う。`form` を落としているので、生き残った
-  // チェックボックスに送信先は無い。
+  // `button` 以降は仕様が要求していない追加分であり、本文に操作可能な部品を置かないための措置である。
+  // `input` だけはこの一覧から外してある。
+  // タスクリストのチェックボックス（F-VIEW-01）が唯一の例外で、絞り込みは `isTaskListCheckbox` が `uponSanitizeElement` で行う。
+  // `form` を除去しているため、残ったチェックボックスに送信先は存在しない。
   FORBID_TAGS: ['script', 'iframe', 'object', 'embed', 'form', 'button', 'textarea', 'select', 'base', 'meta', 'link'],
   FORBID_ATTR: ['style', 'srcset', 'formaction', 'ping'],
-  // on* 属性は DOMPurify が既定で落とすが、明示しておく
+  // on* 属性は DOMPurify が既定で除去するが、意図を明示するために記載する
   ALLOW_DATA_ATTR: true, // data-line が必要（02.architecture/06-markdown-rendering-pipeline.md §3）
   ALLOW_ARIA_ATTR: true,
   // SVG は Mermaid が生成したものを通す必要がある（M4）
@@ -111,16 +107,15 @@ const CONFIG: Config = {
   KEEP_CONTENT: true,
 };
 
-/** Worker が生成した HTML 文字列をサニタイズする。 */
+/** パイプラインが生成した HTML 文字列をサニタイズする。DOM に入る HTML は必ずここを通す。 */
 export function sanitize(html: string): string {
   configure();
   return DOMPurify.sanitize(html, CONFIG);
 }
 
 /**
- * Mermaid が生成した SVG も**同じサニタイザ**を通す（§1 Layer 3）。
- * 使うのは Mermaid が入る M4 だが、ここに置いておくのは
- * **DOM に入る HTML の経路を 2 つに分岐させない**ため。
+ * Mermaid が生成した SVG も同じサニタイザを通す（§1 Layer 3）。
+ * 使用するのは Mermaid を導入する M4 だが、DOM に入る HTML の経路を分岐させないためにここへ置いてある。
  */
 export function sanitizeSvg(svg: string): string {
   configure();

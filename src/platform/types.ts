@@ -7,17 +7,20 @@
  */
 import type { Settings, SettingsPatch } from './settings-schema';
 
+/** 改行コード。メモリ上は常に LF で、ディスクへの書き出し時にこの値へ戻す（N-CMP-03）。 */
 export type Eol = 'lf' | 'crlf';
 
+/** 扱えるエンコーディング。`src-tauri/src/document/encoding.rs` の `Encoding` と対応する。 */
 export type Encoding = 'utf8' | 'utf16-le' | 'utf16-be' | 'shift-jis' | 'euc-jp';
 
+/** 表示モード（F-MODE-01〜03）。WYSIWYG は M4 で追加する。 */
 export type ViewMode = 'preview' | 'edit' | 'split';
 
 /**
  * 未保存のまま別の文書へ移るかの答え（`src-tauri/src/commands.rs` の `DiscardChoice`）。
  *
- * **綴りは Rust 側の serde が決める。** 同じ 3 語であることは
- * `discard_choice_serializes_in_camel_case` が固定している。
+ * 綴りは Rust 側の serde に合わせる。
+ * 同じ 3 語であることは `discard_choice_serializes_in_camel_case` が検証している。
  */
 export type DiscardChoice = 'save' | 'discard' | 'cancel';
 
@@ -33,11 +36,16 @@ export interface DocumentMeta {
   readonly: boolean;
 }
 
+/** メタ情報と本文の組。`readDocument` と bootstrap が返す。 */
 export interface DocumentPayload extends DocumentMeta {
   /** EOL を LF に正規化した本文 */
   content: string;
 }
 
+/**
+ * 保存の要求（02.architecture/04-rust-responsibilities.md §3）。
+ * `eol` / `bom` / `encoding` は読み込み時の値をそのまま返し、触っていない箇所のバイト列を変えない（N-CMP-03）。
+ */
 export interface WriteRequest {
   path: string;
   content: string;
@@ -48,6 +56,7 @@ export interface WriteRequest {
   expectedMtimeMs: number | null;
 }
 
+/** 保存の結果。`conflict` は外部で変更されていたことを表す（02.architecture/04-rust-responsibilities.md §3）。 */
 export type SaveResult =
   { status: 'saved'; mtimeMs: number; size: number } | { status: 'conflict'; diskMtimeMs: number };
 
@@ -65,22 +74,18 @@ export interface CoreError {
   message: string;
 }
 
-/* ------------------------------------------------------------------ */
-/* ペイン（03.ux-spec/06-panes.md §3 / 02.architecture/04-rust-responsibilities.md §5）                 */
-/* ------------------------------------------------------------------ */
-
 /** ペイン 1 枚の状態（`src-tauri/src/store.rs` の `PaneState`）。 */
 export interface PaneState {
   open: boolean;
-  /** 幅（CSS ピクセル）。**左右で別々に記憶する**（03.ux-spec/06-panes.md §3）。 */
+  /** 幅（CSS ピクセル）。左右で別々に記録する（03.ux-spec/06-panes.md §3）。 */
   width: number;
 }
 
 /**
  * 左右のペイン（`src-tauri/src/store.rs` の `Panes`）。
  *
- * `left`（Explorer）は M3 だが、器だけ先にある。後から足すと
- * 「どちらの幅か」が曖昧な 1 つの値が先に永続化されてしまう。
+ * `left`（Explorer）は M3 で導入するが、構造だけ先に用意してある。
+ * 後から追加すると、どちらの幅か判別できない 1 つの値が先に永続化される。
  */
 export interface Panes {
   left: PaneState;
@@ -88,7 +93,7 @@ export interface Panes {
 }
 
 /**
- * 記録が無いときの姿。**左右とも閉じている**（03.ux-spec/06-panes.md §3 の引用ブロック）。
+ * 記録が無いときの状態。左右とも閉じている（03.ux-spec/06-panes.md §3 の引用ブロック）。
  * `src-tauri/src/store.rs` の `PaneState::default()` と 1:1 で対応する。
  */
 export const DEFAULT_PANES: Panes = {
@@ -100,42 +105,35 @@ export const DEFAULT_PANES: Panes = {
  * Split の既定の分割比と可動域（03.ux-spec/03-split-mode.md §1）。
  * `src-tauri/src/store.rs` の `SPLIT_*` と 1:1 で対応する。
  *
- * **端まで寄せて片方を潰せないようにする。** 潰せると Split である意味が無くなり、
- * 戻す取っ手も同時に消える。
+ * 端まで寄せて片方の領域を失わないようにする。
+ * 片方が失われると Split である意味が無くなり、元に戻すための操作対象も同時に消える。
  */
 export const SPLIT_DEFAULT = 0.5;
 export const SPLIT_MIN = 0.2;
 export const SPLIT_MAX = 0.8;
 
-/* ------------------------------------------------------------------ */
-/* ユーザー設定（02.architecture/04-rust-responsibilities.md §5）                               */
-/* ------------------------------------------------------------------ */
-
 /**
  * `settings.json` を読めなかった事実（03.ux-spec/07-status-and-notifications.md §2）。
  *
- * これがある間、**アプリは既定値で動くがファイルを上書きしない**。
- * ユーザーが手で書いたものだから（02.architecture/04-rust-responsibilities.md §5）。
+ * これがある間、アプリは既定値で動作するがファイルを上書きしない。
+ * ユーザーが手で書いたファイルであるためである（02.architecture/04-rust-responsibilities.md §5）。
  */
 export interface SettingsProblem {
   path: string;
   message: string;
 }
 
+/** 設定の読み込み結果。`broken` がある間は書き戻しが拒否される。 */
 export interface SettingsLoad {
   values: Settings;
   broken: SettingsProblem | null;
 }
 
-/* ------------------------------------------------------------------ */
-/* カスタム CSS（F-CONF-07 / 02.architecture/10-theming.md §3）                   */
-/* ------------------------------------------------------------------ */
-
 /**
  * カスタム CSS を適用できなかった理由（`src-tauri/src/custom_css.rs`）。
  *
- * **「無い」はここに現れない。** ファイルが無いのは正常な状態であり
- * （設定項目を置かない以上、初回起動が常にそれ）、通知の材料にしない。
+ * ファイルが無い状態はここに現れない。
+ * ファイルが無いのは正常な状態であり（設定項目を置かない以上、初回起動が常にこれにあたる）、通知の対象にしない。
  */
 export interface CustomCssProblem {
   kind: 'too-large' | 'unreadable';
@@ -158,15 +156,11 @@ export interface CustomCss {
 /** カスタム CSS が無い状態。bootstrap を持たない経路（テスト / dev:web）の既定値。 */
 export const NO_CUSTOM_CSS: CustomCss = { css: null, deferred: false, problem: null };
 
-/* ------------------------------------------------------------------ */
-/* ファイル監視（02.architecture/04-rust-responsibilities.md §4）                               */
-/* ------------------------------------------------------------------ */
-
 /**
  * 外部で何が起きたか。
  *
- * `removed` を分けているのは、**消えたファイルを読みに行かせない**ため。
- * 読みに行くと「開けません」が出て、作り直された瞬間にもう一度出る。
+ * `removed` を分けているのは、削除されたファイルを読みに行かせないためである。
+ * 読みに行くと「開けません」が表示され、作り直された時点でもう一度表示される。
  */
 export type FileChangeKind = 'modified' | 'removed';
 
@@ -179,17 +173,20 @@ export interface FileChange {
   kind: FileChangeKind;
 }
 
+/** 起動計測の設定。無効なときも渡り、フロントは `enabled` で判断する。 */
 export interface TraceConfig {
   enabled: boolean;
   /** T0 時点の UNIX epoch ミリ秒。performance.timeOrigin をこの軸に載せ替える。 */
   t0EpochMs: number;
 }
 
+/** 起動時に開く 1 枚目のドキュメント。 */
 export interface BootstrapDocument extends DocumentMeta {
   /** 256KB を超えるファイルでは `null`。`readDocument` で取りに行く。 */
   content: string | null;
 }
 
+/** 初期ドキュメントを読めなかった理由。通知バーに出す。 */
 export interface BootstrapError {
   path: string;
   kind: CoreError['kind'];
@@ -212,37 +209,36 @@ export interface Bootstrap {
   /**
    * 入力レスポンスの計測を走らせるか（`--bench-input` / 計測専用）。
    *
-   * 立っていると `ready()` の後に `features/bench/input.ts`（遅延チャンク）が
-   * 動き出し、打鍵を合成して結果を `benchInputDone` へ渡す。
-   * **書き出し先はここに載らない**（任意のパスへ書ける口を作らないため）。
+   * 指定されていると `ready()` の後に `features/bench/input.ts`（遅延チャンク）が動作し、打鍵を合成して結果を `benchInputDone` へ渡す。
+   * 書き出し先はここに載せない（任意のパスへ書き込める経路を作らないため）。
    */
   benchInput: boolean;
   trace: TraceConfig | null;
   pendingPaths: string[];
   unknownArgs: string[];
-  /** Welcome 画面が起動直後に描くため、IPC 往復ではなくここに載る。 */
+  /** Welcome 画面が起動直後に描画するため、IPC 往復ではなくここに載せる。 */
   recent: RecentEntry[];
-  /** 表示倍率（F-VIEW-11）。最初のフレームから正しい倍率で描くために要る。 */
+  /** 表示倍率（F-VIEW-11）。最初のフレームから正しい倍率で描画するために必要になる。 */
   zoom: number;
   /**
    * ペインの開閉と幅（F-NAV-04 / 03.ux-spec/06-panes.md §3）。
    *
-   * 倍率と同じ理由でここに載っている。
-   * 後から当てると、本文が一度全幅で描かれた後に幅が縮小して見える（02.architecture/04-rust-responsibilities.md §5）。
+   * 倍率と同じ理由でここに載せる。
+   * 後から適用すると、本文が一度全幅で描画された後に幅が縮小して見える（02.architecture/04-rust-responsibilities.md §5）。
    */
   panes: Panes;
   /**
    * Split の分割比（エディター側の取り分 / 03.ux-spec/03-split-mode.md §1）。
    *
-   * **倍率・ペインと同じ理由でここに載る。** 後から当てると、Split で開いたときに
-   * 50:50 で一度描かれてから寄る。
+   * 倍率やペインと同じ理由でここに載せる。
+   * 後から適用すると、Split で開いたときに 50:50 の状態が一度描画された後に分割比が変化して見える。
    */
   split: number;
   /**
-   * ユーザー設定の**全体**（02.architecture/04-rust-responsibilities.md §5）。
+   * ユーザー設定の全体（02.architecture/04-rust-responsibilities.md §5）。
    *
-   * 「どの設定が初回フレームに間に合う必要があるか」を毎回考えなくて済むよう、
-   * 選ばずに丸ごと載っている。**取りに行く経路（IPC 往復）は作らない。**
+   * どの設定が初回フレームに間に合う必要があるかを都度判断せずに済むよう、選別せずすべて載せる。
+   * 取得する経路（IPC 往復）は作らない。
    */
   settings: Settings;
   /** `settings.json` を読めなかった事実。通知バーに出す（03.ux-spec/07-status-and-notifications.md §2）。 */
@@ -250,14 +246,14 @@ export interface Bootstrap {
   /**
    * カスタム CSS（F-CONF-07 / 02.architecture/10-theming.md §3）。
    *
-   * **64KB 以下のときだけ `css` が入っている。** ここに載せるのは、
-   * ダークな背景を当てているときに白い初期画面が一瞬見えるのを防ぐため。
-   * 超えていれば `deferred` が立ち、`readCustomCss` で取りに行く。
+   * 64KB 以下のときだけ `css` が入る。
+   * ここに載せるのは、暗い背景を指定しているときに白い初期画面が一瞬表示されるのを防ぐためである。
+   * 超えている場合は `deferred` が立ち、`readCustomCss` で取得する。
    */
   customCss: CustomCss;
   /**
-   * エディター用のカスタム CSS（`editor.css` / ADR-0013）。**本文用と完全に同じ扱い。**
-   * 別のフィールドなのは、当てる先（`@scope` の根）が違うため。
+   * エディター用のカスタム CSS（`editor.css` / ADR-0013）。本文用と同じ扱いである。
+   * 別のフィールドにしているのは、適用先（`@scope` の起点）が違うためである。
    */
   editorCss: CustomCss;
 }
@@ -272,6 +268,7 @@ export interface OpenRequest {
   trace: boolean;
 }
 
+/** 計測点 1 つ。`atMs` は T0 からの経過ミリ秒。 */
 export interface TraceMark {
   id: string;
   atMs: number;
@@ -281,9 +278,8 @@ export interface TraceMark {
 /**
  * ウィンドウへのドラッグ＆ドロップ（F-OPEN-08）。
  *
- * ブラウザの `DataTransfer` ではなく **OS 側のイベント**を使う。WebView は
- * ドロップされたファイルの絶対パスを JS に渡さないため、`DataTransfer` からでは
- * 最近開いたファイルに積めず、相対パスの画像も解決できない（F-VIEW-08 / N-SEC-05）。
+ * ブラウザの `DataTransfer` ではなく OS 側のイベントを使う。
+ * WebView はドロップされたファイルの絶対パスを JS へ渡さないため、`DataTransfer` からでは最近開いたファイルに追加できず、相対パスの画像も解決できない（F-VIEW-08 / N-SEC-05）。
  */
 export type DragDropEvent =
   /** ウィンドウの上にファイルが来ている。ドロップ先の見た目を出す。 */
@@ -295,15 +291,15 @@ export type DragDropEvent =
 /**
  * ウォーム経路の種別（ADR-0007「Warm Start の計測経路が 2 本になる」）。
  *
- * 記録を分けるためだけに存在する。**混ぜてはいけない。**
+ * 記録を分けるためだけに存在する。2 つを混ぜて集計しない。
  */
 export type WarmKind = 'warm' | 'tray-resume';
 
 /**
  * Platform 層のインタフェース。
  *
- * Domain 層はこれだけを見る。Tauri の存在を知らないことで、
- * Vitest 上でも `dev:web` のブラウザ上でも同じコードが動く（02.architecture/03-layers.md §1）。
+ * Domain 層はこれだけを参照する。
+ * Tauri に依存しないことで、Vitest 上でも `dev:web` のブラウザ上でも同じコードが動作する（02.architecture/03-layers.md §1）。
  */
 export interface Platform {
   readonly kind: 'tauri' | 'web';
@@ -312,18 +308,16 @@ export interface Platform {
   /**
    * ファイルを読む。
    *
-   * `encoding` はエンコーディングの**指定**（03.ux-spec/07-status-and-notifications.md §3
-   * 「クリックでエンコーディング再解釈」）。**省略が通常の経路**で、
-   * そのときだけ Rust 側の推定が走る。
+   * `encoding` はエンコーディングの指定である（03.ux-spec/07-status-and-notifications.md §3「クリックでエンコーディング再解釈」）。
+   * 省略が通常の経路であり、そのときだけ Rust 側が推定を実行する。
    */
   readDocument(path: string, encoding?: Encoding): Promise<DocumentPayload>;
   writeDocument(req: WriteRequest): Promise<SaveResult>;
   /**
-   * 相対パスの画像を、許可ディレクトリ配下であることを検証したうえで
-   * **そのまま `<img src>` に入れられる URL** に変換する（F-VIEW-08 / N-SEC-05）。
+   * 相対パスの画像を、許可ディレクトリ配下であることを検証したうえで、`<img src>` にそのまま指定できる URL へ変換する（F-VIEW-08 / N-SEC-05）。
    */
   resolveAsset(href: string, baseDir: string): Promise<string>;
-  /** 最近開いたファイルに 1 件積む。更新後の一覧を返す（F-OPEN-09）。 */
+  /** 最近開いたファイルに 1 件追加する。更新後の一覧を返す（F-OPEN-09）。 */
   pushRecent(path: string): Promise<RecentEntry[]>;
   /** 開けなくなったファイルを一覧から外す。更新後の一覧を返す。 */
   removeRecent(path: string): Promise<RecentEntry[]>;
@@ -335,14 +329,14 @@ export interface Platform {
   /**
    * ペインの開閉と幅を永続化する（03.ux-spec/06-panes.md §3）。
    *
-   * 倍率と同じく、反映は呼び出し側が即座に行う。ここは保存だけなので、
-   * **ドラッグ中に毎フレーム呼ばない**（デバウンスしてから呼ぶこと）。
+   * 倍率と同じく、反映は呼び出し側が即座に行う。
+   * ここは保存だけを担当するため、ドラッグ中に毎フレーム呼ばず、デバウンスしてから呼ぶこと。
    */
   setPanes(panes: Panes): Promise<void>;
   /**
    * Split の分割比を保存する（03.ux-spec/03-split-mode.md §1）。
    *
-   * `setPanes` と同じく**ドラッグ中は呼ばない**（離した時点で 1 回だけ）。
+   * `setPanes` と同じくドラッグ中は呼ばず、離した時点で 1 回だけ呼ぶ。
    */
   setSplit(split: number): Promise<void>;
   /**
@@ -353,34 +347,33 @@ export interface Platform {
   /**
    * 保存先を選ばせる（F-EDIT-02「名前を付けて保存」）。
    *
-   * `suggested` は初期表示するディレクトリとファイル名の元。
-   * **返るパスは正規化されていない。** まだ存在しないことがあるため
-   * （`src-tauri/src/commands.rs` の `pick_save_path`）。正規化は保存時に行われる。
+   * `suggested` は初期表示するディレクトリとファイル名の元になる値である。
+   * 返るパスは正規化されていない。保存先はまだ存在しないことがあるためである（`src-tauri/src/commands.rs` の `pick_save_path`）。
+   * 正規化は保存時に行われる。
    */
   pickSavePath(suggested: string | null): Promise<string | null>;
   /**
    * 未保存の変更があることを知らせる（F-EDIT-03）。
    *
-   * **変わり目だけ呼ぶ。** 打鍵ごとに呼ぶものではない。
-   * Rust 側が持っているのは、トレイメニューからの終了がフロントを経由しないため
-   * （`src-tauri/src/state.rs` の `dirty`）。
+   * 変わり目だけ呼び、打鍵ごとには呼ばない。
+   * Rust 側が値を持つのは、トレイメニューからの終了がフロントを経由しないためである（`src-tauri/src/state.rs` の `dirty`）。
    */
   setDirty(dirty: boolean): Promise<void>;
   /**
    * 未保存のまま別の文書へ移ってよいか尋ねる（F-EDIT-03 / N-REL-01）。
    *
-   * **呼ぶかどうかは呼び出し側が決める。** ダーティでないときに呼ぶと、
-   * 変更が無いのにダイアログが出る（`features/document/discard.ts`）。
+   * 呼ぶかどうかは呼び出し側が決める。
+   * ダーティでないときに呼ぶと、変更が無いのにダイアログが表示される（`features/document/discard.ts`）。
    *
-   * 3 択なので `boolean` では表せない。`'save'` は「保存してから移る」で、
-   * **保存そのものはフロントが行う**（本文は CodeMirror の `EditorState` にある）。
+   * 3 択であるため `boolean` では表せない。
+   * `'save'` は保存してから移ることを表し、保存そのものはフロントが行う（本文は Monaco の `ITextModel` にある）。
    */
   confirmDiscard(): Promise<DiscardChoice>;
   /**
    * 設定を読み直す（F-CONF-03）。
    *
-   * **起動時はこれを呼ばない。** 設定は bootstrap に丸ごと載っている。
-   * ここが要るのは、外部エディターで編集されたあとの読み直しと設定 UI の再表示。
+   * 起動時はこれを呼ばない。設定は bootstrap にすべて載っている。
+   * このメソッドが必要になるのは、外部エディターで編集された後の読み直しと設定 UI の再表示である。
    */
   readSettings(): Promise<SettingsLoad>;
   /**
@@ -390,25 +383,24 @@ export interface Platform {
   writeSettings(patch: SettingsPatch): Promise<Settings>;
   /**
    * `settings.json` を OS の既定アプリで開く（F-CONF-06）。
-   * 壊れた設定を通知バーから直せるようにするための逃げ道。
+   * 壊れた設定を通知バーから修正できるようにするための経路である。
    */
   openSettingsFile(): Promise<void>;
   /**
    * カスタム CSS を読み直す（F-CONF-07 / 02.architecture/10-theming.md §3）。
    *
-   * **起動時の 64KB 以下はこれを呼ばない。** bootstrap に同梱されている。
-   * ここが要るのは「64KB を超えていて載らなかった」場合と、
-   * 外部エディターで編集された後の読み直しだけ。
+   * 起動時の 64KB 以下はこれを呼ばない。bootstrap に同梱されている。
+   * このメソッドが必要になるのは、64KB を超えて同梱されなかった場合と、外部エディターで編集された後の読み直しだけである。
    */
   readCustomCss(): Promise<CustomCss>;
 
-  /** `editor.css` を読み直す。`readCustomCss` と 1:1 の対。 */
+  /** `editor.css` を読み直す。`readCustomCss` と対になる。 */
   readEditorCss(): Promise<CustomCss>;
   /**
    * `custom.css` を OS の既定アプリで開く（F-CONF-07）。
    *
-   * **無ければ雛形を作ってから開く。** 設定項目もパスの設定も置かない以上、
-   * 「どこに書けばよいか」を知る手段がこのボタンしかない。
+   * 無ければ雛形を作ってから開く。
+   * 設定項目もパスの設定も置かない以上、どこに書けばよいかを知る手段がこのボタンしかない。
    */
   openCustomCssFile(): Promise<void>;
 
@@ -422,13 +414,13 @@ export interface Platform {
    */
   onCustomCssChanged(handler: () => void): () => void;
 
-  /** `editor.css` の外部変更。**本文用と別のイベント**（片方だけを読み直す）。 */
+  /** `editor.css` の外部変更。本文用とは別のイベントで、片方だけを読み直す。 */
   onEditorCssChanged(handler: () => void): () => void;
   /**
    * 開いているファイルの監視を始める（F-EDIT-16 / 02.architecture/04-rust-responsibilities.md §4）。
    *
-   * **開いているファイルだけを見る**（N-PERF-05）。呼ぶたびに前のファイルの監視は
-   * 外れる（タブが入る M3 までは対象が 1 つしかない）。
+   * 監視するのは開いているファイルだけである（N-PERF-05）。
+   * 呼ぶたびに前のファイルの監視は解除される（タブが入る M3 までは対象が 1 つしかない）。
    */
   watchPath(path: string): Promise<void>;
   /** 監視をやめる。タブを閉じたとき（M3）に呼ぶ。 */
@@ -438,8 +430,8 @@ export interface Platform {
   /**
    * `settings.json` の外部変更を購読する（02.architecture/04-rust-responsibilities.md §5）。
    *
-   * 中身は渡さない。**受け取ったら `readSettings` で読み直して全体を当て直す**のが
-   * 唯一の使い方で、差分を運ぶ意味がない（設定は小さい）。
+   * 中身は渡さない。
+   * 受け取ったら `readSettings` で読み直して全体を適用し直すことが唯一の使い方であり、差分を渡す必要がない（設定は小さい）。
    */
   onSettingsChanged(handler: () => void): () => void;
   /** ウィンドウへのドラッグ＆ドロップを購読する（F-OPEN-08）。 */
@@ -447,94 +439,88 @@ export interface Platform {
   /**
    * ウィンドウ操作（カスタムタイトルバー / 03.ux-spec/01-screen-layout.md §1）。
    *
-   * `decorations: false` にしたぶん、`─ □ ✕` は自分たちの `<button>` になった。
-   * 実体は Rust 側の自作コマンドで、JS の `@tauri-apps/api/window` は入れていない
-   * （04.tech-stack/06-rust.md §2 と同じ判断）。
+   * `decorations: false` にしているため、`─ □ ✕` は自前の `<button>` である。
+   * 実体は Rust 側の自作コマンドで、JS の `@tauri-apps/api/window` は導入していない（04.tech-stack/06-rust.md §2 と同じ判断）。
    *
-   * ドラッグとダブルクリックによる最大化はここに無い。Tauri 本体が注入する
-   * `data-tauri-drag-region` の処理が担当していて、フロントは属性を書くだけ。
+   * ドラッグとダブルクリックによる最大化はここには無い。
+   * Tauri 本体が注入する `data-tauri-drag-region` の処理が担当し、フロントは属性を指定するだけである。
    */
   minimizeWindow(): Promise<void>;
   toggleMaximizeWindow(): Promise<void>;
   /**
    * 閉じる。
    *
-   * **既定ではトレイに格納され、プロセスは終わらない**（ADR-0007 論点 2 /
-   * 設定 `window.closeBehavior`）。判断は Rust 側の `close.rs` にあり、
-   * フロントは「閉じてくれ」としか言わない。ここで分岐を持つと、
-   * `Alt+F4` と OS 由来の閉じる要求だけ別の挙動になる。
+   * 既定ではトレイに格納され、プロセスは終了しない（ADR-0007 論点 2 / 設定 `window.closeBehavior`）。
+   * 判断は Rust 側の `close.rs` が持ち、フロントは閉じる要求だけを送る。
+   * ここで分岐を持つと、`Alt+F4` と OS 由来の閉じる要求だけ挙動が変わる。
    */
   closeWindow(): Promise<void>;
   /**
    * Marxdown を終了する（ADR-0007 論点 3）。
    *
-   * **`closeWindow` とは別物。** トレイ常駐では `✕` が「格納」の意味になるため、
-   * 「本当に終わらせたい」を表す経路が別に要る。`Ctrl+Q` とハンバーガーメニューの
-   * 「終了」がここへ来る（3 経路のうちの 2 つ。残り 1 つはトレイメニュー）。
+   * `closeWindow` とは別のメソッドである。
+   * トレイ常駐では `✕` が格納の意味になるため、明示的に終了する経路が別に必要になる。
+   * `Ctrl+Q` とハンバーガーメニューの「終了」がここへ来る（3 経路のうちの 2 つで、残り 1 つはトレイメニュー）。
    */
   quitApp(): Promise<void>;
   /**
    * トレイメニューの「Marxdown を開く」を購読する。
    *
-   * **Rust 側でダイアログを出さない。** 開いた結果の扱い（履歴・通知・
-   * 相対パスの解決）は `open.ts` に集めてあり、別経路で開くとそこだけ抜ける。
+   * Rust 側でダイアログを表示しない。
+   * 開いた結果の扱い（履歴・通知・相対パスの解決）は `open.ts` に集約してあり、別経路で開くとそこだけ処理が抜ける。
    */
   onTrayOpen(handler: () => void): () => void;
-  /** 最大化中か。購読を始めるときに 1 回だけ聞く。 */
+  /** 最大化中か。購読を始めるときに 1 回だけ取得する。 */
   isWindowMaximized(): Promise<boolean>;
   /**
    * 最大化状態の変化を購読する。
    *
-   * ボタン以外（`Win+↑` / ダブルクリック / 上端へのドラッグ）でも変わるので、
-   * **押した側で状態を持たず、OS を真実にする**。Rust 側が変化したときだけ流す。
+   * ボタン以外（`Win+↑` / ダブルクリック / 上端へのドラッグ）でも変化するため、操作した側で状態を持たず OS の状態を唯一の情報源とする。
+   * Rust 側は変化したときだけ通知する。
    */
   onWindowMaximizedChanged(handler: (maximized: boolean) => void): () => void;
   /**
    * 最大化ボタンの居場所（CSS ピクセル）を知らせる（Windows の Snap Layouts）。
    *
-   * `decorations: false` にすると Windows はボタンの位置を知らず、
-   * ホバーしてもレイアウト選択のフライアウトが出ない
-   * （`src-tauri/src/snap_layouts.rs`）。**どこにあるかを知っているのは
-   * レイアウトを組んでいるこちらだけ**なので、変わるたびに知らせる。
+   * `decorations: false` にすると Windows はボタンの位置を把握できず、ホバーしてもレイアウト選択のフライアウトが表示されない（`src-tauri/src/snap_layouts.rs`）。
+   * 位置を知っているのはレイアウトを構成しているフロント側だけであるため、変化するたびに通知する。
    */
   setSnapLayoutsTarget(rect: { x: number; y: number; width: number; height: number }): Promise<void>;
   /**
    * 最大化ボタンのホバー（Windows の Snap Layouts）。
    *
-   * フライアウトを出すために非クライアント領域だと答えているので、
-   * **その範囲には WebView のマウスイベントが届かない**（CSS の `:hover` が効かない）。
-   * 最大化ボタンだけ反応しないのは目立つので、Rust 側が出入りを知らせてくる。
+   * フライアウトを表示するために非クライアント領域として応答しているため、その範囲には WebView のマウスイベントが届かない（CSS の `:hover` が動作しない）。
+   * 最大化ボタンだけ反応しない状態を避けるため、Rust 側が出入りを通知する。
    */
   onMaximizeHoverChanged(handler: (hovered: boolean) => void): () => void;
   /** 描画準備完了。ウィンドウを表示させる。 */
   ready(): Promise<void>;
   reportTrace(marks: TraceMark[]): Promise<void>;
   /**
-   * ウォーム起動の完了報告（S6）。argv 転送を受けてから
-   * 「本文が読める」までの経過ミリ秒を返す。
+   * ウォーム起動の完了報告（S6）。argv 転送を受けてから本文が読める状態になるまでの経過ミリ秒を返す。
    */
   warmDone(requestId: number, path: string, detail: string, kind?: WarmKind): Promise<number | null>;
   /**
    * 入力レスポンス計測の結果を渡す（`--bench-input` / 計測専用）。
    *
-   * **渡したらプロセスが終わる。** 書き出し先は Rust 側が持っており
-   * （`bench_input_done`）、こちらはパスを知らない。
+   * 呼び出すとプロセスが終了する。
+   * 書き出し先は Rust 側が保持しており（`bench_input_done`）、フロントはパスを知らない。
    */
   benchInputDone(json: string): Promise<void>;
   /**
    * 終了の確認で「保存して終了」が選ばれたことを購読する（F-EDIT-03）。
    *
-   * **保存できるのはフロントだけである**（本文は CodeMirror の `EditorState` にある）。
+   * 保存できるのはフロントだけである（本文は Monaco の `ITextModel` にある）。
    * 受け取ったら保存し、成功したらもう一度 `quitApp()` を呼ぶ。
-   * 失敗したらダーティのままなので、終了しない（N-REL-01）。
+   * 失敗した場合はダーティのままなので終了しない（N-REL-01）。
    */
   onSaveAndQuit(handler: () => void): () => void;
   /**
    * トレイから復帰した瞬間を購読する（ADR-0007「計測項目」）。
    *
-   * **Warm Start とは別の経路である。** あちらは「ウィンドウが可視のまま argv 転送を
-   * 受けた」値（実測 20.0ms）で、こちらは「サスペンドされた WebView が起こされて
-   * 画面に出る」まで。同じ数字だと思って比べると判断を誤る。
+   * Warm Start とは別の経路である。
+   * Warm Start はウィンドウが可視のまま argv 転送を受けた場合の値（実測 20.0ms）で、こちらはサスペンドされた WebView が復帰して表示されるまでを測る。
+   * 同じ指標として比較すると判断を誤る。
    *
    * 受け取ったら次の rAF で `warmDone(id, ..., 'tray-resume')` を呼ぶ。
    */

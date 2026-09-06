@@ -9,7 +9,7 @@
 declare module 'markdown-it-footnote' {
   import type { MarkdownIt } from 'markdown-it';
 
-  /** 脚注（F-VIEW-16）。生成されるブロックは本文の末尾に付く。 */
+  /** 脚注（F-VIEW-16）。生成されるブロックは本文の末尾に追加される。 */
   const footnote: (md: MarkdownIt) => void;
   export default footnote;
 }
@@ -18,7 +18,7 @@ declare module 'markdown-it-task-lists' {
   import type { MarkdownIt } from 'markdown-it';
 
   export interface TaskListsOptions {
-    /** チェックボックスを操作可能にする。既定 false（OQ-05 が未決着のため）。 */
+    /** チェックボックスを操作可能にする。既定は false（OQ-05 が未決のため）。 */
     enabled?: boolean;
     /** `<label>` で包む。 */
     label?: boolean;
@@ -26,7 +26,7 @@ declare module 'markdown-it-task-lists' {
     labelAfter?: boolean;
   }
 
-  /** タスクリスト（GFM）。`<input type="checkbox" disabled>` を出す。 */
+  /** タスクリスト（GFM）。`<input type="checkbox" disabled>` を出力する。 */
   const taskLists: (md: MarkdownIt, options?: TaskListsOptions) => void;
   export default taskLists;
 }

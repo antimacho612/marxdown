@@ -18,23 +18,20 @@ type EditorOptions = monaco.editor.IEditorOptions & monaco.editor.IGlobalEditorO
 /**
  * 設定 1 枚から、当てるオプション 1 枚を作る。
  *
- * **副作用を持たない。** テストが `settingsStore` を組み立てずに写像だけを見られる。
+ * 副作用を持たない。テストは `settingsStore` を用意せずに写像だけを検証できる。
  */
 export function editorOptions(values: Settings): EditorOptions {
   const wordWrap = values['editor.wordWrap'];
 
   return {
-    // ---- フォント -------------------------------------------------
     fontFamily: fontFamily(values),
-    // **倍率はここで掛ける**（F-VIEW-11）。CodeMirror では CSS の `calc()` に
-    // 書けたが、Monaco の `fontSize` は数値なので JS 側で解決するしかない。
+    // 表示倍率はここで掛ける（F-VIEW-11）。Monaco の `fontSize` は数値であるため、CSS ではなく JS 側で解決する。
     fontSize: values['editor.fontSize'] * readNumber('--mx-zoom', 1),
-    // 0 より大きく 8 未満なら**倍率**として扱われる（Monaco の `EditorLineHeight`）。
+    // 0 より大きく 8 未満なら倍率として扱われる（Monaco の `EditorLineHeight`）。
     lineHeight: values['editor.lineHeight'],
     letterSpacing: values['editor.letterSpacing'],
     fontLigatures: values['editor.fontLigatures'],
 
-    // ---- 表示 -----------------------------------------------------
     lineNumbers: values['editor.lineNumbers'],
     renderWhitespace: values['editor.renderWhitespace'],
     renderControlCharacters: values['editor.renderControlCharacters'],
@@ -45,7 +42,6 @@ export function editorOptions(values: Settings): EditorOptions {
     rulers: values['editor.rulers'],
     padding: { top: values['editor.padding.top'] },
 
-    // ---- 入力と移動 -----------------------------------------------
     wordWrap,
     wordWrapColumn: values['editor.wordWrapColumn'],
     tabSize: values['editor.tabSize'],
@@ -55,21 +51,19 @@ export function editorOptions(values: Settings): EditorOptions {
     cursorSurroundingLines: values['editor.cursorSurroundingLines'],
     scrollBeyondLastLine: values['editor.scrollBeyondLastLine'],
 
-    // **横スクロールバーは折り返しの従属物。** 折り返さない設定にしたのに
-    // 隠したままだと、右にはみ出した行へ到達する手段が無くなる。
-    // 設定項目を 1 つ増やすより、片方から決まるほうが説明が要らない。
+    // 横スクロールバーの表示は折り返しの設定から決まる。
+    // 折り返さない設定にしたまま隠すと、右にはみ出した行へ到達する手段が無くなる。
+    // 設定項目を 1 つ増やすより、折り返しの設定から導出するほうが説明が少なくて済む。
     scrollbar: { horizontal: wordWrap === 'off' ? 'auto' : 'hidden' },
   };
 }
 
 /**
- * フォント名。**空欄はトークン層のコードフォントに落ちる。**
+ * フォント名。空欄のときはトークン層のコードフォントを使う。
  *
- * `--mx-font-code` は `preview.codeFontFamily` を先頭に足した後の値なので、
- * エディター側を指定していない人には M2 までと同じフォントが出る。
+ * `--mx-font-code` は `preview.codeFontFamily` を先頭に追加した後の値であるため、エディター側を指定していない場合は M2 までと同じフォントになる。
  *
- * 指定があるときに既定スタックを後ろへ足すのは `applyAppearance` と同じ理由で、
- * **そのフォントに無い字（日本語 / 記号）の落とし先を残す**ため（F-CONF-04）。
+ * 指定があるときに既定のスタックを後ろへ追加するのは `applyAppearance` と同じ理由で、そのフォントに含まれない文字（日本語 / 記号）のフォールバック先を残すためである（F-CONF-04）。
  */
 function fontFamily(values: Settings): string {
   const family = formatFontFamily(values['editor.fontFamily']);
@@ -77,7 +71,7 @@ function fontFamily(values: Settings): string {
   return `${family}, ${readValue('--mx-font-code-stack')}`;
 }
 
-/** いまの設定を当てる。 */
+/** 現在の設定をエディターへ適用する。 */
 export function applyEditorOptions(editor: monaco.editor.IStandaloneCodeEditor): void {
   editor.updateOptions(editorOptions(settingsStore.values));
 }

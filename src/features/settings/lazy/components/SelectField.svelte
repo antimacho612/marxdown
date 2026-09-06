@@ -22,10 +22,10 @@
     description: string;
     value: Settings[K];
     /**
-     * 選択肢のラベル。**並びは決めない**（スキーマの `values` が決める）。
+     * 選択肢のラベル。並び順はここでは決めない（スキーマの `values` が決める）。
      *
-     * `Partial` なのは、`SettingsDialog` が項目の union をそのまま流し込むため。
-     * 過不足なく揃っていることは `layout.ts` の `Labels<K>` と `layout.test.ts` が見張る。
+     * `Partial` にしているのは、`SettingsDialog` が項目のユニオンをそのまま渡すためである。
+     * 過不足なく揃っていることは `layout.ts` の `Labels<K>` と `layout.test.ts` が検証する。
      */
     labels: Readonly<Partial<Record<Settings[K] & string, string>>>;
     onChange: (value: Settings[K]) => void;

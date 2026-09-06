@@ -18,16 +18,17 @@ import { splitPath } from '@/lib/path';
 /**
  * 一覧に出す最近開いたファイルの件数。
  *
- * Welcome 画面（`RECENT_SHOWN`）と同じ 6 件。**同じ意味のものは同じ数にする。**
- * ここだけ長くすると、メニューが「履歴ビューア」に化けて縦に伸びる。
+ * Welcome 画面（`RECENT_SHOWN`）と同じ 6 件にする。
+ * ここだけ件数を増やすと、メニューが履歴の一覧として縦に伸びる。
  */
 export const MENU_RECENT_SHOWN = 6;
 
+/** メニューの 1 項目。 */
 export interface MenuAction {
   /** `{#each}` のキー。 */
   id: string;
   label: string;
-  /** 右端に添えるキー。**併記が唯一の教育**という Welcome と同じ方針。 */
+  /** 右端に表示するキー。ショートカットを併記する方針は Welcome と同じ。 */
   shortcut?: string;
   /** ラベルの右に薄く出す補足。最近開いたファイルのディレクトリに使う。 */
   detail?: string;
@@ -36,12 +37,13 @@ export interface MenuAction {
   run: () => void;
 }
 
+/** 区切り線で分かれる 1 グループ。 */
 export interface MenuGroup {
   id: string;
   /** 見出し。無いグループは区切り線だけで隣と分かれる。 */
   label?: string;
   items: MenuAction[];
-  /** 項目が 0 件のときに出す文。**押せない項目の代わり**であって、項目ではない。 */
+  /** 項目が 0 件のときに表示する文。操作できない項目を並べる代わりのものであり、項目そのものではない。 */
   empty?: string;
 }
 
@@ -62,31 +64,31 @@ interface MenuSection {
 }
 
 /**
- * 並べる順。**この配列が「メニューに何があるか」の全体**である。
+ * 並べる順。この配列がメニューの項目の全体を表す。
  *
  * グループの意味は 03.ux-spec/01-screen-layout.md §3。
  * - `document` … いま開いている文書に対する操作。再読み込みと検索は同じ対象を指すので隣に置く
  * - `zoom` … 3 つで 1 組。見出しを付けないと「拡大」が単独の機能に見える
- * - `app` … アプリに対する操作。**ファイルを開いていなくても押せる**
+ * - `app` … アプリに対する操作。ファイルを開いていなくても実行できる
  */
 const MENU: MenuSection[] = [
   {
     id: 'file',
     entries: [
       { id: 'open', command: 'document.open', label: ja.menu.open, shortcut: 'Ctrl+O' },
-      // 新規ファイル（`Ctrl+N`）。**開いていなくても押せる。**
-      // 並びは Welcome 画面と揃える（03.ux-spec/08-empty-states.md §1 は開く → 新規）。
-      // 同じ 2 つが場所によって違う順で並ぶと、位置で覚えられない。
+      // 新規ファイル（`Ctrl+N`）。ファイルを開いていなくても実行できる。
+      // 並び順は Welcome 画面に揃える（03.ux-spec/08-empty-states.md §1 は「開く」の次に「新規」）。
+      // 同じ 2 つが場所によって異なる順で並ぶと、位置で覚えられなくなる。
       { id: 'new', command: 'document.new', label: ja.menu.new, shortcut: 'Ctrl+N' },
-      // 保存（F-EDIT-02）。**キーを知る場所が他に無い**（パレットは M3）。
+      // 保存（F-EDIT-02）。キーの割り当てを確認できる場所が他に無い（コマンドパレットは M3）。
       { id: 'save', command: 'document.save', label: ja.menu.save, shortcut: 'Ctrl+S' },
       { id: 'save-as', command: 'document.saveAs', label: ja.menu.saveAs, shortcut: 'Ctrl+Shift+S' },
     ],
   },
   {
     id: 'history',
-    // 戻る / 進む（F-NAV-07）。**辿れるときにしか出ない**（`isListed`）。
-    // ここに置くのは、`Alt+←` というキーの存在を知る場所が他に無いため
+    // 戻る / 進む（F-NAV-07）。辿れるときにしか表示しない（`isListed`）。
+    // ここに置くのは、`Alt+←` の割り当てを確認できる場所が他に無いためである
     // （コマンドパレットは M3 / 06.roadmap/m1.5-shell-and-settings.md §5）。
     entries: [
       { id: 'back', command: 'history.back', label: ja.history.back, shortcut: 'Alt+←' },
@@ -146,11 +148,9 @@ const MENU: MenuSection[] = [
       { id: 'settings', command: 'settings.open', label: ja.menu.settings, shortcut: 'Ctrl+,' },
       // 終了（ADR-0007 論点 3 の 3 経路のうちの 1 つ）。
       //
-      // **`✕` がトレイ格納の意味になったので、ここが必要になった。**
-      // ウィンドウの中から確実に終われる場所が 1 つも無いと、
-      // 「閉じたのに終わっていない」に気づいた人の逃げ場が
-      // トレイアイコンだけになる。ハンバーガーメニューは §3 が言う
-      // 「初学者の逃げ道」であり、まさにその役割。
+      // `✕` がトレイ格納の意味になったため、この項目が必要になった。
+      // ウィンドウの中から確実に終了できる場所が無いと、閉じても終了していないことに気づいた場合の操作先がトレイアイコンだけになる。
+      // ハンバーガーメニューは §3 が示す「初学者の逃げ道」にあたり、この項目はその役割を担う。
       { id: 'quit', command: 'app.quit', label: ja.menu.quit, shortcut: 'Ctrl+Q' },
     ],
   },
@@ -166,8 +166,7 @@ export function buildMenu(): MenuGroup[] {
   const groups: MenuGroup[] = [];
 
   for (const section of MENU) {
-    // 「最近開いたファイル」は**コマンドの一覧ではなくデータの一覧**なので、
-    // `file` グループの直後に別枠で差し込む。
+    // 「最近開いたファイル」はコマンドの一覧ではなくデータの一覧であるため、`file` グループの直後に別枠で挿入する。
     if (section.id === 'history') groups.push(recentGroup());
 
     const items = section.entries.filter((entry) => isCommandListed(entry.command)).map(toAction);
@@ -197,7 +196,7 @@ function toAction(entry: MenuEntry): MenuAction {
  * 最近開いたファイル（F-OPEN-09）。
  *
  * 開けなかった場合の通知と履歴からの除去は `openPath` の担当（Welcome と同じ）。
- * **履歴が空でも見出しは出す。** 押せない項目の代わりに 1 行の文で埋める。
+ * 履歴が空でも見出しは表示する。操作できない項目を並べる代わりに 1 行の説明を表示する。
  */
 function recentGroup(): MenuGroup {
   return {

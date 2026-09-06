@@ -10,7 +10,7 @@
  */
 import { byRange, lineInfo, offsetRange, type MarkdownEdit } from './edits';
 
-/** 行頭の記法。**タスクリストを箇条書きより先に見る**（`- [ ] ` は `- ` でもある）。 */
+/** 行頭の記法。タスクリストを箇条書きより先に判定する（`- [ ] ` は `- ` にも一致するため）。 */
 const TASK = /^([\t ]*)([-*+] )\[[ xX]\] (.*)$/;
 const BULLET = /^([\t ]*)([-*+] )(.*)$/;
 const ORDERED = /^([\t ]*)(\d+)([.)] )(.*)$/;
@@ -20,17 +20,17 @@ const QUOTE = /^([\t ]*)(> ?)(.*)$/;
 interface Continuation {
   /** 次の行に入れる記法（インデントを含む）。 */
   prefix: string;
-  /** いまの行の記法の長さ。カーソルがここちょうどにあるかを見るのに使う。 */
+  /** 現在の行の記法の長さ。カーソルがその直後にあるかの判定に使う。 */
   markerLength: number;
-  /** 記法だけで中身が無い行か。**`Enter` で終わらせる合図。** */
+  /** 記法だけで本文が無い行か。`Enter` でリストを終了する条件になる。 */
   empty: boolean;
 }
 
 /**
  * その行の継続を組み立てる。リストでも引用でもなければ `null`。
  *
- * **タスクリストは未チェックで続ける。** `- [x] ` の次の項目まで
- * チェック済みで始まるのは、まず求められていない。
+ * タスクリストは未チェックの状態で継続する。
+ * `- [x] ` の次の項目がチェック済みで始まる動作は想定していない。
  */
 export function continuationOf(text: string): Continuation | null {
   const task = TASK.exec(text);
@@ -73,12 +73,11 @@ function indentOf(text: string): string {
 /**
  * `Enter`。リストや引用の中なら記法を引き継ぎ、番号は 1 つ進める。
  *
- * **記法だけの行で押したら、記法を消してリストを終える。** 空の項目を
- * 増やし続けるより、そこで抜けたい場合がほとんどである（CommonMark 系の
- * エディターで共通の挙動）。
+ * 記法だけの行で押した場合は、記法を削除してリストを終了する。
+ * 空の項目を増やし続けるより、そこで抜ける動作のほうが一般的である（CommonMark 系のエディターで共通の挙動）。
  *
- * **カーソルが 1 つでもリストの中にあれば引き受ける。** リストでない位置の
- * カーソルには、`autoIndent: 'keep'` と同じ「前の行のインデントを継ぐ改行」を入れる。
+ * カーソルが 1 つでもリストの中にあれば、このコマンドが処理する。
+ * リストでない位置のカーソルには、`autoIndent: 'keep'` と同じく前の行のインデントを引き継ぐ改行を挿入する。
  */
 export const continueList: MarkdownEdit = (model, selections) => {
   if (selections.length === 0) return null;
@@ -97,7 +96,7 @@ export const continueList: MarkdownEdit = (model, selections) => {
       return { edits: [{ from, to, text: insert }], select: { from: from + insert.length, to: from + insert.length } };
     }
 
-    // 記法だけの行 → 記法を消して終わる。**改行は入れない。**
+    // 記法だけの行では、記法を削除して終了する。改行は挿入しない。
     if (continuation.empty) {
       const lineEnd = line.from + line.text.length;
       return { edits: [{ from: line.from, to: lineEnd, text: '' }], select: { from: line.from, to: line.from } };
@@ -111,12 +110,12 @@ export const continueList: MarkdownEdit = (model, selections) => {
 /**
  * `Backspace` で記法を畳む。
  *
- * **カーソルが記法のちょうど後ろにあるときだけ効く。** そこで 1 文字だけ消すと
- * `- ` が `-` になって、リストでもただの行でもない中途半端な形が残る。
- * 記法をまとめて消して、素の行に戻す。
+ * カーソルが記法の直後にあるときだけ動作する。
+ * その位置で 1 文字だけ削除すると `- ` が `-` になり、リストでも通常の行でもない状態が残る。
+ * 記法をまとめて削除し、通常の行に戻す。
  *
- * 選択があるときや、記法の後ろでないときは `null`。**Monaco の既定の
- * `Backspace` に渡る**ので、普通の 1 文字削除は妨げない。
+ * 選択があるときや、記法の直後でないときは `null` を返す。
+ * その場合は Monaco の既定の `Backspace` に渡るため、通常の 1 文字削除は妨げない。
  */
 export const deleteMarkupBackward: MarkdownEdit = (model, selections) => {
   const main = selections[0];
@@ -130,7 +129,7 @@ export const deleteMarkupBackward: MarkdownEdit = (model, selections) => {
   const cursor = model.getOffsetAt(main.getPosition());
   if (cursor !== line.from + continuation.markerLength) return null;
 
-  // **インデントは残す。** 消したいのは記法であって、入れ子の深さではない。
+  // インデントは残す。削除の対象は記法であり、入れ子の深さではない。
   const from = line.from + indentOf(line.text).length;
   if (from >= cursor) return null;
 

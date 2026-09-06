@@ -10,6 +10,7 @@
  * このモジュールは配列とカーソルだけを扱い、`open.ts` との循環参照を避ける。
  */
 
+/** 履歴 1 件。 */
 export interface HistoryEntry {
   /** 正規化済み絶対パス（Rust から返ってきた形）。 */
   path: string;
@@ -20,8 +21,8 @@ export interface HistoryEntry {
 /**
  * 保持する件数。
  *
- * 常駐アプリ（ADR-0007）なので、上限が無いと「1 週間開きっぱなし」で
- * 際限なく伸びる。パスと数値だけなので 50 件でも数 KB。
+ * 常駐アプリ（ADR-0007）であるため、上限が無いと長時間の使用で件数が増え続ける。
+ * 保持するのはパスと数値だけであり、50 件でも数 KB に収まる。
  */
 const LIMIT = 50;
 
@@ -30,17 +31,17 @@ let entries: HistoryEntry[] = [];
 let cursor = -1;
 
 /**
- * 開いたドキュメントを積む。**離れる直前のスクロール位置を一緒に受け取る。**
+ * 開いたドキュメントを積む。離れる直前のスクロール位置も併せて受け取る。
  *
- * 現在位置より先（＝`Alt+←` で戻った後の「進む」側）は捨てる。
- * ブラウザと同じで、戻ってから別の場所へ行けば分岐は消える。
+ * 現在位置より先（`Alt+←` で戻った後の「進む」側）は破棄する。
+ * ブラウザと同じく、戻ってから別の場所へ移動すれば分岐は失われる。
  */
 export function pushHistory(path: string, currentScrollTop: number): void {
   const current = entries[cursor];
 
   if (current && current.path === path) {
-    // 同じファイルを開き直しただけ（ダイアログで同じものを選ぶなど）。
-    // 呼び出し側は先頭へ戻しているので、控える位置も先頭にする。
+    // 同じファイルを開き直しただけの場合（ダイアログで同じファイルを選ぶなど）。
+    // 呼び出し側がスクロール位置を先頭へ戻しているため、記録する位置も先頭にする。
     current.scrollTop = 0;
     return;
   }
@@ -55,8 +56,8 @@ export function pushHistory(path: string, currentScrollTop: number): void {
 /**
  * カーソルを 1 つ動かし、行き先を返す。動かせなければ `null`。
  *
- * 動かす前に、いまのエントリへスクロール位置を書き戻す。
- * **戻った先から進み直したときに、読んでいた場所へ帰れるのはこれのおかげ。**
+ * 移動する前に、現在のエントリへスクロール位置を書き戻す。
+ * 戻った先から進み直したときに元の位置を復元できるのは、この処理による。
  */
 export function stepHistory(delta: -1 | 1, currentScrollTop: number): HistoryEntry | null {
   const next = cursor + delta;
@@ -70,30 +71,31 @@ export function stepHistory(delta: -1 | 1, currentScrollTop: number): HistoryEnt
 }
 
 /**
- * 動かしたカーソルを戻す。**行き先が開けなかったときだけ**呼ぶ。
+ * 移動したカーソルを元に戻す。移動先を開けなかったときだけ呼ぶ。
  *
- * 開けなかったのに位置だけ進んでいると、もう一度 `Alt+←` を押したときに
- * 「押した回数」と「戻った段数」が合わなくなる。
+ * 開けていないのにカーソルだけ移動していると、もう一度 `Alt+←` を押したときに操作回数と移動段数が一致しなくなる。
  */
 export function revertHistoryStep(delta: -1 | 1): void {
   cursor -= delta;
 }
 
+/** 戻れるか。メニューの表示条件にも使う。 */
 export function canGoBack(): boolean {
   return cursor > 0;
 }
 
+/** 進めるか。メニューの表示条件にも使う。 */
 export function canGoForward(): boolean {
   return cursor >= 0 && cursor < entries.length - 1;
 }
 
-/** テスト用。 */
+/** テスト用。履歴とカーソルを初期化する。 */
 export function resetHistory(): void {
   entries = [];
   cursor = -1;
 }
 
-/** テスト用。中身を覗く。 */
+/** テスト用。履歴の内容とカーソル位置を取り出す。 */
 export function historySnapshot(): { entries: HistoryEntry[]; cursor: number } {
   return { entries: entries.map((e) => ({ ...e })), cursor };
 }

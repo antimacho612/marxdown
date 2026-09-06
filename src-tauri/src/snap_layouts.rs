@@ -54,7 +54,7 @@ use windows::Win32::UI::WindowsAndMessaging::{
     WM_SIZE, WM_SYSCOMMAND, WNDCLASSEXW, WS_CHILD, WS_CLIPSIBLINGS,
 };
 
-/// 最大化ボタンのホバー状態（ペイロードは `bool`）。**出入りしたときだけ**流す。
+/// 最大化ボタンのホバー状態（ペイロードは `bool`）。出入りしたときだけ通知する。
 pub const EVENT_MAXIMIZE_HOVER: &str = "marxdown://maximize-hover";
 
 /// オーバーレイのウィンドウクラス名。
@@ -68,19 +68,19 @@ const BASE_DPI: f64 = 96.0;
 
 /// 最大化ボタンの居場所と、いまホバーしているか。
 ///
-/// ウィンドウプロシージャ（オーバーレイの `GWLP_USERDATA` と親のサブクラスの
-/// `dwRefData`）と IPC コマンドの 3 か所から触るので `Arc` で持つ。
-/// 中身はロックを取らない。**プロシージャの中で待てるものは何も無い**（UI スレッドを止める）。
+/// ウィンドウプロシージャ（オーバーレイの `GWLP_USERDATA` と親のサブクラスの `dwRefData`）と IPC コマンドの 3 か所から参照するため `Arc` で保持する。
+/// 中身はロックを取らない。
+/// プロシージャの中で待機してよいものは何も無い（UI スレッドが停止する）。
 pub struct SnapTarget {
     /// 矩形（CSS px）。x / y / w / h を 16bit ずつ詰めてある。
     /// 幅か高さが 0 なら「まだ知らない」。
     rect: AtomicU64,
     hovered: AtomicBool,
-    /// オーバーレイの上で押し下げたか。押した場所と離した場所が
-    /// 揃ったときだけ最大化する（Windows の作法）。
+    /// オーバーレイの上で押し下げたか。
+    /// 押した場所と離した場所が一致したときだけ最大化する（Windows の作法）。
     pressed: AtomicBool,
-    /// オーバーレイを作り終えたか。受け皿の生成（`prepare`）と作成（`install`）が
-    /// 別のタイミングなので、状態の有無では代用できない。
+    /// オーバーレイを作り終えたか。
+    /// 受け皿の生成（`prepare`）と作成（`install`）が別のタイミングであるため、状態の有無では代用できない。
     installed: AtomicBool,
     /// オーバーレイの `HWND`。0 なら未作成。
     overlay: AtomicIsize,
@@ -115,11 +115,11 @@ impl SnapTarget {
 
     /// オーバーレイを最大化ボタンへ重ね直す。
     ///
-    /// フロントが知らせてくるのは CSS ピクセル。物理ピクセルへ揃えるのはここだけで、
-    /// あとは Windows の座標系で完結する。
+    /// フロントが通知してくるのは CSS ピクセルである。
+    /// 物理ピクセルへ変換するのはここだけで、あとは Windows の座標系で完結する。
     ///
-    /// **`SWP_ASYNCWINDOWPOS` を付ける。** `set_target` は IPC のスレッドから来るので、
-    /// UI スレッドが持つウィンドウを同期で動かそうとすると待たされうる。
+    /// `SWP_ASYNCWINDOWPOS` を付ける。
+    /// `set_target` は IPC のスレッドから呼ばれるため、UI スレッドが持つウィンドウを同期で移動しようとすると待たされる可能性がある。
     fn reposition(&self, parent: HWND) {
         let Some(overlay) = self.overlay() else {
             return;
@@ -127,7 +127,7 @@ impl SnapTarget {
 
         let (x, y, width, height) = self.rect();
         if width <= 0.0 || height <= 0.0 {
-            // まだ場所を知らない。見せない（見当違いの場所を覆わないため）。
+            // まだ位置が確定していない。誤った場所を覆わないよう非表示にする。
             let _ = unsafe { ShowWindow(overlay, SW_HIDE) };
             return;
         }
@@ -153,7 +153,7 @@ impl SnapTarget {
         };
     }
 
-    /// ホバー状態が変わったときだけフロントへ流す。
+    /// ホバー状態が変わったときだけフロントへ通知する。
     fn set_hovered(&self, overlay: HWND, now: bool) {
         if self.hovered.swap(now, Ordering::Relaxed) == now {
             return;
@@ -167,8 +167,8 @@ impl SnapTarget {
 
 /// ウィンドウの外へ出たことを知らせてもらう。
 ///
-/// 非クライアント領域から**ウィンドウごと**出た場合、`WM_NCMOUSEMOVE` は
-/// もう飛んでこない。これを頼まないと、塗ったままのボタンが残る。
+/// 非クライアント領域からウィンドウの外へ出た場合、`WM_NCMOUSEMOVE` は発火しなくなる。
+/// これを要求しないと、ホバー表示が残ったままになる。
 fn track_leave(hwnd: HWND) {
     let mut tme = TRACKMOUSEEVENT {
         cbSize: std::mem::size_of::<TRACKMOUSEEVENT>() as u32,
@@ -181,13 +181,11 @@ fn track_leave(hwnd: HWND) {
 
 /// 矩形の受け皿を置く。ウィンドウを作った直後、`setup()` の中で呼ぶ。
 ///
-/// オーバーレイの作成とは分けてある。作成（`install`）は `ready` まで待たされる。
-/// `hwnd()` がイベントループへの問い合わせだからで、これは動かせない。一方、
-/// 矩形を送ってくるフロントは `set_snap_layouts_target` を 1 度しか投げず、
-/// 以後はウィンドウ幅が変わったときしか投げ直さない（`src/app/window.ts` の
-/// `reportSnapLayoutsTarget` と `trackSnapLayoutsTarget`）。その 1 度を受け損ねると
-/// 矩形は 0 のままになる。受け皿だけならイベントループを必要としないので、
-/// 先に置いておけば取りこぼさない。
+/// オーバーレイの作成とは分けてある。
+/// 作成（`install`）は `hwnd()` がイベントループへの問い合わせであるため `ready` まで待つ必要があり、この順序は変えられない。
+/// 一方、矩形を送信するフロントは `set_snap_layouts_target` を 1 度しか呼ばず、以後はウィンドウ幅が変わったときしか送り直さない（`src/app/window.ts` の `reportSnapLayoutsTarget` と `trackSnapLayoutsTarget`）。
+/// その 1 度を受け取れないと矩形は 0 のままになる。
+/// 受け皿だけならイベントループを必要としないため、先に用意しておけば取りこぼさない。
 pub fn prepare(app: &tauri::AppHandle, window: &WebviewWindow) {
     if tauri::Manager::try_state::<Arc<SnapTarget>>(app).is_some() {
         return;
@@ -206,23 +204,22 @@ pub fn prepare(app: &tauri::AppHandle, window: &WebviewWindow) {
     );
 }
 
-/// オーバーレイを作る。**失敗しても呼び出し側は気にしなくてよい。**
+/// オーバーレイを作る。失敗しても呼び出し側で対処する必要はない。
 ///
-/// **`setup()` から呼んではいけない。** `hwnd()` はイベントループへ問い合わせる
-/// ゲッターで、ループが回り出す前は答えが返らない（実測で失敗した）。
-/// `ready` コマンドの中、`show()` の後に呼ぶこと。ここでやるのは Win32 の
-/// 呼び出し数回だけで、本文が読める瞬間に間に合う必要も無い
-/// （02.architecture/05-startup-sequence.md §1 の判断基準）。
+/// `setup()` から呼んではいけない。
+/// `hwnd()` はイベントループへ問い合わせるゲッターであり、ループが動き出す前は結果が返らない（実測で失敗した）。
+/// `ready` コマンドの中、`show()` の後に呼ぶこと。
+/// ここで行うのは Win32 の呼び出し数回だけであり、本文が読める時点に間に合う必要もない（02.architecture/05-startup-sequence.md §1 の判断基準）。
 pub fn install(app: &tauri::AppHandle) {
     let Some(state) = tauri::Manager::try_state::<Arc<SnapTarget>>(app) else {
-        // `prepare` が呼ばれていない。ここで作ると、それまでに届いた矩形を
-        // 捨てたことになるので、黙って諦めるほうが分かりやすい。
+        // `prepare` が呼ばれていない。
+        // ここで作るとそれまでに届いた矩形を捨てることになるため、何もせずに戻る。
         eprintln!("[marxdown] Snap Layouts: 受け皿が無いので諦める");
         return;
     };
     let target = state.inner().clone();
 
-    // 二重に作らない。作り直すと、前の参照が誰にも落とされずに残る。
+    // 二重に作らない。作り直すと、前の参照が解放されずに残る。
     if target.installed.swap(true, Ordering::Relaxed) {
         return;
     }
@@ -238,7 +235,7 @@ pub fn install(app: &tauri::AppHandle) {
     // プロシージャへ渡す参照。オーバーレイの `WM_NCDESTROY` で `Arc::from_raw` して落とす。
     let raw = Arc::into_raw(Arc::clone(&target)) as *const c_void;
 
-    // **`WS_VISIBLE` を付けない。** 矩形が届いて `reposition` が呼ぶまで見せない。
+    // `WS_VISIBLE` を付けない。矩形が届いて `reposition` が呼ばれるまでは表示しない。
     let created = unsafe {
         CreateWindowExW(
             WINDOW_EX_STYLE(0),
@@ -267,9 +264,8 @@ pub fn install(app: &tauri::AppHandle) {
 
     // 親のサイズ変更に位置を追わせる。
     //
-    // フロントも `resize` で測り直して投げてくるが、あちらは 120ms のデバウンスが
-    // 掛かっている。**最大化した瞬間にボタンの下からオーバーレイがずれる**のを
-    // 見せないために、こちらでも即座に追う。
+    // フロントも `resize` で測り直して送信するが、そちらには 120ms のデバウンスが掛かっている。
+    // 最大化した瞬間にオーバーレイがボタンの位置からずれるのを避けるため、ここでも即座に追従する。
     let parent_raw = Arc::into_raw(Arc::clone(&target)) as usize;
     let followed =
         unsafe { SetWindowSubclass(parent, Some(parent_proc), PARENT_SUBCLASS_ID, parent_raw) };
@@ -283,10 +279,9 @@ pub fn install(app: &tauri::AppHandle) {
 
 /// 最大化ボタンの矩形（CSS px）を覚える。フロントのレイアウトが変わるたびに呼ばれる。
 ///
-/// **オーバーレイが出来る前に届く。** それが普通の順序であり、取りこぼさないために
-/// `prepare` が受け皿を先に置いてある。
+/// オーバーレイの作成前に届くのが通常の順序であり、取りこぼさないために `prepare` が受け皿を先に用意してある。
 pub fn set_target(app: &tauri::AppHandle, x: f64, y: f64, width: f64, height: f64) {
-    // `prepare` に失敗していれば `manage` されていない。黙って捨てる。
+    // `prepare` に失敗していれば `manage` されていない。この場合は何もしない。
     let Some(target) = tauri::Manager::try_state::<Arc<SnapTarget>>(app) else {
         return;
     };
@@ -300,7 +295,7 @@ pub fn set_target(app: &tauri::AppHandle, x: f64, y: f64, width: f64, height: f6
     }
 }
 
-/// オーバーレイのウィンドウクラス。**1 回だけ登録する。**
+/// オーバーレイのウィンドウクラス。1 回だけ登録する。
 fn register_class() {
     static ONCE: Once = Once::new();
     ONCE.call_once(|| {
@@ -309,7 +304,7 @@ fn register_class() {
             cbSize: std::mem::size_of::<WNDCLASSEXW>() as u32,
             lpfnWndProc: Some(overlay_proc),
             hInstance: instance.into(),
-            // 塗らせない。背景ブラシがあると本文の描画が隠れる。
+            // 背景ブラシがあると本文の描画が隠れるため、塗らせない。
             hbrBackground: HBRUSH(unsafe { GetStockObject(NULL_BRUSH) }.0),
             lpszClassName: OVERLAY_CLASS,
             ..Default::default()
@@ -318,7 +313,7 @@ fn register_class() {
     });
 }
 
-/// オーバーレイのウィンドウプロシージャ。**ここが Snap Layouts の本体**。
+/// オーバーレイのウィンドウプロシージャ。Snap Layouts の本体にあたる。
 unsafe extern "system" fn overlay_proc(
     hwnd: HWND,
     msg: u32,
@@ -341,8 +336,8 @@ unsafe extern "system" fn overlay_proc(
     let target = &*(data as *const SnapTarget);
 
     match msg {
-        // **これ 1 行のためにこのウィンドウが在る。**
-        // カーソル直下の最も深いウィンドウがここになり、シェルがフライアウトを出す。
+        // このウィンドウはこの応答のためだけに存在する。
+        // カーソル直下の最も深いウィンドウがここになり、シェルがフライアウトを表示する。
         WM_NCHITTEST => LRESULT(HTMAXBUTTON as isize),
 
         WM_NCMOUSEMOVE => {
@@ -356,8 +351,8 @@ unsafe extern "system" fn overlay_proc(
             LRESULT(0)
         }
 
-        // 押し下げは飲み込む。既定に渡すと、Windows が「最大化ボタンを押した」
-        // 描画（自前のタイトルバーには存在しない）を始めてしまう。
+        // 押し下げはここで処理を終える。
+        // 既定の処理に渡すと、Windows が最大化ボタンの押下描画（自前のタイトルバーには存在しない）を開始してしまう。
         WM_NCLBUTTONDOWN => {
             target.pressed.store(true, Ordering::Relaxed);
             LRESULT(0)
@@ -371,8 +366,8 @@ unsafe extern "system" fn overlay_proc(
                     } else {
                         SC_MAXIMIZE
                     };
-                    // Windows 自身が本物のキャプションボタンでやるのと同じ経路を通す。
-                    // tao の状態管理も、この先の `WM_SIZE` で普段どおり追従する。
+                    // Windows が本来のキャプションボタンで使うのと同じ経路を通す。
+                    // tao の状態管理も、この後の `WM_SIZE` で通常どおり追従する。
                     let _ = PostMessageW(
                         Some(parent),
                         WM_SYSCOMMAND,
@@ -384,14 +379,14 @@ unsafe extern "system" fn overlay_proc(
             LRESULT(0)
         }
 
-        // 塗らない。塗ると、WebView が描いた最大化ボタンの表示が隠れる。
+        // 塗ると WebView が描いた最大化ボタンの表示が隠れるため、何もしない。
         WM_ERASEBKGND => LRESULT(1),
 
         WM_NCDESTROY => {
             SetWindowLongPtrW(hwnd, GWLP_USERDATA, 0);
             let result = DefWindowProcW(hwnd, msg, wparam, lparam);
-            // 参照を外した後に落とす。外す前に落とすと、
-            // 後続のメッセージが解放済みの参照を引く。
+            // 参照を外した後に解放する。
+            // 外す前に解放すると、後続のメッセージが解放済みの参照を辿ることになる。
             drop(Arc::from_raw(data as *const SnapTarget));
             result
         }
@@ -400,7 +395,7 @@ unsafe extern "system" fn overlay_proc(
     }
 }
 
-/// 親のサブクラス。**位置の追従にしか使わない。**
+/// 親のサブクラス。位置の追従にしか使わない。
 unsafe extern "system" fn parent_proc(
     hwnd: HWND,
     msg: u32,
@@ -420,8 +415,8 @@ unsafe extern "system" fn parent_proc(
         WM_NCDESTROY => {
             let _ = RemoveWindowSubclass(hwnd, Some(parent_proc), PARENT_SUBCLASS_ID);
             let result = DefSubclassProc(hwnd, msg, wparam, lparam);
-            // チェーンから外した後に落とす。外す前に落とすと、
-            // 後続のメッセージが解放済みの参照を引く。
+            // チェーンから外した後に解放する。
+            // 外す前に解放すると、後続のメッセージが解放済みの参照を辿ることになる。
             drop(Arc::from_raw(data as *const SnapTarget));
             result
         }

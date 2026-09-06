@@ -19,11 +19,10 @@ const EXTERNAL = /^(?:https?|mailto):/i;
 const SCHEME = /^([a-z][a-z0-9+.-]*):/i;
 
 /**
- * リンクから本文の外へ出るときの手（`app/bootstrap.ts` が起動時に渡す）。
+ * リンクから本文の外へ移動するときの処理（`app/bootstrap.ts` が起動時に渡す）。
  *
- * 開くのも知らせるのも `document` の仕事だが、あちらは本文を描くために
- * この feature を参照している。直接呼び返すと feature 単位で循環するため、
- * 向きを一方向（`document → preview`）に保つ目的で注入にしてある
+ * 開く処理も通知も `document` が担当するが、`document` は本文を描画するためにこの feature を参照している。
+ * 直接呼び返すと feature 単位で循環するため、依存の向きを `document → preview` の一方向に保つ目的で注入にしてある
  * （`features/history` の `configureHistory` と同じ形）。
  */
 export interface LinkTargets {
@@ -32,8 +31,8 @@ export interface LinkTargets {
   /** Markdown をアプリ内で開く。 */
   open: (path: string, anchor: string | undefined) => void;
   /**
-   * 通知バーに出す。**構造だけ `documentStore.notice` と合わせてある。**
-   * 渡す側の代入が型で照合されるので、食い違えば `bootstrap.ts` で落ちる。
+   * 通知バーに出す。構造だけを `documentStore.notice` に合わせてある。
+   * 渡す側の代入が型で検査されるため、食い違えば `bootstrap.ts` で型エラーになる。
    */
   notify: (notice: {
     level: 'info' | 'error';
@@ -47,15 +46,15 @@ let targets: LinkTargets | null = null;
 /**
  * プレビュー内のクリックを 1 か所で受ける。
  *
- * 個々の `<a>` にハンドラを付けないのは、段階的描画で後から増える要素にも
- * 効かせるため。イベント委譲なら「まだ描かれていない本文」にも最初から効く。
+ * 個々の `<a>` にハンドラを付けないのは、段階的描画で後から追加される要素にも適用するためである。
+ * イベント委譲であれば、まだ描画されていない本文に対しても最初から動作する。
  */
 export function installLinkHandler(container: HTMLElement, next: LinkTargets): () => void {
   targets = next;
 
   const onClick = (event: MouseEvent) => {
-    // 修飾クリックと中クリックは「別の場所で開く」意図。タブが実装されるまでは、
-    // 何もしないほうが、既定の挙動（＝ナビゲーション）が漏れるより安全。
+    // 修飾クリックと中クリックは別の場所で開く操作を意図している。
+    // タブが実装されるまでは何もしないほうが、既定の遷移が発生するより安全である。
     if (event.defaultPrevented) return;
 
     const anchor = (event.target as Element | null)?.closest('a');
@@ -64,8 +63,8 @@ export function installLinkHandler(container: HTMLElement, next: LinkTargets): (
     const href = anchor.getAttribute('href');
     event.preventDefault();
 
-    // サニタイザが落とした href（未知のスキーム）はここに来ない。
-    // 二重に見るのは、DOMPurify の既定が緩んだときの影響を受けないため。
+    // サニタイザが除去した href（未知のスキーム）はここには到達しない。
+    // 二重に判定するのは、DOMPurify の既定が変わった場合の影響を受けないためである。
     if (href === null || href === '') return;
 
     handle(href, container);
@@ -76,7 +75,7 @@ export function installLinkHandler(container: HTMLElement, next: LinkTargets): (
 }
 
 function handle(href: string, container: HTMLElement): void {
-  // --- ページ内アンカー（F-VIEW-07） ---------------------------------
+  // ページ内アンカー（F-VIEW-07）
   if (href.startsWith('#')) {
     scrollToAnchor(container, href.slice(1));
     return;
@@ -84,13 +83,13 @@ function handle(href: string, container: HTMLElement): void {
 
   const scheme = SCHEME.exec(href)?.[1]?.toLowerCase();
 
-  // --- 外部リンク（F-VIEW-06 / N-SEC-04） ----------------------------
+  // 外部リンク（F-VIEW-06 / N-SEC-04）
   if (scheme !== undefined && EXTERNAL.test(href)) {
     void getPlatform().openExternal(href);
     return;
   }
 
-  // --- ローカルのパス（F-VIEW-05） -----------------------------------
+  // ローカルのパス（F-VIEW-05）
   const localPath = toLocalPath(href, scheme);
   if (localPath === null) return; // 未知のスキーム。何もしない
 
@@ -98,9 +97,9 @@ function handle(href: string, container: HTMLElement): void {
   const resolved = joinPath(baseDir, localPath);
 
   if (isMarkdownPath(resolved)) {
-    // `./other.md#section` の `#` 以降はパスの一部ではない。付けたまま渡すと
-    // Rust 側で「そんなファイルは無い」になる。**開いた後の着地点**として渡す
-    // （相互リンクされた文書群では、節を名指しするリンクが普通に出てくる）。
+    // `./other.md#section` の `#` 以降はパスの一部ではない。
+    // 付けたまま渡すと Rust 側で not-found になるため、開いた後のスクロール先として別に渡す
+    // （相互にリンクされた文書群では、節を指定するリンクが頻繁に現れる）。
     const [path, anchor] = splitFragment(resolved);
     // 相対パスの正規化は Rust 側（`read_document` の canonicalize）に任せる。
     targets?.open(path, anchor);
@@ -113,9 +112,9 @@ function handle(href: string, container: HTMLElement): void {
 /**
  * Markdown 以外のローカルファイル（F-VIEW-06）。
  *
- * **確認してから開く。** OS の既定アプリに渡す行為は取り消せないので、
- * 本文に書かれていただけのパスを黙って起動しない。
- * モーダルにしないのは、データ消失の可能性が無いから（03.ux-spec/07-status-and-notifications.md §2）。
+ * 確認してから開く。
+ * OS の既定アプリに渡す操作は取り消せないため、本文に書かれているだけのパスを確認なしに起動しない。
+ * モーダルにしないのは、データ消失の可能性が無いためである（03.ux-spec/07-status-and-notifications.md §2）。
  */
 function confirmOpenExternally(path: string): void {
   targets?.notify({
@@ -128,7 +127,7 @@ function confirmOpenExternally(path: string): void {
           void getPlatform()
             .openLocalFile(path)
             .catch(() => {
-              // 許可ディレクトリの外だと Rust 側が拒む。何が起きたか黙らない。
+              // 許可ディレクトリの外であれば Rust 側が拒否する。その結果は通知に出す。
               targets?.notify({ level: 'error', message: ja.link.outOfScope(path) });
             });
         },
@@ -143,7 +142,7 @@ function confirmOpenExternally(path: string): void {
   });
 }
 
-/** `path#fragment` を割る。フラグメントが無ければ `undefined`。 */
+/** `path#fragment` を分割する。フラグメントが無ければ `undefined` を返す。 */
 function splitFragment(path: string): [string, string | undefined] {
   const index = path.indexOf('#');
   if (index < 0) return [path, undefined];
@@ -153,7 +152,7 @@ function splitFragment(path: string): [string, string | undefined] {
 /**
  * `file://` を含めてローカルパスに直す。未知のスキームは `null`。
  *
- * `C:\...` `C:/...` はスキーム付きに見えるが Windows の絶対パス。
+ * `C:\...` や `C:/...` はスキーム付きに見えるが Windows の絶対パスである。
  * `sanitize.ts` の `isAllowedUri` と同じ判定をここでも行う。
  */
 function toLocalPath(href: string, scheme: string | undefined): string | null {

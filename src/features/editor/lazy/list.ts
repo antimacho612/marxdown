@@ -15,18 +15,18 @@ const ORDERED = /^([\t ]*)\d+[.)] +/;
 const QUOTE = /^[\t ]*(> ?)/;
 
 /**
- * その行の**一段ぶんの幅**（文字数）。リストでも引用でもなければ `null`。
+ * その行の 1 段ぶんの幅（文字数）。リストでも引用でもなければ `null` を返す。
  *
- * **固定の 2 文字にしてはいけない。** CommonMark は入れ子の項目を親の本文が
- * 始まる桁まで下げることを求めるので、`1. ` の下は 3 文字要る。
+ * 固定の 2 文字にはできない。
+ * CommonMark は入れ子の項目を親の本文が始まる桁まで下げることを求めるため、`1. ` の下は 3 文字必要になる。
  *
- * **タスクリストの `[ ] ` は本文であって記法ではない。** `- [ ] ` の下は
- * `- ` と同じ 2 文字で入れ子になるので、箇条書きとして測る
- * （`- [ ] ` の 6 文字ぶん下げると、行が 1 つ深いところへ飛ぶ）。
+ * タスクリストの `[ ] ` は本文であり記法ではない。
+ * `- [ ] ` の下は `- ` と同じ 2 文字で入れ子になるため、箇条書きとして測る
+ * （`- [ ] ` の 6 文字ぶん下げると、意図より 1 段深い位置になる）。
  */
 export function stepOf(text: string): number | null {
   const bullet = BULLET.exec(text);
-  // タスクリストは箇条書きでもある。幅は箇条書きとして測る。
+  // タスクリストは箇条書きでもあるため、幅は箇条書きとして測る。
   if (TASK.test(text) && bullet) return (bullet[2] ?? '- ').length;
 
   const ordered = ORDERED.exec(text);
@@ -41,10 +41,10 @@ export function stepOf(text: string): number | null {
 }
 
 /**
- * 一段の幅を決める。**選択の中の最初のリスト行の記法から取る。**
+ * 1 段の幅を決める。選択範囲の中で最初に現れるリスト行の記法から取得する。
  *
- * 行ごとに違う幅で下げると、選択の中の相対的な深さが崩れる。
- * リスト行が 1 つも無ければ `null` を返し、呼び出し側が手を引く。
+ * 行ごとに異なる幅で下げると、選択範囲内の相対的な深さが崩れる。
+ * リスト行が 1 つも無ければ `null` を返し、呼び出し側が処理を中断する。
  */
 function stepFor(lines: { text: string }[]): string | null {
   for (const line of lines) {
@@ -57,8 +57,8 @@ function stepFor(lines: { text: string }[]): string | null {
 /**
  * `Tab` でリストを一段深くする（F-EDIT-09）。
  *
- * **リスト行が 1 つも無ければ手を引く。** その場合の `Tab` は
- * Monaco の既定のインデントに渡る（`keymap.ts`）。
+ * リスト行が 1 つも無ければ何もしない。
+ * その場合の `Tab` は Monaco の既定のインデントに渡る（`keymap.ts`）。
  */
 export const indentList: MarkdownEdit = (model, selections) => {
   const lines = selectedLines(model, selections);
@@ -73,7 +73,7 @@ export const indentList: MarkdownEdit = (model, selections) => {
   return { edits };
 };
 
-/** `Shift+Tab` で一段浅くする。下げ幅ぶんの空白が無ければ、あるだけ削る。 */
+/** `Shift+Tab` で 1 段浅くする。1 段ぶんの空白が無ければ、存在する分だけ削除する。 */
 export const outdentList: MarkdownEdit = (model, selections) => {
   const lines = selectedLines(model, selections);
   const step = stepFor(lines);

@@ -9,8 +9,9 @@
  * `bootstrap.ts` からの動的 import でフラグが立った起動でしか取りに行かず、`editor` の実体も動的 import なのでこのチャンクに Monaco は入らない。
  */
 /*
- * **打鍵は時間順に 1 つずつ起こす。** 並行に流したら「予定時刻に打つ」が成立せず、
- * 計測そのものが意味を失う。ここでの逐次 await は非効率ではなく仕様である。
+ * 打鍵は時間順に 1 つずつ発生させる。
+ * 並行に実行すると予定時刻どおりに入力できず、計測が成立しない。
+ * ここでの逐次 await は非効率ではなく仕様である。
  */
 /* eslint-disable no-await-in-loop */
 import {
@@ -24,15 +25,11 @@ import { setMode } from '@/features/mode';
 import { viewStore } from '@/features/view';
 import { getPlatform } from '@/platform';
 
-/* ------------------------------------------------------------------ */
-/* 刺激                                                                */
-/* ------------------------------------------------------------------ */
-
 /**
  * 打鍵の組み立て（`docs/measurements/` の計測仕様と 1:1）。
  *
- * バーストの区切りは **`live.ts` の debounce（120ms）より長い**ことが要る。
- * 越えないと描き直しが 1 回も起きず、OQ-15 の判定対象そのものが観測できない。
+ * バーストの区切りは `live.ts` の debounce（120ms）より長くする必要がある。
+ * 超えないと再描画が 1 回も発生せず、OQ-15 の判定対象を観測できない。
  */
 const PLAN = {
   bursts: 24,
@@ -40,9 +37,9 @@ const PLAN = {
   /** 打鍵間隔の下限・上限（ms）。中央値 65ms は 200wpm 相当。 */
   minGapMs: 40,
   maxGapMs: 90,
-  /** バーストの区切り。**debounce（120ms）を必ず越える。** */
+  /** バーストの区切り。debounce（120ms）を必ず超える値にする。 */
   pauseMs: 260,
-  /** 擬似乱数のシード。**両アームで同じ打鍵列にするために固定する。** */
+  /** 擬似乱数のシード。両アームで同じ打鍵列にするため固定する。 */
   seed: 0x4d_58_44_4e,
 } as const;
 
@@ -50,8 +47,8 @@ const PLAN = {
 const ALPHABET = 'marxdown ';
 
 /**
- * mulberry32。**シードから決まる列であることだけが要件**で、質は問わない。
- * `Math.random()` を使うと打鍵列がアームごとに変わり、比較にならない。
+ * mulberry32。要件はシードから決まる列であることだけで、乱数としての品質は問わない。
+ * `Math.random()` を使うと打鍵列がアームごとに変わり、比較できなくなる。
  */
 function seeded(seed: number): () => number {
   let a = seed >>> 0;
@@ -63,10 +60,6 @@ function seeded(seed: number): () => number {
     return ((t ^ (t >>> 14)) >>> 0) / 4_294_967_296;
   };
 }
-
-/* ------------------------------------------------------------------ */
-/* 記録                                                                */
-/* ------------------------------------------------------------------ */
 
 /**
  * 打鍵 1 つぶん。
@@ -81,7 +74,7 @@ interface KeySample {
   waitMs: number;
   /** `type` が返るまでの同期的な仕事。 */
   typeMs: number;
-  /** 打鍵が届いてから、エディターが描き直した直後のフレームまで。**予算はこれで見る。** */
+  /** 打鍵が届いてから、エディターが再描画した直後のフレームまで。性能予算の判定にはこの値を使う。 */
   responseMs: number;
   /** 予定時刻起点。`waitMs` を含む。 */
   latencyMs: number;
@@ -89,15 +82,15 @@ interface KeySample {
 
 /** プレビューの描き直し 1 回ぶん。 */
 interface PreviewSample {
-  /** 打ち終わり → 画面に出るフレーム。**OQ-15 の判定基準。** */
+  /** 入力を終えてから画面に反映されるフレームまで。OQ-15 の判定基準になる。 */
   totalMs: number;
   /** うち debounce（`live.ts` の 120ms）。差し引いて中身を見るために持つ。 */
   debounceMs: number;
-  /** パースを投げてから返るまで。**Worker では往復、メインでは占有時間。** */
+  /** パースを開始してから結果が返るまで。メインスレッドの占有時間にあたる。 */
   parseWaitMs: number;
   /** パイプライン自身の申告値。 */
   parseMs: number;
-  /** paint と enhance。**両アームで共通の項**なので、差の分母として要る。 */
+  /** paint と enhance の所要時間。両アームで共通する項であり、差を評価する際の基準になる。 */
   paintMs: number;
 }
 
@@ -122,10 +115,6 @@ function stats(values: number[]): Stats {
   };
 }
 
-/* ------------------------------------------------------------------ */
-/* 実行                                                                */
-/* ------------------------------------------------------------------ */
-
 function sleepUntil(target: number): Promise<void> {
   return new Promise((resolve) => {
     setTimeout(resolve, Math.max(0, target - performance.now()));
@@ -133,11 +122,11 @@ function sleepUntil(target: number): Promise<void> {
 }
 
 /**
- * 次のフレーム。**Monaco の描画の後に回ってくる。**
+ * 次のフレームを待つ。Monaco の描画の後に実行される。
  *
- * Monaco は編集の中で自分の描画を次のフレームへ予約する。rAF のコールバックは
- * 登録順に呼ばれるので、`type` の後に登録したこれは**その描画を終えた後**に走る。
- * 画面へ出るのはこの後（合成）で、そこは計測の外にある。
+ * Monaco は編集処理の中で自身の描画を次のフレームへ予約する。
+ * rAF のコールバックは登録順に呼ばれるため、`type` の後に登録したこの処理はその描画の後に実行される。
+ * 画面への反映（合成）はさらに後であり、計測の対象外である。
  */
 function nextFrame(): Promise<number> {
   return new Promise((resolve) => {
@@ -173,24 +162,23 @@ async function waitFor(predicate: () => boolean, timeoutMs: number): Promise<boo
 }
 
 /**
- * 計測を走らせ、結果を書き出して終わる。**戻ってこない**（プロセスが落ちる）。
+ * 計測を実行し、結果を書き出して終了する。この関数から制御は戻らない（プロセスが終了する）。
  *
- * 途中で立ち行かなくなったときも結果を書き出す（`error` を入れて）。
- * 黙って固まると、回している `scripts/bench-input.mjs` からは
- * タイムアウトとしか見えず、原因が読めない。
+ * 途中で継続できなくなった場合も `error` を入れて結果を書き出す。
+ * 応答が無いまま停止すると、実行元の `scripts/bench-input.mjs` からはタイムアウトとしか判別できず、原因を特定できない。
  */
 export async function runInputBench(): Promise<void> {
   const platform = getPlatform();
   const keys: KeySample[] = [];
   const previews: PreviewSample[] = [];
   let error: string | null = null;
-  /** 診断用。**描き直しが起きたか**と、そのときの表示モード。 */
+  /** 診断用。再描画が発生したかどうかと、そのときの表示モードを記録する。 */
   let renders = 0;
   let mode = 'unknown';
 
   try {
-    // **Split でしか意味がない。** プレビューが見えていない面では
-    // `live.ts` が描き直さない（N-PERF-05）。
+    // Split でのみ意味を持つ。
+    // プレビューが表示されていない面では `live.ts` が再描画しない（N-PERF-05）。
     if (viewStore.mode !== 'split') await setMode('split');
 
     const editor = await import('@/features/editor/lazy/editor');
@@ -248,10 +236,9 @@ export async function runInputBench(): Promise<void> {
       await sleepUntil(cursor);
     }
 
-    // 残っている描き直しを待つ。**バーストの数だけ来るとは限らない。**
-    // `huge.md` では 1 回の描き直しが区切りより長く、複数のバーストが
-    // 1 回にまとまる（`live.ts` の `again`）。数で待つと必ず取りこぼす。
-    // **増えなくなったら終わり**にする。
+    // 残っている再描画を待つ。回数はバーストの数と一致するとは限らない。
+    // `huge.md` では 1 回の再描画が区切りより長くかかり、複数のバーストが 1 回にまとまる（`live.ts` の `again`）。
+    // 回数で待つと取りこぼすため、増加が止まった時点で終了する。
     await settle(() => previews.length, 1500, 15_000);
   } catch (e) {
     error = e instanceof Error ? e.message : String(e);

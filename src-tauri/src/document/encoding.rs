@@ -5,6 +5,8 @@
 
 use serde::{Deserialize, Serialize};
 
+/// 扱えるエンコーディング。
+/// ここに無いものは UTF-8 として読み、不正なバイト列は U+FFFD に置換する（[`decode`]）。
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum Encoding {
@@ -50,8 +52,8 @@ const BOM_UTF16BE: &[u8] = &[0xFE, 0xFF];
 
 /// BOM を最優先に、無ければ chardetng で推定する。
 ///
-/// 中心ユースケースは「LLM が生成した UTF-8 のファイル」なので、
-/// UTF-8 として妥当ならそれ以上疑わない（推定の誤りで文字化けするより確実）。
+/// 中心ユースケースは「LLM が生成した UTF-8 のファイル」であるため、UTF-8 として妥当ならそれ以上推定しない。
+/// 推定を誤って文字化けさせるよりも確実である。
 pub fn detect(bytes: &[u8]) -> Detected {
     if bytes.starts_with(BOM_UTF8) {
         return Detected {
@@ -91,11 +93,11 @@ pub fn detect(bytes: &[u8]) -> Detected {
 
 /// エンコーディングを指定して読み直す（03.ux-spec/07-status-and-notifications.md §3「クリックでエンコーディング再解釈」）。
 ///
-/// `detect` を素通りさせるのは、再解釈を選ぶのが推定が外れたファイルを人が見て直すときだからである。
-/// そこでもう一度推定を混ぜると、指定する意味がなくなる。
-/// BOM だけは指定に従って見る。
-/// BOM は「そのエンコーディングである」という印であると同時に、保存時に付け直すかどうかの記録でもある（`encode`）。
-/// 剥がさずに本文へ混ぜると、先頭に見えない文字が出る。
+/// `detect` を経由しないのは、再解釈を選ぶのが推定の外れたファイルを人が見て指定し直す場面だからである。
+/// ここでもう一度推定を挟むと、指定する意味がなくなる。
+/// BOM だけは指定に従って判定する。
+/// BOM は当該エンコーディングであることを示すと同時に、保存時に付け直すかどうかの記録でもある（`encode`）。
+/// 取り除かずに本文へ含めると、先頭に不可視の文字が残る。
 pub fn force(bytes: &[u8], encoding: Encoding) -> Detected {
     let bom = match encoding {
         Encoding::Utf8 => bytes.starts_with(BOM_UTF8),

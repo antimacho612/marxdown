@@ -6,15 +6,13 @@
  * - 本文中の `#anchor` クリック（`links.ts`）
  * - `./other.md#section` で開いた直後の着地（`open.ts`）
  *
- * 片方に書いてもう一方から呼ぶと、`features/document/` と `features/preview/` の間に
- * 参照が生えて向きが濁る（`open-search.ts` と同じ理由）。
+ * 片方に実装してもう一方から呼ぶと、`features/document/` と `features/preview/` の間に参照が生じて依存の向きが崩れる（`open-search.ts` と同じ理由）。
  */
 
 /**
- * container の中の `id` / `name` へ飛ぶ。**見つかったかどうかを返す。**
+ * container の中の `id` / `name` へスクロールする。見つかったかどうかを返す。
  *
- * `getElementById` ではなく container 内を探すのは、シェル側の要素に
- * 同じ id があった場合に本文の外へ飛ばないようにするため。
+ * `getElementById` ではなく container の中を探すのは、シェル側の要素に同じ id があった場合に本文の外へ移動しないようにするためである。
  *
  * 段階的描画では、飛び先がまだ DOM に入っていないことがある。
  * 呼び出し側が「入り終わったらもう一度」と判断できるよう、失敗を返り値で伝える。
@@ -31,6 +29,7 @@ export function scrollToAnchor(container: HTMLElement, rawId: string): boolean {
   return true;
 }
 
+/** `decodeURIComponent` を通す。不正な入力ならそのまま返す。 */
 export function safeDecode(value: string): string {
   try {
     return decodeURIComponent(value);

@@ -6,14 +6,14 @@
  *
  * 部品の種類はスキーマの `kind` と型で結ばれている。
  * 真偽値の項目に `<select>` を当てたり、選択肢のラベルを 1 つ書き忘れたりすると型が通らない。
- * 網羅と重複は `layout.test.ts` が実体で見張る（型で書くとエラーが読めなくなる）。
+ * 網羅と重複は `layout.test.ts` が実行時に検証する（型で表現するとエラーの内容が読み取りにくくなる）。
  *
  * このファイルは遅延チャンク（`lazy/` の中）にあり、`ja` を引き込むためクリティカルパスからは参照しない。
  */
 import { ja } from '@/i18n/ja';
 import type { SettingKey, SettingKind, Settings } from '@/platform';
 
-/** 選択肢のラベル表。**キーはスキーマの `values` と過不足なく一致する必要がある。** */
+/** 選択肢のラベル表。キーはスキーマの `values` と過不足なく一致する必要がある。 */
 type Labels<K extends SettingKey> = Readonly<Record<Settings[K] & string, string>>;
 
 /**
@@ -37,10 +37,11 @@ type FieldOf<K extends SettingKey> = {
   key: K;
   label: string;
   description?: string;
-  /** 出す条件。**省略が通常**で、他の項目の値に従属するものだけが持つ。 */
+  /** 表示する条件。通常は省略し、他の項目の値に依存するものだけが指定する。 */
   visibleWhen?: (values: Settings) => boolean;
 } & WidgetFor<K>;
 
+/** 設定 1 項目の並べ方。キーごとに当てられる部品が型で決まる。 */
 export type FieldEntry = { [K in SettingKey]: FieldOf<K> }[SettingKey];
 
 /** エディターの中の節。項目が 22 個あるので、見出し無しでは探せない。 */
@@ -58,8 +59,10 @@ interface SampleEntry {
   sample: 'content' | 'editor';
 }
 
+/** カテゴリの中に並ぶ要素。項目・節の見出し・見本の 3 種類がある。 */
 export type Entry = FieldEntry | SectionEntry | SampleEntry;
 
+/** 左に並べるカテゴリ 1 つ。 */
 export interface Category {
   id: string;
   label: string;
@@ -75,7 +78,7 @@ function wrapsByColumn(values: Settings): boolean {
   return wrap === 'wordWrapColumn' || wrap === 'bounded';
 }
 
-/** 左のカテゴリ（ADR-0011）。**並びは「触る頻度」ではなく「対象の大きさ」順**。 */
+/** 左のカテゴリ（ADR-0011）。並び順は使用頻度ではなく、設定が影響する範囲の大きさに従う。 */
 export const LAYOUT = [
   {
     id: 'appearance',

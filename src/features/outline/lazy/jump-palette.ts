@@ -1,13 +1,12 @@
 /**
  * 見出しジャンプのパレットの出し入れ（`Ctrl+Shift+O`）。
  *
- * **このモジュールから先が遅延チャンク**（`assets/outline-*.js`）。
- * 起動時には存在せず、`Ctrl+Shift+O` を押して初めてロードされる
- * （06.roadmap/m1.5-shell-and-settings.md §3 の完了条件と同じ扱い）。
+ * このモジュールから先が遅延チャンクになる（`assets/outline-*.js`）。
+ * 起動時には読み込まれず、`Ctrl+Shift+O` を押した時点で初めて読み込まれる（06.roadmap/m1.5-shell-and-settings.md §3 の完了条件と同じ扱い）。
  *
- * 形は `features/settings/lazy/panel.ts` と同じで、理由も同じ。`App.svelte` に
- * `{#if open}` で埋め込むと、開閉のフラグとロード済みのコンポーネントを
- * シェルが持つことになる。**ここで自分をマウントすれば、シェルは何も知らないままでいられる。**
+ * 構造は `features/settings/lazy/panel.ts` と同じで、理由も同じである。
+ * `App.svelte` に `{#if open}` で埋め込むと、開閉のフラグと読み込み済みのコンポーネントをシェルが持つことになる。
+ * ここで自身をマウントすれば、シェルはこの機能を参照せずに済む。
  */
 import { mount, unmount } from 'svelte';
 
@@ -32,17 +31,18 @@ export function openJumpPalette(): void {
   opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
 
   host = document.createElement('div');
-  // body は 3 行の grid（`shell.css`）。**空の要素でも行が増えない**よう contents にする。
+  // body は 3 行の grid である（`shell.css`）。空の要素でも行が増えないよう `display: contents` にする。
   host.style.display = 'contents';
   document.body.append(host);
 
   instance = mount(JumpPalette, { target: host, props: { onclose: closeJumpPalette } });
 
-  // 開いている間だけ効くキー。**押されてもいない機能のキーをグローバルに残さない**
-  // （`search.ts` と同じ）。
+  // 開いている間だけ有効なキー。
+  // 使用していない機能のキーをグローバルに残さない（`search.ts` と同じ）。
   unbind = bindKeys([{ key: 'Escape', run: () => closeJumpPalette() }]);
 }
 
+/** パレットを閉じる。キーバインドも解除し、フォーカスを開く前の位置へ戻す。 */
 export function closeJumpPalette(): void {
   if (!instance || !host) return;
 

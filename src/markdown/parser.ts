@@ -10,21 +10,24 @@
  */
 import { DEFAULT_CHUNK_BLOCKS, DEFAULT_FIRST_CHUNK_BLOCKS, type ParseResult } from './protocol';
 
+/** チャンク分割の指定。省略時は `protocol.ts` の既定値を使う。 */
 export interface ParseOptions {
   firstChunkBlocks?: number;
   chunkBlocks?: number;
 }
 
+/** パースの窓口。実体は `createParser` が返す。 */
 export interface MarkdownParser {
   parse(text: string, options?: ParseOptions): Promise<ParseResult>;
   /** M3 でタブを閉じるときに呼ぶ（N-PERF-06）。いまは解放するものが無い。 */
   dispose(): void;
 }
 
+/** パーサを作る。起動時に 1 つだけ作り、`configureOpener` で注入する。 */
 export function createParser(): MarkdownParser {
   let nextId = 1;
-  // モジュールの解決を 1 度だけにする。**呼ぶたびに `import()` を書くと、
-  // 解決済みでもマイクロタスクが 1 つ余分に挟まる。**
+  // モジュールの解決を 1 度だけにする。
+  // 呼び出しのたびに `import()` を書くと、解決済みでもマイクロタスクが 1 つ余分に挟まる。
   const pipeline = import('./pipeline');
   const textStats = import('./text-stats');
 

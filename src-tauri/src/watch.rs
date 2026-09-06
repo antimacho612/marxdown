@@ -34,40 +34,37 @@ pub const EVENT_FILE_CHANGED: &str = "marxdown://file-changed";
 pub const EVENT_SETTINGS_CHANGED: &str = "marxdown://settings-changed";
 /// `preview.css` の外部変更（02.architecture/10-theming.md §3）。フロントは `read_custom_css` で読み直して当て直す。
 pub const EVENT_CUSTOM_CSS_CHANGED: &str = "marxdown://custom-css-changed";
-/// `editor.css` の外部変更（同上）。**本文用と別のイベントにする。**
+/// `editor.css` の外部変更（同上）。本文用と別のイベントにする。
 /// 片方を書き換えたときに、もう片方まで読み直す理由がない。
 pub const EVENT_EDITOR_CSS_CHANGED: &str = "marxdown://editor-css-changed";
 
 /// 変更が落ち着いたと見なすまでの時間（02.architecture/04-rust-responsibilities.md §4）。
 ///
-/// エディターの保存は 1 回の操作でも複数のイベントになる（一時ファイルの作成 → rename →
-/// 属性の変更）。ここを短くすると、書き換えの途中の状態を読みに行くことになる。
+/// エディターの保存は 1 回の操作でも複数のイベントになる（一時ファイルの作成、rename、属性の変更）。
+/// ここを短くすると、書き換えの途中の状態を読みに行くことになる。
 const DEBOUNCE: Duration = Duration::from_millis(300);
 
 /// デバウンスの掃き出し間隔。
 ///
-/// `notify-debouncer-full` の内部スレッドはこの間隔で起き、溜まったイベントのうち
-/// 静まったものを流す。**`None` を渡すとクレートの既定（`DEBOUNCE` の 1/4 = 75ms）**
-/// になるため、明示的に半分にして起こす回数を減らしている。
-/// 引き換えに通知が最大 `DEBOUNCE + TICK` まで遅れるが、
-/// 人が「変えたら反映された」と感じる範囲に収まる。
+/// `notify-debouncer-full` の内部スレッドはこの間隔で起動し、溜まったイベントのうち変更が落ち着いたものを流す。
+/// `None` を渡すとクレートの既定（`DEBOUNCE` の 1/4 = 75ms）になるため、明示的に半分にして起動回数を減らしている。
+/// 引き換えに通知が最大 `DEBOUNCE + TICK` まで遅れるが、変更が反映されたと感じられる範囲に収まる。
 const TICK: Duration = Duration::from_millis(150);
 
-/// 監視対象の役割。**パスではなく役割でイベントの宛先が決まる。**
+/// 監視対象の役割。パスではなく役割でイベントの宛先が決まる。
 ///
-/// カスタム CSS（02.architecture/10-theming.md §3）は変種を 1 つ足すだけで同じ仕組みに乗った。
-/// 監視・デバウンス・自己イベントの排除は共通のまま。
+/// カスタム CSS（02.architecture/10-theming.md §3）は変種を 1 つ追加するだけで同じ仕組みに載せられた。
+/// 監視・デバウンス・自己イベントの排除は共通である。
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Role {
     /// 開いているドキュメント（F-EDIT-16 / N-REL-02）。
     Document,
     /// `settings.json`（02.architecture/04-rust-responsibilities.md §5）。
     Settings,
-    /// `preview.css`（02.architecture/10-theming.md §3）。`settings.json` と同じディレクトリにあるので、
-    /// **どちらもまだ存在しないときは同じ親ディレクトリを共有して見る**
-    /// （`Registry::roots` がその対応を持っている）。
+    /// `preview.css`（02.architecture/10-theming.md §3）。
+    /// `settings.json` と同じディレクトリにあるため、どちらもまだ存在しないときは同じ親ディレクトリを共有して監視する（`Registry::roots` がその対応を保持する）。
     CustomCss,
-    /// `editor.css`（同上）。3 つ目の共有者になるが、仕組みは 1 つも増えない。
+    /// `editor.css`（同上）。3 つ目の共有者になるが、仕組みは増えない。
     EditorCss,
 }
 
@@ -82,11 +79,10 @@ impl Role {
     }
 }
 
-/// 何が起きたか。**消えたことも伝える。**
+/// 何が起きたか。削除されたことも伝える。
 ///
-/// 消えたファイルを読みに行かせないために、区別できる形で渡す必要がある
-/// （読みに行かせると「開けません」の通知が出て、直後に作り直されると
-/// もう一度出る、という往復になる）。
+/// 削除されたファイルを読みに行かせないよう、区別できる形で渡す必要がある。
+/// 読みに行かせると「開けません」の通知が出て、直後に作り直されるともう一度表示されることになる。
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "lowercase")]
 pub enum ChangeKind {
@@ -106,8 +102,8 @@ pub struct FileChange {
 
 /// 「最後に自分が知っているファイルの姿」。
 ///
-/// mtime だけで見ないのは、書き換えが同じミリ秒に収まったときに取りこぼすため。
-/// サイズも一緒に見ておくと、その多くを拾える。
+/// mtime だけで判定しないのは、書き換えが同じミリ秒に収まったときに検出できないためである。
+/// サイズも併せて見ることで、その多くを検出できる。
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 struct Stamp {
     mtime_ms: i64,
@@ -130,19 +126,17 @@ struct Target {
     seen: Option<Stamp>,
 }
 
-/// 監視対象の台帳。**Tauri を知らない。**
+/// 監視対象の台帳。Tauri に依存しない。
 ///
-/// 「どのイベントを流すか」の判断（`decide`）をここだけで完結させることで、
-/// 自己イベントの排除をユニットテストで確かめられるようにしてある。
+/// どのイベントを流すかの判断（`decide`）をここだけで完結させることで、自己イベントの排除をユニットテストで検証できるようにしてある。
 #[derive(Default)]
 struct Registry {
     /// キーは正規化済み絶対パス。
     targets: HashMap<PathBuf, Target>,
     /// notify に渡した監視元 → ぶら下がっている対象。
     ///
-    /// まだ存在しないファイルは親ディレクトリを見るため、1 つの監視元に
-    /// 複数の対象が乗りうる（`settings.json` と `custom.css` は同じディレクトリ）。
-    /// 片方を外したときにもう片方の監視まで落とさないために、対応を持っておく。
+    /// まだ存在しないファイルは親ディレクトリを監視するため、1 つの監視元に複数の対象が対応しうる（`settings.json` と `custom.css` は同じディレクトリ）。
+    /// 片方を解除したときにもう片方の監視まで解除しないよう、対応を保持しておく。
     roots: HashMap<PathBuf, HashSet<PathBuf>>,
 }
 
@@ -151,7 +145,7 @@ impl Registry {
     ///
     /// `None` を返す場合:
     /// - 監視していないパス（親ディレクトリごと見ているときの巻き添え）
-    /// - **実体が変わっていない**（＝自分が書いた直後 / 属性だけの変更）
+    /// - 実体が変わっていない（自分が書いた直後、または属性だけの変更）
     fn decide(&mut self, path: &Path) -> Option<(Role, FileChange)> {
         let key = self.resolve(path)?;
         let target = self.targets.get_mut(&key)?;
@@ -178,9 +172,9 @@ impl Registry {
 
     /// イベントのパスを、登録済みのキーに合わせる。
     ///
-    /// notify が返すパスは監視元から組み立てられるので、多くはそのまま一致する。
-    /// 一致しないときだけ正規化して引き直す（`document::canonicalize` は
-    /// 存在しないパスでも親まで解決するので、削除されたファイルでも引ける）。
+    /// notify が返すパスは監視元から組み立てられるため、多くはそのまま一致する。
+    /// 一致しないときだけ正規化して引き直す。
+    /// `document::canonicalize` は存在しないパスでも親まで解決するため、削除されたファイルでも引ける。
     fn resolve(&self, path: &Path) -> Option<PathBuf> {
         if self.targets.contains_key(path) {
             return Some(path.to_path_buf());
@@ -192,15 +186,15 @@ impl Registry {
 
 /// ファイル監視の入口。`AppState` とは別に `manage` する。
 ///
-/// 監視を作れなかった場合（OS 側の上限、権限）も**起動は止めない**。
-/// 再読み込みが自動で走らなくなるだけで、`F5` は変わらず使える。
+/// 監視を作れなかった場合（OS 側の上限、権限）も起動は止めない。
+/// 自動での再読み込みが行われなくなるだけで、`F5` は変わらず使える。
 pub struct FileWatcher {
     debouncer: Mutex<Option<Debouncer<RecommendedWatcher, RecommendedCache>>>,
     registry: Arc<Mutex<Registry>>,
 }
 
 impl FileWatcher {
-    /// 監視スレッドを立てる。**この時点ではまだ何も見ていない。**
+    /// 監視スレッドを立てる。この時点ではまだ監視対象を登録していない。
     pub fn start(app: AppHandle) -> Self {
         let registry: Arc<Mutex<Registry>> = Arc::default();
         let for_handler = Arc::clone(&registry);
@@ -209,7 +203,7 @@ impl FileWatcher {
             let events = match result {
                 Ok(events) => events,
                 Err(errors) => {
-                    // 監視が落ちても本文は画面に出たままなので、通知はしない。
+                    // 監視が停止しても本文は表示されたままであるため、通知はしない。
                     for e in errors {
                         eprintln!("[marxdown] ファイル監視のエラー: {e}");
                     }
@@ -217,8 +211,8 @@ impl FileWatcher {
                 }
             };
 
-            // 1 回の保存が複数のイベントになるので、パス単位に畳んでから判断する。
-            // ここで畳まないと、同じファイルに対して `metadata` を何度も叩くことになる。
+            // 1 回の保存が複数のイベントになるため、パス単位にまとめてから判断する。
+            // まとめないと、同じファイルに対して `metadata` を何度も呼ぶことになる。
             let mut paths = events
                 .iter()
                 .flat_map(|e| e.paths.clone())
@@ -236,7 +230,7 @@ impl FileWatcher {
         .ok();
 
         if debouncer.is_none() {
-            eprintln!("[marxdown] ファイル監視を開始できなかった（自動再読み込みは効かない）");
+            eprintln!("[marxdown] ファイル監視を開始できなかった（自動再読み込みは行われない）");
         }
 
         Self {
@@ -247,9 +241,8 @@ impl FileWatcher {
 
     /// 監視を始める。既に同じ役割で見ているパスなら何もしない。
     ///
-    /// ファイルがまだ存在しない場合は親ディレクトリを見て、届いたイベントを
-    /// パスで絞る。`settings.json` は最初の保存まで存在しないため、
-    /// ここが無いと「手で作った瞬間」を拾えない（02.architecture/04-rust-responsibilities.md §5）。
+    /// ファイルがまだ存在しない場合は親ディレクトリを監視し、届いたイベントをパスで絞り込む。
+    /// `settings.json` は最初の保存まで存在しないため、この扱いが無いと手で作成された時点を検出できない（02.architecture/04-rust-responsibilities.md §5）。
     pub fn watch(&self, path: &Path, role: Role) -> bool {
         let Ok(key) = document::canonicalize(path) else {
             return false;
@@ -303,8 +296,8 @@ impl FileWatcher {
 
     /// 監視をやめる。
     ///
-    /// **必ず経路を用意しておく。** タブ（M3）が入ると開いたぶんだけ監視が積算し、
-    /// 常駐しているぶん解放されないまま残る（ADR-0004 / 02.architecture/04-rust-responsibilities.md §4）。
+    /// 解除の経路は必ず用意しておく。
+    /// タブ（M3）が入ると開いた数だけ監視が積算し、常駐しているため解放されないまま残る（ADR-0004 / 02.architecture/04-rust-responsibilities.md §4）。
     pub fn unwatch(&self, path: &Path) {
         let Ok(key) = document::canonicalize(path) else {
             return;
@@ -323,7 +316,7 @@ impl FileWatcher {
             return;
         };
 
-        // 監視元を共有している対象が残っているなら、notify への解除はまだできない。
+        // 監視元を共有している対象が残っている間は、notify への解除はできない。
         let empty = match registry.roots.get_mut(&target.root) {
             Some(paths) => {
                 paths.remove(key);
@@ -341,8 +334,8 @@ impl FileWatcher {
 
     /// 「いま開いているドキュメント」を差し替える（02.architecture/04-rust-responsibilities.md §4「タブを閉じたらウォッチャを解除する」）。
     ///
-    /// M3 でタブが入るまで、開いているドキュメントは 1 つしかない。
-    /// **前のファイルの監視をここで必ず外す**ことで、開き直すたびに監視が積み上がらない。
+    /// M3 でタブが入るまで、開いているドキュメントは 1 つだけである。
+    /// 前のファイルの監視をここで必ず解除することで、開き直すたびに監視が積み上がらない。
     pub fn watch_document(&self, path: &Path) -> bool {
         let keep = document::canonicalize(path).ok();
 
@@ -364,7 +357,7 @@ impl FileWatcher {
 
     /// 自分がファイルを書いた直後に呼ぶ（02.architecture/04-rust-responsibilities.md §4 の「直前の保存 mtime と照合」）。
     ///
-    /// これを忘れると、設定 UI から保存するたびに「外部で変更された」が飛ぶ。
+    /// これを忘れると、設定 UI から保存するたびに「外部で変更された」通知が発生する。
     pub fn note_self_write(&self, path: &Path) {
         let Ok(key) = document::canonicalize(path) else {
             return;

@@ -2,8 +2,8 @@
   ライトペイン（03.ux-spec/06-panes.md §3）。
   `shell.css` の `grid-template-areas` には最初から `rightpane` 列があり（列幅 `auto` で要素を置かなければ 0 幅に潰れる）、このコンポーネントを足すだけで展開状態になる。
 
-  §4 の「ペイン」と「ビュー」の分離により、ここは枠と幅だけを持ち中身を知らない（中身はスニペットで `App.svelte` が渡す）。
-  直接 `Outline` を import していた頃は `panes → outline → panes` の参照の輪ができていたため、この形にしてある。
+  §4 の「ペイン」と「ビュー」の分離により、ここは枠と幅だけを持ち、中身は関知しない（中身はスニペットとして `App.svelte` が渡す）。
+  直接 `Outline` を import していた時期は `panes → outline → panes` の循環参照が生じていたため、この形にしてある。
 -->
 <script lang="ts">
   import type { Snippet } from 'svelte';
@@ -14,7 +14,7 @@
   import { PANE_WIDTH_DEFAULT, PANE_WIDTH_MAX, PANE_WIDTH_MIN, setRightPaneWidth } from './panes';
 
   interface Props {
-    /** ペインに入れるもの。**何であるかは、ここでは決めない。** */
+    /** ペインに表示する内容。何を表示するかはここでは決めない。 */
     children: Snippet;
   }
 
@@ -27,7 +27,7 @@
 
   /** ドラッグ開始時の位置と幅。ドラッグ中の 1 フレームごとに読むだけなので状態にしない。 */
   let dragFrom: { x: number; width: number } | null = null;
-  /** rAF の予約。**間引かないと 1 フレームに複数回レイアウトが走る**。 */
+  /** rAF の予約。間引かないと 1 フレームに複数回レイアウトが発生する。 */
   let pending = 0;
 
   function onPointerDown(event: PointerEvent): void {
@@ -66,7 +66,7 @@
    * キーボードでも幅を変えられるようにする（03.ux-spec/10-accessibility.md）。
    *
    * 左右キーで幅を変え、`Home` で既定に戻す。
-   * ポインタでしか触れない要素を増やさない。
+   * ポインタ操作でしか扱えない要素を増やさない。
    */
   function onKeyDown(event: KeyboardEvent): void {
     switch (event.key) {
@@ -93,13 +93,10 @@
 <aside class="mx-rightpane" style:width="{width}px">
   <!--
     掴む場所。ペインの左端に重ねてある。
-    `aria-*` を付けているのは、キーボードで触れる以上、いまの幅が読めないと
-    「増えたのか減ったのか」が分からないため。
+    `aria-*` を付けているのは、キーボードで操作できる以上、現在の幅が読み上げられないと増減を判断できないためである。
 
-    ロールが `separator` ではなく `slider` なのは、**フォーカスできる
-    separator（ウィンドウスプリッタ）を Svelte の a11y 検査が
-    「押せない要素」と見なす**ため。伝えたいこと（いくつからいくつの範囲の、
-    いまいくつか）は slider のほうが素直に読み上げられる。
+    ロールが `separator` ではなく `slider` なのは、フォーカス可能な separator（ウィンドウスプリッタ）を Svelte の a11y 検査が操作できない要素と判定するためである。
+    伝えたい内容（取りうる範囲と現在値）も slider のほうが読み上げに適している。
   -->
   <div
     class="mx-rightpane__resizer"
@@ -140,8 +137,9 @@
   }
 
   /*
-   * 掴む場所は**見えないが太い**。境界線は 1px だが、1px を狙わせるのは操作として辛い。
-   * ペインの外側（本文側）へはみ出させると本文のクリックを奪うので、内側に置く。
+   * ドラッグ領域は表示されないが、境界線の 1px より広く取る。
+   * 1px を対象に操作させるのは難しいためである。
+   * ペインの外側（本文側）へはみ出させると本文のクリックを妨げるため、内側に配置する。
    */
   .mx-rightpane__resizer {
     position: absolute;

@@ -31,22 +31,21 @@ import { monaco } from './monaco';
 
 const { KeyCode, KeyMod } = monaco;
 
-/** `editor.trigger` に渡す名前。**この文字列に意味がある**（`FALLTHROUGH` の但し書き）。 */
+/** `editor.trigger` に渡す名前。この文字列自体に意味がある（`FALLTHROUGH` の但し書きを参照）。 */
 const KEYBOARD_SOURCE = 'keyboard';
 
 /**
- * Monaco から剥がすキー。**アプリ側が握るもの。**
+ * Monaco から解除するキー。アプリ側で処理するものを列挙する。
  *
  * → [03.ux-spec > keybindings §4](../../../docs/03.ux-spec/04-keybindings.md)
  */
 const REMOVED: { keybinding: number; why: string }[] = [
-  // 検索を開くのはアプリの仕事。**見ている面によって開くものが変わる**ので
-  // （Preview なら本文検索 / Edit ならエディター検索）、エディターが自分で受けると
-  // 二重に開く（`features/mode/find.ts`）。
+  // 検索を開く処理はアプリ側が担当する。
+  // 表示中の面によって開く対象が変わる（Preview なら本文検索、Edit ならエディター検索）ため、エディターが自分で受け取ると二重に開く（`features/mode/find.ts`）。
   { keybinding: KeyMod.CtrlCmd | KeyCode.KeyF, why: 'アプリの Ctrl+F が面ごとに振り分ける' },
   { keybinding: KeyMod.CtrlCmd | KeyCode.KeyH, why: 'Ctrl+H も同じ経路を通す' },
 
-  // Markdown の書式に使う（§3）。下の `MARKDOWN` が持つ。
+  // Markdown の書式に使う（§3）。割り当ては下の `MARKDOWN` が持つ。
   { keybinding: KeyMod.CtrlCmd | KeyMod.Shift | KeyCode.KeyL, why: 'Ctrl+Shift+L は箇条書きの切替' },
   { keybinding: KeyMod.CtrlCmd | KeyCode.Enter, why: 'Ctrl+Enter はタスクリストのチェック切替' },
 ];
@@ -57,9 +56,9 @@ const REMOVED: { keybinding: number; why: string }[] = [
  * `Ctrl+B` が太字なのは §1 の決定（Markdown First > Familiar）。
  * VS Code のサイドバー切替は `Ctrl+Shift+B` へ移してある。
  *
- * > **`Ctrl+K` は Monaco では和音の頭でもある**（`Ctrl+K Ctrl+C` = 行コメントなど）。
- * > `addCommand` で足したキーは「ユーザーの割り当て」として既定より優先されるので、
- * > 和音へ入らずリンク挿入が動く。§2 で和音を採らないと決めているので、これでよい。
+ * `Ctrl+K` は Monaco では和音の先頭でもある（`Ctrl+K Ctrl+C` は行コメントなど）。
+ * `addCommand` で追加したキーはユーザーの割り当てとして既定より優先されるため、和音には入らずリンク挿入が実行される。
+ * §2 で和音を採用しないと決めているため、この挙動でよい。
  */
 const MARKDOWN: { keybinding: number; edit: MarkdownEdit }[] = [
   { keybinding: KeyMod.CtrlCmd | KeyCode.KeyB, edit: toggleBold },
@@ -74,8 +73,8 @@ const MARKDOWN: { keybinding: number; edit: MarkdownEdit }[] = [
   { keybinding: KeyMod.CtrlCmd | KeyMod.Shift | KeyCode.KeyN, edit: toggleOrderedList },
   { keybinding: KeyMod.CtrlCmd | KeyCode.Enter, edit: toggleTaskCheck },
 
-  // 見出しは `Ctrl+1`〜`9` がタブ切り替えに要るので `Ctrl+Alt+n`（§3 の但し書き）。
-  // **1〜6 は設定であってトグルではない**（`format.ts`）。
+  // 見出しは `Ctrl+1`〜`9` をタブ切り替えに使うため `Ctrl+Alt+n` に割り当てる（§3 の但し書き）。
+  // 1〜6 はレベルの設定であり、トグルではない（`format.ts`）。
   ...[1, 2, 3, 4, 5, 6].map((level) => ({
     keybinding: KeyMod.CtrlCmd | KeyMod.Alt | (KeyCode.Digit0 + level),
     edit: setHeading(level),
@@ -84,20 +83,17 @@ const MARKDOWN: { keybinding: number; edit: MarkdownEdit }[] = [
 ];
 
 /**
- * 手を引いたら**既定の動作へ渡す**もの。
+ * コマンドが処理しなかった場合に既定の動作へ渡すもの。
  *
- * `Tab` はリストの行でなければただのインデント、`Enter` はリストの中でなければ
- * ただの改行でなければならない。CodeMirror では `false` を返せば次のバインドへ
- * 落ちたが、**Monaco のキーバインドには「次」が無い。** 既定の動作を
- * `editor.trigger` で自分で呼ぶことで同じ形にする。
+ * `Tab` はリストの行でなければ通常のインデント、`Enter` はリストの中でなければ通常の改行になる必要がある。
+ * Monaco のキーバインドには次の候補へ処理を渡す仕組みが無いため、既定の動作を `editor.trigger` で明示的に呼ぶ。
  *
- * `handler` は `browser/coreCommands.js` が登録している id。
+ * `handler` は `browser/coreCommands.js` が登録している id である。
  *
- * > **`source` は `'keyboard'` でなければならない。**
- * > `CursorsController.type()` はこの文字列を見ており、`'keyboard'` のときだけ
- * > `typeWithInterceptors` を通る（`common/cursor/cursor.js`）。別の名前を渡すと
- * > **`Enter` が `autoIndent: 'keep'` を通らず、前の行のインデントを継がない。**
- * > 実測で気づいた（`dev:web` で `  段落` の末尾から改行して桁 1 に落ちた）。
+ * `source` は `'keyboard'` でなければならない。
+ * `CursorsController.type()` はこの文字列を参照しており、`'keyboard'` のときだけ `typeWithInterceptors` を通る（`common/cursor/cursor.js`）。
+ * 別の名前を渡すと `Enter` が `autoIndent: 'keep'` を通らず、前の行のインデントを引き継がない
+ * （`dev:web` で `  段落` の末尾から改行したときに桁 1 になることで確認した）。
  */
 const FALLTHROUGH: { keybinding: number; edit: MarkdownEdit; handler: string; payload?: unknown }[] = [
   { keybinding: KeyCode.Tab, edit: indentList, handler: 'tab' },
@@ -115,20 +111,19 @@ function commandFor(editor: monaco.editor.IStandaloneCodeEditor, edit: MarkdownE
 }
 
 /**
- * `editor.addCommand` の第 3 引数（precondition）。**これが無いと検索ボックスまで奪う**（#54）。
+ * `editor.addCommand` の第 3 引数（precondition）。指定しないと検索ボックスの入力まで横取りする（#54）。
  *
- * `addCommand` はデフォルトで無条件（どこにフォーカスがあっても発火）になる。
- * Find ウィジェットの入力欄は `#mx-editor` の中にある別の `<textarea>` であって、
- * 本文の入力面ではない（`open-search.ts` の但し書きと同じ理由）。ここを縛らないと、
- * ウィジェットの中で `Backspace` を押しても文字は消えず、代わりに本文が削れる。
+ * `addCommand` は既定で無条件（どこにフォーカスがあっても発火）になる。
+ * Find ウィジェットの入力欄は `#mx-editor` の中にある別の `<textarea>` であり、本文の入力面ではない（`open-search.ts` の但し書きと同じ理由）。
+ * 条件を付けないと、ウィジェットの中で `Backspace` を押しても文字は削除されず、本文が削除される。
  *
- * Monaco 自身の `deleteLeft` 等はこの区別を `textInputFocus`（`_editor.hasTextFocus()`）で
- * 行っている。`editorTextFocus` はほぼ同じ判定で、こちらの一覧に揃えてある。
+ * Monaco 自身の `deleteLeft` などはこの区別を `textInputFocus`（`_editor.hasTextFocus()`）で行っている。
+ * `editorTextFocus` はほぼ同じ判定であり、こちらの一覧に揃えてある。
  */
 const EDITOR_TEXT_FOCUS = 'editorTextFocus';
 
 /**
- * キーを載せる。**`mountEditor` から 1 回だけ呼ぶ。**
+ * キーを登録する。`mountEditor` から 1 回だけ呼ぶ。
  *
  * `addKeybindingRules` はグローバル（エディターごとではない）だが、
  * エディターは 1 つしか作らないので問題にならない（`editor.ts`）。

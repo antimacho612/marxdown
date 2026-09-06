@@ -1,6 +1,6 @@
 //! IPC コマンド境界（02.architecture/04-rust-responsibilities.md §1）。
 //!
-//! ここに置くのは**薄いアダプタだけ**。実際の処理は `document` / `scope` にある。
+//! ここに置くのは薄いアダプタだけで、実際の処理は `document` / `scope` にある。
 //! フロントからの呼び出しは Platform 層（`src/platform/`）に閉じ込められている。
 
 use std::path::{Path, PathBuf};
@@ -21,9 +21,8 @@ use crate::watch::FileWatcher;
 
 /// ファイルを読む。
 ///
-/// `encoding` はエンコーディングの指定（03.ux-spec/07-status-and-notifications.md §3
-/// 「クリックでエンコーディング再解釈」）。**省略が通常の経路**で、
-/// そのときだけ推定が走る。
+/// `encoding` はエンコーディングの指定（03.ux-spec/07-status-and-notifications.md §3「クリックでエンコーディング再解釈」）。
+/// 省略が通常の経路であり、そのときだけ推定を実行する。
 #[tauri::command]
 pub fn read_document(
     app: tauri::AppHandle,
@@ -33,8 +32,8 @@ pub fn read_document(
 ) -> CoreResult<DocumentPayload> {
     let payload = document::read(Path::new(&path), encoding)?;
     // 開いたファイルの親ディレクトリをアセットの許可スコープに加える。
-    // 自前の検証（scope.rs）だけでなく、Tauri 本体の asset プロトコルスコープにも
-    // 反映しないと、resolve_asset の検証を通っても実際の asset:// 配信が 403 になる。
+    // 自前の検証（scope.rs）だけでなく Tauri 本体の asset プロトコルスコープにも反映しないと、
+    // resolve_asset の検証を通っても実際の asset:// 配信が 403 になる。
     if let Some(parent) = Path::new(&payload.meta.path).parent() {
         state.allow_asset_root(parent.to_path_buf());
         let _ = app.asset_protocol_scope().allow_directory(parent, true);
@@ -42,15 +41,17 @@ pub fn read_document(
     Ok(payload)
 }
 
+/// ファイルを保存する（F-EDIT-14 / N-REL-01）。
+///
+/// `req.expected_mtime_ms` がディスク上の mtime と一致しないときは書き込まず `Conflict` を返す。
 #[tauri::command]
 pub fn write_document(
     watcher: State<'_, FileWatcher>,
     req: WriteRequest,
 ) -> CoreResult<SaveResult> {
     let result = document::write(&req)?;
-    // 保存した直後のイベントは自分のもの（02.architecture/04-rust-responsibilities.md §4）。
-    // **編集機能が入るまでここは通らない**が、監視を入れた時点で
-    // 対にしておかないと、M2 で保存するたびに再読み込みが走る。
+    // 保存した直後のイベントは自分が発生させたものである（02.architecture/04-rust-responsibilities.md §4）。
+    // 監視を入れた時点で対にしておかないと、保存するたびに再読み込みが発生する。
     if matches!(result, SaveResult::Saved { .. }) {
         watcher.note_self_write(Path::new(&req.path));
     }
@@ -78,7 +79,7 @@ pub fn resolve_asset(
     };
 
     let mut roots = state.asset_roots();
-    // base_dir 自体も許可スコープとして扱う（開いているファイルの親）
+    // base_dir 自体も許可スコープとして扱う（開いているファイルの親ディレクトリ）
     if let Ok(b) = dunce::canonicalize(&base) {
         if !roots.contains(&b) {
             roots.push(b);
@@ -86,8 +87,8 @@ pub fn resolve_asset(
     }
 
     let resolved = scope::resolve_within(&roots, &candidate)?;
-    // 自前の検証を通っただけでは asset:// は配信されない。Tauri 本体の
-    // asset プロトコルスコープにも解決先のディレクトリを許可しておく。
+    // 自前の検証を通っただけでは asset:// は配信されない。
+    // Tauri 本体の asset プロトコルスコープにも解決先のディレクトリを許可しておく。
     if let Some(parent) = resolved.parent() {
         let _ = app.asset_protocol_scope().allow_directory(parent, true);
     }
@@ -99,14 +100,14 @@ pub fn resolve_asset(
 /// `@tauri-apps/plugin-dialog` を入れず Rust 側で包んでいるのは、`open_external` と同じ理由。
 /// フロントの依存が増えず、クリティカルパスの重さにも響かない（04.tech-stack/06-rust.md §1）。
 ///
-/// 返すのは**正規化済み絶対パス**。ここで揃えておかないと、
-/// 最近開いたファイル（F-OPEN-09）に表記の違う同じファイルが二重に積もる。
+/// 返すのは正規化済み絶対パスである。
+/// ここで揃えておかないと、最近開いたファイル（F-OPEN-09）に表記の違う同じファイルが重複して蓄積する。
 #[tauri::command]
 pub async fn pick_file(window: Window) -> CoreResult<Option<String>> {
     use tauri_plugin_dialog::DialogExt;
 
-    // 容量 1 の一度きりの受け口。ダイアログのコールバックは UI スレッドで走るので、
-    // ここで待つ側をブロックしない `try_send` を使う。
+    // 容量 1 の一度きりのチャネル。
+    // ダイアログのコールバックは UI スレッドで実行されるため、待つ側をブロックしない `try_send` を使う。
     let (tx, mut rx) = tauri::async_runtime::channel(1);
 
     window
@@ -158,7 +159,7 @@ pub async fn pick_save_path(
         .add_filter("Markdown", &["md", "markdown"])
         .add_filter("すべてのファイル", &["*"]);
 
-    // 開いているファイルの場所と名前を初期値にする。何も開いていなければ OS の既定。
+    // 開いているファイルの場所と名前を初期値にする。何も開いていなければ OS の既定に従う。
     if let Some(hint) = suggested.as_deref() {
         let path = Path::new(hint);
         if let Some(dir) = path.parent() {
@@ -188,28 +189,23 @@ pub async fn pick_save_path(
     Ok(Some(path.display().to_string()))
 }
 
-/* ------------------------------------------------------------------ */
-/* ウィンドウ操作（カスタムタイトルバー / 03.ux-spec/01-screen-layout.md §1）             */
-/* ------------------------------------------------------------------ */
-
 // `decorations(false)` にしたので、`─ □ ✕` はフロントが描いた `<button>` である。
 // 押されたときの実体をここに置く。
 //
-// **JS の `@tauri-apps/api/window` は使わない。** `pick_file` / `open_external` と
-// 同じ判断で（04.tech-stack/06-rust.md §2）、フロントの依存とクリティカルパスの重さを
-// 増やさないため。capabilities に window プラグインの権限を足さずに済むのも利点で、
-// 「タイトルバーのために任意のウィンドウ操作を JS へ開放する」ことにならない。
+// JS の `@tauri-apps/api/window` は使わない。
+// `pick_file` / `open_external` と同じ判断であり（04.tech-stack/06-rust.md §2）、フロントの依存とクリティカルパスのコストを増やさないためである。
+// capabilities に window プラグインの権限を追加せずに済むため、タイトルバーのために任意のウィンドウ操作を JS へ開放することにもならない。
 //
-// ドラッグとダブルクリックだけは例外で、Tauri 本体が注入する
-// `data-tauri-drag-region` の処理に任せている（`capabilities/default.json`）。
-// マウスの押し下げからネイティブのドラッグへ引き継ぐ部分は、
-// 自前で書くと二重クリックの取りこぼしまで作り直すことになる。
+// ドラッグとダブルクリックだけは例外で、Tauri 本体が注入する `data-tauri-drag-region` の処理に任せている（`capabilities/default.json`）。
+// マウスの押し下げからネイティブのドラッグへ引き継ぐ部分は、自前で実装すると二重クリックの取りこぼしまで作り直すことになる。
 
+/// 最小化する。タイトルバーの `─` から呼ぶ。
 #[tauri::command]
 pub fn window_minimize(window: Window) {
     let _ = window.minimize();
 }
 
+/// 最大化と復元を切り替える。タイトルバーの `□` / `❐` から呼ぶ。
 #[tauri::command]
 pub fn window_toggle_maximize(window: Window) {
     let _ = if window.is_maximized().unwrap_or(false) {
@@ -221,18 +217,16 @@ pub fn window_toggle_maximize(window: Window) {
 
 /// 閉じる。
 ///
-/// `close()` は `CloseRequested` を経由するので、ウィンドウ位置の保存（F-CONF-10）は
-/// ネイティブの `✕` と同じ経路を通る。**トレイ格納に化けるのもここ**
-/// （`window.closeBehavior`）なので、フロントから直接 `exit` を呼ばせない。
+/// `close()` は `CloseRequested` を経由するため、ウィンドウ位置の保存（F-CONF-10）はネイティブの `✕` と同じ経路を通る。
+/// トレイ格納へ分岐するのもここであり（`window.closeBehavior`）、フロントから直接 `exit` を呼ばせない。
 #[tauri::command]
 pub fn window_close(window: Window) {
     let _ = window.close();
 }
 
-/// 最大化中か。ウィンドウ操作ボタンの絵柄（□ / ❐）を決めるためだけに使う。
+/// 最大化中か。ウィンドウ操作ボタンの表示（□ / ❐）を決めるためだけに使う。
 ///
-/// 以降の変化は `marxdown://window-maximized` が push するので、
-/// フロントがこれを呼ぶのは購読を始める 1 回だけ。
+/// 以降の変化は `marxdown://window-maximized` が通知するため、フロントがこれを呼ぶのは購読を始める 1 回だけである。
 #[tauri::command]
 pub fn window_is_maximized(window: Window) -> bool {
     window.is_maximized().unwrap_or(false)
@@ -240,10 +234,9 @@ pub fn window_is_maximized(window: Window) -> bool {
 
 /// 最大化ボタンの矩形（論理 px）を Windows へ答えられるようにする。
 ///
-/// `decorations: false` にすると Windows はボタンの位置を知らず、
-/// Snap Layouts のフライアウトが出ない（`snap_layouts.rs`）。
-/// **どこにあるかを知っているのはフロントだけ**なので、レイアウトが変わるたびに
-/// こちらへ知らせてもらう。Windows 以外では何もしない。
+/// `decorations: false` にすると Windows はボタンの位置を把握できず、Snap Layouts のフライアウトが表示されない（`snap_layouts.rs`）。
+/// 位置を知っているのはフロントだけであるため、レイアウトが変わるたびに通知してもらう。
+/// Windows 以外では何もしない。
 #[tauri::command]
 pub fn set_snap_layouts_target(app: tauri::AppHandle, x: f64, y: f64, width: f64, height: f64) {
     #[cfg(windows)]
@@ -253,15 +246,11 @@ pub fn set_snap_layouts_target(app: tauri::AppHandle, x: f64, y: f64, width: f64
     let _ = (app, x, y, width, height);
 }
 
-/* ------------------------------------------------------------------ */
-/* 永続化ストア（F-OPEN-09 / F-VIEW-11 / F-CONF-10）                     */
-/* ------------------------------------------------------------------ */
-
 /// 最近開いたファイルに 1 件積む（F-OPEN-09）。更新後の一覧を返す。
 ///
-/// 一覧を返り値にしているのは、追加のたびにフロントが読み直す往復を省くため。
-/// 積むのは**正規化済みの絶対パス**に限る。相対パスのまま貯めると、
-/// cwd の違う 2 回目の起動で同じファイルが別エントリとして増える。
+/// 一覧を返り値にしているのは、追加のたびにフロントが読み直す往復を省くためである。
+/// 追加するのは正規化済みの絶対パスに限る。
+/// 相対パスのまま保持すると、cwd の異なる 2 回目の起動で同じファイルが別のエントリとして増える。
 #[tauri::command]
 pub fn store_push_recent(
     app: tauri::AppHandle,
@@ -274,9 +263,8 @@ pub fn store_push_recent(
         s.push_recent(resolved.display().to_string(), now);
         s.recent.clone()
     });
-    // トレイメニューは作った時点の内容で固まる。開くたびに作り直すフックが
-    // 無いので、ストアを更新した側から組み直す（`tray.rs` の `refresh`）。
-    // 頻度は「ファイルを開いたとき」だけで、アイドル時のコストはゼロ。
+    // トレイメニューは生成した時点の内容で固定される。
+    // 開くたびに作り直すフックが無いため、ストアを更新した側から組み直す（`tray.rs` の `refresh`）。
     crate::tray::refresh(&app);
     Ok(recent)
 }
@@ -301,8 +289,8 @@ pub fn store_remove_recent(
 
 /// 表示倍率を保存する（F-VIEW-11）。
 ///
-/// 反映自体はフロントが即座に行う。ここは永続化だけの担当なので、
-/// フロント側でデバウンスしてから呼ぶこと（`Ctrl+=` の連打で毎回書かない）。
+/// 反映自体はフロントが即座に行い、ここは永続化だけを担当する。
+/// `Ctrl+=` の連打で毎回書き込まないよう、フロント側でデバウンスしてから呼ぶこと。
 #[tauri::command]
 pub fn store_set_zoom(state: State<'_, AppState>, zoom: f64) {
     let clamped = if zoom.is_finite() {
@@ -315,11 +303,11 @@ pub fn store_set_zoom(state: State<'_, AppState>, zoom: f64) {
 
 /// ペインの開閉と幅を保存する（03.ux-spec/06-panes.md §3 / 02.architecture/04-rust-responsibilities.md §5）。
 ///
-/// **倍率と同じ扱い。** 反映はフロントが即座に行い、ここは永続化だけを担当する。
+/// 倍率と同じ扱いである。反映はフロントが即座に行い、ここは永続化だけを担当する。
 /// ドラッグ中に毎フレーム呼ばないよう、フロント側でデバウンスしてから呼ぶこと。
 ///
-/// 左右をまとめて受け取るのは、`state.json` に載る形（`Panes`）と
-/// 呼び出しの単位を一致させるため。左（Explorer / M3）が入っても口は増えない。
+/// 左右をまとめて受け取るのは、`state.json` に載る形（`Panes`）と呼び出しの単位を一致させるためである。
+/// 左（Explorer / M3）が入ってもコマンドは増えない。
 #[tauri::command]
 pub fn store_set_panes(state: State<'_, AppState>, panes: store::Panes) {
     let sane = panes.sanitized();
@@ -328,8 +316,8 @@ pub fn store_set_panes(state: State<'_, AppState>, panes: store::Panes) {
 
 /// Split の分割比を保存する（03.ux-spec/03-split-mode.md §1）。
 ///
-/// `store_set_panes` と同じく**ドラッグ中は呼ばれない**。離した時点で 1 回だけ
-/// （`features/view/split.ts`）。丸めは Rust 側でも行う（手で書いた `state.json` 対策）。
+/// `store_set_panes` と同じくドラッグ中は呼ばれず、離した時点で 1 回だけ呼ばれる（`features/view/split.ts`）。
+/// 丸めは Rust 側でも行う（手で書いた `state.json` への対策）。
 #[tauri::command]
 pub fn store_set_split(state: State<'_, AppState>, split: f64) {
     let sane = if split.is_finite() {
@@ -340,15 +328,11 @@ pub fn store_set_split(state: State<'_, AppState>, split: f64) {
     state.update_store(|s| s.split = sane);
 }
 
-/* ------------------------------------------------------------------ */
-/* ユーザー設定（F-CONF-03 / 02.architecture/04-rust-responsibilities.md §5）                    */
-/* ------------------------------------------------------------------ */
-
 /// 設定を読み直す。
 ///
-/// **起動時の読み込みはここを通らない。** 設定は bootstrap に丸ごと載っており、
-/// フロントが取りに行く経路は無い（02.architecture/04-rust-responsibilities.md §5）。ここが要るのは、外部エディターで
-/// 編集されたあとの読み直し（ファイル監視）と設定 UI の再表示。
+/// 起動時の読み込みはここを通らない。
+/// 設定は bootstrap にすべて載っており、フロントが取得する経路は無い（02.architecture/04-rust-responsibilities.md §5）。
+/// このコマンドが必要なのは、外部エディターで編集された後の読み直し（ファイル監視）と設定 UI の再表示である。
 #[tauri::command]
 pub fn read_settings(state: State<'_, AppState>) -> settings::SettingsLoad {
     state.reload_settings()
@@ -357,7 +341,7 @@ pub fn read_settings(state: State<'_, AppState>) -> settings::SettingsLoad {
 /// 変更したキーだけを書き戻す。更新後の設定全体を返す。
 ///
 /// `null` を渡したキーは削除する（既定値に戻る）。未知のキーは保持される。
-/// **`settings.json` が読めない状態では拒否する**（02.architecture/04-rust-responsibilities.md §5）。
+/// `settings.json` が読めない状態では拒否する（02.architecture/04-rust-responsibilities.md §5）。
 #[tauri::command]
 pub fn write_settings(
     state: State<'_, AppState>,
@@ -365,8 +349,8 @@ pub fn write_settings(
     patch: serde_json::Map<String, serde_json::Value>,
 ) -> CoreResult<settings::Settings> {
     let next = state.patch_settings(patch)?;
-    // 自分で書いた直後のイベントを弾く（02.architecture/04-rust-responsibilities.md §4）。
-    // これが無いと、設定 UI から保存するたびに「外部で変更された」が跳ね返ってくる。
+    // 自分で書いた直後のイベントを除外する（02.architecture/04-rust-responsibilities.md §4）。
+    // これが無いと、設定 UI から保存するたびに「外部で変更された」通知が発生する。
     if let Some(path) = state.settings_path() {
         watcher.note_self_write(path);
     }
@@ -375,9 +359,9 @@ pub fn write_settings(
 
 /// `settings.json` を OS の既定アプリで開く（F-CONF-06 / 03.ux-spec/07-status-and-notifications.md §2）。
 ///
-/// **パスを引数に取らない。** 開く先は Rust 側が知っている 1 か所だけであり、
-/// 任意のパスを受け取る `open_local_file` と違って許可範囲の判断が要らない。
-/// 壊れた設定を通知バーの `ファイルを開く` から直せるようにするための口。
+/// パスを引数に取らない。
+/// 開く先は Rust 側が知っている 1 か所だけであり、任意のパスを受け取る `open_local_file` と違って許可範囲の判断が不要である。
+/// 壊れた設定を通知バーの「ファイルを開く」から修正できるようにするためのコマンドである。
 #[tauri::command]
 pub fn open_settings_file(app: tauri::AppHandle, state: State<'_, AppState>) -> CoreResult<()> {
     let path = state
@@ -388,27 +372,23 @@ pub fn open_settings_file(app: tauri::AppHandle, state: State<'_, AppState>) -> 
         .map_err(|e| CoreError::Io(e.to_string()))
 }
 
-/* ------------------------------------------------------------------ */
-/* カスタム CSS（F-CONF-07 / 02.architecture/10-theming.md §3）                   */
-/* ------------------------------------------------------------------ */
-
 /// カスタム CSS を読む。
 ///
-/// **起動時の 64KB 以下はここを通らない。** bootstrap に同梱されており
-/// （02.architecture/10-theming.md §3 / FOUC を防ぐため）、ここが要るのは 2 つの場合だけ。
+/// 起動時の 64KB 以下はここを通らない。
+/// bootstrap に同梱されており（02.architecture/10-theming.md §3 / FOUC を防ぐため）、このコマンドが必要なのは次の 2 つの場合だけである。
 ///
 /// 1. 64KB を超えていて bootstrap に載らなかった（`deferred`）
 /// 2. 外部エディターで編集された後の読み直し（`marxdown://custom-css-changed`）
 ///
-/// **パスを引数に取らない。** `open_settings_file` と同じ理由で、
-/// 読む先は Rust 側が知っている 1 か所しかない。
+/// パスを引数に取らない。
+/// `open_settings_file` と同じ理由で、読む先は Rust 側が知っている 1 か所しかない。
 #[tauri::command]
 pub fn read_custom_css(state: State<'_, AppState>) -> custom_css::CustomCss {
-    // 取りに来た経路なので、読める上限（1MB）まで読む。
+    // 明示的に取得を要求された経路であるため、読める上限（1MB）まで読む。
     custom_css::load(state.custom_css_path(), custom_css::MAX_BYTES)
 }
 
-/// エディター用カスタム CSS を読む。**本文用と 1:1 の対**（`read_custom_css`）。
+/// エディター用カスタム CSS を読む。本文用の `read_custom_css` と対になる。
 #[tauri::command]
 pub fn read_editor_css(state: State<'_, AppState>) -> custom_css::CustomCss {
     custom_css::load(state.editor_css_path(), custom_css::MAX_BYTES)
@@ -416,10 +396,9 @@ pub fn read_editor_css(state: State<'_, AppState>) -> custom_css::CustomCss {
 
 /// `custom.css` を OS の既定アプリで開く（F-CONF-07 / 設定 UI のボタン）。
 ///
-/// **無ければ雛形を作ってから開く。** 仕様（02.architecture/10-theming.md §3）は「ファイルが存在すれば効く」
-/// としか書いておらず、存在しないときの挙動は決まっていない。
-/// ここで「ファイルがありません」と答えると、ユーザーは
-/// **どこに何という名前で作ればよいか**を自分で調べることになる。
+/// 無ければ雛形を作ってから開く。
+/// 仕様（02.architecture/10-theming.md §3）は「ファイルが存在すれば適用される」としか定めておらず、存在しないときの挙動は決まっていない。
+/// ここで「ファイルがありません」と応答すると、ユーザーはどこに何という名前で作ればよいかを自分で調べることになる。
 /// 設定項目を置かない（Principle 3）以上、その導線はこのボタンしかない。
 #[tauri::command]
 pub fn open_custom_css_file(
@@ -432,7 +411,7 @@ pub fn open_custom_css_file(
         .ok_or_else(|| CoreError::Io("カスタム CSS の置き場所が決まらない".into()))?;
 
     custom_css::ensure_exists(path, custom_css::Surface::Preview)?;
-    // 雛形を作ったのは自分なので、続くイベントは外部変更ではない（02.architecture/04-rust-responsibilities.md §4）。
+    // 雛形を作成したのは自分であるため、続くイベントは外部変更ではない（02.architecture/04-rust-responsibilities.md §4）。
     watcher.note_self_write(path);
 
     tauri_plugin_opener::OpenerExt::opener(&app)
@@ -440,9 +419,9 @@ pub fn open_custom_css_file(
         .map_err(|e| CoreError::Io(e.to_string()))
 }
 
-/// `editor.css` を OS の既定アプリで開く。**`open_custom_css_file` と 1:1 の対。**
+/// `editor.css` を OS の既定アプリで開く。`open_custom_css_file` と対になる。
 ///
-/// 雛形の中身だけが違う（どちらに何を書くかを、ファイル自身が説明する）。
+/// 雛形の中身だけが違う（どちらに何を書くかをファイル自身が説明する）。
 #[tauri::command]
 pub fn open_editor_css_file(
     app: tauri::AppHandle,
@@ -461,21 +440,17 @@ pub fn open_editor_css_file(
         .map_err(|e| CoreError::Io(e.to_string()))
 }
 
-/* ------------------------------------------------------------------ */
-/* ファイル監視（F-EDIT-16 / 02.architecture/04-rust-responsibilities.md §4）                    */
-/* ------------------------------------------------------------------ */
-
 /// 開いているファイルの監視を始める。
 ///
-/// **監視の対象を決めるのはフロント側**（どのファイルを「開いている」と見なすかは
-/// UI の状態であり、Rust 側は知らない）。M3 でタブが入ったら、
-/// 開いた枚数だけここが呼ばれる形になる。
+/// 監視の対象を決めるのはフロント側である。
+/// どのファイルを開いていると見なすかは UI の状態であり、Rust 側は関知しない。
+/// M3 でタブが入ったら、開いた枚数だけここが呼ばれる形になる。
 ///
-/// いまは開いているドキュメントが 1 つしかないので、**呼ぶたびに前のファイルの
-/// 監視が外れる**。解除を忘れても積算しないのは、この Phase の間だけの性質。
+/// 現在は開いているドキュメントが 1 つしかないため、呼ぶたびに前のファイルの監視が解除される。
+/// 解除を忘れても積算しないのは、この段階に限った性質である。
 ///
-/// `settings.json` はここを通らない。パスを知っているのは Rust 側であり、
-/// 起動時に自分で登録する（02.architecture/04-rust-responsibilities.md §5）。
+/// `settings.json` はここを通らない。
+/// パスを知っているのは Rust 側であり、起動時に自分で登録する（02.architecture/04-rust-responsibilities.md §5）。
 #[tauri::command]
 pub fn watch_path(watcher: State<'_, FileWatcher>, path: String) {
     watcher.watch_document(Path::new(&path));
@@ -496,7 +471,7 @@ pub fn report_trace(state: State<'_, AppState>, marks: Vec<Mark>) {
 /// 描画準備が整ったことをフロントが知らせる。
 ///
 /// 04.tech-stack/09-tauri-config.md §1 の `visible: false` からの表示制御。
-/// **最初に見えるフレームが既に本文である**状態を作るための唯一の入口。
+/// 最初に表示されるフレームが既に本文である状態を作るための唯一の入口である。
 #[tauri::command]
 pub fn ready(window: Window, state: State<'_, AppState>) {
     state.trace.mark("T9", None);
@@ -505,21 +480,22 @@ pub fn ready(window: Window, state: State<'_, AppState>) {
 
     // Snap Layouts（最大化ボタンのホバーメニュー / `snap_layouts.rs`）。
     //
-    // **ここより前では付けられない。** ウィンドウのサブクラス化には HWND が要り、
-    // `hwnd()` はイベントループへの問い合わせなので `setup()` の中では答えが返らない。
-    // 失敗しても中で握り潰す。付かなかったときに起きるのは
-    // 「ホバーしてもフライアウトが出ない」ことだけで、ボタン自体は押せる。
+    // ここより前では実行できない。
+    // ウィンドウのサブクラス化には HWND が必要だが、`hwnd()` はイベントループへの問い合わせであり `setup()` の中では結果が返らない。
+    // 失敗しても内部で処理する。
+    // 付与できなかった場合に起きるのはホバーしてもフライアウトが表示されないことだけで、ボタン自体は押せる。
     //
-    // 矩形の受け皿は `setup()` の中で先に置いてある（`snap_layouts.rs` の `prepare`）。
-    // フロントの矩形通知は**この直後**に届く（`src/app/window.ts` の `reportSnapLayoutsTarget`）。
+    // 矩形の受け皿は `setup()` の中で先に用意してある（`snap_layouts.rs` の `prepare`）。
+    // フロントの矩形通知はこの直後に届く（`src/app/window.ts` の `reportSnapLayoutsTarget`）。
     #[cfg(windows)]
     crate::snap_layouts::install(window.app_handle());
 
     // トレイアイコン（F-OS-08 / ADR-0007）。
     //
-    // **`ready()` の後で作る**（02.architecture/05-startup-sequence.md §1 の表）。OS 側の UI であり、
-    // 本文表示に一切関与しない。ここでアイコンを焼くぶん T3→T8 が伸びるのは
-    // 何の得にもならない。失敗しても常駐しないだけで、アプリは普通に使える。
+    // `ready()` の後で作る（02.architecture/05-startup-sequence.md §1 の表）。
+    // OS 側の UI であり、本文表示には関与しない。
+    // ここでアイコンを構築するぶんだけ T3→T8 が伸びるが、それによる利点はない。
+    // 失敗しても常駐しなくなるだけで、アプリは通常どおり使える。
     if let Err(e) = crate::tray::install(window.app_handle()) {
         eprintln!("[marxdown] トレイアイコンを作れなかった: {e}");
     }
@@ -527,7 +503,7 @@ pub fn ready(window: Window, state: State<'_, AppState>) {
     state.trace.flush("cold");
     if state.trace.exit_after() {
         let app = window.app_handle().clone();
-        // 書き出しを終えてから落とす。即 exit すると WebView 側の後始末が走らない。
+        // 書き出しを終えてから終了する。即座に exit すると WebView 側の後処理が実行されない。
         std::thread::spawn(move || {
             std::thread::sleep(std::time::Duration::from_millis(50));
             app.exit(0);
@@ -535,6 +511,9 @@ pub fn ready(window: Window, state: State<'_, AppState>) {
     }
 }
 
+/// 外部 URL を既定のブラウザで開く（F-VIEW-06 / 02.architecture/09-security.md §2）。
+///
+/// 許可するのは `https` / `http` / `mailto` だけで、未知のスキームは拒否する。
 #[tauri::command]
 pub fn open_external(app: tauri::AppHandle, url: String) -> CoreResult<()> {
     // 許可リスト方式。未知のスキームは何もしない（02.architecture/09-security.md §2）。
@@ -572,6 +551,7 @@ pub fn open_local_file(
         .map_err(|e| CoreError::Io(e.to_string()))
 }
 
+/// ファイルマネージャーで対象を選択した状態で開く。
 #[tauri::command]
 pub fn reveal_in_file_manager(app: tauri::AppHandle, path: String) -> CoreResult<()> {
     let resolved = document::canonicalize(Path::new(&path))?;
@@ -588,11 +568,11 @@ pub fn startup_trace(state: State<'_, AppState>) -> crate::trace::TraceReport {
 
 /// Marxdown を終了する（ADR-0007 論点 3）。
 ///
-/// **`✕` とは別に必要**である。トレイ常駐では `✕` が「格納」の意味になるため、
-/// 「本当に終わらせたい」を表す経路が無くなる。フロント側の `Ctrl+Q` と
-/// `Ctrl+Q` とハンバーガーメニューの「終了」がここへ来る（3 経路のうちの 2 つ）。
+/// `✕` とは別に必要である。
+/// トレイ常駐では `✕` が格納の意味になるため、明示的に終了する経路が無くなる。
+/// フロント側の `Ctrl+Q` とハンバーガーメニューの「終了」がここへ来る（3 経路のうちの 2 つ）。
 ///
-/// **未保存の変更があれば確認する**（F-EDIT-03 / `close::request_quit`）。
+/// 未保存の変更があれば確認する（F-EDIT-03 / `close::request_quit`）。
 /// ウィンドウ位置の保存は `close::quit` が行う（論点 11）。
 #[tauri::command]
 pub fn app_quit(app: tauri::AppHandle) {
@@ -601,7 +581,7 @@ pub fn app_quit(app: tauri::AppHandle) {
 
 /// 未保存の変更があるかを知らせる（F-EDIT-03）。
 ///
-/// **変わり目だけ呼ばれる。** 打鍵ごとではない（`features/document/save.ts`）。
+/// 変わり目だけ呼ばれ、打鍵ごとには呼ばれない（`features/document/save.ts`）。
 /// Rust 側が持つ理由は `state.rs` の `dirty` を参照。
 #[tauri::command]
 pub fn set_dirty(state: State<'_, AppState>, dirty: bool) {
@@ -633,10 +613,9 @@ pub async fn confirm_discard(window: Window) -> DiscardChoice {
         DialogExt, MessageDialogButtons, MessageDialogKind, MessageDialogResult,
     };
 
-    // `YesNoCancelCustom` はラベルをカスタムした時点で、結果は `Yes` / `No` ではなく
-    // 常に `Custom(ラベル文字列)` で返ってくる（tauri-plugin-dialog の仕様。`close.rs`
-    // の `ask_then_quit` と同じ罠）。ラベルで判定しないと、どちらのボタンを押しても
-    // `_` に落ちて「保存しない」が常にキャンセル扱いになる。
+    // `YesNoCancelCustom` はラベルをカスタムした時点で、結果が `Yes` / `No` ではなく常に `Custom(ラベル文字列)` で返る
+    // （tauri-plugin-dialog の仕様。`close.rs` の `ask_then_quit` と同じ）。
+    // ラベルで判定しないと、どちらのボタンを押しても `_` に該当し、「保存しない」が常にキャンセル扱いになる。
     const SAVE: &str = "保存する";
     const DISCARD: &str = "保存しない";
 
@@ -667,14 +646,12 @@ pub async fn confirm_discard(window: Window) -> DiscardChoice {
 
 /// `confirm_discard` の答え。
 ///
-/// **フロントが受け取る文字列を型で固定する。** `SaveResult` の
-/// `rename_all_fields` を落として `mtimeMs` が `undefined` になった件
-/// （06.roadmap/m2-editor.md §5 の Phase 2）と同じ事故を、
-/// ここでは下のテストが見張る。
+/// フロントが受け取る文字列を型で固定する。
+/// `SaveResult` の `rename_all_fields` を落として `mtimeMs` が `undefined` になった件（06.roadmap/m2-editor.md §5 の Phase 2）と同じ不具合を、下のテストが検証している。
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub enum DiscardChoice {
-    /// 保存してから移る。**保存できるのはフロントだけ**なので、保存はフロントが行う。
+    /// 保存してから移る。保存できるのはフロントだけであるため、保存はフロントが行う。
     Save,
     /// 保存せずに移る。編集内容は失われる。
     Discard,
@@ -690,9 +667,9 @@ pub enum DiscardChoice {
 /// 1 プロセスで何度も起きるので、1 レコード 1 行の JSONL に追記する。
 ///
 /// `kind` は `"warm"`（argv 転送）か `"tray-resume"`（トレイからの復帰）。
-/// **中央値を別々に取るために要る。** 経路が違えば分布も違い、混ぜると
-/// 「どちらも速い / どちらも遅い」しか分からなくなる
-/// （ADR-0007「Warm Start の計測経路が 2 本になる」）。省略時は `"warm"`。
+/// 中央値を別々に取るために必要である。
+/// 経路が違えば分布も異なり、混ぜると全体としての傾向しか分からなくなる（ADR-0007「Warm Start の計測経路が 2 本になる」）。
+/// 省略時は `"warm"`。
 #[tauri::command]
 pub fn warm_done(
     state: State<'_, AppState>,
@@ -729,15 +706,14 @@ pub fn warm_done(
 
 /// 入力レスポンス計測の結果を受け取り、書き出して終了する（`--bench-input`）。
 ///
-/// **計測専用。** M2 の完了条件「キー入力 → 反映が p95 で 16ms 以内」と
-/// [OQ-15](../../docs/07.open-questions/oq-15-markdown-worker.md) の判定は、
-/// どちらも「実際に打って、実際に描かれるまで」でしか測れない。
+/// 計測専用。
+/// M2 の完了条件「キー入力 → 反映が p95 で 16ms 以内」と [OQ-15](../../docs/07.open-questions/oq-15-markdown-worker.md) の判定は、どちらも実際に入力して実際に描画されるまでを測る必要がある。
 ///
-/// 書き出し先はフロントから渡させない（`state.args` が持っている）。
-/// 任意のパスへ書ける口を製品に開けないためで、`open_settings_file` と同じ判断。
+/// 書き出し先はフロントから渡させない（`state.args` が保持している）。
+/// 任意のパスへ書き込める経路を製品に用意しないためで、`open_settings_file` と同じ判断である。
 ///
-/// 終わり方は `ready()` の `--exit-after-trace` と同じにしてある。
-/// **即 `exit` すると WebView 側の後始末が走らない。**
+/// 終了の手順は `ready()` の `--exit-after-trace` と同じにしてある。
+/// 即座に `exit` すると WebView 側の後処理が実行されない。
 #[tauri::command]
 pub fn bench_input_done(window: Window, state: State<'_, AppState>, json: String) {
     let Some(out) = state.args.bench_input.as_ref() else {

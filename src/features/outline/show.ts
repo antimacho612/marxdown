@@ -20,10 +20,9 @@ export function registerOutlineFocus(focus: (() => void) | null): void {
 }
 
 /**
- * Outline を出してフォーカスする。**閉じない。**
+ * Outline を表示してフォーカスする。閉じる動作は持たない。
  *
- * ペインを開いた直後はコンポーネントがまだ生えていないので、
- * Svelte の更新を 1 回待ってからフォーカスする。
+ * ペインを開いた直後はコンポーネントがまだマウントされていないため、Svelte の更新を 1 回待ってからフォーカスする。
  */
 export async function showOutline(): Promise<void> {
   openRightPane();

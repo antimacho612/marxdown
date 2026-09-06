@@ -27,7 +27,7 @@ pub use schema::*;
 
 const FILE_NAME: &str = "settings.json";
 
-/// 読み込みの結果。**「壊れている」という事実を値と一緒に運ぶ**（02.architecture/04-rust-responsibilities.md §5）。
+/// 読み込みの結果。「壊れている」という事実を値と一緒に運ぶ（02.architecture/04-rust-responsibilities.md §5）。
 ///
 /// 呼び出し側が `broken` を無視すると、壊れたファイルを既定値で上書きしてしまう。
 /// 単に `Settings` を返す形にしないのはそのため。
@@ -41,9 +41,8 @@ pub struct SettingsLoad {
 
 /// 通知バーに出す内容（03.ux-spec/07-status-and-notifications.md §2）。
 ///
-/// パスを `String` にしているのは、`PathBuf` の Serialize が非 UTF-8 で失敗するため。
-/// bootstrap のシリアライズが落ちると初期ペイロードごと消えるので、
-/// 表示用の文字列に倒しておく。
+/// パスを `String` にしているのは、`PathBuf` の Serialize が非 UTF-8 で失敗するためである。
+/// bootstrap のシリアライズが失敗すると初期ペイロードごと失われるため、表示用の文字列で保持する。
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SettingsProblem {
@@ -56,10 +55,10 @@ pub fn settings_path(identifier: &str) -> Option<PathBuf> {
     Some(crate::store::config_dir(identifier)?.join(FILE_NAME))
 }
 
-/// 設定を読む。**壊れていても既定値を返し、起動は止めない**（02.architecture/04-rust-responsibilities.md §5）。
+/// 設定を読む。壊れていても既定値を返し、起動は止めない（02.architecture/04-rust-responsibilities.md §5）。
 ///
-/// ファイルが無いのは壊れているうちに入らない。初回起動がそれであり、
-/// このとき書き戻しを拒否してしまうと設定 UI が永久に保存できなくなる。
+/// ファイルが無い状態は壊れているとみなさない。
+/// 初回起動がこれにあたり、ここで書き戻しを拒否すると設定 UI が永久に保存できなくなる。
 pub fn load(path: Option<&Path>) -> SettingsLoad {
     let Some(path) = path else {
         return SettingsLoad::default();
@@ -93,10 +92,10 @@ fn broken(path: &Path, message: String) -> SettingsLoad {
     }
 }
 
-/// 設定を書く。**`store::save` と違い、失敗を握り潰さない。**
+/// 設定を書く。`store::save` と違い、失敗を無視しない。
 ///
-/// 保存できたかどうかは設定 UI がユーザーに見せる必要がある値であり、
-/// 「書けなかったのに書けたように見える」ほうが害が大きい。
+/// 保存できたかどうかは設定 UI がユーザーに提示する必要がある。
+/// 書けなかったのに書けたように見えるほうが害が大きい。
 pub fn save(path: &Path, settings: &Settings) -> CoreResult<()> {
     if let Some(dir) = path.parent() {
         std::fs::create_dir_all(dir)?;

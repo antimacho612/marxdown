@@ -23,8 +23,8 @@
   /**
    * これ以下の見出し数では自動的に折りたたむ（§2 / Defaults Matter）。
    *
-   * 見出しが 2 個の目次は、本文を 1 画面スクロールすれば分かることしか言わない。
-   * **場所を取らせない**が、開く手段は残す。
+   * 見出しが 2 個の目次では、本文を 1 画面スクロールすれば得られる以上の情報がない。
+   * 領域は占有させないが、開く手段は残す。
    */
   const AUTO_COLLAPSE_MAX = 2;
 
@@ -34,10 +34,10 @@
   /**
    * 追う相手がプレビューではなくエディターか（#59）。
    *
-   * Edit では本文の面が `display: none` にある。**隠れた要素の交差は起きない**ので、
-   * `IntersectionObserver` は現在位置を教えてくれない（`rootBounds` も
-   * `boundingClientRect` も全部 0 で届き、全部の見出しが「越えた」と読めてしまう）。
-   * 見えているのはエディターのほうなので、そちらのカーソル行から引く。
+   * Edit では本文の面が `display: none` になっている。
+   * 非表示の要素では交差が発生しないため、`IntersectionObserver` から現在位置を得られない
+   * （`rootBounds` も `boundingClientRect` もすべて 0 で届き、すべての見出しが通過済みと判定される）。
+   * 表示されているのはエディター側であるため、そちらのカーソル行から求める。
    */
   const followsCursor = $derived(viewStore.mode === 'edit');
 
@@ -70,18 +70,18 @@
   /**
    * 本文のスクロールへの追従（N-PERF-05）。
    *
-   * **ペインを閉じるとこのコンポーネントごと消える**ので、観測も一緒に止まる。
-   * 閉じている間のコストはゼロ。
+   * ペインを閉じるとこのコンポーネント自体が破棄されるため、観測も同時に停止する。
+   * 閉じている間のコストは発生しない。
    */
   $effect(() => {
     // `items` を読むこと自体が依存の宣言になる。別の本文になったら張り直す。
     const total = items.length;
-    // Edit ではプレビューが隠れている。**観測しても嘘の答えしか返らない。**
+    // Edit ではプレビューが非表示であり、観測しても正しい結果が得られない。
     if (followsCursor) return;
 
     activeIndex = -1;
     const container = document.querySelector<HTMLElement>(PREVIEW_SELECTOR);
-    // 見出しが 1 つも無ければ追う相手がいない。観測を始めるだけ無駄になる
+    // 見出しが 1 つも無ければ追従対象が存在しないため、観測を開始しない
     if (!container || total === 0) return;
 
     const follower = followHeadings(container, (index) => {
@@ -98,11 +98,10 @@
   });
 
   /**
-   * Edit での現在位置。**カーソルのある行を含む見出し**（VS Code のアウトラインと同じ）。
+   * Edit での現在位置。カーソルのある行を含む見出しを示す（VS Code のアウトラインと同じ）。
    *
-   * カーソル位置は既にストアに来ている（`features/editor/lazy/cursor.ts` が rAF で
-   * 間引いて入れる / ADR-0005）。**購読を新しく増やさずに済む**のが要点で、
-   * ペインを閉じてもエディター側に外し忘れが残らない。
+   * カーソル位置は既にストアへ反映されている（`features/editor/lazy/cursor.ts` が rAF で間引いて設定する / ADR-0005）。
+   * 購読を追加せずに済むため、ペインを閉じてもエディター側に解除漏れが残らない。
    */
   $effect(() => {
     if (!followsCursor) return;
@@ -112,16 +111,16 @@
   });
 
   /**
-   * アウトラインが画面に出ていることを名乗る（`lib/refresh.ts`）。
+   * アウトラインが表示されていることを登録する（`lib/refresh.ts`）。
    *
-   * Edit では、これが出ているあいだだけ見出しを取り直すためのパースが回る。
-   * 開いた時点の見出しは打鍵ぶんだけ古いので、1 回取り直してから始める。
+   * Edit では、表示されている間だけ見出しを取り直すためのパースが実行される。
+   * 開いた時点の見出しは打鍵の回数だけ古くなっているため、1 回取り直してから開始する。
    */
   $effect(() => {
     setOutlineOnScreen(true);
-    // **`untrack` を外さないこと。** この先で `viewStore.mode` を読むので、
-    // 素で呼ぶとモードを切り替えるたびにこの効果ごと張り直される
-    // （＝ 変わっていない見出しのためにパースが 1 回走る）。
+    // `untrack` を外さないこと。
+    // この先で `viewStore.mode` を読むため、そのまま呼ぶとモードを切り替えるたびにこの効果が再登録される
+    // （変化していない見出しのためにパースが 1 回実行されることになる）。
     untrack(() => void refreshOutlineOnOpen());
     return () => setOutlineOnScreen(false);
   });
@@ -145,10 +144,9 @@
   });
 
   /**
-   * 深さに直す。**文書内で一番浅い見出しを 0 とする。**
+   * 深さに変換する。文書内で最も浅い見出しを 0 とする。
    *
-   * `h2` から始まる文書（Front Matter に題を書く流儀）で、
-   * 全部が 1 段下がって表示されるのを避ける。
+   * `h2` から始まる文書（Front Matter に題を書く書き方）で、全体が 1 段下がって表示されるのを避ける。
    */
   function toDepths(list: OutlineItem[]): number[] {
     if (list.length === 0) return [];
@@ -160,8 +158,8 @@
   /**
    * 上下キーで項目を移動する（03.ux-spec/10-accessibility.md「すべての操作がキーボードで到達可能」）。
    *
-   * `role="tree"` に対して WAI-ARIA が定めている操作。Tab で 1 項目ずつ
-   * 送らせると、見出し数百個の文書でペインから出られなくなる。
+   * `role="tree"` に対して WAI-ARIA が定めている操作である。
+   * Tab で 1 項目ずつ移動させると、見出しが数百個ある文書ではペインから抜けられなくなる。
    */
   function onKeyDown(event: KeyboardEvent): void {
     const buttons = [...(list?.querySelectorAll<HTMLElement>('button') ?? [])];
@@ -187,7 +185,7 @@
 
 <section class="mx-outline" bind:this={section} tabindex="-1" aria-label={ja.outline.title}>
   <!--
-    見出し行。**見出しが 1 つも無いときは押せるものにしない**（折りたたむ先が無い）。
+    見出し行。見出しが 1 つも無いときは操作可能にしない（折りたたむ対象が無いため）。
     Principle 3「押せないものを並べない」。
   -->
   <div class="mx-outline__head">
@@ -375,8 +373,8 @@
   }
 
   /*
-   * 現在位置。**色ではなく縁で示す。** 本文の背景と同じ面の上で
-   * 塗りを使うと、ペイン全体がまだらになる（Principle 2 / 情報密度は高く、静かに）。
+   * 現在位置は背景色ではなく左端の線で示す。
+   * 本文と同じ背景の上で塗りを使うと、ペイン全体の見た目が煩雑になる（Principle 2 / 情報密度は高く、静かに）。
    */
   .mx-outline__list button[aria-current='true'] {
     box-shadow: inset 2px 0 0 var(--mx-color-accent);

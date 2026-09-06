@@ -14,8 +14,8 @@ import type { monaco } from './monaco';
  * 貼られた文字列が URL か。
  *
  * `https://` のようにスキームと `//` を持ち、空白を含まない 1 行だけを通す。
- * `mailto:` のような `//` を持たないスキームは通さない。**判断に迷う入力は
- * 何もしないほうがよい**（Principle 3: 押す前に結果が読める）。
+ * `mailto:` のような `//` を持たないスキームは通さない。
+ * 判定が曖昧になる入力に対しては何もしない（Principle 3: 操作前に結果を判断できる）。
  */
 export function isPastedUrl(text: string): boolean {
   return /^[a-z][\d+.a-z-]*:\/\/\S+$/iu.test(text.trim());
@@ -36,10 +36,9 @@ export function linkFromUrl(url: string): MarkdownEdit {
 }
 
 /**
- * 貼り付けを見張る。**`mountEditor` から 1 回だけ呼ぶ。**
+ * 貼り付けを監視する。`mountEditor` から 1 回だけ呼ぶ。
  *
- * 選択が無いとき・複数カーソルのとき・URL でないときは**何もしない**ので、
- * 普通の貼り付けはそのまま Monaco に流れる。
+ * 選択が無いとき、複数カーソルのとき、URL でないときは何もしないため、通常の貼り付けはそのまま Monaco が処理する。
  */
 export function installUrlPaste(editor: monaco.editor.IStandaloneCodeEditor): void {
   const node = editor.getDomNode();
@@ -53,19 +52,19 @@ export function installUrlPaste(editor: monaco.editor.IStandaloneCodeEditor): vo
 
       const selections = editor.getSelections() ?? [];
       const main = selections[0];
-      // **複数カーソルでは手を出さない。** 同じ URL を複数箇所に貼るのは
-      // 「リンクにしたい」より「そのまま貼りたい」ことのほうが多い。
+      // 複数カーソルのときは処理しない。
+      // 同じ URL を複数箇所へ貼る操作は、リンク化ではなくそのまま貼り付ける意図であることが多い。
       if (selections.length !== 1 || !main || main.isEmpty()) return;
 
       event.preventDefault();
-      // **`preventDefault()` だけでは足りない。** Monaco はブラウザの既定に任せず、
-      // 自分のハンドラで `clipboardData` を読んで貼る。捕獲フェーズで先に走っても
-      // 伝播を止めなければ**そのあと素の URL がもう一度貼られる**（実測で確認）。
+      // `preventDefault()` だけでは足りない。
+      // Monaco はブラウザの既定動作に任せず、自分のハンドラで `clipboardData` を読んで貼り付ける。
+      // 捕獲フェーズで先に実行しても、伝播を止めなければその後に URL がそのまま貼り付けられる（実測で確認）。
       event.stopPropagation();
       runEdit(editor, linkFromUrl(url), 'markdown.paste');
     },
-    // **捕獲フェーズで受ける。** Monaco 自身のハンドラは内側のノードに付いているので、
-    // 外側の捕獲で先に捕まえないと止められない。
+    // 捕獲フェーズで受け取る。
+    // Monaco 自身のハンドラは内側のノードに登録されているため、外側の捕獲フェーズで先に処理しないと止められない。
     { capture: true },
   );
 }

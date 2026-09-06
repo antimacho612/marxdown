@@ -18,16 +18,17 @@ const PREVIEW_SELECTOR = '#mx-preview';
 /**
  * `Ctrl+Shift+V` が戻る先（03.ux-spec/02-view-modes.md §2「Preview ⇄ 直前の編集モード」）。
  *
- * Split から Preview へ抜けて戻ってきたら Split に戻る。
- * **「直前の編集モード」であって「Edit」ではない。**
+ * Split から Preview へ移り、そこから戻ると Split に戻る。
+ * 戻り先は直前の編集モードであり、常に Edit ではない。
  */
 let lastEditingMode: Exclude<ViewMode, 'preview'> = 'edit';
 
 /**
  * 順送りの並び（`Ctrl+Shift+M` / 03.ux-spec/02-view-modes.md §2 の図）。
  *
- * WYSIWYG は M5。**入っていないものを並びに含めない**（押すと何も起きない位置が
- * できる）。M5 で足すときに 1 語増やすだけで済む。
+ * WYSIWYG は M5 で追加する。
+ * 未実装のものを並びに含めない（操作しても何も起きない位置ができるため）。
+ * M5 では要素を 1 つ追加するだけで済む。
  */
 const CYCLE: ViewMode[] = ['preview', 'edit', 'split'];
 
@@ -39,9 +40,8 @@ let previewScroll = 0;
  *
  * 優先順位は、CLI で `--mode` が指定されていればそれに従い、次にファイル単位の記憶（設定 ON 時、M5 / F-MODE-08）、ファイルが読み取り専用なら Preview、それ以外は既定の Preview、の順である。
  *
- * 2 と、4 の設定キー（`defaultMode`）は M5。
- * いま無いのは器であって判断ではない。
- * 既定値が `"preview"` である以上、設定キーが無い状態の結果は 4 と同じになる。
+ * ファイル単位の記憶と、設定キー `defaultMode` は M5 で追加する。
+ * 既定値が `"preview"` であるため、設定キーが無い現状の結果は既定の Preview と同じになる。
  */
 export function decideInitialMode(bootstrap: Bootstrap | null, meta: DocumentMeta | null): ViewMode {
   if (bootstrap?.mode) return bootstrap.mode;
@@ -50,9 +50,9 @@ export function decideInitialMode(bootstrap: Bootstrap | null, meta: DocumentMet
 }
 
 /**
- * 起動時に 1 回だけ当てる。**シェルを描くより前**に呼ぶこと。
+ * 起動時に 1 回だけ適用する。シェルを描画するより前に呼ぶこと。
  *
- * 後から当てると、Preview の面が 1 フレーム描かれてからエディターに差し替わる
+ * 後から適用すると、Preview の面が 1 フレーム描画されてからエディターへ差し替わる
  * （倍率やペインと同じ理由 / 02.architecture/05-startup-sequence.md §1）。
  */
 export function initMode(mode: ViewMode): void {
@@ -62,33 +62,32 @@ export function initMode(mode: ViewMode): void {
 }
 
 /**
- * モードを変える。**エディターが要るモードなら、その場でチャンクを取りに行く。**
+ * モードを変える。エディターが必要なモードでは、その時点でチャンクを取得する。
  *
- * 取得を待つあいだ画面は前のモードのままにする。先に切り替えると、
- * 初回だけ何も無い面が数百 ms 見えることになる。
+ * 取得を待つ間は前のモードを表示したままにする。
+ * 先に切り替えると、初回だけ空の面が数百 ms 表示される。
  */
 export async function setMode(mode: ViewMode): Promise<void> {
   if (viewStore.mode === mode) return;
 
   if (mode !== 'preview') {
-    // `open-editor` は `main` に居る（動的 import の一行だけを持つ入口）。
-    // ここを動的 import にすると、rolldown が「静的にも動的にも参照されている」と
-    // 判断して分割が効かなくなる（INEFFECTIVE_DYNAMIC_IMPORT）。
-    // 遅延しているのは、その先の `./editor` である。
+    // `open-editor` は `main` にある（動的 import の 1 行だけを持つ入口）。
+    // ここを動的 import にすると、rolldown が静的と動的の両方から参照されていると判断し、分割が行われなくなる（INEFFECTIVE_DYNAMIC_IMPORT）。
+    // 遅延しているのはその先の `./lazy/editor` である。
     await mountEditorLazily();
     lastEditingMode = mode;
   }
 
-  // **Split でもプレビューは見えている。** 判定を「Preview モードか」で書くと、
-  // Split へ移るたびに検索が閉じ、スクロール位置が控えられてしまう。
-  // 見えなくなるのは Edit のときだけ。
+  // Split でもプレビューは表示されている。
+  // Preview モードかどうかで判定すると、Split へ移るたびに検索が閉じ、スクロール位置が保存されてしまう。
+  // 非表示になるのは Edit のときだけである。
   const wasVisible = isPreviewVisible(viewStore.mode);
   const willBeVisible = isPreviewVisible(mode);
 
   if (wasVisible && !willBeVisible) {
     previewScroll = previewScrollTop();
-    // プレビュー内検索を閉じる。パネルは `document.body` にあるので、
-    // 隠れた面の上に浮いたまま残ってしまう（`features/mode/find.ts`）。
+    // プレビュー内検索を閉じる。
+    // パネルは `document.body` にあるため、非表示の面の上に残る（`features/mode/find.ts`）。
     closePreviewFind();
   }
 
@@ -97,23 +96,23 @@ export async function setMode(mode: ViewMode): Promise<void> {
 
   if (!wasVisible && willBeVisible) restorePreviewScroll();
 
-  // **Monaco は `display: none` のあいだ寸法を失う**（ADR-0009）。プレビューの
-  // スクロール位置を戻すのと同じ理由・同じ場所で、器を測り直させる。
-  // エディターが見えるモードに入るときだけなので、ここでチャンクは増えない。
+  // Monaco は `display: none` の間、寸法を保持しない（ADR-0009）。
+  // プレビューのスクロール位置を戻すのと同じ理由・同じ位置で、レイアウトを測り直させる。
+  // エディターが表示されるモードに入るときだけ実行するため、ここでチャンクは増えない。
   if (isEditorVisible(mode)) void relayoutEditorLazily();
 
-  // スクロール同期は Split でしか意味を持たない（03.ux-spec/03-split-mode.md §2）。
-  // **片面しか見えていないときに購読を残さない**（N-PERF-05）。
+  // スクロール同期は Split でのみ意味を持つ（03.ux-spec/03-split-mode.md §2）。
+  // 片方の面しか表示されていないときに購読を残さない（N-PERF-05）。
   void setSplitSyncLazily(mode === 'split');
 
-  // **Edit のあいだ、プレビューの DOM は作り直していない**（見えない面のために
-  // paint しないため / `document/live.ts`）。出す側へ戻ってきたところで 1 回だけ描く。
+  // Edit の間はプレビューの DOM を作り直していない（表示していない面に対して paint しないため / `document/live.ts`）。
+  // 表示する側へ戻った時点で 1 回だけ描画する。
   //
-  // Preview / Split どうしの行き来では描き直さない。どちらでも面は見えており、
-  // 打った内容はその都度反映されている。
+  // Preview と Split の間の移動では描き直さない。
+  // どちらでも面は表示されており、入力内容はその都度反映されている。
   //
-  // ここへ来るまでに予約が残っていることがある（打った直後に切り替えた場合）。
-  // **いま描き直すのだから、そのぶんは要らない。**
+  // ここに到達した時点で再描画の予約が残っていることがある（入力直後に切り替えた場合）。
+  // ここで描き直すため、その予約は不要になる。
   if (!wasVisible && willBeVisible) {
     cancelLiveRender();
     void renderNow();
@@ -123,15 +122,14 @@ export async function setMode(mode: ViewMode): Promise<void> {
 /**
  * Split をトグルする（`Ctrl+\` / 03.ux-spec/02-view-modes.md §2）。
  *
- * VS Code の「エディターを分割」に対応する。**Split から抜ける先は Edit。**
- * Preview へ戻すと「分割を解いた」ではなく「読む側へ移った」ことになり、
- * もう一度押しても元の面へ帰れない。
+ * VS Code の「エディターを分割」に対応する。Split から抜ける先は Edit である。
+ * Preview へ戻すと分割の解除ではなく閲覧側への移動になり、もう一度押しても元の面に戻れない。
  */
 export async function toggleSplit(): Promise<void> {
   await setMode(viewStore.mode === 'split' ? 'edit' : 'split');
 }
 
-/** 4 モードを順送りする（`Ctrl+Shift+M` / §2 の図）。 */
+/** 表示モードを順送りする（`Ctrl+Shift+M` / §2 の図）。対象は `CYCLE` の 3 つ。 */
 export async function cycleMode(): Promise<void> {
   const at = CYCLE.indexOf(viewStore.mode);
   const next = CYCLE[(at + 1) % CYCLE.length] ?? 'preview';
@@ -141,29 +139,28 @@ export async function cycleMode(): Promise<void> {
 /**
  * Preview ⇄ 直前の編集モード（`Ctrl+Shift+V` / 03.ux-spec/02-view-modes.md §2）。
  *
- * §2 が「最も使うトグル」としているもの。読んでいて直したくなる、直したら確かめる、
- * という往復が中心ユースケースそのものなので、ここが一等地のキーを取る。
+ * §2 が最も使用頻度の高いトグルとしているものである。
+ * 閲覧と編集の往復が中心ユースケースであるため、最も押しやすいキーを割り当てている。
  */
 export async function togglePreview(): Promise<void> {
   await setMode(viewStore.mode === 'preview' ? lastEditingMode : 'preview');
 }
 
 /**
- * `<html>` に立てる。**CSS 側が唯一の消費者。**
+ * `<html>` に属性を設定する。この値を参照するのは CSS だけである。
  *
- * `data-theme` と同じ形にしてあるので、カスタム CSS からモードごとの
- * 指定を書くこともできる（F-CONF-07 の範囲外だが、妨げる理由もない）。
+ * `data-theme` と同じ形にしてあるため、カスタム CSS からモードごとの指定も書ける（F-CONF-07 の範囲外だが、制限する理由もない）。
  */
 function applyModeAttribute(mode: ViewMode): void {
   document.documentElement.dataset['mxMode'] = mode;
 }
 
-/** プレビューの面が出ているか。**Split でも出ている。** */
+/** プレビューの面が表示されているか。Split でも表示されている。 */
 export function isPreviewVisible(mode: ViewMode): boolean {
   return mode !== 'edit';
 }
 
-/** エディターの面が出ているか。 */
+/** エディターの面が表示されているか。 */
 export function isEditorVisible(mode: ViewMode): boolean {
   return mode !== 'preview';
 }
@@ -175,8 +172,8 @@ function previewScrollTop(): number {
 /**
  * プレビューのスクロールを戻す。
  *
- * `display: none` から戻した直後はレイアウトが未確定で、`scrollTop` を
- * 代入しても頭打ちになる。次のフレームで当て直す。
+ * `display: none` から戻した直後はレイアウトが未確定であり、`scrollTop` を代入しても上限で切り詰められる。
+ * そのため次のフレームで設定し直す。
  */
 function restorePreviewScroll(): void {
   const container = document.querySelector<HTMLElement>(PREVIEW_SELECTOR);
@@ -188,7 +185,7 @@ function restorePreviewScroll(): void {
   });
 }
 
-/** テスト用。 */
+/** テスト用。直前の編集モードとスクロール位置の記憶を初期化する。 */
 export function resetMode(): void {
   lastEditingMode = 'edit';
   previewScroll = 0;

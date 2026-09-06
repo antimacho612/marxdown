@@ -16,11 +16,11 @@ const HEADINGS = 'h1, h2, h3, h4, h5, h6';
  * 通知するほどのことではない（数百 ms 後には入っている）。
  */
 export function jumpToHeading(item: OutlineItem): void {
-  // Split では**両方が該当見出しへ**動く（03.ux-spec/03-split-mode.md §3）。
-  // エディターが載っていなければ何も起きない。
+  // Split では両方の面が該当する見出しへ移動する（03.ux-spec/03-split-mode.md §3）。
+  // エディターがマウントされていなければ何も起きない。
   //
-  // **フォーカスは移さない。** 続けて次の見出しを選べなくなる。
-  // `item.line` は 0 始まり（`line-map.ts`）、エディターは 1 始まり。
+  // フォーカスは移さない。移すと続けて次の見出しを選べなくなる。
+  // `item.line` は 0 始まり（`line-map.ts`）で、エディターは 1 始まりである。
   jumpToEditorLine(item.line + 1, { focus: false });
 
   const container = document.querySelector<HTMLElement>(PREVIEW_SELECTOR);

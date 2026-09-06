@@ -1,6 +1,6 @@
 <!--
   ステータスバーの「押すと選択肢が出る」項目（03.ux-spec/07-status-and-notifications.md §3）。
-  モードとエンコーディングが同じ形をしているため、器を 1 つにしてある。
+  モードとエンコーディングが同じ形であるため、コンポーネントを 1 つにまとめてある。
   選択肢も見た目も押されるまでロードしない（動的 import / `app/MenuButton.svelte` と同じ形）。
   ステータスバーは `overflow: hidden` であるため、パネルを `position: absolute` で置くと切り落とされる。
   そのため `position: fixed` にし、位置は押した瞬間にボタンが自分の位置を測定して渡す（開いてから測定すると、1 フレームだけ誤った位置に表示された後に正しい位置へ切り替わる）。
@@ -12,20 +12,20 @@
 
   interface Props {
     kind: StatusMenuKind;
-    /** いまの値。**ボタンの見た目そのもの**なので、`main` 側が持っている。 */
+    /** 現在の値。ボタンの表示そのものであるため、`main` 側が保持する。 */
     label: string;
-    /** ツールチップ。「押すと何が起きるか」を言う。 */
+    /** ツールチップ。押したときに何が起きるかを示す。 */
     title: string;
   }
 
   const { kind, label, title }: Props = $props();
 
-  /** ロード済みのメニュー本体。**`null` のうちはチャンクを取りに行っていない。** */
+  /** ロード済みのメニュー本体。`null` の間はチャンクを取得していない。 */
   let menu = $state<StatusMenu | null>(null);
   let open = $state(false);
   let button = $state<HTMLButtonElement>();
 
-  /** パネルを置く位置（ビューポート基準）。**押した瞬間の値**で固定する。 */
+  /** パネルを置く位置（ビューポート基準）。押した時点の値で固定する。 */
   let anchor = $state<StatusMenuAnchor | null>(null);
 
   async function show(): Promise<void> {
@@ -41,7 +41,7 @@
     open = true;
   }
 
-  /** 閉じる。**既定でボタンへフォーカスを戻す**（`app/MenuButton.svelte` と同じ理由）。 */
+  /** 閉じる。既定ではボタンへフォーカスを戻す（`app/MenuButton.svelte` と同じ理由）。 */
   function hide(refocus = true): void {
     open = false;
     if (refocus) button?.focus();
@@ -81,7 +81,7 @@
 </span>
 
 <style>
-  /* 開いたパネルの位置の基準。ステータスバーの高さを変えないよう `inline-flex`。 */
+  /* 開いたパネルの位置の基準。ステータスバーの高さを変えないため `inline-flex` にする。 */
   .mx-statusmenubutton {
     position: relative;
     display: inline-flex;

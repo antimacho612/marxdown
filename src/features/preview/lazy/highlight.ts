@@ -14,8 +14,8 @@ import { sanitize } from '@/markdown/sanitize';
 /**
  * 登録する言語。増やすときは 05.performance-budget/06-decision-flow.md の判定手順を通すこと。
  *
- * 選定の基準は「LLM の出力と、このプロジェクト自身のドキュメントに出てくるか」。
- * 各言語の別名（`ts` → `typescript` など）は highlight.js 側が持っている。
+ * 選定の基準は、LLM の出力とこのプロジェクト自身のドキュメントに現れるかどうかである。
+ * 各言語の別名（`ts` と `typescript` など）は highlight.js 側が持っている。
  */
 const LANGUAGES = {
   bash: () => import('highlight.js/lib/languages/bash'),
@@ -44,8 +44,8 @@ type LanguageName = keyof typeof LANGUAGES;
 const LANGUAGE_CLASS = /(?:^|\s)language-([\w+#-]+)/;
 
 /**
- * 別名の解決。highlight.js の `registerAliases` を使わず自前で持つのは、
- * **その言語を登録するかどうかを決める前に**別名を潰しておきたいため。
+ * 別名の解決。
+ * highlight.js の `registerAliases` を使わず自前で持つのは、その言語を登録するかどうかを判断する前に別名を解決しておく必要があるためである。
  */
 const ALIASES: Record<string, LanguageName> = {
   bash: 'bash',
@@ -90,7 +90,7 @@ const ALIASES: Record<string, LanguageName> = {
 
 const registered = new Set<LanguageName>();
 
-/** 対応している言語か。呼び出し側がロードを諦める判断に使う。 */
+/** 対応している言語か。呼び出し側が読み込みを行うかどうかの判断に使う。 */
 export function resolveLanguage(raw: string): LanguageName | null {
   return ALIASES[raw.toLowerCase()] ?? null;
 }
@@ -105,8 +105,8 @@ export function languageOf(code: Element): LanguageName | null {
 /**
  * 1 つのコードブロックをハイライトする。
  *
- * 言語の定義自体もさらに動的 import する。TypeScript のドキュメントを開いたときに
- * Java と SQL の文法まで読み込む理由がない。
+ * 言語の定義自体もさらに動的 import する。
+ * TypeScript のドキュメントを開いたときに Java や SQL の定義まで読み込む必要はない。
  */
 export async function highlightElement(code: HTMLElement): Promise<void> {
   const language = languageOf(code);
@@ -119,9 +119,8 @@ export async function highlightElement(code: HTMLElement): Promise<void> {
 
   const { value } = hljs.highlight(source, { language, ignoreIllegals: true });
 
-  // hljs の出力は入力テキストからしか作られないが、**innerHTML に入る HTML 文字列**である
-  // ことに変わりはない。ADR-0006 の「DOM に入る HTML は必ず Layer 3 を通る」を
-  // 例外なしに保つ（Mermaid の SVG を同じサニタイザに通すのと同じ理由）。
+  // hljs の出力は入力テキストからのみ生成されるが、`innerHTML` に渡す HTML 文字列であることに変わりはない。
+  // ADR-0006 の「DOM に入る HTML は必ず Layer 3 を通る」を例外なく適用する（Mermaid の SVG を同じサニタイザに通すのと同じ理由）。
   code.innerHTML = sanitize(value);
 }
 

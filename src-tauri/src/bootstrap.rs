@@ -28,19 +28,18 @@ pub struct Bootstrap {
     pub mode: Option<ViewMode>,
     /// 入力レスポンスの計測を走らせるか（`--bench-input` / 計測専用）。
     ///
-    /// **書き出し先はフロントへ渡さない。** 任意のパスへ書ける口を作らずに済むよう、
-    /// フロントは結果を `bench_input_done` へ渡すだけで、置き場所は Rust が持つ
-    /// （`open_settings_file` と同じ形）。
+    /// 書き出し先はフロントへ渡さない。
+    /// 任意のパスへ書き込める経路を作らないよう、フロントは結果を `bench_input_done` へ渡すだけにし、置き場所は Rust が持つ（`open_settings_file` と同じ形）。
     pub bench_input: bool,
     pub trace: Option<TraceConfig>,
     /// 引数として渡されたが 1 枚目にならなかったパス（M3 のタブで開く）。
     pub pending_paths: Vec<String>,
     pub unknown_args: Vec<String>,
-    /// 最近開いたファイル（F-OPEN-09）。Welcome 画面が起動直後に描くため、
-    /// IPC 往復ではなくここに載せる（03.ux-spec/08-empty-states.md §1）。
+    /// 最近開いたファイル（F-OPEN-09）。
+    /// Welcome 画面が起動直後に描画するため、IPC 往復ではなくここに載せる（03.ux-spec/08-empty-states.md §1）。
     pub recent: Vec<RecentEntry>,
-    /// 表示倍率（F-VIEW-11）。最初のフレームから正しい倍率で描くために必要。
-    /// 後から当てると、本文が一度既定倍率で描かれた後に別の倍率に変化して見える。
+    /// 表示倍率（F-VIEW-11）。最初のフレームから正しい倍率で描画するために必要になる。
+    /// 後から適用すると、本文が一度既定倍率で描画された後に別の倍率へ変化して見える。
     pub zoom: f64,
     /// ペインの開閉と幅（F-NAV-04 / 03.ux-spec/06-panes.md §3）。
     ///
@@ -51,36 +50,37 @@ pub struct Bootstrap {
     /// 倍率・ペインと同じ理由でここに載る。
     /// 後から当てると、Split で開いたときに 50:50 の状態が一度描かれた後に分割比が変化して見える。
     pub split: f64,
-    /// ユーザー設定の**全体**（F-CONF-03 / 02.architecture/04-rust-responsibilities.md §5）。
+    /// ユーザー設定の全体（F-CONF-03 / 02.architecture/04-rust-responsibilities.md §5）。
     ///
-    /// 「どの設定が初回フレームに間に合う必要があるか」を毎回考えなくて済むよう、
-    /// 選ばずに丸ごと載せる。想定サイズは 1KB 未満で、本文の 256KB 閾値に比べれば
-    /// 無視できる。**フロントから取りに行く経路は作らない。**
+    /// どの設定が初回フレームに間に合う必要があるかを都度判断せずに済むよう、選別せずすべて載せる。
+    /// 想定サイズは 1KB 未満で、本文の 256KB 閾値に比べれば無視できる。
+    /// フロントから取得する経路は作らない。
     pub settings: Settings,
     /// `settings.json` を読めなかった事実。UI が通知バーに出す（03.ux-spec/07-status-and-notifications.md §2）。
     /// これが `Some` の間、`write_settings` は書き戻しを拒否する。
     pub settings_error: Option<SettingsProblem>,
     /// カスタム CSS（F-CONF-07 / 02.architecture/10-theming.md §3）。
     ///
-    /// **64KB 以下のときだけ中身が入る。** 小さいうちにここへ載せるのは、
-    /// ダークな背景を当てているときに白い初期画面が一瞬見えるのを防ぐため。
-    /// 超える場合は `deferred` が立ち、フロントが `read_custom_css` で取りに行く。
+    /// 64KB 以下のときだけ中身が入る。
+    /// 小さいうちにここへ載せるのは、暗い背景を指定しているときに白い初期画面が一瞬表示されるのを防ぐためである。
+    /// 超える場合は `deferred` が立ち、フロントが `read_custom_css` で取得する。
     pub custom_css: CustomCss,
-    /// エディター用のカスタム CSS（`editor.css`）。**本文用と完全に同じ扱い。**
-    /// 別のフィールドにしているのは、当てる先（`@scope` の根）が違うため。
+    /// エディター用のカスタム CSS（`editor.css`）。本文用と同じ扱いである。
+    /// 別のフィールドにしているのは、適用先（`@scope` の起点）が違うためである。
     pub editor_css: CustomCss,
 }
 
+/// 起動時に開く 1 枚目のドキュメント。
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct BootstrapDocument {
     #[serde(flatten)]
     pub meta: DocumentMeta,
-    /// 256KB 以下のときだけ本文が入る。超える場合は `None` で、
-    /// フロントが `read_document` で取りに行く。
+    /// 256KB 以下のときだけ本文が入る。超える場合は `None` になり、フロントが `read_document` で取得する。
     pub content: Option<String>,
 }
 
+/// 初期ドキュメントを読めなかった理由。`kind` は [`crate::error::CoreError::kind`] と同じ識別子。
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct BootstrapError {
@@ -89,6 +89,7 @@ pub struct BootstrapError {
     pub message: String,
 }
 
+/// フロント側の計測設定。無効なときも渡し、フロントは `enabled` を見て判断する。
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TraceConfig {
@@ -99,7 +100,7 @@ pub struct TraceConfig {
 
 /// CLI 引数から初期ペイロードを組み立てる。
 ///
-/// **この関数はウィンドウ生成の前に呼ばれ、ファイル I/O を含む。**
+/// この関数はウィンドウ生成の前に呼ばれ、ファイル I/O を含む。
 /// 呼び出し側は WebView の初期化と並行になるよう配置すること。
 pub fn build(
     args: &CliArgs,
@@ -169,13 +170,12 @@ pub fn build(
 /// CSP が `script-src 'self'` でインラインスクリプトを禁じているが、
 /// `initialization_script` は WebView のフックとして注入されるため CSP の対象外。
 ///
-/// 本文をここで注入するのは、IPC 往復（実測 約 17ms）をクリティカルパスから
-/// 外すため（02.architecture/05-startup-sequence.md §1）。**フロントから取りに行く経路は無い。**
+/// 本文をここで注入するのは、IPC 往復（実測 約 17ms）をクリティカルパスから外すためである（02.architecture/05-startup-sequence.md §1）。
+/// フロントから取得する経路は用意しない。
 pub fn to_init_script(bootstrap: &Bootstrap) -> String {
     let json = serde_json::to_string(bootstrap).unwrap_or_else(|_| "null".to_string());
 
-    // `Object.freeze` しておくことで、本文 Markdown 由来のスクリプトに
-    // bootstrap を書き換えられる経路を潰す（多層防御の一部）。
+    // `Object.freeze` により、本文 Markdown 由来のスクリプトから bootstrap を書き換えられる経路を塞ぐ（多層防御の一部）。
     format!(
         "globalThis.__MARXDOWN_BOOTSTRAP__ = Object.freeze({json});\
          globalThis.__MARXDOWN_T4__ = performance.now();"

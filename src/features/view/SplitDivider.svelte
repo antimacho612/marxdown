@@ -1,7 +1,7 @@
 <!--
   Split の分割線（03.ux-spec/03-split-mode.md §1）。
-  ライトペインの掴み手（`panes/RightPane.svelte` の `__resizer`）とドラッグ・rAF 間引き・離した時点で 1 回だけ保存する形が同じで、違うのは単位だけである（あちらは px、こちらは比）。
-  `role="slider"` なのは、Svelte の a11y 検査が `separator` を「押せない要素」と見なすためである。
+  ライトペインのドラッグ領域（`panes/RightPane.svelte` の `__resizer`）と、ドラッグ・rAF による間引き・離した時点で 1 回だけ保存する構造が同じで、違うのは単位だけである（あちらは px、こちらは比）。
+  `role="slider"` にしているのは、Svelte の a11y 検査が `separator` を操作できない要素と判定するためである。
 -->
 <script lang="ts">
   import { ja } from '@/i18n/ja';
@@ -23,8 +23,8 @@
   /**
    * 分割線の位置から比を出す。
    *
-   * **ウィンドウ全体ではなく、左右のペインを除いた領域で割る。**
-   * ペインが開いているときに全体で割ると、掴んだ位置と線がずれる。
+   * ウィンドウ全体ではなく、左右のペインを除いた領域を基準に計算する。
+   * ペインが開いているときに全体を基準にすると、ドラッグ位置と分割線がずれる。
    */
   function ratioAt(clientX: number, element: HTMLElement): number {
     const editor = document.querySelector('#mx-editor');

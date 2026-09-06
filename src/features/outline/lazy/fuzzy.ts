@@ -41,11 +41,11 @@ export function fuzzyScore(text: string, query: string): number | null {
 /**
  * 一致した見出しを、スコアの高い順に返す。
  *
- * 同点は**元の順序**（＝文書内の並び）で決める。空クエリでは全件が
- * 文書順のまま返るので、開いた直後は「アウトラインそのもの」に見える。
+ * 同点の場合は元の順序（文書内の並び）を維持する。
+ * 空のクエリでは全件が文書順のまま返るため、開いた直後はアウトラインと同じ並びになる。
  *
- * 添字ではなく見出しそのものを返す。呼ぶ側は `documentStore.outline` を持っており、
- * 添字を返すと 1 打鍵ごとに文字列の配列を作り直したうえで引き直すことになる。
+ * 添字ではなく見出しそのものを返す。
+ * 呼び出し側は `documentStore.outline` を持っており、添字を返すと 1 打鍵ごとに文字列の配列を作り直したうえで引き直すことになる。
  */
 export function fuzzyFilter(items: readonly OutlineItem[], query: string): OutlineItem[] {
   const matches: { item: OutlineItem; index: number; score: number }[] = [];

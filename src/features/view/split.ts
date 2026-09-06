@@ -13,8 +13,8 @@ import { viewStore } from './store.svelte';
 /**
  * CSS 側が読む変数（`styles/shell.css` の Split の列幅）。
  *
- * **単位まで含んだ値を入れる。** `calc(var(--x) * 1fr)` とは書けないため
- * （`<flex>` に `calc()` は通らず、宣言ごと捨てられて列が `auto` に潰れる）。
+ * 単位まで含んだ値を設定する。
+ * `calc(var(--x) * 1fr)` とは書けないためである（`<flex>` に `calc()` は使えず、宣言ごと無効になって列が `auto` になる）。
  */
 const EDITOR_VARIABLE = '--mx-split-editor';
 const PREVIEW_VARIABLE = '--mx-split-preview';
@@ -25,10 +25,10 @@ const PERSIST_DEBOUNCE_MS = 400;
 let persistTimer: ReturnType<typeof setTimeout> | null = null;
 
 /**
- * bootstrap から**同期的に**当てる。シェルを描くより前に呼ぶこと。
+ * bootstrap から同期的に適用する。シェルを描画するより前に呼ぶこと。
  *
- * 倍率・ペインと同じ理由（02.architecture/05-startup-sequence.md §1）。
- * 後から当てると、`--mode split` で開いたときに 50:50 で一度描かれてから寄る。
+ * 倍率やペインと同じ理由による（02.architecture/05-startup-sequence.md §1）。
+ * 後から適用すると、`--mode split` で開いたときに 50:50 の状態が一度描画された後に分割比が変化して見える。
  */
 export function initSplit(bootstrap: Bootstrap | null): void {
   applySplit(clampSplit(bootstrap?.split ?? SPLIT_DEFAULT));
@@ -37,8 +37,8 @@ export function initSplit(bootstrap: Bootstrap | null): void {
 /**
  * 分割比を変える。`persist` を false にすると保存しない（ドラッグ中）。
  *
- * **CSS 変数へは毎回書く。** リアクティブな値の変化で列幅が決まる形にすると、
- * ドラッグ中に Svelte の更新がレイアウトのたびに挟まる。
+ * CSS 変数へは毎回書き込む。
+ * リアクティブな値の変化で列幅が決まる形にすると、ドラッグ中に Svelte の更新がレイアウトのたびに挟まる。
  */
 export function setSplit(split: number, persist = true): number {
   const next = clampSplit(split);
@@ -52,6 +52,7 @@ export function resetSplit(): void {
   setSplit(SPLIT_DEFAULT);
 }
 
+/** 分割比を許容範囲へ丸める。有限でない値は既定値に戻す。 */
 export function clampSplit(split: number): number {
   if (!Number.isFinite(split)) return SPLIT_DEFAULT;
   return Math.min(SPLIT_MAX, Math.max(SPLIT_MIN, split));
@@ -72,7 +73,7 @@ function schedulePersist(): void {
   }, PERSIST_DEBOUNCE_MS);
 }
 
-/** テスト用。 */
+/** テスト用。予約中の保存を取り消し、分割比を既定へ戻す。 */
 export function resetSplitState(): void {
   if (persistTimer !== null) clearTimeout(persistTimer);
   persistTimer = null;

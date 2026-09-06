@@ -10,9 +10,10 @@ import { ja } from '@/i18n/ja';
 import { processInIdle } from '@/lib/idle';
 import { getPlatform } from '@/platform';
 
-/** 処理済みの印。2 回目の `enhance` がここを見て取りこぼしだけ拾う。 */
+/** 処理済みの印。2 回目の `enhance` はこれを見て未処理の要素だけを対象にする。 */
 const DONE = 'mxEnhanced';
 
+/** `enhance` の引数。 */
 export interface EnhanceOptions {
   /** 相対パスの画像を解決する基準。開いているファイルの親ディレクトリ。 */
   baseDir: string;
@@ -21,17 +22,13 @@ export interface EnhanceOptions {
 /**
  * 未処理の要素を拾って手を入れる。
  *
- * 3 つの仕事は互いに独立なので、それぞれ別のアイドル列に流す。
- * 画像 1 枚の解決が遅いせいでコピーボタンが出ない、という結合を作らない。
+ * それぞれの処理は互いに独立しているため、別々のアイドル処理として実行する。
+ * 画像 1 枚の解決が遅いためにコピーボタンが表示されない、という依存関係を作らない。
  */
 export function enhance(container: HTMLElement, options: EnhanceOptions): void {
   void enhanceCodeBlocks(container);
   void enhanceImages(container, options.baseDir);
 }
-
-/* ------------------------------------------------------------------ */
-/* コードブロック（F-VIEW-03 / F-VIEW-04）                              */
-/* ------------------------------------------------------------------ */
 
 async function enhanceCodeBlocks(container: HTMLElement): Promise<void> {
   const blocks = [...container.querySelectorAll<HTMLElement>('pre > code')].filter(
@@ -47,22 +44,20 @@ async function enhanceCodeBlocks(container: HTMLElement): Promise<void> {
     }
   }
 
-  // ハイライトは**遅延チャンク**。コードブロックが 1 つも無いドキュメントでは
-  // ここに到達しないので、`highlight` チャンクはロードすらされない
+  // ハイライトは遅延チャンクに置いてある。
+  // コードブロックが 1 つも無いドキュメントではここに到達しないため、`highlight` チャンクは読み込まれない
   // （02.architecture/05-startup-sequence.md §3 の分割境界）。
   const { highlightElement, languageOf } = await import('./lazy/highlight');
   const targets = blocks.filter((code) => languageOf(code) !== null);
 
   await processInIdle(targets, (code) => {
-    // **切り離された要素は飛ばす**（OQ-18）。
+    // DOM から切り離された要素は処理しない（OQ-18）。
     //
-    // `enhance` はアイドルで少しずつ進むので、この途中で次のファイルが開かれると
-    // 対象は `paint()` の `replaceChildren()` によって DOM から外れている。
-    // ハイライトは 1 ブロックあたり数百 µs かかる仕事で、それを
-    // **もう誰も見ていない要素に対して**最後までやり切る理由がない。
+    // `enhance` はアイドル時に少しずつ進むため、その途中で次のファイルが開かれると、対象は `paint()` の `replaceChildren()` によって DOM から外れている。
+    // ハイライトは 1 ブロックあたり数百 µs かかる処理であり、表示されない要素に対して実行する必要はない。
     //
-    // `paint` 側の打ち切り（`cancelPaint`）と役割が違う。あちらは
-    // 「作り続けるのを止める」、こちらは「作り終えたものを整えるのを止める」。
+    // `paint` 側の打ち切り（`cancelPaint`）とは役割が異なる。
+    // `cancelPaint` は DOM の構築を止め、こちらは構築済みの要素への追加処理を止める。
     if (!code.isConnected) return;
     void highlightElement(code);
   });
@@ -71,8 +66,8 @@ async function enhanceCodeBlocks(container: HTMLElement): Promise<void> {
 /**
  * コードブロックのコピーボタン（F-VIEW-04）。
  *
- * `pre` の中に置くので、本文の流れに余計な要素が挟まらない。
- * 見えるのはホバー時とフォーカス時だけ（03.ux-spec/01-screen-layout.md §1 の「静けさ」）。
+ * `pre` の中に配置するため、本文の流れに要素が挟まらない。
+ * 表示するのはホバー時とフォーカス時だけである（03.ux-spec/01-screen-layout.md §1 の「静けさ」）。
  */
 function addCopyButton(pre: HTMLElement, code: HTMLElement): void {
   const button = document.createElement('button');
@@ -85,7 +80,7 @@ function addCopyButton(pre: HTMLElement, code: HTMLElement): void {
     void copy(code.textContent ?? '').then((ok) => {
       button.textContent = ok ? ja.preview.copied : ja.preview.copyFailed;
       button.dataset['mxState'] = ok ? 'ok' : 'error';
-      // 1 回きりのタイマー。押されたときにしか作られない。
+      // 1 回だけのタイマー。押されたときにしか生成されない。
       setTimeout(() => {
         button.textContent = ja.preview.copy;
         delete button.dataset['mxState'];
@@ -105,15 +100,11 @@ async function copy(text: string): Promise<boolean> {
     await navigator.clipboard.writeText(text);
     return true;
   } catch {
-    // 権限が無い / セキュアコンテキストでない。通知バーに出すほどのことではないので、
-    // ボタン自身の表示で伝える。
+    // 権限が無い場合やセキュアコンテキストでない場合に失敗する。
+    // 通知バーに出すほどの内容ではないため、ボタン自身の表示で伝える。
     return false;
   }
 }
-
-/* ------------------------------------------------------------------ */
-/* 画像（F-VIEW-08 / N-SEC-05）                                         */
-/* ------------------------------------------------------------------ */
 
 /**
  * すでにブラウザが解決できる形の src か。
@@ -132,7 +123,7 @@ async function enhanceImages(container: HTMLElement, baseDir: string): Promise<v
   const local = images.filter((img) => !READY.test(img.getAttribute('src') ?? ''));
   if (local.length === 0 || baseDir === '') return;
 
-  // 1 枚ごとに IPC が 1 往復する。アイドルに刻んで、スクロールを妨げない。
+  // 1 枚ごとに IPC が 1 往復する。アイドル時に分割して実行し、スクロールを妨げないようにする。
   await processInIdle(local, (img) => {
     const href = img.getAttribute('src') ?? '';
     void resolveImage(img, href, baseDir);
@@ -143,11 +134,11 @@ async function resolveImage(img: HTMLImageElement, href: string, baseDir: string
   try {
     img.src = await getPlatform().resolveAsset(href, baseDir);
   } catch (e) {
-    // 許可ディレクトリの外か、そもそも無い。**黙って壊れた画像を出さない。**
+    // 許可ディレクトリの外にあるか、ファイルが存在しない。
+    // 壊れた画像をそのまま表示せず、理由を示すプレースホルダに置き換える。
     //
-    // 中心ユースケースは「LLM が生成した、自分が書いていないファイルを開く」こと
-    // （ADR-0006）。`![](../../../.ssh/id_rsa)` が拒まれたことは、
-    // ユーザーに見える形で伝わったほうがよい。
+    // 中心ユースケースは「LLM が生成した、自分が書いていないファイルを開く」ことである（ADR-0006）。
+    // `![](../../../.ssh/id_rsa)` が拒否されたことは、ユーザーに見える形で伝える。
     img.replaceWith(blockedPlaceholder(href, isOutOfScope(e)));
   }
 }
@@ -167,7 +158,7 @@ function blockedPlaceholder(href: string, outOfScope: boolean): HTMLElement {
 
   const path = document.createElement('code');
   path.className = 'mx-image-blocked__path';
-  // textContent なので、href がどんな文字列でもここから HTML にはならない
+  // `textContent` で設定するため、href がどのような文字列でもここから HTML として解釈されることはない
   path.textContent = href;
 
   box.append(label, path);

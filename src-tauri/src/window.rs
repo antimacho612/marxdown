@@ -1,12 +1,11 @@
 //! ウィンドウ生成と、位置・サイズの復元（F-CONF-10）。
 //!
-//! ウィンドウを `tauri.conf.json` の宣言ではなく**コードで生成する**のは、
-//! `initialization_script` に CLI 引数から作った bootstrap を載せる必要があるため
-//! （02.architecture/05-startup-sequence.md §1）。宣言的なウィンドウでは注入するタイミングがない。
+//! ウィンドウを `tauri.conf.json` の宣言ではなくコードで生成するのは、`initialization_script` に CLI 引数から作った bootstrap を載せる必要があるためである（02.architecture/05-startup-sequence.md §1）。
+//! 宣言的なウィンドウでは注入するタイミングがない。
 //!
-//! この構造は復元にも効いている。位置とサイズを `WebviewWindowBuilder` に
-//! 直接渡せるので、「既定位置に出てから復元先へ動く」ちらつきが起きない。
-//! `visible: false` から本文ごと見せる設計（04.tech-stack/09-tauri-config.md §1）と噛み合う。
+//! この構造は復元にも有効である。
+//! 位置とサイズを `WebviewWindowBuilder` に直接渡せるため、既定位置に表示してから復元先へ移動する際のちらつきが発生しない。
+//! `visible: false` から本文ごと表示する設計（04.tech-stack/09-tauri-config.md §1）とも整合する。
 //!
 //! タイトルバーは自前で描く（03.ux-spec/01-screen-layout.md §1）。
 //! `decorations(false)` にして、`─ □ ✕` もファイル名も Svelte 側が描く。
@@ -26,12 +25,14 @@ use tauri::{Manager, WebviewUrl, WebviewWindow, WebviewWindowBuilder};
 use crate::bootstrap::Bootstrap;
 use crate::store::WindowState;
 
+/// メインウィンドウのラベル。イベントの宛先指定とウィンドウの取得に使う。
 pub const MAIN_LABEL: &str = "main";
 
 /// ウィンドウが見えないままになる上限（04.tech-stack/09-tauri-config.md §1）。
 /// これを超えたら本文が未完成でも表示する。「起動失敗に見える」ほうが害が大きい。
 pub const SHOW_FALLBACK_MS: u64 = 400;
 
+/// 復元する状態が無いときのウィンドウサイズ（論理 px）。
 pub const DEFAULT_WIDTH: f64 = 1000.0;
 pub const DEFAULT_HEIGHT: f64 = 720.0;
 
@@ -41,6 +42,10 @@ pub const DEFAULT_HEIGHT: f64 = 720.0;
 /// ディスプレイ構成が変わった後の起動で最も起きやすい。
 const MIN_VISIBLE: f64 = 80.0;
 
+/// ウィンドウを生成する。`visible: false` の状態で返る。
+///
+/// 表示するのは `ready` コマンド、または [`SHOW_FALLBACK_MS`] 経過後のフォールバックである。
+/// `restore` がモニタ外を指している場合は破棄し、中央に既定サイズで生成する。
 pub fn create(
     app: &tauri::AppHandle,
     label: &str,
@@ -53,30 +58,24 @@ pub fn create(
         .title("Marxdown")
         .min_inner_size(480.0, 360.0)
         .visible(false) // 描画準備が整うまで見せない
-        // カスタムタイトルバー。モジュールの冒頭に、
-        // これで何が失われて何が残るかを表にしてある。
+        // カスタムタイトルバー。失われるものと残るものはモジュール冒頭に記載。
         .decorations(false)
-        // **`decorations(false)` とセットでなければならない。**
-        // tao はこのフラグがあるときだけ `WM_NCCALCSIZE` で DWM のフレーム分を
-        // 内側に残し、影と Windows 11 の角丸を生かす。付けないと、
-        // 影の無い平らな矩形になって「アプリではなくオーバーレイ」に見える。
+        // `decorations(false)` とセットでなければならない。
+        // tao はこのフラグがあるときだけ `WM_NCCALCSIZE` で DWM のフレーム分を内側に残し、影と Windows 11 の角丸を有効にする。
+        // 付けないと影の無い平らな矩形になり、アプリではなくオーバーレイのように見える。
         .shadow(true)
-        // ドラッグ＆ドロップは**ネイティブのハンドラに任せる**（F-OPEN-08）。
+        // ドラッグ＆ドロップはネイティブのハンドラに任せる（F-OPEN-08）。
         //
-        // `disable_drag_drop_handler()` を呼んで HTML5 のドロップイベントで扱うと、
-        // WebView の `DataTransfer` がファイルの**絶対パスを渡さない**。
-        // パスが無いと最近開いたファイルにも積めず、相対パスの画像も解決できない
-        // （F-VIEW-08 / N-SEC-05）。Tauri のドラッグ＆ドロップイベントは実パスを渡す。
+        // `disable_drag_drop_handler()` を呼んで HTML5 のドロップイベントで扱うと、WebView の `DataTransfer` がファイルの絶対パスを渡さない。
+        // パスが無いと最近開いたファイルにも積めず、相対パスの画像も解決できない（F-VIEW-08 / N-SEC-05）。
+        // Tauri のドラッグ＆ドロップイベントは実パスを渡す。
         .initialization_script(&script)
         // ナビゲーション禁止（N-SEC-04 / ADR-0006 の多層防御 Layer 2）。
         //
-        // フロントはリンククリックを全部 `preventDefault()` するが、それは
-        // **JS が期待どおり動いている限り**の話。ここで塞いでおくと、
-        // ハンドラの登録前・例外で落ちた後・想定外の遷移経路のいずれでも、
-        // アプリのシェルが差し替わって戻れなくなる事故が起きない。
-        // 許可するのは**アプリ自身のページだけ**。同じオリジンでも別のパスは通さない。
-        // `./other.md` のようなリンクを踏んだときに、遷移先が 404 のシェルに
-        // なるのではなく、そもそも遷移が起きないようにする。
+        // フロントはリンククリックをすべて `preventDefault()` するが、それは JS が期待どおり動作している場合に限られる。
+        // ここで塞いでおくと、ハンドラの登録前・例外で停止した後・想定外の遷移経路のいずれでも、アプリのシェルが差し替わって復帰できなくなることがない。
+        // 許可するのはアプリ自身のページだけで、同じオリジンでも別のパスは通さない。
+        // `./other.md` のようなリンクを開いたときに、遷移先が 404 のシェルになるのではなく、そもそも遷移が発生しないようにする。
         .on_navigation(|url| {
             let own_host = matches!(
                 url.host_str(),
@@ -118,8 +117,8 @@ pub fn create(
 
 /// 復元しようとしている矩形が、現在つながっているモニタのどれかと十分に重なるか。
 ///
-/// モニタの座標系は物理ピクセルなので、論理ピクセルで保持している
-/// `WindowState`（`store.rs`）と比べる前に、モニタ側を論理に落として揃える。
+/// モニタの座標系は物理ピクセルである。
+/// 論理ピクセルで保持している `WindowState`（`store.rs`）と比較する前に、モニタ側を論理ピクセルへ変換して揃える。
 fn is_on_some_monitor(app: &tauri::AppHandle, state: &WindowState) -> bool {
     let Ok(monitors) = app.available_monitors() else {
         // モニタ情報が取れないなら復元を諦める。中央に出るほうが安全。
@@ -140,9 +139,9 @@ fn is_on_some_monitor(app: &tauri::AppHandle, state: &WindowState) -> bool {
 
 /// 現在のウィンドウ位置・サイズを、保存できる形（論理ピクセル）で取り出す。
 ///
-/// 最大化中は最大化後の矩形が返る。Tauri は「最大化する前の矩形」を公開していないため、
-/// 復元時も最大化状態ごと再現する形になる。最大化を解いたときの大きさが
-/// 前回セッションと変わりうるが、位置を見失うよりは害が小さい。
+/// 最大化中は最大化後の矩形が返る。
+/// Tauri は最大化する前の矩形を公開していないため、復元時も最大化状態ごと再現する形になる。
+/// 最大化を解除したときのサイズが前回セッションと変わりうるが、位置を見失うよりは害が小さい。
 pub fn capture<R: tauri::Runtime>(window: &WebviewWindow<R>) -> Option<WindowState> {
     let scale = window.scale_factor().ok()?;
     let position = window.outer_position().ok()?.to_logical::<f64>(scale);
@@ -164,8 +163,7 @@ pub fn capture<R: tauri::Runtime>(window: &WebviewWindow<R>) -> Option<WindowSta
 
 /// 一定時間経っても `ready` が来なければ、こちらから表示する。
 ///
-/// `setInterval` によるポーリングではなく 1 回きりのタイマーであることが重要
-/// （05.performance-budget/04-targets.md §5「アイドル時のタイマーを増やさない」）。
+/// ポーリングではなく 1 回だけのタイマーであることが重要（05.performance-budget/04-targets.md §5「アイドル時のタイマーを増やさない」）。
 fn spawn_show_fallback(app: tauri::AppHandle, label: String) {
     std::thread::spawn(move || {
         std::thread::sleep(std::time::Duration::from_millis(SHOW_FALLBACK_MS));
