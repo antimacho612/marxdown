@@ -4,11 +4,12 @@
  * `parse` をシェル描画より前に投げ、その取得・評価とシェル描画を重ねる（`openDocument` の `betweenParseAndPaint` / ADR-0010）。
  * 開く経路自体は `features/document/open.ts` に一本化されており、このファイルは起動固有の処理（bootstrap 読み取り・ウィンドウ表示・購読登録）のみを扱う。
  */
-import { configureOpener, openDocument, openDropped, openPath } from '@/features/document/open';
+import { configureOpener, openDocument, openDropped, openPath, previewScrollTop } from '@/features/document/open';
 import { saveThenQuit } from '@/features/document/save';
 import { documentStore } from '@/features/document/store.svelte';
 import { installFileWatch } from '@/features/document/watch';
 import { mountEditorLazily, preloadEditor, setSplitSyncLazily } from '@/features/editor/open-editor';
+import { configureHistory } from '@/features/history';
 import { initPanes } from '@/features/panes';
 import { installLinkHandler } from '@/features/preview/links';
 import { applyZoom } from '@/features/preview/zoom';
@@ -78,6 +79,17 @@ export async function startup(renderShell: () => void): Promise<void> {
   const editorCssResult = applyCustomCss(editorCss?.css ?? null, 'editor');
 
   configureOpener({ parser: createParser() });
+
+  // 履歴を辿るときの開き直し（F-NAV-07）。**引数の意味はここでしか決まらない。**
+  //
+  // 履歴を辿る移動そのものは履歴に積まない（積むと二度と抜け出せない）。
+  // 最近開いたファイル（F-OPEN-09）の順序は「最後に開いた順」であって
+  // 「最後に見た順」ではないので、戻っただけでは先頭に来ない。
+  configureHistory({
+    scrollTop: previewScrollTop,
+    reopen: async (path, scrollTop) =>
+      Boolean(await openPath(path, { resetScroll: false, restoreScroll: scrollTop, history: false, remember: false })),
+  });
 
   // リンクハンドラとキーバインドは**本文を描くより前**に登録する。
   //

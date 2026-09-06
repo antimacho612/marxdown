@@ -1,13 +1,13 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { configureOpener, openPath, reloadCurrent } from '@/features/document/open';
+import { configureOpener, openPath, previewScrollTop, reloadCurrent } from '@/features/document/open';
 import { documentStore } from '@/features/document/store.svelte';
 import type { MarkdownParser } from '@/markdown/parser';
 import { getPlatform, setPlatform, type DocumentPayload, type Platform } from '@/platform';
 
 import { canGoBack, canGoForward, resetHistory } from './history';
-import { goBack, goForward } from './navigate';
+import { configureHistory, goBack, goForward } from './navigate';
 
 const original = getPlatform();
 
@@ -77,6 +77,12 @@ beforeEach(() => {
   });
 
   configureOpener({ parser: fakeParser() });
+  // 開き直しの手は `app/bootstrap.ts` が渡す。ここでは同じ形を組み立てる。
+  configureHistory({
+    scrollTop: previewScrollTop,
+    reopen: async (path, scrollTop) =>
+      Boolean(await openPath(path, { resetScroll: false, restoreScroll: scrollTop, history: false, remember: false })),
+  });
   documentStore.meta = null;
   resetHistory();
 });
