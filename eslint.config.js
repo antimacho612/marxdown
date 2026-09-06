@@ -71,6 +71,18 @@ const UNICORN_NOT_ENFORCED_BEFORE = [
   'switch-case-braces',
 ];
 
+/**
+ * 公開面（`index.ts`）を通した参照だけを許す feature の一覧（02.architecture/03-layers.md §2）。
+ *
+ * 直接 import できてしまうと `index.ts` が「外から使ってよいものの一覧」でなくなる。
+ * `lazy/` の下だけは除く。動的 import の入口を名指しする必要があり、
+ * そこを `index.ts` 経由にするとクリティカルパスから静的に辿れてしまう。
+ *
+ * **`UNICORN_NOT_ENFORCED_BEFORE` と逆で、こちらは足していく側。**
+ * feature を 1 つ整理するたびに 1 行増やす。
+ */
+const FEATURE_BARREL_ENFORCED = ['settings'];
+
 /** プロジェクト共通のルール。`.ts` と `.svelte` の両方に効かせる。 */
 const rules = {
   eqeqeq: 'error',
@@ -95,6 +107,17 @@ const rules = {
   'unicorn/prefer-global-this': 'off',
   'unicorn/prefer-query-selector': 'off',
   ...Object.fromEntries(UNICORN_NOT_ENFORCED_BEFORE.map((r) => [`unicorn/${r}`, 'off'])),
+
+  'no-restricted-imports': [
+    'error',
+    {
+      patterns: FEATURE_BARREL_ENFORCED.map((feature) => ({
+        // gitignore と同じ解釈なので、`lazy/` 自身を先に除外から戻さないと配下に届かない。
+        group: [`@/features/${feature}/*`, `!@/features/${feature}/lazy`, `!@/features/${feature}/lazy/**`],
+        message: `feature の外からは '@/features/${feature}' を経由すること（遅延チャンクの入口だけは 'lazy/' 直下を名指しする）。`,
+      })),
+    },
+  ],
 
   'import-x/no-cycle': 'error',
   'import-x/no-unassigned-import': 'error',
