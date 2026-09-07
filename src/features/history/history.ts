@@ -26,9 +26,28 @@ export interface HistoryEntry {
  */
 const LIMIT = 50;
 
-let entries: HistoryEntry[] = [];
-/** いま見ているエントリの添字。何も開いていなければ `-1`。 */
-let cursor = -1;
+/** タブ 1 枚ぶんの履歴。 */
+interface TabHistory {
+  entries: HistoryEntry[];
+  /** いま見ているエントリの添字。何も開いていなければ `-1`。 */
+  cursor: number;
+}
+
+/**
+ * タブごとの履歴（M3 Phase 2b）。
+ *
+ * 1 本を共有すると、タブを切り替えた後の `Alt+←` が別のタブで開いた文書へ飛ぶ。
+ * 戻る先は「同じタブの 1 つ前」であってほしい。ブラウザのタブと同じ形である。
+ */
+const byTab = new Map<number, TabHistory>();
+
+function stateOf(key: number): TabHistory {
+  const found = byTab.get(key);
+  if (found) return found;
+  const created: TabHistory = { entries: [], cursor: -1 };
+  byTab.set(key, created);
+  return created;
+}
 
 /**
  * 開いたドキュメントを積む。離れる直前のスクロール位置も併せて受け取る。
@@ -36,8 +55,9 @@ let cursor = -1;
  * 現在位置より先（`Alt+←` で戻った後の「進む」側）は破棄する。
  * ブラウザと同じく、戻ってから別の場所へ移動すれば分岐は失われる。
  */
-export function pushHistory(path: string, currentScrollTop: number): void {
-  const current = entries[cursor];
+export function pushHistory(key: number, path: string, currentScrollTop: number): void {
+  const state = stateOf(key);
+  const current = state.entries[state.cursor];
 
   if (current && current.path === path) {
     // 同じファイルを開き直しただけの場合（ダイアログで同じファイルを選ぶなど）。
@@ -47,10 +67,10 @@ export function pushHistory(path: string, currentScrollTop: number): void {
   }
   if (current) current.scrollTop = currentScrollTop;
 
-  entries = entries.slice(0, cursor + 1);
-  entries.push({ path, scrollTop: 0 });
-  if (entries.length > LIMIT) entries = entries.slice(entries.length - LIMIT);
-  cursor = entries.length - 1;
+  state.entries = state.entries.slice(0, state.cursor + 1);
+  state.entries.push({ path, scrollTop: 0 });
+  if (state.entries.length > LIMIT) state.entries = state.entries.slice(state.entries.length - LIMIT);
+  state.cursor = state.entries.length - 1;
 }
 
 /**
@@ -59,15 +79,17 @@ export function pushHistory(path: string, currentScrollTop: number): void {
  * 移動する前に、現在のエントリへスクロール位置を書き戻す。
  * 戻った先から進み直したときに元の位置を復元できるのは、この処理による。
  */
-export function stepHistory(delta: -1 | 1, currentScrollTop: number): HistoryEntry | null {
-  const next = cursor + delta;
-  if (next < 0 || next >= entries.length) return null;
+export function stepHistory(key: number | null, delta: -1 | 1, currentScrollTop: number): HistoryEntry | null {
+  if (key === null) return null;
+  const state = stateOf(key);
+  const next = state.cursor + delta;
+  if (next < 0 || next >= state.entries.length) return null;
 
-  const current = entries[cursor];
+  const current = state.entries[state.cursor];
   if (current) current.scrollTop = currentScrollTop;
 
-  cursor = next;
-  return entries[next] ?? null;
+  state.cursor = next;
+  return state.entries[next] ?? null;
 }
 
 /**
@@ -75,27 +97,36 @@ export function stepHistory(delta: -1 | 1, currentScrollTop: number): HistoryEnt
  *
  * 開けていないのにカーソルだけ移動していると、もう一度 `Alt+←` を押したときに操作回数と移動段数が一致しなくなる。
  */
-export function revertHistoryStep(delta: -1 | 1): void {
-  cursor -= delta;
+export function revertHistoryStep(key: number | null, delta: -1 | 1): void {
+  if (key === null) return;
+  stateOf(key).cursor -= delta;
 }
 
 /** 戻れるか。メニューの表示条件にも使う。 */
-export function canGoBack(): boolean {
-  return cursor > 0;
+export function canGoBack(key: number | null): boolean {
+  if (key === null) return false;
+  return stateOf(key).cursor > 0;
 }
 
 /** 進めるか。メニューの表示条件にも使う。 */
-export function canGoForward(): boolean {
-  return cursor >= 0 && cursor < entries.length - 1;
+export function canGoForward(key: number | null): boolean {
+  if (key === null) return false;
+  const state = stateOf(key);
+  return state.cursor >= 0 && state.cursor < state.entries.length - 1;
 }
 
-/** テスト用。履歴とカーソルを初期化する。 */
+/** そのタブの履歴を捨てる。タブを閉じたときに呼ぶ（常駐で積算させない）。 */
+export function dropHistory(key: number): void {
+  byTab.delete(key);
+}
+
+/** テスト用。すべてのタブの履歴を初期化する。 */
 export function resetHistory(): void {
-  entries = [];
-  cursor = -1;
+  byTab.clear();
 }
 
 /** テスト用。履歴の内容とカーソル位置を取り出す。 */
-export function historySnapshot(): { entries: HistoryEntry[]; cursor: number } {
-  return { entries: entries.map((e) => ({ ...e })), cursor };
+export function historySnapshot(key: number): { entries: HistoryEntry[]; cursor: number } {
+  const state = stateOf(key);
+  return { entries: state.entries.map((e) => ({ ...e })), cursor: state.cursor };
 }

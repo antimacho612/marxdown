@@ -2,7 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { configureOpener, documentStore, openPath, previewScrollTop, reloadCurrent } from '@/features/document';
-import { resetTabs, workspaceOpenerHooks } from '@/features/workspace';
+import { resetTabs, tabsStore, workspaceOpenerHooks } from '@/features/workspace';
 import type { MarkdownParser } from '@/markdown/parser';
 import { getPlatform, setPlatform, type DocumentPayload, type Platform } from '@/platform';
 
@@ -98,12 +98,12 @@ describe('戻る / 進む (F-NAV-07 / Alt+← / Alt+→)', () => {
     await openPath('a.md');
     await openPath('b.md');
 
-    await goBack();
+    await goBack(tabsStore.activeId);
 
     expect(documentStore.meta?.path).toBe('a.md');
-    expect(canGoForward()).toBe(true);
+    expect(canGoForward(tabsStore.activeId)).toBe(true);
 
-    await goForward();
+    await goForward(tabsStore.activeId);
 
     expect(documentStore.meta?.path).toBe('b.md');
   });
@@ -117,7 +117,7 @@ describe('戻る / 進む (F-NAV-07 / Alt+← / Alt+→)', () => {
     // 開いた直後は先頭
     expect(container.scrollTop).toBe(0);
 
-    await goBack();
+    await goBack(tabsStore.activeId);
 
     expect(container.scrollTop).toBe(1400);
   });
@@ -129,19 +129,19 @@ describe('戻る / 進む (F-NAV-07 / Alt+← / Alt+→)', () => {
     await reloadCurrent();
     await reloadCurrent();
 
-    await goBack();
+    await goBack(tabsStore.activeId);
 
     // 積んでいたら、ここで b.md のまま止まる
     expect(documentStore.meta?.path).toBe('a.md');
-    expect(canGoBack()).toBe(false);
+    expect(canGoBack(tabsStore.activeId)).toBe(false);
   });
 
   it('履歴を辿る移動そのものは履歴に積まない', async () => {
     await openPath('a.md');
     await openPath('b.md');
 
-    await goBack();
-    await goBack();
+    await goBack(tabsStore.activeId);
+    await goBack(tabsStore.activeId);
 
     // 1 枚目より前へは行けない。**積んでいたら往復し続けられてしまう**
     expect(documentStore.meta?.path).toBe('a.md');
@@ -153,13 +153,13 @@ describe('戻る / 進む (F-NAV-07 / Alt+← / Alt+→)', () => {
     await openPath('c.md');
     missing.add('b.md');
 
-    await goBack();
+    await goBack(tabsStore.activeId);
 
     // 開けなかったので本文は c.md のまま。通知は openPath が出している
     expect(documentStore.meta?.path).toBe('c.md');
     expect(documentStore.notice?.level).toBe('error');
 
     // もう一度押せば、同じ b.md を試す（黙って a.md へ飛び越えない）
-    expect(canGoBack()).toBe(true);
+    expect(canGoBack(tabsStore.activeId)).toBe(true);
   });
 });

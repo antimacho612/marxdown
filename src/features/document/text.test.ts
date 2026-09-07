@@ -16,7 +16,11 @@ import {
 } from './text';
 
 /** テキストを 1 つ持つだけの偽エディター。CodeMirror は要らない。 */
-function fakePort(initial: string): EditorTextPort & { text: string; replace: ReturnType<typeof vi.fn> } {
+function fakePort(initial: string): EditorTextPort & {
+  text: string;
+  replace: ReturnType<typeof vi.fn>;
+  switched: { key: number; documentId: string }[];
+} {
   const port = {
     text: initial,
     read: () => port.text,
@@ -24,6 +28,13 @@ function fakePort(initial: string): EditorTextPort & { text: string; replace: Re
       port.text = next;
     }),
     sync: vi.fn(),
+    /** 文書の切り替え（M3 Phase 2b）。どのタブのどの文書で呼ばれたかを覚える。 */
+    switchTo: vi.fn((key: number, documentId: string, next: string) => {
+      port.text = next;
+      port.switched.push({ key, documentId });
+    }),
+    switched: [] as { key: number; documentId: string }[],
+    dispose: vi.fn(),
   };
   return port;
 }
@@ -72,19 +83,48 @@ describe('エディターが載っているあいだ', () => {
   it('二重に持たない', () => {
     // `huge.md`（2MB）で 2MB 余計に握り続けることになる。常駐アプリでは積算する。
     setDocumentText('控えとして持っている内容');
-    attachEditor(fakePort('エディターの内容'));
+    const port = fakePort('マウント前の内容');
+    attachEditor(port);
 
-    // 控えが残っていれば、外した後にそれが出てくる。
+    // 載せた時点で控えは渡してある。ここから先の真実はエディター側だけにある。
+    port.text = 'その後の編集';
     detachEditor();
-    expect(getDocumentText()).toBe('エディターの内容');
+    expect(getDocumentText()).toBe('その後の編集');
+  });
+
+  it('載せた時点で、開いている文書をエディターへ渡す', () => {
+    // エディターは自分がどのタブのものかを知らない（`attachEditor`）。
+    // 渡さないと、`Ctrl+Shift+V` で入った編集面が空になる。
+    setDocumentText('本文', { key: 3, documentId: 'C:/work/a.md' });
+    const port = fakePort('');
+    attachEditor(port);
+
+    expect(port.text).toBe('本文');
+    expect(port.switched).toEqual([{ key: 3, documentId: 'C:/work/a.md' }]);
+  });
+
+  it('文書ごとにキーを渡す。同じタブでも別のファイルなら別の文書として渡る', () => {
+    // 同じものとして渡すと、Undo で前のファイルの本文が編集面へ入る（N-CMP-03）。
+    const port = fakePort('');
+    attachEditor(port);
+
+    setDocumentText('a', { key: 1, documentId: 'C:/work/a.md' });
+    setDocumentText('b', { key: 1, documentId: 'C:/work/b.md' });
+
+    expect(port.switched).toEqual([
+      { key: 0, documentId: '<none>' },
+      { key: 1, documentId: 'C:/work/a.md' },
+      { key: 1, documentId: 'C:/work/b.md' },
+    ]);
   });
 });
 
 describe('エディターを外すとき', () => {
   it('外す前の内容を控えへ戻す', () => {
     setDocumentText('最初');
-    const port = fakePort('編集後');
+    const port = fakePort('');
     attachEditor(port);
+    port.text = '編集後';
 
     detachEditor();
     expect(getDocumentText()).toBe('編集後');

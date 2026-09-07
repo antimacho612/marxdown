@@ -18,6 +18,7 @@
 import {
   closeDocument,
   confirmDiscard,
+  disposeDocumentText,
   documentStore,
   getDocumentText,
   isTextDirty,
@@ -26,9 +27,11 @@ import {
   previewScrollTop,
   setDirty,
   toMeta,
+  untitledPayload,
   type StoredMeta,
   type StoredPayload,
 } from '@/features/document';
+import { dropHistory } from '@/features/history';
 import type { Eol } from '@/platform';
 
 /**
@@ -97,6 +100,30 @@ export function isTabDirty(tab: Tab): boolean {
 }
 
 /**
+ * 開く先のタブ。**無ければここで作る**（`OpenerConfig.targetKey`）。
+ *
+ * 作る場面は起動直後の 1 枚目だけである。
+ * 2 枚目以降はタブ側が先にアクティブを移してから開く（`activateTab` / `openPathInNewTab`）。
+ * 中身は直後に `adoptOpened` が入れる。
+ */
+export function targetTabKey(): number {
+  const active = tabsStore.active;
+  if (active !== null) return active.id;
+
+  const tab: Tab = {
+    id: nextId++,
+    meta: placeholder(''),
+    text: null,
+    scrollTop: 0,
+    textDirty: false,
+    eolOverride: null,
+  };
+  tabsStore.tabs = [...tabsStore.tabs, tab];
+  tabsStore.activeId = tab.id;
+  return tab.id;
+}
+
+/**
  * 開けた文書をアクティブなタブへ反映する。`configureOpener` の `onOpened` から呼ばれる。
  *
  * 1 枚も無ければここで作る。
@@ -141,6 +168,16 @@ export async function openInNewTab(payload: StoredPayload): Promise<boolean> {
   tabsStore.activeId = tab.id;
 
   return (await openDocument(payload, { resetScroll: true })) !== null;
+}
+
+/**
+ * 無題の文書を新しいタブで開く（`Ctrl+N` / F-OPEN-03）。
+ *
+ * 開いた後に編集できるモードへ移すのは呼び出し側（`app/commands.ts`）である。
+ * 空の本文は Preview では読めないが、モードの切り替えはこの feature の関心ではない。
+ */
+export async function openUntitledTab(): Promise<boolean> {
+  return openInNewTab(untitledPayload());
 }
 
 /**
@@ -211,8 +248,14 @@ export async function closeTab(id: number): Promise<boolean> {
   }
 
   const wasActive = tabsStore.activeId === id;
-  rememberClosed(target);
+  rememberClosed(target, index);
   tabsStore.tabs = tabsStore.tabs.filter((tab) => tab.id !== id);
+
+  // そのタブのために抱えているものを捨てる（N-PERF-06）。
+  // エディターのモデル（Undo 履歴を含む）と、戻る / 進むの履歴が対象である。
+  // 閉じたタブのぶんが残ると、常駐しているあいだ枚数分だけ積算する。
+  disposeDocumentText(id);
+  dropHistory(id);
 
   if (!wasActive) return true;
 
@@ -237,7 +280,8 @@ export async function closeTab(id: number): Promise<boolean> {
 export async function reopenClosedTab(): Promise<boolean> {
   const entry = closed.pop();
   if (entry === undefined) return false;
-  return openPathInNewTab(entry.path, { scrollTop: entry.scrollTop });
+  // 閉じた位置へ戻す。末尾に付けると、開き直しただけで並びが変わる。
+  return openPathInNewTab(entry.path, { scrollTop: entry.scrollTop, index: entry.index });
 }
 
 /**
@@ -251,7 +295,10 @@ export async function reopenClosedTab(): Promise<boolean> {
  * ここで先に読んで枠を作る形にすると、その経路を迂回することになる。
  * 開けなかった場合は枠を捨てて元のタブへ戻す。
  */
-export async function openPathInNewTab(path: string, options: { scrollTop?: number } = {}): Promise<boolean> {
+export async function openPathInNewTab(
+  path: string,
+  options: { scrollTop?: number; index?: number } = {},
+): Promise<boolean> {
   const existing = tabsStore.tabs.find((tab) => tabMeta(tab).path === path);
   if (existing !== undefined) return activateTab(existing.id);
 
@@ -267,7 +314,7 @@ export async function openPathInNewTab(path: string, options: { scrollTop?: numb
     textDirty: false,
     eolOverride: null,
   };
-  tabsStore.tabs = [...tabsStore.tabs, tab];
+  tabsStore.tabs = insertAt(tabsStore.tabs, tab, options.index);
   tabsStore.activeId = tab.id;
 
   const opened = await openPath(path, {
@@ -337,16 +384,22 @@ export function resetTabs(): void {
  * 上限を置くのは、常駐で日をまたいで使うためである（ADR-0007）。
  * 復元できるのは直前の数枚で足り、それ以前は「最近開いたファイル」（F-OPEN-09）の担当になる。
  */
-const closed: { path: string; scrollTop: number }[] = [];
+const closed: { path: string; scrollTop: number; index: number }[] = [];
 
 const CLOSED_KEPT = 10;
 
 /** 閉じたタブを覚える。パスを持たない無題の文書は開き直せないので覚えない。 */
-function rememberClosed(tab: Tab): void {
+function rememberClosed(tab: Tab, index: number): void {
   const path = tabMeta(tab).path;
   if (path === null) return;
-  closed.push({ path, scrollTop: tab.scrollTop });
+  closed.push({ path, scrollTop: tab.scrollTop, index });
   if (closed.length > CLOSED_KEPT) closed.shift();
+}
+
+/** 指定の位置に入れる。位置が無ければ末尾。 */
+function insertAt(tabs: Tab[], tab: Tab, index: number | undefined): Tab[] {
+  if (index === undefined || index >= tabs.length) return [...tabs, tab];
+  return [...tabs.slice(0, index), tab, ...tabs.slice(index)];
 }
 
 /**

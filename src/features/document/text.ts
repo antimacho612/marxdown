@@ -16,12 +16,36 @@ export interface EditorTextPort {
    * Undo でこの基準まで戻ってきたときにダーティを解除できるようにする。
    */
   sync: () => void;
+  /**
+   * 文書を切り替える（M3 Phase 2b）。
+   *
+   * `key` はタブ、`documentId` は文書の同一性（パス）を表す。
+   * この 2 つが同じなら同じ編集の続きであり、Undo 履歴もカーソルも引き継ぐ。
+   * どちらかが変われば別の文書であり、履歴を引き継いではいけない。
+   *
+   * **引き継ぐと、Undo で別のファイルの本文が編集面へ入る。**
+   * そのまま保存すれば、触っていない箇所どころかファイル全体が別物になる（N-CMP-03）。
+   */
+  switchTo: (key: number, documentId: string, text: string) => void;
+  /** そのタブが抱えているものを捨てる（タブを閉じたとき / N-PERF-06）。 */
+  dispose: (key: number) => void;
 }
 
 /** エディターがマウントされていない間の保持先。マウントされたら `null` に戻す。 */
 let held: string | null = null;
 
 let port: EditorTextPort | null = null;
+
+/**
+ * いま開いている文書の識別（`DocumentIdentity`）。
+ *
+ * 覚えておくのは、エディターは後からマウントされるためである。
+ * 既定の表示モードは Preview であり（02.architecture/05-startup-sequence.md §1）、`Ctrl+Shift+V` を押した時点で「どのタブのどの文書か」を伝え直す必要がある。
+ */
+let current: DocumentIdentity | null = null;
+
+/** 文書が決まっていないときの受け皿。タブ id は 1 から始まるので衝突しない。 */
+const NO_DOCUMENT: DocumentIdentity = { key: 0, documentId: '<none>' };
 
 /**
  * 読み込んだ本文を渡す。`open.ts` が開くたびに呼ぶ。
@@ -31,13 +55,29 @@ let port: EditorTextPort | null = null;
  * 未保存の変更の確認はここでは行わない。
  * 確認は呼び出し側（`openPath` / `newDocument`）の `confirmDiscard()` が担当する（02.architecture/08-state-management.md §3）。
  */
-export function setDocumentText(text: string): void {
+export function setDocumentText(text: string, document: DocumentIdentity | null = null): void {
+  if (document !== null) current = document;
+
   if (port) {
-    port.replace(text);
+    if (document === null) port.replace(text);
+    else port.switchTo(document.key, document.documentId, text);
     held = null;
     return;
   }
   held = text;
+}
+
+/** どのタブのどの文書か。エディターがモデルを分ける単位である（`EditorTextPort.switchTo`）。 */
+export interface DocumentIdentity {
+  /** タブ。1 タブ 1 モデルであり、切り替えても閉じるまで残る。 */
+  key: number;
+  /** 文書の同一性。パスを使い、無題の文書は `<untitled>` で表す。 */
+  documentId: string;
+}
+
+/** そのタブが抱えているものを捨てる。タブを閉じたときに呼ぶ（N-PERF-06）。 */
+export function disposeDocumentText(key: number): void {
+  port?.dispose(key);
 }
 
 /** 現在の本文。エディターがマウントされていれば、そちらの内容を返す。 */
@@ -64,6 +104,11 @@ export function syncDocumentText(): void {
  */
 export function attachEditor(next: EditorTextPort): void {
   port = next;
+
+  // マウント時点で開いている文書を載せる。
+  // エディターは自分がどのタブのものかを知らないため、ここで伝える（`current`）。
+  const identity = current ?? NO_DOCUMENT;
+  next.switchTo(identity.key, identity.documentId, held ?? '');
   held = null;
 }
 
@@ -84,4 +129,5 @@ export function detachEditor(): void {
 export function resetDocumentText(): void {
   held = null;
   port = null;
+  current = null;
 }

@@ -5,7 +5,6 @@
  * 開く経路自体は `features/document/open.ts` に一本化されており、このファイルは起動固有の処理（bootstrap 読み取り・ウィンドウ表示・購読登録）のみを扱う。
  */
 import {
-  configureNewDocument,
   configureOpener,
   documentStore,
   installFileWatch,
@@ -16,7 +15,7 @@ import {
 } from '@/features/document';
 import { mountEditorLazily, preloadEditor, setSplitSyncLazily } from '@/features/editor';
 import { configureHistory } from '@/features/history';
-import { decideInitialMode, initMode, setMode } from '@/features/mode';
+import { decideInitialMode, initMode } from '@/features/mode';
 import { initPanes } from '@/features/panes';
 import { applyZoom, installLinkHandler } from '@/features/preview';
 import { applyCustomCss, initSettings, installSettingsWatch, reportSettingsProblem } from '@/features/settings';
@@ -91,10 +90,6 @@ export async function startup(renderShell: () => void): Promise<void> {
   // 開けた結果を受け取る側も渡す（`features/workspace/opened.ts`）。
   // タブと最近開いたファイルはどちらも workspace の持ち物であり、依存を workspace → document の 1 方向に保つために注入で繋ぐ。
   configureOpener({ parser: createParser(), ...workspaceOpenerHooks() });
-
-  // 新規作成のあとに移る先（`features/document/new.ts`）。
-  // 空の本文を Preview で開いても何も見えないので、打てる場所へ移す。
-  configureNewDocument(() => setMode('edit'));
 
   // 履歴を辿るときの開き直し（F-NAV-07）。引数の意味はここでしか決まらない。
   //

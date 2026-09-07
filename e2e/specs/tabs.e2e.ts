@@ -13,7 +13,7 @@
  */
 import { Key } from 'webdriverio';
 
-import { openViaForward } from '../helpers/app';
+import { editorText, enterEditMode, openViaForward, typeAtEnd } from '../helpers/app';
 import { WORK_DOC, writeFile } from '../helpers/fixtures';
 
 /**
@@ -112,5 +112,46 @@ describe('タブ', () => {
       timeoutMsg: '閉じたタブが戻らなかった',
     });
     expect(await activeTabName()).toBe('doc.md');
+  });
+});
+
+/**
+ * タブごとの Undo（M3 Phase 2b）。
+ *
+ * **エディターが 1 つのモデルを使い回していると、ここで前の文書の本文が編集面へ入る。**
+ * そのまま保存すればファイル全体が別物になる（N-CMP-03）。
+ * モデルはタブごとに分かれている必要があり、それを確かめられるのは本物の Monaco だけである。
+ */
+describe('タブごとの Undo', () => {
+  it('別のタブで Undo しても、他のファイルの本文が入らない', async () => {
+    // doc.md を編集する。
+    await enterEditMode();
+    await typeAtEnd('ZZZ');
+    await browser.waitUntil(
+      async () => {
+        const typed = await editorText();
+        return typed.includes('ZZZ');
+      },
+      {
+        timeout: 10_000,
+        timeoutMsg: '打った文字が入らなかった',
+      },
+    );
+
+    // second.md のタブへ移り、そこで Undo する。並び順に依存しないよう位置を見てから押す。
+    const names = await tabNames();
+    await browser.keys([Key.Control, String(names.indexOf('second.md') + 1)]);
+    await browser.waitUntil(async () => (await activeTabName()) === 'second.md', {
+      timeout: 10_000,
+      timeoutMsg: 'タブが切り替わらなかった',
+    });
+    await browser.keys([Key.Control, 'z']);
+    await browser.pause(300);
+
+    const text = await editorText();
+    expect(text).toContain('2 枚目');
+    // doc.md の本文も、そこへ打った文字も入ってこない。
+    expect(text).not.toContain('本文です。');
+    expect(text).not.toContain('ZZZ');
   });
 });

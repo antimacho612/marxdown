@@ -24,7 +24,7 @@ export {
   scheduleLiveRender,
   type LiveRenderTiming,
 } from './live';
-export { configureNewDocument, newDocument } from './new';
+export { untitledPayload } from './new';
 export {
   configureOpener,
   describeOpenError,
@@ -45,5 +45,5 @@ export {
   type StoredMeta,
   type StoredPayload,
 } from './store.svelte';
-export { attachEditor, getDocumentText, resetDocumentText, setDocumentText } from './text';
+export { attachEditor, disposeDocumentText, getDocumentText, resetDocumentText, setDocumentText } from './text';
 export { installFileWatch } from './watch';

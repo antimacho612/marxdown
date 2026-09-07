@@ -7,10 +7,10 @@
 import type { OpenerConfig } from '@/features/document';
 
 import { forgetRecent, rememberRecent } from './recent.svelte';
-import { adoptOpened } from './tabs.svelte';
+import { adoptOpened, targetTabKey } from './tabs.svelte';
 
 /** `configureOpener` に混ぜる。`configureOpener({ parser, ...workspaceOpenerHooks() })`。 */
-export function workspaceOpenerHooks(): Pick<OpenerConfig, 'onOpened' | 'onMissing'> {
+export function workspaceOpenerHooks(): Pick<OpenerConfig, 'onOpened' | 'onMissing' | 'targetKey'> {
   return {
     onOpened: (meta, { remember }) => {
       adoptOpened(meta);
@@ -18,5 +18,8 @@ export function workspaceOpenerHooks(): Pick<OpenerConfig, 'onOpened' | 'onMissi
       if (remember && meta.path !== null) void rememberRecent(meta.path);
     },
     onMissing: (path) => void forgetRecent(path),
+    // 開く先のタブ。エディターはこれをキーにモデルを分け、履歴もこれで分かれる。
+    // 開く前にアクティブを移してあるので、この時点の値が行き先である（`tabs.svelte.ts`）。
+    targetKey: targetTabKey,
   };
 }

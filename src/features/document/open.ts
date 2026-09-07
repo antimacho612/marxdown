@@ -34,6 +34,14 @@ export interface OpenerConfig {
   onOpened: (meta: StoredMeta, options: { remember: boolean }) => void;
   /** 開けなかったことを知らせる先。消えたファイルを最近開いた一覧から外す。 */
   onMissing: (path: string) => void;
+  /**
+   * 開く先のタブ（`features/workspace`）。**無ければそちらで作る。**
+   *
+   * エディターはこれをキーにモデルを分け（`document/text.ts` の `DocumentIdentity`）、履歴もこれで分かれる（F-NAV-07）。
+   * 5 つの入口すべてに引数として足す代わりに、ここで 1 回だけ問う。
+   * タブ側は開く前にアクティブを移してあるため（`activateTab` / `openPathInNewTab`）、この時点の値が行き先である。
+   */
+  targetKey: () => number;
 }
 
 let config: OpenerConfig | null = null;
@@ -155,9 +163,12 @@ export async function openDocument(payload: StoredPayload, options: OpenOptions 
   traceMark(options, 'T6', `${payload.content.length} chars`);
   const parsing = opener.parser.parse(payload.content);
 
+  // 開く先のタブ。本文の載せ先（Monaco のモデル）と履歴の分かれ目がこれで決まる。
+  const key = opener.targetKey();
+
   // 本文を差し替える前に、現在のスクロール位置を履歴へ記録する（F-NAV-07）。
   // 無題の文書は戻り先として指定できないため積まない。
-  if (options.history !== false && payload.path !== null) pushHistory(payload.path, previewScrollTop());
+  if (options.history !== false && payload.path !== null) pushHistory(key, payload.path, previewScrollTop());
 
   // 本文を落としてから入れる。
   // そのまま代入すると `content` が実行時に残り、ストアが本文を保持し続ける（`toMeta`）。
@@ -166,7 +177,10 @@ export async function openDocument(payload: StoredPayload, options: OpenOptions 
 
   // 本文はストアではなく素のモジュールへ（ADR-0005 / `document/text.ts`）。
   // エディターがマウントされていれば Monaco への書き込みを伴うため、T6→T7 の並行処理を維持できるようパースの開始後に置く。
-  setDocumentText(payload.content);
+  //
+  // どのタブのどの文書かを一緒に渡す。
+  // これが無いと 1 つのモデルを使い回すことになり、切り替えた先で Undo したときに前の文書の本文が編集面へ入る（N-CMP-03）。
+  setDocumentText(payload.content, { key, documentId: payload.path ?? UNTITLED_ID });
 
   // ディスクと一致した状態から始める。開き直しでもここを通るので
   // 再読み込み後にダーティが残らない（F-EDIT-03）。
@@ -320,6 +334,9 @@ async function watch(path: string): Promise<void> {
 export function previewScrollTop(): number {
   return document.querySelector<HTMLElement>(PREVIEW_SELECTOR)?.scrollTop ?? 0;
 }
+
+/** 無題の文書（`Ctrl+N`）の識別子。パスが無いものを 1 つの文書として表す。 */
+const UNTITLED_ID = '<untitled>';
 
 function traceMark(options: OpenOptions, id: string, note?: string): void {
   if (options.trace !== true) return;

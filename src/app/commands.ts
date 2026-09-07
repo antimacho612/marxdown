@@ -10,7 +10,6 @@
  */
 import {
   documentStore,
-  newDocument,
   openPath,
   openViaDialog,
   reloadCurrent,
@@ -19,13 +18,13 @@ import {
   toggleEol,
 } from '@/features/document';
 import { canGoBack, canGoForward, goBack, goForward } from '@/features/history';
-import { cycleMode, openFind, openReplace, togglePreview, toggleSplit } from '@/features/mode';
+import { cycleMode, openFind, openReplace, setMode, togglePreview, toggleSplit } from '@/features/mode';
 import { openJumpLazily, showOutline } from '@/features/outline';
 import { toggleRightPane } from '@/features/panes';
 import { zoomIn, zoomOut, zoomReset } from '@/features/preview';
 import { openSettingsLazily } from '@/features/settings';
 import { viewStore } from '@/features/view';
-import { closeTab, cycleTab, reopenClosedTab, selectTabAt, tabsStore } from '@/features/workspace';
+import { closeTab, cycleTab, openUntitledTab, reopenClosedTab, selectTabAt, tabsStore } from '@/features/workspace';
 import { registerCommands, runCommand, type Command, type CommandId } from '@/lib/commands';
 import { toMessage } from '@/lib/error';
 import { bindKeys } from '@/lib/shortcuts';
@@ -49,7 +48,8 @@ function hasTabs(): boolean {
  */
 const COMMANDS: Command[] = [
   // 新規ファイル（`Ctrl+N` / 03.ux-spec/04-keybindings.md §3）。何も開いていなくても実行できる。
-  { id: 'document.new', run: () => void newDocument() },
+  // **新しいタブで開く**（M3 Phase 2b）。いまの文書はタブとして残るため、破棄の確認は要らない。
+  { id: 'document.new', run: () => void newUntitled() },
 
   { id: 'document.open', run: () => void openViaDialogSafely() },
 
@@ -77,8 +77,13 @@ const COMMANDS: Command[] = [
   { id: 'document.toggleEol', run: () => toggleEol(), isListed: hasDocument },
 
   // 戻る / 進む（F-NAV-07）。辿れるときにしか一覧に出さない。
-  { id: 'history.back', run: () => void goBack(), isListed: canGoBack },
-  { id: 'history.forward', run: () => void goForward(), isListed: canGoForward },
+  // 履歴はタブごとに分かれている（M3 Phase 2b）。対象は表示中のタブである。
+  { id: 'history.back', run: () => void goBack(tabsStore.activeId), isListed: () => canGoBack(tabsStore.activeId) },
+  {
+    id: 'history.forward',
+    run: () => void goForward(tabsStore.activeId),
+    isListed: () => canGoForward(tabsStore.activeId),
+  },
 
   // ペインとビュー（03.ux-spec/06-panes.md §4）。キーの意味が 2 系統に分かれている。
   //   ペイン: `pane.toggleRight` はライトペインを開閉する。中身が何であるかは問わない。
@@ -298,6 +303,16 @@ export function installCommands(): () => void {
     unbind();
     unregister();
   };
+}
+
+/**
+ * 無題の文書を新しいタブで開き、編集できるモードへ移す（`Ctrl+N`）。
+ *
+ * モードの切り替えをここで行うのは、`features/workspace` が表示モードを知らないためである
+ * （以前は `configureNewDocument` で注入していた。組み立ては composition root の仕事なので、こちらへ寄せた）。
+ */
+async function newUntitled(): Promise<void> {
+  if (await openUntitledTab()) await setMode('edit');
 }
 
 /**

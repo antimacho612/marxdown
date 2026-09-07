@@ -17,10 +17,12 @@ export {
   openInNewTab,
   openPathInNewTab,
   openPathsInTabs,
+  openUntitledTab,
   reopenClosedTab,
   resetTabs,
   selectTabAt,
   tabMeta,
+  targetTabKey,
   tabsStore,
   type Tab,
 } from './tabs.svelte';

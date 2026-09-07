@@ -24,20 +24,89 @@ import { applyEditorTheme, watchEditorTokens } from './theme';
 import { watchEditorSettings } from './watch-settings.svelte';
 
 let editor: monaco.editor.IStandaloneCodeEditor | null = null;
-let model: monaco.editor.ITextModel | null = null;
 
 /**
- * ダーティ判定の基準（F-EDIT-03）。`markClean()` が呼ばれるたびに、
- * そのときの版へ動かす（`sync`）。
+ * タブ 1 枚が抱えるもの（M3 Phase 2b）。
  *
- * 内容が変わったことだけを見ると、Undo で編集前の内容まで戻ってもダーティのままになる（#43）。
- * `getAlternativeVersionId()` は Undo でその版へ戻ると同じ値に戻るため、本文を文字列で比較しなくても基準と同じ内容かどうかを判定できる。
+ * **Undo 履歴はモデルが持つ。** タブごとに分けないと、切り替えた先で Undo したときに前の文書の本文が編集面へ入る。
+ * そのまま保存すればファイル全体が別物になる（N-CMP-03 / `document/text.ts` の `switchTo`）。
+ *
+ * `viewState` はカーソルとスクロール位置である。同じタブへ戻ったときに読んでいた場所から続けられる。
  */
-let cleanVersionId = 0;
+interface TabModel {
+  model: monaco.editor.ITextModel;
+  /** 何の文書か（パス）。同じタブでも別の文書へ移ったらモデルごと作り直す。 */
+  documentId: string;
+  /**
+   * ダーティ判定の基準（F-EDIT-03）。`markClean()` が呼ばれるたびに、そのときの版へ動かす（`sync`）。
+   *
+   * 内容が変わったことだけを見ると、Undo で編集前の内容まで戻ってもダーティのままになる（#43）。
+   * `getAlternativeVersionId()` は Undo でその版へ戻ると同じ値に戻るため、本文を文字列で比較しなくても基準と同じ内容かどうかを判定できる。
+   */
+  cleanVersionId: number;
+  /** カーソルとスクロール位置。切り替えて離れるときに保存する。 */
+  viewState: monaco.editor.ICodeEditorViewState | null;
+  /** 内容の購読。モデルを捨てるときに一緒に解除する。 */
+  subscription: monaco.IDisposable;
+}
+
+const tabModels = new Map<number, TabModel>();
+
+/** いま編集面に載っているタブ。まだ何も載せていなければ `null`。 */
+let currentKey: number | null = null;
+
+/** いま載っているモデル。 */
+function currentModel(): monaco.editor.ITextModel | null {
+  return editor?.getModel() ?? null;
+}
 
 /** 本文を LF で読む。モデルが CRLF を保持していても、返すのは LF に正規化した文字列である。 */
 function readText(): string {
-  return model?.getValue(monaco.editor.EndOfLinePreference.LF) ?? '';
+  return currentModel()?.getValue(monaco.editor.EndOfLinePreference.LF) ?? '';
+}
+
+/** いま載っているタブの記録。 */
+function currentEntry(): TabModel | null {
+  if (currentKey === null) return null;
+  return tabModels.get(currentKey) ?? null;
+}
+
+/**
+ * モデルを 1 つ作り、ダーティの購読を張る。
+ *
+ * `EOL` は明示的に LF にする。Monaco は内容から推定するため、指定しないと CRLF が混ざる（N-CMP-03）。
+ */
+function createTabModel(documentId: string, text: string): TabModel {
+  const model = monaco.editor.createModel(text, MARKDOWN_LANGUAGE_ID);
+  model.setEOL(monaco.editor.EndOfLineSequence.LF);
+
+  const entry: TabModel = {
+    model,
+    documentId,
+    cleanVersionId: model.getAlternativeVersionId(),
+    viewState: null,
+    subscription: model.onDidChangeContent(() => {
+      // ダーティ状態（F-EDIT-03）。boolean 1 つだけがリアクティビティを通り、本文そのものは通らない（ADR-0005）。
+      // `setDirty` は値が変わらなければ何もしない。
+      //
+      // `editor.onDidChangeModelContent` ではなくモデル側を購読する。
+      // エディターの通知は Undo で版を巻き戻す前に飛ぶ「速い」ほうで、それで判定すると Undo で基準まで戻ってもダーティが外れない（#43 の再来。実測で確認済み）。
+      //
+      // 載っていないモデルからは通知しない。切り替え先の状態を、背後のモデルが上書きしてしまう。
+      if (model !== currentModel()) return;
+      setDirty(model.getAlternativeVersionId() !== entry.cleanVersionId);
+      // Split では右のプレビューを追いかけさせる（F-MODE-03）。
+      // 打鍵ごとには描き直さない（`document/live.ts` が待つ）。
+      scheduleLiveRender();
+    }),
+  };
+  return entry;
+}
+
+/** 記録ごと捨てる。購読も一緒に解除する。 */
+function disposeEntry(entry: TabModel): void {
+  entry.subscription.dispose();
+  entry.model.dispose();
 }
 
 /**
@@ -51,11 +120,10 @@ export function mountEditor(host: HTMLElement): monaco.editor.IStandaloneCodeEdi
 
   const doc = getDocumentText();
 
-  model = monaco.editor.createModel(doc, MARKDOWN_LANGUAGE_ID);
-  model.setEOL(monaco.editor.EndOfLineSequence.LF);
-
   editor = monaco.editor.create(host, {
-    model,
+    // モデルはマウント後に載せる（`switchTo`）。
+    // ここで作ると、どのタブのものかが決まらないまま 1 つ目のモデルができる。
+    model: null,
     // コンテナのサイズに追随させる（ResizeObserver）。
     // 非表示の間は動作しないため、面を表示し直したときは `relayoutEditor()` で明示的に測り直す。
     automaticLayout: true,
@@ -101,21 +169,6 @@ export function mountEditor(host: HTMLElement): monaco.editor.IStandaloneCodeEdi
     unicodeHighlight: { ambiguousCharacters: false, invisibleCharacters: false },
   });
 
-  // マウントした時点の内容がダーティ判定の基準になる（マウント前にダーティにはならない）。
-  cleanVersionId = model.getAlternativeVersionId();
-
-  // ダーティ状態（F-EDIT-03）。boolean 1 つだけがリアクティビティを通り、本文そのものは通らない（ADR-0005）。
-  // `setDirty` は値が変わらなければ何もしない。
-  //
-  // `editor.onDidChangeModelContent` ではなくモデル側を購読する。
-  // エディターの通知は Undo で版を巻き戻す前に飛ぶ「速い」ほうで、それで判定すると Undo で基準まで戻ってもダーティが外れない（#43 の再来。実測で確認済み）。
-  model.onDidChangeContent(() => {
-    setDirty(model?.getAlternativeVersionId() !== cleanVersionId);
-    // Split では右のプレビューを追いかけさせる（F-MODE-03）。
-    // 打鍵ごとには描き直さない（`document/live.ts` が待つ）。
-    scheduleLiveRender();
-  });
-
   // テーマ（CSS トークン由来）と設定（`settings.json` 由来）は、当て直す先が同じ
   // 1 つのインスタンスなので、入口も 1 つにしておく。
   const instance = editor;
@@ -146,19 +199,85 @@ export function mountEditor(host: HTMLElement): monaco.editor.IStandaloneCodeEdi
 
   // ここから先、本文の真実は Monaco のモデルにある（ADR-0005）。
   attachEditor({
-    read: () => (model ? readText() : doc),
+    read: () => (currentModel() ? readText() : doc),
     replace: (text) => {
-      const current = model;
+      const current = currentModel();
       if (!current) return;
       // Undo の履歴に残す。`setValue` にすると履歴が失われる。
+      // ここを通るのは同じ文書の読み直し（`F5` / 外部変更）だけである。別の文書へ移るときは `switchTo` を通る。
       current.pushEditOperations(null, [{ range: current.getFullModelRange(), text }], () => null);
     },
     sync: () => {
-      cleanVersionId = model?.getAlternativeVersionId() ?? 0;
+      const entry = currentEntry();
+      if (entry) entry.cleanVersionId = entry.model.getAlternativeVersionId();
     },
+    switchTo: switchToDocument,
+    dispose: disposeTabModel,
   });
 
   return editor;
+}
+
+/**
+ * 編集面に載せる文書を切り替える（`document/text.ts` の `switchTo`）。
+ *
+ * 同じタブの同じ文書なら、モデルをそのまま使う。
+ * 読み直し（`F5` / 外部変更）でここへ来ることがあり、そのときは内容だけを差し替えて Undo 履歴を残す。
+ *
+ * 別の文書なら**モデルごと作り直す**。
+ * 引き継ぐと、Undo で前の文書の本文が編集面へ入る（`document/text.ts` の `switchTo`）。
+ * 1 タブ 1 モデルとし、同じタブで別の文書を開いたときは前のモデルを捨てる。
+ */
+function switchToDocument(key: number, documentId: string, text: string): void {
+  const target = editor;
+  if (!target) return;
+
+  // 離れる前にカーソルとスクロール位置を控える。
+  const leaving = currentEntry();
+  if (leaving) leaving.viewState = target.saveViewState();
+
+  const existing = tabModels.get(key);
+  let entry = existing;
+
+  if (existing && existing.documentId !== documentId) {
+    disposeEntry(existing);
+    entry = undefined;
+  }
+
+  if (entry === undefined) {
+    entry = createTabModel(documentId, text);
+    tabModels.set(key, entry);
+  }
+
+  currentKey = key;
+  target.setModel(entry.model);
+
+  // 同じ文書に戻ってきた場合だけ、内容の差し替えが要る（読み直し）。
+  // 作ったばかりのモデルは既にその内容である。
+  if (entry === existing && entry.model.getValue(monaco.editor.EndOfLinePreference.LF) !== text) {
+    // Undo の履歴に残す。読み直しは「同じ文書の続き」であり、取り消せることに意味がある。
+    entry.model.pushEditOperations(null, [{ range: entry.model.getFullModelRange(), text }], () => null);
+  }
+
+  if (entry.viewState) target.restoreViewState(entry.viewState);
+}
+
+/**
+ * そのタブのモデルを捨てる（タブを閉じたとき / N-PERF-06）。
+ *
+ * 載っているモデルを捨てる場合は、先に編集面から外す。
+ * 外さずに `dispose()` すると、Monaco が破棄済みのモデルを描き続けようとする。
+ */
+function disposeTabModel(key: number): void {
+  const entry = tabModels.get(key);
+  if (!entry) return;
+
+  if (currentKey === key) {
+    editor?.setModel(null);
+    currentKey = null;
+  }
+  disposeEntry(entry);
+  tabModels.delete(key);
 }
 
 /** マウント済みか。モード切り替えの判断に使う。 */
@@ -230,7 +349,7 @@ export function typeForBench(text: string): void {
  * 実際の入力は表示している位置に対して行われるため、そこへ移動してから計測を始める。
  */
 export function moveToEndForBench(): void {
-  const current = model;
+  const current = currentModel();
   if (!editor || !current) return;
   const lineNumber = current.getLineCount();
   editor.setPosition({ lineNumber, column: current.getLineMaxColumn(lineNumber) });
