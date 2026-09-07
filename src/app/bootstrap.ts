@@ -10,7 +10,6 @@ import {
   documentStore,
   installFileWatch,
   openDocument,
-  openDropped,
   openPath,
   previewScrollTop,
   saveThenQuit,
@@ -22,7 +21,7 @@ import { initPanes } from '@/features/panes';
 import { applyZoom, installLinkHandler } from '@/features/preview';
 import { applyCustomCss, initSettings, installSettingsWatch, reportSettingsProblem } from '@/features/settings';
 import { initSplit, viewStore } from '@/features/view';
-import { recentStore, workspaceOpenerHooks } from '@/features/workspace';
+import { openPathsInTabs, recentStore, workspaceOpenerHooks } from '@/features/workspace';
 import { ja } from '@/i18n/ja';
 import { runCommand } from '@/lib/commands';
 import { toMessage } from '@/lib/error';
@@ -361,11 +360,16 @@ function installTrayResume(): void {
 }
 
 /**
- * 別インスタンスからの起動要求（ウォーム起動）。
+ * 別インスタンスからの起動要求（ウォーム起動 / ADR-0004）。
  *
  * この経路には WebView の初期化もバンドルの評価も Svelte のマウントも含まれず、必要なのはパースの実行だけである（02.architecture/05-startup-sequence.md §2）。
  *
- * タブが実装される（M3）までは、「タブを増やす」のではなく現在の本文を置き換える。
+ * **転送されたファイルはタブとして増やす**（M3 Phase 2）。
+ * 既に開いているファイルなら、そのタブへ切り替えるだけで開き直さない（`openPathInNewTab`）。
+ *
+ * 計測はウォーム起動の実測値として Rust へ返す。
+ * 複数渡された場合も 1 回だけ返す。測っているのは「転送を受けてから読めるようになるまで」であり、
+ * 転送 1 回に対して 1 つの値である。
  */
 function installOpenRequestHandler(): void {
   const platform = getPlatform();
@@ -375,19 +379,14 @@ function installOpenRequestHandler(): void {
     if (path === undefined) return;
 
     const warmStart = performance.now();
-    void openPath(path, { startedAt: warmStart }).then(async (outcome) => {
-      if (!outcome) return outcome;
+    void openPathsInTabs(req.paths).then(async (opened) => {
+      if (!opened) return opened;
 
-      // ウォーム起動の実測値。
       // Rust 側は argv 転送を受けた時点から、こちらはイベント受信から測っている。
       // 両方を記録して差分も確認できるようにする。
       const fromEvent = performance.now() - warmStart;
-      await platform.warmDone(
-        req.requestId,
-        path,
-        `fromEvent=${fromEvent.toFixed(1)}ms parse=${outcome.parseMs.toFixed(1)}ms chunks=${outcome.chunks}`,
-      );
-      return outcome;
+      await platform.warmDone(req.requestId, path, `fromEvent=${fromEvent.toFixed(1)}ms paths=${req.paths.length}`);
+      return opened;
     });
   });
 }
@@ -410,7 +409,8 @@ function installDragAndDrop(): void {
     delete root.dataset['mxDragover'];
     if (event.type !== 'drop') return;
 
-    void openDropped(event.paths);
+    // 落とされた数だけタブを開く（F-OPEN-08 / M3 Phase 2）。
+    void openPathsInTabs(event.paths);
   });
 }
 

@@ -25,6 +25,7 @@ M2 Phase 3 で**キーの経路**が加わった。アプリのグローバル�
 | `quit.e2e.ts` | 未保存のまま終了しようとしたとき（F-EDIT-03） |
 | `edit.e2e.ts` | 行操作・検索・置換・キーの衝突・Markdown 書式（F-EDIT-04〜10） |
 | `split.e2e.ts` | Split・スクロール同期・双方向ジャンプ・検索の振り分け（F-MODE-03, 05, 06） |
+| `tabs.e2e.ts` | タブ（F-NAV-01, 02）。**argv 転送がタブを増やすこと**と、`Ctrl+W` / `Ctrl+Tab` の取り合い |
 
 ## メモリ計測だけは別（`pnpm e2e:memory`）
 

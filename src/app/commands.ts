@@ -25,6 +25,7 @@ import { toggleRightPane } from '@/features/panes';
 import { zoomIn, zoomOut, zoomReset } from '@/features/preview';
 import { openSettingsLazily } from '@/features/settings';
 import { viewStore } from '@/features/view';
+import { closeTab, cycleTab, reopenClosedTab, selectTabAt, tabsStore } from '@/features/workspace';
 import { registerCommands, runCommand, type Command, type CommandId } from '@/lib/commands';
 import { toMessage } from '@/lib/error';
 import { bindKeys } from '@/lib/shortcuts';
@@ -33,6 +34,11 @@ import { getPlatform } from '@/platform';
 /** 文書を開いているか。開いていないと意味を持たないコマンドの一覧条件として使う。 */
 function hasDocument(): boolean {
   return documentStore.meta !== null;
+}
+
+/** タブが 2 枚以上あるか。切り替えは 1 枚では意味を持たない。 */
+function hasTabs(): boolean {
+  return tabsStore.tabs.length > 1;
 }
 
 /**
@@ -126,6 +132,24 @@ const COMMANDS: Command[] = [
 
   { id: 'settings.open', run: () => void openSettingsLazily() },
 
+  // タブ（F-NAV-01, 02 / 03.ux-spec/04-keybindings.md §3）。
+  //
+  // 閉じるのは表示中のタブである。対象を取らないのは、キーもメニューも「いま見ているもの」を指すためで、
+  // 個別のタブを閉じるのは `✕`（`TabStrip.svelte`）が直接呼ぶ。
+  { id: 'tab.close', run: () => void closeCurrentTab(), isListed: hasDocument },
+  // 切り替えは 2 枚以上のときだけ意味を持つ。1 枚のときはタブバーも出ていない。
+  { id: 'tab.next', run: () => void cycleTab(1), isListed: hasTabs },
+  { id: 'tab.previous', run: () => void cycleTab(-1), isListed: hasTabs },
+  // n 番目のタブ。一覧には出さない（`Ctrl+1`〜`Ctrl+9` を 9 行並べても読めない）。
+  {
+    id: 'tab.select',
+    run: (target) => {
+      if (target !== undefined) void selectTabAt(Number(target));
+    },
+  },
+  // 閉じたタブを開き直す。閉じた覚えが無いときに押しても何も起きない。
+  { id: 'tab.reopen', run: () => void reopenClosedTab() },
+
   // 終了（ADR-0007 論点 3）。
   // 確実に終了できる導線を 3 つ用意するという決定のうち、キーとハンバーガーメニューの 2 つがこのコマンドを共有する（残りはトレイメニュー）。
   //
@@ -136,6 +160,12 @@ const COMMANDS: Command[] = [
 interface KeyBinding {
   key: string;
   id: CommandId;
+  /**
+   * コマンドに渡す対象（`Command.run` の引数）。
+   *
+   * 使うのは `Ctrl+1`〜`Ctrl+9` だけである。9 つのコマンドを並べる代わりに、同じ id へ番号を渡す。
+   */
+  target?: string;
 }
 
 /**
@@ -224,6 +254,17 @@ export const KEY_BINDINGS: KeyBinding[] = [
   //
   // トレイ常駐では `✕` が格納の意味になるため、明示的に終了するキーが別に必要になる。
   { key: 'Ctrl+Q', id: 'app.quit' },
+
+  // タブ（03.ux-spec/04-keybindings.md §3「移動」「ファイル」）。
+  //
+  // `Ctrl+Tab` は WebView 自身のフォーカス移動にも割り当たっているため、既定動作を止めること自体に意味がある。
+  // `Ctrl+W` はブラウザではウィンドウを閉じるキーであり、こちらは必ず止める（トレイ常駐のため、閉じるべきはタブである / ADR-0007）。
+  { key: 'Ctrl+Tab', id: 'tab.next' },
+  { key: 'Ctrl+Shift+Tab', id: 'tab.previous' },
+  { key: 'Ctrl+W', id: 'tab.close' },
+  { key: 'Ctrl+Shift+T', id: 'tab.reopen' },
+  // n 番目のタブ。番号は `target` で渡す（`KeyBinding.target`）。
+  ...Array.from({ length: 9 }, (_, i) => ({ key: `Ctrl+${i + 1}`, id: 'tab.select' as const, target: String(i + 1) })),
 ];
 
 /**
@@ -248,7 +289,7 @@ export function installCommands(): () => void {
     KEY_BINDINGS.map((binding) => ({
       key: binding.key,
       run: () => {
-        runCommand(binding.id);
+        runCommand(binding.id, binding.target);
       },
     })),
   );
@@ -257,6 +298,17 @@ export function installCommands(): () => void {
     unbind();
     unregister();
   };
+}
+
+/**
+ * 表示中のタブを閉じる（`Ctrl+W`）。
+ *
+ * 何も開いていなければ何もしない。
+ * トレイ常駐（ADR-0007）では、タブが無いこととアプリが終わることは別である。
+ */
+async function closeCurrentTab(): Promise<void> {
+  const id = tabsStore.activeId;
+  if (id !== null) await closeTab(id);
 }
 
 /**

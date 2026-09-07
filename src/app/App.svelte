@@ -9,7 +9,7 @@
   import { Outline } from '@/features/outline';
   import { RightPane } from '@/features/panes';
   import { SplitDivider, viewStore } from '@/features/view';
-  import { Welcome } from '@/features/workspace';
+  import { tabsStore, TabStrip, Welcome } from '@/features/workspace';
 
   import NoticeBar from './NoticeBar.svelte';
   import StatusBar from './StatusBar.svelte';
@@ -18,7 +18,16 @@
   const meta = $derived(documentStore.meta);
 </script>
 
-<TitleBar />
+<!--
+  タブストリップ（M3 Phase 2）。**2 枚以上のときだけ渡す。**
+  1 枚のときは `center` を渡さないので、タイトルバーは M2 と同じファイル名表示のままになる
+  （03.ux-spec/01-screen-layout.md §1「タブも 1 枚のうちは出さない」）。
+-->
+{#snippet tabs()}
+  <TabStrip />
+{/snippet}
+
+<TitleBar center={tabsStore.tabs.length > 1 ? tabs : undefined} />
 
 {#if documentStore.notice}
   <NoticeBar notice={documentStore.notice} />

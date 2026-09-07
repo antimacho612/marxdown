@@ -32,6 +32,12 @@ export const ja = {
    * ウィンドウ操作ボタンには文字を表示せず、アイコンだけを表示する。
    * ここにあるのはすべてスクリーンリーダー向けの名前とツールチップであり、Windows の標準タイトルバーが読み上げる文言に合わせてある。
    */
+  tab: {
+    /** タブ全体の読み上げ名（`role="tablist"`）。 */
+    list: '開いているファイル',
+    /** タブを閉じる `✕`。読み上げと `title` に使う。 */
+    close: (name: string) => `${name} を閉じる`,
+  },
   titlebar: {
     menu: 'メニュー',
     /**
@@ -123,7 +129,6 @@ export const ja = {
     forward: '進む',
   },
   open: {
-    droppedExtra: (n: number) => `${n} 件は開いていません（複数タブは M3 で対応）`,
     reloaded: '再読み込みしました',
     /**
      * 外部変更を自動で読み込んだとき（03.ux-spec/07-status-and-notifications.md §2 の 1 行目）。
