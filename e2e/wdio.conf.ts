@@ -93,7 +93,7 @@ export const config: WebdriverIO.Config = {
    *
    * 1 本で数分かかるうえ、`gc()` を露出させた状態のアプリを要求する（OQ-18 / `helpers/memory.ts`）。
    */
-  exclude: [path.join(here, 'specs', 'memory.e2e.ts')],
+  exclude: [path.join(here, 'specs', 'memory.e2e.ts'), path.join(here, 'specs', 'memory-tabs.e2e.ts')],
 
   /**
    * **1 セッションずつ。** Marxdown は単一インスタンスなので、

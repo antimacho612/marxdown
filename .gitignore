@@ -26,6 +26,8 @@ dist-ssr
 
 # 計測用の基準ファイル（scripts/gen-fixtures.mjs で再生成する）
 bench/fixtures/*.md
+# タブの計測が作る作業用のコピー（`scripts/measure-tabs.ps1`）
+bench/.tabs/
 
 # 計測結果の一時出力
 *.trace.json
