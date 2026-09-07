@@ -349,6 +349,28 @@ export async function openPathsInTabs(paths: string[]): Promise<boolean> {
   return opened;
 }
 
+/**
+ * タブを並べ替える（F-NAV-02）。`toIndex` は移動後の位置（0 始まり）。
+ *
+ * 端は丸める。掴んだまま行き過ぎたときに、並びが飛ぶより端で止まるほうが扱いやすい。
+ * 動かなかったときは `false` を返す。ドラッグ中は 1 ピクセルごとに呼ばれるため、
+ * 呼び出し側が「変わったか」を判断せずに済むようにしてある。
+ */
+export function moveTab(id: number, toIndex: number): boolean {
+  const from = tabsStore.tabs.findIndex((tab) => tab.id === id);
+  if (from === -1) return false;
+
+  const to = Math.min(Math.max(toIndex, 0), tabsStore.tabs.length - 1);
+  if (from === to) return false;
+
+  const next = [...tabsStore.tabs];
+  const [moved] = next.splice(from, 1);
+  if (moved === undefined) return false;
+  next.splice(to, 0, moved);
+  tabsStore.tabs = next;
+  return true;
+}
+
 /** 次 / 前のタブ（`Ctrl+Tab` / `Ctrl+Shift+Tab`）。端では折り返す。 */
 export async function cycleTab(delta: 1 | -1): Promise<boolean> {
   const count = tabsStore.tabs.length;

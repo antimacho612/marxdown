@@ -11,6 +11,7 @@ import {
   closeTab,
   cycleTab,
   isTabDirty,
+  moveTab,
   openInNewTab,
   openPathInNewTab,
   openPathsInTabs,
@@ -376,5 +377,45 @@ describe('閉じる（続き）', () => {
     expect(await reopenClosedTab()).toBe(true);
     expect(tabsStore.tabs.map((tab) => tab.meta.path)).toEqual(['C:/work/a.md', 'C:/work/b.md']);
     expect(await reopenClosedTab()).toBe(false);
+  });
+});
+
+describe('並べ替え (F-NAV-02)', () => {
+  /** 3 枚並べる。表示中は最後に開いた c.md。 */
+  async function threeTabs(): Promise<void> {
+    disk.set('C:/work/c.md', '# c\n');
+    await openPath('C:/work/a.md');
+    await openPathInNewTab('C:/work/b.md');
+    await openPathInNewTab('C:/work/c.md');
+  }
+
+  it('指定した位置へ動かす', async () => {
+    await threeTabs();
+    const first = tabsStore.tabs[0]?.id ?? 0;
+
+    expect(moveTab(first, 2)).toBe(true);
+
+    expect(tabsStore.tabs.map((tab) => tab.meta.path)).toEqual(['C:/work/b.md', 'C:/work/c.md', 'C:/work/a.md']);
+  });
+
+  it('表示中のタブは変わらない', async () => {
+    await threeTabs();
+    const active = tabsStore.activeId;
+
+    moveTab(tabsStore.tabs[2]?.id ?? 0, 0);
+
+    expect(tabsStore.activeId).toBe(active);
+    expect(documentStore.meta?.path).toBe('C:/work/c.md');
+  });
+
+  it('端は丸める。動かなければ false', async () => {
+    await threeTabs();
+    const first = tabsStore.tabs[0]?.id ?? 0;
+
+    // 行き過ぎても端で止まる。
+    expect(moveTab(first, 99)).toBe(true);
+    expect(tabsStore.tabs.at(-1)?.meta.path).toBe('C:/work/a.md');
+    // 同じ位置なら何もしない（ドラッグ中は 1 ピクセルごとに呼ばれる）。
+    expect(moveTab(first, 2)).toBe(false);
   });
 });

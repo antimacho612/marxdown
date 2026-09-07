@@ -40,6 +40,16 @@ async function activeTabName(): Promise<string> {
   return browser.execute(() => document.querySelector('.mx-tab--active .mx-tab__name')?.textContent ?? '');
 }
 
+/** 各タブの中心座標。ドラッグの始点と終点に使う。 */
+async function tabCenters(): Promise<{ x: number; y: number }[]> {
+  return browser.execute(() =>
+    [...document.querySelectorAll('.mx-tab__label')].map((element) => {
+      const rect = element.getBoundingClientRect();
+      return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+    }),
+  );
+}
+
 /** タイトルバーに出ているファイル名（タブが 1 枚のときの表示）。 */
 async function titleName(): Promise<string> {
   return browser.execute(() => document.querySelector('.mx-titlebar__name')?.textContent ?? '');
@@ -153,5 +163,54 @@ describe('タブごとの Undo', () => {
     // doc.md の本文も、そこへ打った文字も入ってこない。
     expect(text).not.toContain('本文です。');
     expect(text).not.toContain('ZZZ');
+  });
+});
+
+/**
+ * 並べ替え（F-NAV-02 / M3 Phase 2c）。
+ *
+ * **ポインタで掴んで動かす経路は、本物のイベントでしか通らない。**
+ * HTML5 の drag イベントは使えず（`disable_drag_drop_handler()` を呼べないため）、
+ * ここで確かめているのは「ポインタの捕捉と、並びの差し替えが実機で成立すること」である。
+ */
+describe('タブの並べ替え', () => {
+  it('押せば、そのタブが表示される', async () => {
+    // 並べ替えを入れたことで、押したときの経路がポインタイベントに変わっている。
+    const names = await tabNames();
+    const current = await activeTabName();
+    const other = names.findIndex((name) => name !== current);
+    await $$('.mx-tab__label')[other]?.click();
+
+    await browser.waitUntil(async () => (await activeTabName()) === names[other], {
+      timeout: 10_000,
+      timeoutMsg: '押しても切り替わらなかった',
+    });
+  });
+
+  it('掴んで隣へ動かすと並びが入れ替わる', async () => {
+    const before = await tabNames();
+    expect(before).toHaveLength(2);
+
+    const [from, to] = await tabCenters();
+    if (from === undefined || to === undefined) throw new Error('タブの位置が取れなかった');
+
+    await browser
+      .action('pointer')
+      .move({ x: Math.round(from.x), y: Math.round(from.y) })
+      .down()
+      // しきい値（6px）を超えるまでは動かないので、まず少しだけ動かす。
+      .move({ x: Math.round(from.x) + 20, y: Math.round(from.y) })
+      .move({ x: Math.round(to.x) + 20, y: Math.round(to.y) })
+      .up()
+      .perform();
+
+    await browser.waitUntil(
+      async () => {
+        const names = await tabNames();
+        return names[0] === before[1];
+      },
+      { timeout: 10_000, timeoutMsg: '並びが入れ替わらなかった' },
+    );
+    expect(await tabNames()).toEqual([before[1], before[0]]);
   });
 });

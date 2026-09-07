@@ -14,6 +14,7 @@ export {
   closeTab,
   cycleTab,
   isTabDirty,
+  moveTab,
   openInNewTab,
   openPathInNewTab,
   openPathsInTabs,
