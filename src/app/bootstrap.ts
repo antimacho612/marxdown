@@ -22,7 +22,7 @@ import { initPanes } from '@/features/panes';
 import { applyZoom, installLinkHandler } from '@/features/preview';
 import { applyCustomCss, initSettings, installSettingsWatch, reportSettingsProblem } from '@/features/settings';
 import { initSplit, viewStore } from '@/features/view';
-import { recentStore } from '@/features/workspace';
+import { recentStore, workspaceOpenerHooks } from '@/features/workspace';
 import { ja } from '@/i18n/ja';
 import { runCommand } from '@/lib/commands';
 import { toMessage } from '@/lib/error';
@@ -89,7 +89,9 @@ export async function startup(renderShell: () => void): Promise<void> {
   const editorCss = bootstrap?.editorCss ?? null;
   const editorCssResult = applyCustomCss(editorCss?.css ?? null, 'editor');
 
-  configureOpener({ parser: createParser() });
+  // 開けた結果を受け取る側も渡す（`features/workspace/opened.ts`）。
+  // タブと最近開いたファイルはどちらも workspace の持ち物であり、依存を workspace → document の 1 方向に保つために注入で繋ぐ。
+  configureOpener({ parser: createParser(), ...workspaceOpenerHooks() });
 
   // 新規作成のあとに移る先（`features/document/new.ts`）。
   // 空の本文を Preview で開いても何も見えないので、打てる場所へ移す。

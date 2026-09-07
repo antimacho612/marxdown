@@ -21,6 +21,17 @@ import { syncDocumentText } from './text';
  */
 let textDirty = false;
 
+/**
+ * 本文がディスクと違うか。**合成前の値**である。
+ *
+ * タブを切り替えるときの退避と復元に要る（`features/workspace/tabs.svelte.ts`）。
+ * 合成後の `documentStore.isDirty` からは源を分けられないため、これが無いと
+ * 「EOL だけ変えたタブ」を復元したときに本文側のダーティが立ってしまう。
+ */
+export function isTextDirty(): boolean {
+  return textDirty;
+}
+
 /** 本文がディスクと違うかを設定する。合成後の値は `refreshDirty` が決める。 */
 export function setDirty(dirty: boolean): void {
   textDirty = dirty;

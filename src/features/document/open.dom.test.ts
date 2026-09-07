@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { recentStore } from '@/features/workspace';
+import { recentStore, resetTabs, workspaceOpenerHooks } from '@/features/workspace';
 import { ja } from '@/i18n/ja';
 import type { MarkdownParser } from '@/markdown/parser';
 import type { ParseResult } from '@/markdown/protocol';
@@ -76,7 +76,8 @@ beforeEach(() => {
   documentStore.isDirty = false;
   recentStore.entries = [];
 
-  configureOpener({ parser: fakeParser() });
+  resetTabs();
+  configureOpener({ parser: fakeParser(), ...workspaceOpenerHooks() });
 });
 
 afterEach(() => {
@@ -175,6 +176,7 @@ describe('configureOpener', () => {
         },
         dispose: () => {},
       },
+      ...workspaceOpenerHooks(),
     });
 
     const opening = openDocument(payload('C:/work/a.md'), {

@@ -2,6 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { configureOpener, documentStore, openPath, previewScrollTop, reloadCurrent } from '@/features/document';
+import { resetTabs, workspaceOpenerHooks } from '@/features/workspace';
 import type { MarkdownParser } from '@/markdown/parser';
 import { getPlatform, setPlatform, type DocumentPayload, type Platform } from '@/platform';
 
@@ -75,7 +76,8 @@ beforeEach(() => {
     },
   });
 
-  configureOpener({ parser: fakeParser() });
+  resetTabs();
+  configureOpener({ parser: fakeParser(), ...workspaceOpenerHooks() });
   // 開き直しの手は `app/bootstrap.ts` が渡す。ここでは同じ形を組み立てる。
   configureHistory({
     scrollTop: previewScrollTop,

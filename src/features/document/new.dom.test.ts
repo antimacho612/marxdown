@@ -8,7 +8,7 @@
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { recentStore } from '@/features/workspace';
+import { recentStore, resetTabs, workspaceOpenerHooks } from '@/features/workspace';
 import type { MarkdownParser } from '@/markdown/parser';
 import { getPlatform, setPlatform, type Platform } from '@/platform';
 
@@ -71,7 +71,8 @@ beforeEach(() => {
     confirmDiscard,
     setDirty: () => Promise.resolve(),
   } as unknown as Platform);
-  configureOpener({ parser: fakeParser() });
+  resetTabs();
+  configureOpener({ parser: fakeParser(), ...workspaceOpenerHooks() });
 });
 
 describe('新規ファイル', () => {

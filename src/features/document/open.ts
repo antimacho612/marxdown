@@ -6,7 +6,6 @@
  */
 import { pushHistory } from '@/features/history';
 import { enhance, paint, scrollToAnchor } from '@/features/preview';
-import { forgetRecent, rememberRecent } from '@/features/workspace';
 import { ja } from '@/i18n/ja';
 import { toMessage } from '@/lib/error';
 import { dirOf } from '@/lib/path';
@@ -17,7 +16,7 @@ import { getPlatform, type DocumentPayload, type Encoding } from '@/platform';
 
 import { markClean } from './dirty';
 import { confirmDiscard } from './discard';
-import { documentStore, INFO_NOTICE_MS, notifyInfo, type StoredPayload } from './store.svelte';
+import { documentStore, INFO_NOTICE_MS, notifyInfo, toMeta, type StoredMeta, type StoredPayload } from './store.svelte';
 import { setDocumentText } from './text';
 
 const PREVIEW_SELECTOR = '#mx-preview';
@@ -25,6 +24,16 @@ const PREVIEW_SELECTOR = '#mx-preview';
 /** 開く経路に注入する依存。起動時に `configureOpener` で 1 回だけ渡す。 */
 export interface OpenerConfig {
   parser: MarkdownParser;
+  /**
+   * 開けたことを知らせる先（`features/workspace` のタブと最近開いたファイル）。
+   *
+   * 直接呼ばずに注入で受ける。
+   * タブは「いま開いている文書の集合」であって文書より外側の概念であり、依存を workspace → document の 1 方向に保つ。
+   * 逆向きにすると、タブが文書のメタ情報を参照した時点で feature が循環する。
+   */
+  onOpened: (meta: StoredMeta, options: { remember: boolean }) => void;
+  /** 開けなかったことを知らせる先。消えたファイルを最近開いた一覧から外す。 */
+  onMissing: (path: string) => void;
 }
 
 let config: OpenerConfig | null = null;
@@ -130,18 +139,22 @@ export interface OpenOutcome {
  * ファイルを読み直さないことが要点で、Rust が WebView 初期化と並行して読んだ内容をそのまま使う。
  */
 export async function openDocument(payload: StoredPayload, options: OpenOptions = {}): Promise<OpenOutcome | null> {
-  if (!config) throw new Error('configureOpener が呼ばれていない');
+  const opener = config;
+  if (!opener) throw new Error('configureOpener が呼ばれていない');
 
   const startedAt = options.startedAt ?? performance.now();
   // パースを先に開始してから待つ（シェル描画と重ねるため）。
   traceMark(options, 'T6', `${payload.content.length} chars`);
-  const parsing = config.parser.parse(payload.content);
+  const parsing = opener.parser.parse(payload.content);
 
   // 本文を差し替える前に、現在のスクロール位置を履歴へ記録する（F-NAV-07）。
   // 無題の文書は戻り先として指定できないため積まない。
   if (options.history !== false && payload.path !== null) pushHistory(payload.path, previewScrollTop());
 
-  documentStore.meta = payload;
+  // 本文を落としてから入れる。
+  // そのまま代入すると `content` が実行時に残り、ストアが本文を保持し続ける（`toMeta`）。
+  const meta = toMeta(payload);
+  documentStore.meta = meta;
 
   // 本文はストアではなく素のモジュールへ（ADR-0005 / `document/text.ts`）。
   // エディターがマウントされていれば Monaco への書き込みを伴うため、T6→T7 の並行処理を維持できるようパースの開始後に置く。
@@ -210,12 +223,11 @@ export async function openDocument(payload: StoredPayload, options: OpenOptions 
       return at;
     });
 
-    // 無題の文書は履歴にも監視にも載らない（ディスクに実体が無いため）。
-    if (payload.path !== null) {
-      if (options.remember !== false) void rememberRecent(payload.path);
-      // 開いているファイルだけを監視する（N-PERF-05）。前のファイルの監視は Rust 側で外れる。
-      void watch(payload.path);
-    }
+    opener.onOpened(meta, { remember: options.remember !== false });
+
+    // 無題の文書は監視に載らない（ディスクに実体が無いため）。
+    // 開いているファイルだけを監視する（N-PERF-05）。前のファイルの監視は Rust 側で外れる。
+    if (payload.path !== null) void watch(payload.path);
 
     return outcome;
   } catch (e) {
@@ -241,7 +253,7 @@ export async function openPath(path: string, options: OpenOptions = {}): Promise
     payload = await getPlatform().readDocument(path, options.encoding);
   } catch (e) {
     documentStore.notice = { level: 'error', message: describeOpenError(e, path) };
-    if (kindOf(e) === 'not-found') void forgetRecent(path);
+    if (kindOf(e) === 'not-found') config?.onMissing(path);
     return null;
   }
 
