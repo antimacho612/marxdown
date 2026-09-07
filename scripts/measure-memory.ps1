@@ -18,10 +18,15 @@
   pwsh scripts/measure-memory.ps1 -Label before
   # ... タブを開閉する操作 ...
   pwsh scripts/measure-memory.ps1 -Label after
+
+.EXAMPLE
+  # E2E から呼ぶ（e2e/helpers/memory.ts）。1 行の JSON だけを返す
+  pwsh scripts/measure-memory.ps1 -Label after-gc -Json
 #>
 param(
   [string]$Label = '',
   [switch]$Watch,
+  [switch]$Json,
   [int]$IntervalSeconds = 5
 )
 
@@ -45,11 +50,24 @@ function Get-MarxdownMemory {
   $ids = @($main.Id) + $webviewIds
   $mainMB = 0.0
   $webviewMB = 0.0
+
+  # 種別ごとの内訳。合計だけでは、増えているのがレンダラなのか GPU なのかが分からない。
+  # WebView2 のプロセスは `--type=` で役割を名乗る。ブラウザプロセスだけが名乗らない。
+  $byType = @{}
   foreach ($id in $ids) {
     $counter = Get-CimInstance Win32_PerfRawData_PerfProc_Process -Filter "IDProcess = $id" -ErrorAction SilentlyContinue
     if (-not $counter) { continue }
     $mb = $counter.WorkingSetPrivate / 1MB
-    if ($id -eq $main.Id) { $mainMB += $mb } else { $webviewMB += $mb }
+    if ($id -eq $main.Id) {
+      $mainMB += $mb
+      $type = 'marxdown'
+    } else {
+      $webviewMB += $mb
+      $commandLine = (Get-CimInstance Win32_Process -Filter "ProcessId = $id" -ErrorAction SilentlyContinue).CommandLine
+      $matched = [regex]::Match([string]$commandLine, '--type=([\w-]+)')
+      $type = if ($matched.Success) { $matched.Groups[1].Value } else { 'browser' }
+    }
+    $byType[$type] = [math]::Round(($byType[$type] + $mb), 1)
   }
 
   [pscustomobject]@{
@@ -59,6 +77,7 @@ function Get-MarxdownMemory {
     MainMB       = [math]::Round($mainMB, 1)
     WebViewMB    = [math]::Round($webviewMB, 1)
     TotalMB      = [math]::Round($mainMB + $webviewMB, 1)
+    ByType       = $byType
   }
 }
 
@@ -80,6 +99,11 @@ $measurement = Get-MarxdownMemory
 if (-not $measurement) {
   Write-Error 'marxdown が起動していない。先にアプリを起動する。'
   exit 1
+}
+
+if ($Json) {
+  $measurement | ConvertTo-Json -Compress
+  exit 0
 }
 
 $measurement | Format-List

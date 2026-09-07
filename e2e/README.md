@@ -26,6 +26,23 @@ M2 Phase 3 で**キーの経路**が加わった。アプリのグローバル�
 | `edit.e2e.ts` | 行操作・検索・置換・キーの衝突・Markdown 書式（F-EDIT-04〜10） |
 | `split.e2e.ts` | Split・スクロール同期・双方向ジャンプ・検索の振り分け（F-MODE-03, 05, 06） |
 
+## メモリ計測だけは別（`pnpm e2e:memory`）
+
+`memory.e2e.ts` は `pnpm e2e` では走らない（`wdio.conf.ts` の `exclude`）。
+`wdio.memory.conf.ts` から `pnpm e2e:memory` で明示的に呼ぶ。
+
+`huge.md` を描き切ってから `tiny.md` へ戻す往復を繰り返し、各点のメモリを記録する
+（[OQ-18](../docs/07.open-questions/oq-18-memory-not-released.md) / M3 Phase 0）。
+往復の回数は `MX_MEMORY_CYCLES`、CDP の利用有無は `MX_MEMORY_CDP` で変えられる。
+結果は `docs/measurements/memory-oq18.json` に出る。
+
+分けてあるのは、1 本で数分かかることと、WebView2 に `--enable-precise-memory-info` を渡した状態を
+他の 43 本に持ち込まないためである。
+
+> ⚠️ **合否は判定しない。この spec が固定するのは「同じ手順で測り直せること」だけである。**
+> **数値の判定は手計測で行う**（[measurements > memory §2.3](../docs/measurements/06-memory.md)）。
+> WebDriver を介した値は絶対値も増分も手計測と比較できない。
+
 ## エンジンの名前は 1 ファイルにしか書かない
 
 エディターが吐く DOM を指すセレクタは `helpers/app.ts` の `EDITOR_DOM` に集めてある。
