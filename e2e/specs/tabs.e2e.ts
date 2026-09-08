@@ -50,6 +50,19 @@ async function tabCenters(): Promise<{ x: number; y: number }[]> {
   );
 }
 
+/** レフトペインが閉じていれば開く。開閉は永続化されるため、トグルでは状態が定まらない。 */
+async function openLeftPane(): Promise<void> {
+  const open = await browser.execute(() => document.querySelector('.mx-leftpane') !== null);
+  if (!open) await browser.keys([Key.Control, Key.Shift, 'b']);
+}
+
+/** ファイルツリーに並んでいる名前。 */
+async function treeNames(): Promise<string[]> {
+  return browser.execute(() =>
+    [...document.querySelectorAll('.mx-tree__name')].map((element) => element.textContent ?? ''),
+  );
+}
+
 /** ステータスバーの文言。倍率やモードが出る。 */
 async function statusBarText(): Promise<string> {
   return browser.execute(() => document.querySelector('.mx-statusbar')?.textContent ?? '');
@@ -265,5 +278,50 @@ describe('コマンドパレット', () => {
 
     const open = await browser.execute(() => document.querySelector('.mx-palette') !== null);
     expect(open).toBe(false);
+  });
+});
+
+/**
+ * ファイルツリー（F-NAV-03 / M3 Phase 5b）。
+ *
+ * **ここでしか確かめられないのは Rust の `list_dir` を通す経路である。**
+ * Vitest 側はプラットフォームをモックしており、スコープ検証（N-SEC-05）も除外も通っていない。
+ */
+describe('ファイルツリー', () => {
+  it('レフトペインを開くと、開いているファイルの隣が並ぶ', async () => {
+    // **開閉は `state.json` に永続化される**（03.ux-spec/06-panes.md §3）。
+    // 前回の実行で開いたままのことがあるため、トグルではなく「閉じていたら開く」にする。
+    await openLeftPane();
+
+    await browser.waitUntil(
+      async () => {
+        const names = await treeNames();
+        return names.includes('doc.md');
+      },
+      { timeout: 20_000, timeoutMsg: 'ファイルツリーが出なかった' },
+    );
+
+    // 作業ディレクトリのファイルが並ぶ（`onPrepare` が作る `doc.md` と、この spec が作った `second.md`）。
+    const names = await treeNames();
+    expect(names).toContain('second.md');
+  });
+
+  it('押すとタブとして開く', async () => {
+    const before = await tabNames();
+    await browser.execute(() => {
+      const item = [...document.querySelectorAll('.mx-tree__item')].find((element) =>
+        (element.textContent ?? '').includes('second.md'),
+      );
+      if (item instanceof HTMLElement) item.click();
+    });
+
+    await browser.waitUntil(
+      async () => {
+        const names = await tabNames();
+        return names.length >= before.length;
+      },
+      { timeout: 20_000, timeoutMsg: 'ツリーから開けなかった' },
+    );
+    expect(await activeTabName()).toBe('second.md');
   });
 });

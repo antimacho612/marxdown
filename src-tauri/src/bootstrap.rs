@@ -34,6 +34,11 @@ pub struct Bootstrap {
     pub trace: Option<TraceConfig>,
     /// 引数として渡されたが 1 枚目にならなかったパス（M3 のタブで開く）。
     pub pending_paths: Vec<String>,
+    /// ファイルツリーの基点（F-OPEN-02 / `marxdown <dir>`）。
+    ///
+    /// ディレクトリを指定して起動したときだけ入る。
+    /// 指定が無ければフロントが「開いているファイルの親ディレクトリ」を基点にする。
+    pub workspace_root: Option<String>,
     pub unknown_args: Vec<String>,
     /// 最近開いたファイル（F-OPEN-09）。
     /// Welcome 画面が起動直後に描画するため、IPC 往復ではなくここに載せる（03.ux-spec/08-empty-states.md §1）。
@@ -113,7 +118,15 @@ pub fn build(
     let mut document = None;
     let mut document_error = None;
 
-    if let Some(first) = args.paths.first() {
+    // ディレクトリを渡された場合は、文書ではなくファイルツリーの基点になる（F-OPEN-02）。
+    // 引数の中の最初のディレクトリだけを見る。2 つ以上渡す使い方は決めていない。
+    let workspace_root = args
+        .paths
+        .iter()
+        .find(|path| path.is_dir())
+        .map(|path| path.display().to_string());
+
+    if let Some(first) = args.paths.iter().find(|path| !path.is_dir()) {
         match document::read(first, None) {
             Ok(payload) => {
                 let inline = payload.meta.size <= INLINE_CONTENT_LIMIT;
@@ -147,12 +160,15 @@ pub fn build(
             enabled: trace.enabled(),
             t0_epoch_ms: trace.t0_epoch_ms(),
         }),
+        // ディレクトリは対象から外す。開く先ではなくファイルツリーの基点である。
         pending_paths: args
             .paths
             .iter()
+            .filter(|path| !path.is_dir())
             .skip(1)
             .map(|p| p.display().to_string())
             .collect(),
+        workspace_root,
         unknown_args: args.unknown.clone(),
         recent: store.recent.clone(),
         zoom: store.zoom,

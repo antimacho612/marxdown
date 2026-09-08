@@ -9,8 +9,7 @@
   import { Outline } from '@/features/outline';
   import { LeftPane, RightPane } from '@/features/panes';
   import { SplitDivider, viewStore } from '@/features/view';
-  import { tabsStore, TabStrip, Welcome } from '@/features/workspace';
-  import { ja } from '@/i18n/ja';
+  import { Explorer, tabsStore, TabStrip, Welcome } from '@/features/workspace';
 
   import NoticeBar from './NoticeBar.svelte';
   import StatusBar from './StatusBar.svelte';
@@ -50,11 +49,11 @@
 
 <!--
   レフトペイン（03.ux-spec/06-panes.md §1 / F-NAV-04）。ライトペインと同じ扱いで、開いていなければ要素ごと無い。
-  中身（ファイルツリー / F-NAV-03）は M3 Phase 5b で入る。それまでは枠だけが開く。
+  中身はファイルツリー（F-NAV-03）。本体は遅延チャンクにあり、ペインを開くまで読み込まない（`Explorer.svelte`）。
 -->
 {#if viewStore.panes.left.open}
   <LeftPane>
-    <p class="mx-pane-placeholder">{ja.pane.explorerPlaceholder}</p>
+    <Explorer />
   </LeftPane>
 {/if}
 
@@ -75,13 +74,3 @@
 {/if}
 
 <StatusBar />
-
-<style>
-  /* 中身が入るまでの仮置き（Phase 5b）。ペインを開いたときに空白だけが出ないようにする。 */
-  .mx-pane-placeholder {
-    margin: 0;
-    padding: var(--mx-space-3);
-    color: var(--mx-color-fg-subtle);
-    font-size: var(--mx-font-size-ui);
-  }
-</style>

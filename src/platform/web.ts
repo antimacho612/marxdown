@@ -210,6 +210,7 @@ function initialBootstrap(): Bootstrap {
     benchInput: params.has('benchInput'),
     trace: { enabled: params.has('trace'), t0EpochMs: Date.now() },
     pendingPaths: [],
+    workspaceRoot: null,
     unknownArgs: [],
     recent: state.recent,
     zoom: state.zoom,
@@ -352,6 +353,16 @@ export const webPlatform: Platform = {
 
   async resolveAsset(href) {
     return href;
+  },
+
+  /**
+   * `dev:web` の仮想 FS にはディレクトリが無い。
+   *
+   * 実体を返さないのは、ここで木構造を模しても確かめられるのが並べ方だけだからである。
+   * ファイルツリーの見た目は Storybook で見る（`FileTree.stories.svelte`）。
+   */
+  async listDir() {
+    return [];
   },
 
   async pushRecent(path) {

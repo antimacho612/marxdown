@@ -20,7 +20,7 @@ import { initPanes } from '@/features/panes';
 import { applyZoom, installLinkHandler } from '@/features/preview';
 import { applyCustomCss, initSettings, installSettingsWatch, reportSettingsProblem } from '@/features/settings';
 import { initSplit, viewStore } from '@/features/view';
-import { openPathsInTabs, recentStore, workspaceOpenerHooks } from '@/features/workspace';
+import { openPathsInTabs, recentStore, setTreeRoot, workspaceOpenerHooks } from '@/features/workspace';
 import { ja } from '@/i18n/ja';
 import { runCommand } from '@/lib/commands';
 import { toMessage } from '@/lib/error';
@@ -63,6 +63,11 @@ export async function startup(renderShell: () => void): Promise<void> {
   // （F-VIEW-11 / F-NAV-04 / 03.ux-spec/06-panes.md §3 / 02.architecture/04-rust-responsibilities.md §5）。
   applyZoom(bootstrap?.zoom ?? 1, false);
   recentStore.entries = bootstrap?.recent ?? [];
+
+  // `marxdown <dir>` で開いたフォルダ（F-OPEN-02）。
+  // 決まっていればファイルツリーの基点になり、開いているファイルの親ディレクトリでは上書きされない。
+  // ここでは値を入れるだけで、読み込むのはペインを開いたときである（`Explorer.svelte`）。
+  if (bootstrap?.workspaceRoot) void setTreeRoot(bootstrap.workspaceRoot);
 
   // 後から適用すると、本文が一度全幅で描画された後に幅が縮小して見える。
   // ここで設定した値は、この下の `renderShell()` が描く最初のシェルに既に反映されている

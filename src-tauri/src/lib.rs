@@ -13,7 +13,8 @@ pub mod cli;
 pub mod close;
 pub mod commands;
 pub mod custom_css;
-pub mod document;
+pub mod dir;
+mod document;
 pub mod error;
 pub mod scope;
 pub mod settings;
@@ -240,6 +241,7 @@ pub fn run() {
             commands::read_document,
             commands::write_document,
             commands::resolve_asset,
+            commands::list_dir,
             commands::pick_file,
             commands::pick_save_path,
             commands::set_dirty,

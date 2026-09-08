@@ -12,6 +12,7 @@ import type { Settings } from './settings-schema';
 import type {
   Bootstrap,
   CustomCss,
+  DirEntry,
   DiscardChoice,
   DocumentPayload,
   FileChange,
@@ -85,6 +86,10 @@ export const tauriPlatform: Platform = {
     // Rust が返すのは検証済みの絶対パスである。
     // `asset:` プロトコルの URL へ変換して初めて WebView から読み込める（CSP の `img-src` が許可しているのはこの形式）。
     return convertFileSrc(await invoke<string>('resolve_asset', { href, baseDir }));
+  },
+
+  listDir(path) {
+    return invoke<DirEntry[]>('list_dir', { path });
   },
 
   pushRecent(path) {

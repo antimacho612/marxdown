@@ -38,6 +38,7 @@ function bootstrapWith(settings: Partial<Bootstrap>): Bootstrap {
     benchInput: false,
     trace: null,
     pendingPaths: [],
+    workspaceRoot: null,
     unknownArgs: [],
     recent: [],
     zoom: 1,

@@ -36,6 +36,14 @@ export interface DocumentMeta {
   readonly: boolean;
 }
 
+/** ディレクトリの中の 1 件（F-NAV-03）。 */
+export interface DirEntry {
+  name: string;
+  /** 正規化済み絶対パス。そのまま `readDocument` へ渡せる。 */
+  path: string;
+  dir: boolean;
+}
+
 /** メタ情報と本文の組。`readDocument` と bootstrap が返す。 */
 export interface DocumentPayload extends DocumentMeta {
   /** EOL を LF に正規化した本文 */
@@ -215,6 +223,13 @@ export interface Bootstrap {
   benchInput: boolean;
   trace: TraceConfig | null;
   pendingPaths: string[];
+  /**
+   * ファイルツリーの基点（F-OPEN-02 / `marxdown <dir>`）。
+   *
+   * ディレクトリを指定して起動したときだけ入る。
+   * 無ければ開いているファイルの親ディレクトリが基点になる（`features/workspace/Explorer.svelte`）。
+   */
+  workspaceRoot: string | null;
   unknownArgs: string[];
   /** Welcome 画面が起動直後に描画するため、IPC 往復ではなくここに載せる。 */
   recent: RecentEntry[];
@@ -317,6 +332,13 @@ export interface Platform {
    * 相対パスの画像を、許可ディレクトリ配下であることを検証したうえで、`<img src>` にそのまま指定できる URL へ変換する（F-VIEW-08 / N-SEC-05）。
    */
   resolveAsset(href: string, baseDir: string): Promise<string>;
+  /**
+   * ディレクトリの中身を 1 階層ぶん返す（F-NAV-03 / ファイルツリー）。
+   *
+   * 隠しファイル・`node_modules` は Rust 側で落ちてくる（`src-tauri/src/dir.rs`）。
+   * 再帰しないのは、開いたディレクトリだけを読む遅延展開のためである（03.ux-spec/06-panes.md §1）。
+   */
+  listDir(path: string): Promise<DirEntry[]>;
   /** 最近開いたファイルに 1 件追加する。更新後の一覧を返す（F-OPEN-09）。 */
   pushRecent(path: string): Promise<RecentEntry[]>;
   /** 開けなくなったファイルを一覧から外す。更新後の一覧を返す。 */

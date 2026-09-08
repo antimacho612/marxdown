@@ -79,6 +79,11 @@ impl AppState {
                 roots.push(parent.to_path_buf());
             }
         }
+        // `marxdown <dir>` で開いたフォルダも許可範囲に入れる（F-OPEN-02 / OQ-17）。
+        // ファイルツリーがそこを辿る以上、辿れる範囲と読める範囲は一致していなければならない。
+        if let Some(root) = bootstrap.workspace_root.as_ref() {
+            roots.push(PathBuf::from(root));
+        }
         Self {
             args,
             trace,
