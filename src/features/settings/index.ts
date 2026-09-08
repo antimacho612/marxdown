@@ -7,8 +7,9 @@
  * ここに載せてよいのは `main` に常駐するものだけである。
  * 設定 UI（`lazy/`）を再輸出すると `bootstrap.ts` の import から静的に辿れてしまい、クリティカルパスの分割が崩れる。
  * 遅延側の入口は `lazy/panel.ts` と `lazy/install-custom-css.ts` の 2 つで、いずれも動的 import で参照する。
+ * 見本（`lazy/samples/Sample.svelte`）は更にその先で切ってあり、参照するのは `SettingsDialog` である（OQ-38）。
  */
-export { formatFontFamily } from './appearance';
+export { formatFontFamily } from './format';
 export { applyCustomCss } from './custom-css';
 export { openSettingsLazily } from './open-settings';
 export { initSettings, installSettingsWatch, reportSettingsProblem, settingsStore } from './store.svelte';

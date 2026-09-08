@@ -68,6 +68,20 @@ export default defineConfig(({ mode }) => ({
           if (isMenu) return 'assets/menu-[hash].js';
 
           /*
+           * 設定の見本（OQ-38）。`settings` の予算から外へ出すために、名前を分ける。
+           *
+           * 見本を描くのは「プレビュー」「エディター」のカテゴリだけで、既定のカテゴリ
+           * （外観）には無い。つまり `Ctrl+,` を押しただけではロードされず、
+           * `settings`（「設定を開いたときに読むもの」の予算）が数える対象ではない。
+           * `settings-` で始まる名前を付けると `dist/assets/settings-*.js` の
+           * glob に入ってしまうため、接頭辞ごと分ける。**下の `isSettings` より前に置くこと。**
+           */
+          const isSettingsSample = /[\\/]src[\\/]features[\\/]settings[\\/]lazy[\\/]samples[\\/]/.test(
+            chunk.facadeModuleId ?? '',
+          );
+          if (isSettingsSample) return 'assets/sample-[hash].js';
+
+          /*
            * 設定 UI（M1.5 Phase 4）。menu と同じく**名前付けだけ**。
            *
            * `src/features/settings/` には `main` 側のモジュール

@@ -5,8 +5,11 @@
  * `bootstrap.ts` の `initSettings` から本文描画より前に同期的に呼ぶ（後から適用すると、一度描画された内容が別の見た目に再描画される）。
  * 既定値と同じなら `removeProperty` して `tokens.css` と二重管理にせず、未設定時の見た目を保つ（F-CONF-02）。
  * 適用先はすべてトークン層で、ユーザーのカスタム CSS からも同じ変数として見える。
+ * CSS へ渡す値の整形は `format.ts` にある。見本（`lazy/samples/`）が同じ整形を使うためで、そちらから DOM 操作を引き込まないよう分けてある。
  */
 import { clampSetting, DEFAULT_SETTINGS, type NumericKey, type Palette, type Settings } from '@/platform';
+
+import { formatFontFamily } from './format';
 
 /**
  * 設定の全体を表示へ適用する。差分は計算しない。
@@ -59,16 +62,6 @@ function applyPalette(element: HTMLElement | null, palette: Palette): void {
 }
 
 /**
- * 見本に着せる配色（`data-mx-theme` の値）。
- *
- * `default` のときは属性を付けない（`applyPalette` と同じ判断）。
- * 面ではなく設定ダイアログ内の見本に適用するため、DOM は変更せず値だけを返す。
- */
-export function paletteAttr(palette: Palette): string | undefined {
-  return palette === 'default' ? undefined : palette;
-}
-
-/**
  * テーマ（F-CONF-01）。
  *
  * `system` のときは属性ごと削除する。
@@ -94,30 +87,4 @@ function numeric(values: Settings, key: NumericKey, unit: string): string | null
 function setVar(root: HTMLElement, name: string, value: string | null): void {
   if (value === null) root.style.removeProperty(name);
   else root.style.setProperty(name, value);
-}
-
-/**
- * フォント名を CSS の `font-family` に入れられる形にする。
- *
- * ウェブフォントは読み込めない（CSP の `font-src 'self'` / 02.architecture/10-theming.md §3）。
- * ここに指定できるのは OS にインストールされているフォントのファミリ名だけで、見つからなければ後続のスタックにフォールバックする。
- *
- * すべて引用符で囲うのは、`Meiryo UI` のような空白を含む名前と `MS UI Gothic` のような数字で始まる名前を同じ扱いにするためである。
- * 囲えない文字（引用符・バックスラッシュ・`;` `{` `}` `(` `)`）を含むものは除外する。
- * 設定ファイルは手で編集できるため、ここに渡る文字列は検証されていない。
- * 影響が宣言 1 つに留まるとしても、通す理由がない。
- */
-export function formatFontFamily(input: string): string | null {
-  const families = input
-    .split(',')
-    .map((name) =>
-      name
-        .trim()
-        .replace(/^["'](.*)["']$/u, '$1')
-        .trim(),
-    )
-    .filter((name) => name.length > 0 && !/["'\\;{}()]/u.test(name));
-
-  if (families.length === 0) return null;
-  return families.map((name) => JSON.stringify(name)).join(', ');
 }
