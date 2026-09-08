@@ -30,6 +30,12 @@
     "gzip": true
   },
   {
+    "name": "settings samples (設定の見本。プレビュー / エディターのカテゴリを開くまでロードしない)",
+    "path": ["dist/assets/sample-*.js"],
+    "limit": "2 KB",
+    "gzip": true
+  },
+  {
     "name": "outline jump (見出しジャンプのパレット。Ctrl+Shift+O を押すまでロードしない)",
     "path": ["dist/assets/outline-*.js"],
     "limit": "6 KB",

@@ -33,18 +33,9 @@ Rust 側も拒否するが、UI が「保存できたように見せる」のを
 
   import { settingsStore } from '../store.svelte';
   import { changeSetting } from './change';
-  import {
-    ContentSample,
-    EditorSample,
-    Navigation,
-    NumberField,
-    RadioGroup,
-    Section,
-    SelectField,
-    TextField,
-    ToggleField,
-  } from './components';
+  import { Navigation, NumberField, RadioGroup, Section, SelectField, TextField, ToggleField } from './components';
   import { LAYOUT, type CategoryId, type FieldEntry } from './layout';
+  import type SampleComponent from './samples/Sample.svelte';
 
   const { onclose }: { onclose: () => void } = $props();
 
@@ -185,6 +176,20 @@ Rust 側も拒否するが、UI が「保存できたように見せる」のを
     pushedRulers = next;
   });
 
+  /**
+   * 見本の部品（OQ-38）。読み込むまでは `null` で、その間は見本の場所に何も描かない。
+   *
+   * 見本を持つのは「プレビュー」「エディター」のカテゴリだけなので、設定を開いただけでは `sample` チャンクを取りに行かない。
+   * `{#await}` は使わない。
+   * Svelte の await ブロックの実行時コードが遅延チャンクと `main` の共有チャンクへ切り出され、クリティカルパスが 0.35KB 太る。
+   */
+  let Sample = $state<typeof SampleComponent | null>(null);
+
+  $effect(() => {
+    if (Sample !== null || entries.every((entry) => entry.kind !== 'sample')) return;
+    void import('./samples/Sample.svelte').then((module) => (Sample = module.default));
+  });
+
   function onRulersInput(raw: string): void {
     rulersText = raw;
 
@@ -232,18 +237,8 @@ Rust 側も拒否するが、UI が「保存できたように見せる」のを
         {#if entry.kind === 'section'}
           <Section label={entry.label} />
         {:else if entry.kind === 'sample'}
-          {#if entry.sample === 'content'}
-            <ContentSample palette={values['preview.theme']} />
-          {:else}
-            <EditorSample
-              palette={values['editor.theme']}
-              fontFamily={values['editor.fontFamily']}
-              fontSize={values['editor.fontSize']}
-              lineHeight={values['editor.lineHeight']}
-              letterSpacing={values['editor.letterSpacing']}
-              ligatures={values['editor.fontLigatures']}
-              showLineNumbers={values['editor.lineNumbers'] !== 'off'}
-            />
+          {#if Sample}
+            <Sample sample={entry.sample} {values} />
           {/if}
         {:else if visible(entry)}
           {@render field(entry)}
