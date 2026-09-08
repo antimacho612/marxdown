@@ -38,7 +38,12 @@
   const DIR = 'C:\\Users\\me\\repos\\marxdown';
 </script>
 
-<Story name="2 枚" loaders={[withTabs([tab(1, `${DIR}\\README.md`), tab(2, `${DIR}\\docs\\design.md`)], 1)]} />
+<!-- 名前が数字で始まると Storybook の索引が作れない（識別子にならない）。`exportName` を明示する。 -->
+<Story
+  name="2 枚"
+  exportName="TwoTabs"
+  loaders={[withTabs([tab(1, `${DIR}\\README.md`), tab(2, `${DIR}\\docs\\design.md`)], 1)]}
+/>
 
 <!-- 未保存の印（`●`）は表示中のタブとそれ以外で判定元が違う（`isTabDirty`）。 -->
 <Story

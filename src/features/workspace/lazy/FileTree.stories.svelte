@@ -58,7 +58,8 @@
 </script>
 
 <!-- Markdown は通常の色、それ以外は淡く（Markdown First）。 -->
-<Story name="1 階層" loaders={[withTree(FLAT)]} />
+<!-- 名前が数字で始まると Storybook の索引が作れない（識別子にならない）。`exportName` を明示する。 -->
+<Story name="1 階層" exportName="OneLevel" loaders={[withTree(FLAT)]} />
 
 <!-- 開いた枝だけを描く。閉じた枝は中身ごと存在しない。 -->
 <Story name="展開" loaders={[withTree(NESTED, [`${ROOT}/docs`])]} />
