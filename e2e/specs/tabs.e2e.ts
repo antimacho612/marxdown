@@ -11,10 +11,13 @@
  * アプリのグローバルキーとエディターのキーバインドが同じキーを取り合っていないことは、
  * 本物のキーイベントを流さないと確かめられない（`e2e/README.md`）。
  */
+import { mkdirSync } from 'node:fs';
+import path from 'node:path';
+
 import { Key } from 'webdriverio';
 
 import { editorText, enterEditMode, openViaForward, typeAtEnd } from '../helpers/app';
-import { WORK_DOC, writeFile } from '../helpers/fixtures';
+import { WORK_DIR, WORK_DOC, writeFile } from '../helpers/fixtures';
 
 /**
  * もう 1 枚開くための別ファイル。作業ファイルと同じ場所に置く。
@@ -22,6 +25,12 @@ import { WORK_DOC, writeFile } from '../helpers/fixtures';
  * `onPrepare` が作り直すのは `doc.md` の 1 枚だけなので（`helpers/fixtures.ts`）、こちらはこの spec が作る。
  */
 const SECOND_DOC = WORK_DOC.replace('doc.md', 'second.md');
+
+/**
+ * 下の階層に置くファイル。クイックオープンが再帰していることを見るために使う。
+ * ファイルツリーは 1 階層しか読まないので、これはツリーには出てこない。
+ */
+const NESTED_DOC = path.join(WORK_DIR, 'nested', 'buried.md');
 
 /** タブの枚数。1 枚のときはタブバー自体が無いので 0 になる。 */
 async function tabCount(): Promise<number> {
@@ -60,6 +69,13 @@ async function openLeftPane(): Promise<void> {
 async function treeNames(): Promise<string[]> {
   return browser.execute(() =>
     [...document.querySelectorAll('.mx-tree__name')].map((element) => element.textContent ?? ''),
+  );
+}
+
+/** パレットに並んでいる名前（コマンド名 / ファイル名）。 */
+async function paletteNames(): Promise<string[]> {
+  return browser.execute(() =>
+    [...document.querySelectorAll('.mx-palette__text')].map((element) => element.textContent ?? ''),
   );
 }
 
@@ -323,5 +339,64 @@ describe('ファイルツリー', () => {
       { timeout: 20_000, timeoutMsg: 'ツリーから開けなかった' },
     );
     expect(await activeTabName()).toBe('second.md');
+  });
+
+  it('Ctrl+Shift+E でツリーへフォーカスが移る', async () => {
+    // 「出してフォーカスする」であって、トグルではない（03.ux-spec/06-panes.md §4）。
+    await browser.keys([Key.Control, Key.Shift, 'e']);
+
+    await browser.waitUntil(
+      async () => browser.execute(() => document.activeElement?.classList.contains('mx-tree__item') === true),
+      { timeout: 20_000, timeoutMsg: 'ツリーへフォーカスが移らなかった' },
+    );
+  });
+});
+
+/**
+ * クイックオープン（`Ctrl+P` / F-NAV-05 / M3 Phase 6）。
+ *
+ * **ここでしか確かめられないのは Rust の `list_files` を通す経路である。**
+ * 再帰・除外・スコープ検証（N-SEC-05）は Vitest 側のモックでは通らない。
+ * `Ctrl+P` が WebView 既定の印刷に取られていないことも、本物のキーでしか見えない。
+ */
+describe('クイックオープン', () => {
+  before(() => {
+    mkdirSync(path.dirname(NESTED_DOC), { recursive: true });
+    writeFile(NESTED_DOC, {
+      content: `# buried
+
+下の階層
+`,
+    });
+  });
+
+  it('Ctrl+P で開き、下の階層のファイルまで並ぶ', async () => {
+    await browser.keys([Key.Control, 'p']);
+
+    await browser.waitUntil(
+      async () => {
+        const names = await paletteNames();
+        return names.includes('buried.md');
+      },
+      { timeout: 20_000, timeoutMsg: 'クイックオープンに下の階層のファイルが出なかった' },
+    );
+  });
+
+  it('絞り込んで Enter で開く', async () => {
+    await browser.keys('buried');
+    await browser.keys([Key.Enter]);
+
+    await browser.waitUntil(async () => (await activeTabName()) === 'buried.md', {
+      timeout: 20_000,
+      timeoutMsg: 'クイックオープンから開けなかった',
+    });
+  });
+
+  it('Escape で閉じる', async () => {
+    await browser.keys([Key.Control, 'p']);
+    await browser.keys([Key.Escape]);
+
+    const open = await browser.execute(() => document.querySelector('.mx-palette') !== null);
+    expect(open).toBe(false);
   });
 });

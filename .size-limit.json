@@ -30,7 +30,7 @@
     "gzip": true
   },
   {
-    "name": "palette (コマンドパレットと器。Ctrl+Shift+P / Ctrl+Shift+O まで読まない)",
+    "name": "palette (コマンドパレット / クイックオープンと器。Ctrl+Shift+P / Ctrl+P / Ctrl+Shift+O まで読まない)",
     "path": ["dist/assets/palette-*.js"],
     "limit": "6 KB",
     "gzip": true

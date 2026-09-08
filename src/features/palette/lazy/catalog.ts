@@ -37,6 +37,7 @@ export interface CommandEntry {
 export const COMMAND_CATALOG: CommandEntry[] = [
   { id: 'document.new', label: ja.menu.new, shortcut: 'Ctrl+N' },
   { id: 'document.open', label: ja.menu.open, shortcut: 'Ctrl+O' },
+  { id: 'document.quickOpen', label: ja.menu.quickOpen, shortcut: 'Ctrl+P' },
   { id: 'document.reload', label: ja.menu.reload, shortcut: 'F5' },
   { id: 'document.save', label: ja.menu.save, shortcut: 'Ctrl+S' },
   { id: 'document.saveAs', label: ja.menu.saveAs, shortcut: 'Ctrl+Shift+S' },
@@ -61,6 +62,7 @@ export const COMMAND_CATALOG: CommandEntry[] = [
     label: () => (viewStore.panes.right.open ? ja.pane.hideOutline : ja.pane.showOutline),
     shortcut: 'Ctrl+Alt+B',
   },
+  { id: 'explorer.show', label: ja.menu.showExplorer, shortcut: 'Ctrl+Shift+E' },
   { id: 'outline.show', label: ja.menu.showOutline, shortcut: 'Ctrl+Shift+U' },
   { id: 'outline.jump', label: ja.outline.jump, shortcut: 'Ctrl+Shift+O' },
 

@@ -365,6 +365,11 @@ export const webPlatform: Platform = {
     return [];
   },
 
+  /** 同じ理由で候補も返さない。クイックオープンは開くが、一覧は空になる。 */
+  async listFiles() {
+    return { files: [], truncated: false };
+  },
+
   async pushRecent(path) {
     const state = loadState();
     state.recent = [{ path, openedAtMs: Date.now() }, ...state.recent.filter((e) => e.path !== path)].slice(0, 20);

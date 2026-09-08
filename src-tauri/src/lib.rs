@@ -242,6 +242,7 @@ pub fn run() {
             commands::write_document,
             commands::resolve_asset,
             commands::list_dir,
+            commands::list_files,
             commands::pick_file,
             commands::pick_save_path,
             commands::set_dirty,

@@ -50,6 +50,22 @@ export const ja = {
     placeholder: 'コマンドを検索',
     noMatch: '一致するコマンドがありません',
   },
+  /**
+   * クイックオープン（`Ctrl+P` / F-NAV-05）。
+   *
+   * 並びは「最近開いたファイル → フォルダ内 Markdown」である（03.ux-spec/05-command-palette.md）。
+   */
+  quickOpen: {
+    title: 'クイックオープン',
+    placeholder: 'ファイル名で検索',
+    noMatch: '一致するファイルがありません',
+    /** 基点が無く、最近開いたファイルも無い。 */
+    empty: 'ファイルを開くと、その場所から検索できます',
+    /** 最近開いたファイルであることの目印。右端に出す。 */
+    recent: '最近',
+    /** 上限で打ち切ったとき。全体を検索できていないことを伝える。 */
+    truncated: (count: number) => `ファイルが多いため、先頭 ${count} 件だけを検索します`,
+  },
   tab: {
     /** タブ全体の読み上げ名（`role="tablist"`）。 */
     list: '開いているファイル',
@@ -109,6 +125,10 @@ export const ja = {
     toggleScrollSync: 'スクロール同期を切り替える',
     /** アウトラインを表示してフォーカスする（閉じない）。 */
     showOutline: 'アウトラインへ移動',
+    /** ファイルツリーを表示してフォーカスする（閉じない）。 */
+    showExplorer: 'エクスプローラーへ移動',
+    /** クイックオープン（`Ctrl+P`）。「ファイルを開く」はダイアログのほうが使っている。 */
+    quickOpen: 'ファイルへ移動',
     zoom: '表示倍率',
     zoomIn: '拡大',
     zoomOut: '縮小',
@@ -141,7 +161,6 @@ export const ja = {
     /** レフトペイン（Explorer / F-NAV-03）。中身は Phase 5b。 */
     showExplorer: 'エクスプローラーを表示',
     hideExplorer: 'エクスプローラーを隠す',
-    /** 中身が入るまでの仮置き（Phase 5b でファイルツリーに置き換わる）。 */
     showOutline: 'アウトラインを表示',
     hideOutline: 'アウトラインを隠す',
   },

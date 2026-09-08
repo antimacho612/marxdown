@@ -40,6 +40,20 @@ export async function setTreeRoot(root: string | null): Promise<void> {
   if (root !== null) await loadDir(root);
 }
 
+/**
+ * いまの基点。ペインを開いていなくても決まる。
+ *
+ * クイックオープン（F-NAV-05）はレフトペインと同じ場所を検索する必要があるが、
+ * ペインを一度も開いていなければ `treeStore.root` はまだ `null` である。
+ * 引数の `path` は表示中のファイルで、`null` なら基点は決まらない。
+ *
+ * 副作用を持たない。ここで `setTreeRoot` を呼ぶと、パレットを開いただけで木の読み込みが始まる。
+ */
+export function workspaceRoot(path: string | null): string | null {
+  if (treeStore.root !== null) return treeStore.root;
+  return path === null ? null : dirOf(path);
+}
+
 /** 開いているファイルから基点を決める。パスを持たない文書（`Ctrl+N`）では何もしない。 */
 export async function setTreeRootFromFile(path: string | null): Promise<void> {
   if (path === null) return;

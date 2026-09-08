@@ -7,4 +7,4 @@
  * `lazy/` を名指しする経路が 2 つある。見出しジャンプ（`features/outline`）が器を使い、
  * ハンバーガーメニュー（`features/menu`）がラベルの表を使う。どちらも遅延チャンク側どうしの参照である。
  */
-export { openCommandPaletteLazily } from './open-palette';
+export { openCommandPaletteLazily, openQuickOpenLazily } from './open-palette';

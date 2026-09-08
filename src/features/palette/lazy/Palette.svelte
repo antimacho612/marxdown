@@ -28,6 +28,8 @@
     label: string;
     placeholder: string;
     items: readonly PaletteItem[];
+    /** 入力欄の下に出す断り。無ければ何も描かない（クイックオープンの打ち切り）。 */
+    note?: string;
     /** 1 件も無いとき（絞り込み前）の文言。 */
     emptyText: string;
     /** 絞り込みで 0 件になったときの文言。 */
@@ -36,7 +38,7 @@
     onclose: () => void;
   }
 
-  const { label, placeholder, items, emptyText, noMatchText, onselect, onclose }: Props = $props();
+  const { label, placeholder, items, note, emptyText, noMatchText, onselect, onclose }: Props = $props();
 
   /**
    * 一度に描く件数。
@@ -134,6 +136,10 @@
     onkeydown={onKeyDown}
   />
 
+  {#if note}
+    <p class="mx-palette__note">{note}</p>
+  {/if}
+
   {#if matches.length === 0}
     <p class="mx-palette__empty">{items.length === 0 ? emptyText : noMatchText}</p>
   {:else}
@@ -214,6 +220,12 @@
   .mx-palette__input:focus-visible {
     outline: none;
     border-color: var(--mx-color-accent);
+  }
+
+  .mx-palette__note {
+    margin: var(--mx-space-2) 0 0;
+    color: var(--mx-color-fg-subtle);
+    font-size: 11px;
   }
 
   .mx-palette__empty {

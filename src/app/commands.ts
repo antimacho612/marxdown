@@ -21,12 +21,20 @@ import { gotoLineLazily } from '@/features/editor';
 import { canGoBack, canGoForward, goBack, goForward } from '@/features/history';
 import { cycleMode, openFind, openReplace, setMode, togglePreview, toggleSplit } from '@/features/mode';
 import { openJumpLazily, showOutline } from '@/features/outline';
-import { openCommandPaletteLazily } from '@/features/palette';
+import { openCommandPaletteLazily, openQuickOpenLazily } from '@/features/palette';
 import { toggleLeftPane, toggleRightPane } from '@/features/panes';
 import { zoomIn, zoomOut, zoomReset } from '@/features/preview';
 import { openSettingsLazily } from '@/features/settings';
 import { viewStore } from '@/features/view';
-import { closeTab, cycleTab, openUntitledTab, reopenClosedTab, selectTabAt, tabsStore } from '@/features/workspace';
+import {
+  closeTab,
+  cycleTab,
+  openUntitledTab,
+  reopenClosedTab,
+  selectTabAt,
+  showExplorer,
+  tabsStore,
+} from '@/features/workspace';
 import { registerCommands, runCommand, type Command, type CommandId } from '@/lib/commands';
 import { toMessage } from '@/lib/error';
 import { bindKeys } from '@/lib/shortcuts';
@@ -66,6 +74,10 @@ const COMMANDS: Command[] = [
     },
   },
 
+  // クイックオープン（`Ctrl+P` / F-NAV-05）。実体は遅延チャンクにある。
+  // **文書を開いていなくても実行できる。** 基点が無くても最近開いたファイルは並ぶ。
+  { id: 'document.quickOpen', run: () => void openQuickOpenLazily() },
+
   { id: 'document.reload', run: () => void reloadCurrent(), isListed: hasDocument },
 
   // 保存（F-EDIT-02）。ダーティでなくても実行できる。
@@ -96,6 +108,8 @@ const COMMANDS: Command[] = [
   { id: 'pane.toggleLeft', run: () => toggleLeftPane(), isListed: hasDocument },
   { id: 'pane.toggleRight', run: () => toggleRightPane(), isListed: hasDocument },
   { id: 'outline.show', run: () => void showOutline() },
+  // Explorer を出してフォーカスする（`Ctrl+Shift+E`）。`outline.show` と対になるビュー側のキーである。
+  { id: 'explorer.show', run: () => void showExplorer() },
 
   // 見出しへジャンプ（03.ux-spec/04-keybindings.md §3「移動」）。実体は遅延チャンクにある。
   // コマンドパレット（`Ctrl+Shift+P` / M3）ではなく、見出し専用である。
@@ -246,6 +260,7 @@ export const KEY_BINDINGS: KeyBinding[] = [
   // レフトペイン（F-NAV-04 / 03.ux-spec/04-keybindings.md §3）。VS Code のサイドバーと同じキー。
   { key: 'Ctrl+Shift+B', id: 'pane.toggleLeft' },
   { key: 'Ctrl+Alt+B', id: 'pane.toggleRight' },
+  { key: 'Ctrl+Shift+E', id: 'explorer.show' },
   { key: 'Ctrl+Shift+U', id: 'outline.show' },
   { key: 'Ctrl+Shift+O', id: 'outline.jump' },
 
@@ -253,6 +268,10 @@ export const KEY_BINDINGS: KeyBinding[] = [
   // `Ctrl+Shift+P` は WebView の開発者ツールには割り当たっていないが（そちらは `Ctrl+Shift+I`）、
   // 既定動作を止めておく点は他のキーと同じ扱いにする。
   { key: 'Ctrl+Shift+P', id: 'palette.open' },
+
+  // クイックオープン（F-NAV-05）。
+  // `Ctrl+P` は WebView 自身の印刷に割り当たっているため、既定動作を止めること自体に意味がある。
+  { key: 'Ctrl+P', id: 'document.quickOpen' },
 
   // 指定行へ移動（`Ctrl+G`）。Monaco 側の同じキーは `keymap.ts` が剥がしている。
   { key: 'Ctrl+G', id: 'editor.gotoLine' },

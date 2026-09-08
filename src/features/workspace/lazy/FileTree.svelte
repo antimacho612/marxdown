@@ -16,6 +16,7 @@
   import { isMarkdownPath } from '@/lib/path';
   import type { DirEntry } from '@/platform';
 
+  import { registerExplorerFocus } from '../show-explorer';
   import { openPathInNewTab } from '../tabs.svelte';
   import { toggleDir, treeStore } from '../tree.svelte';
   // 自分自身を再帰的に使う（`<svelte:self>` は非推奨）。
@@ -34,6 +35,20 @@
   const entries = $derived(treeStore.entries[path] ?? []);
   const loading = $derived(treeStore.loading.includes(path));
 
+  /** 木の根だけが持つ要素。フォーカスの受け口になる（`Ctrl+Shift+E`）。 */
+  let list: HTMLElement | null = $state(null);
+
+  /**
+   * 根の 1 件目へフォーカスする手段を登録する（`show-explorer.ts`）。
+   *
+   * 入れ子の `FileTree` は登録しない。登録すると、枝を開くたびに受け口が入れ替わる。
+   */
+  $effect(() => {
+    if (depth !== 0) return;
+    registerExplorerFocus(() => list?.querySelector('button')?.focus());
+    return () => registerExplorerFocus(null);
+  });
+
   function open(entry: DirEntry): void {
     if (entry.dir) {
       void toggleDir(entry.path);
@@ -48,7 +63,7 @@
 {:else if entries.length === 0}
   <p class="mx-tree__note">{ja.tree.empty}</p>
 {:else}
-  <ul class="mx-tree" role={depth === 0 ? 'tree' : 'group'}>
+  <ul class="mx-tree" role={depth === 0 ? 'tree' : 'group'} bind:this={list}>
     {#each entries as entry (entry.path)}
       {@const expanded = treeStore.expanded.includes(entry.path)}
       <li role="treeitem" aria-expanded={entry.dir ? expanded : undefined} aria-selected="false">

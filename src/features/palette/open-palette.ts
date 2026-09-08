@@ -9,3 +9,9 @@ export async function openCommandPaletteLazily(): Promise<void> {
   const { openCommandPalette } = await import('./lazy/command-palette');
   openCommandPalette();
 }
+
+/** クイックオープンを開く（`Ctrl+P` / F-NAV-05）。コマンドパレットと同じチャンクに入っている。 */
+export async function openQuickOpenLazily(): Promise<void> {
+  const { openQuickOpen } = await import('./lazy/quick-open');
+  openQuickOpen();
+}

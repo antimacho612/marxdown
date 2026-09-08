@@ -8,6 +8,8 @@ import { convertFileSrc, invoke } from '@tauri-apps/api/core';
 import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import { getCurrentWebview } from '@tauri-apps/api/webview';
 
+import { MARKDOWN_EXTENSIONS } from '@/lib/path';
+
 import type { Settings } from './settings-schema';
 import type {
   Bootstrap,
@@ -16,6 +18,7 @@ import type {
   DiscardChoice,
   DocumentPayload,
   FileChange,
+  FileList,
   OpenRequest,
   Platform,
   RecentEntry,
@@ -90,6 +93,11 @@ export const tauriPlatform: Platform = {
 
   listDir(path) {
     return invoke<DirEntry[]>('list_dir', { path });
+  },
+
+  listFiles(root) {
+    // 拡張子はここから渡す。Markdown の判断は `lib/path.ts` の 1 か所にしかない。
+    return invoke<FileList>('list_files', { path: root, extensions: MARKDOWN_EXTENSIONS });
   },
 
   pushRecent(path) {

@@ -44,6 +44,14 @@ export interface DirEntry {
   dir: boolean;
 }
 
+/** クイックオープンの候補（F-NAV-05）。 */
+export interface FileList {
+  /** 正規化済み絶対パス。パス順に並んでいる。 */
+  files: string[];
+  /** 上限で打ち切ったか。true なら候補は全体の一部である。 */
+  truncated: boolean;
+}
+
 /** メタ情報と本文の組。`readDocument` と bootstrap が返す。 */
 export interface DocumentPayload extends DocumentMeta {
   /** EOL を LF に正規化した本文 */
@@ -339,6 +347,13 @@ export interface Platform {
    * 再帰しないのは、開いたディレクトリだけを読む遅延展開のためである（03.ux-spec/06-panes.md §1）。
    */
   listDir(path: string): Promise<DirEntry[]>;
+  /**
+   * 基点の配下の Markdown を再帰的に集める（F-NAV-05 / クイックオープン）。
+   *
+   * 対象の拡張子は Platform 層が `lib/path.ts` から渡す。件数と深さには上限があり、
+   * 超えたときは `truncated` が立つ（`src-tauri/src/dir.rs`）。
+   */
+  listFiles(root: string): Promise<FileList>;
   /** 最近開いたファイルに 1 件追加する。更新後の一覧を返す（F-OPEN-09）。 */
   pushRecent(path: string): Promise<RecentEntry[]>;
   /** 開けなくなったファイルを一覧から外す。更新後の一覧を返す。 */
