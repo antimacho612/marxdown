@@ -20,7 +20,14 @@ import { initPanes } from '@/features/panes';
 import { applyZoom, installLinkHandler } from '@/features/preview';
 import { applyCustomCss, initSettings, installSettingsWatch, reportSettingsProblem } from '@/features/settings';
 import { initSplit, viewStore } from '@/features/view';
-import { openPathsInTabs, recentStore, setTreeRoot, workspaceOpenerHooks } from '@/features/workspace';
+import {
+  openPathsInTabs,
+  recentStore,
+  restoreSession,
+  setTreeRoot,
+  watchSession,
+  workspaceOpenerHooks,
+} from '@/features/workspace';
 import { ja } from '@/i18n/ja';
 import { runCommand } from '@/lib/commands';
 import { toMessage } from '@/lib/error';
@@ -168,6 +175,13 @@ export async function startup(renderShell: () => void): Promise<void> {
   //
   // 最大化状態の追従も同じ扱いである。
   // 遅れた場合の最悪の結果は、最大化して起動した直後の数十 ms だけボタンの表示が `□` のままになることで、次に状態が変われば解消する。
+  // 2 枚目以降のタブ（起動時の引数 / 前回のセッション）。
+  //
+  // `ready()` の後に置く。本文が読める時点（T8）を、ファイル 20 枚の読み込みの後ろへ動かさない。
+  // 遅れた場合の最悪の結果は、起動直後の一瞬だけタブが 1 枚に見えることである
+  // （02.architecture/05-startup-sequence.md §1 の判断基準）。
+  void openRemainingTabs(bootstrap);
+
   installOpenRequestHandler();
   installTrayOpen();
   installSaveAndQuit();
@@ -176,6 +190,9 @@ export async function startup(renderShell: () => void): Promise<void> {
   installFileWatch();
   installSettingsWatch();
   installWindowState();
+  // タブの変化を `state.json` へ書き続ける（OQ-04）。
+  // 復元より後に張る。復元そのものを 1 枚ずつ書き戻すことに意味がない。
+  watchSession();
 
   // Snap Layouts の初回報告（OQ-30）。ここより前に置いてはいけない。
   //
@@ -212,6 +229,24 @@ export async function startup(renderShell: () => void): Promise<void> {
       return null;
     });
   }
+}
+
+/**
+ * 1 枚目より後のタブを開く。
+ *
+ * 経路は 2 つあり、同時には起きない（Rust 側で `session` が入るのは引数が無いときだけである）。
+ *
+ * - `pendingPaths`: `marxdown a.md b.md` の 2 枚目以降
+ * - `session`: 前回のタブ（[OQ-04](../../docs/07.open-questions/decided.md) の推奨 C）
+ */
+async function openRemainingTabs(bootstrap: Bootstrap | null): Promise<void> {
+  if (!bootstrap) return;
+
+  if (bootstrap.session.length > 1) {
+    await restoreSession(bootstrap.session, bootstrap.sessionActive);
+    return;
+  }
+  if (bootstrap.pendingPaths.length > 0) await openPathsInTabs(bootstrap.pendingPaths);
 }
 
 /**

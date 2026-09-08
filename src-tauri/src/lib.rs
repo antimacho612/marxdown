@@ -249,6 +249,7 @@ pub fn run() {
             commands::set_dirty,
             commands::confirm_discard,
             commands::store_push_recent,
+            commands::store_set_session,
             commands::store_remove_recent,
             commands::store_set_zoom,
             commands::store_set_panes,

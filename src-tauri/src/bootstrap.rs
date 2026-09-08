@@ -7,11 +7,14 @@
 //! ただし 256KB を超える本文は埋め込まない。
 //! 初期化スクリプトは文字列として WebView に渡されるため、巨大な本文を JSON 文字列化するコストが往復のコストを上回る場合がある。
 
+use std::path::Path;
+
 use serde::Serialize;
 
 use crate::cli::{CliArgs, ViewMode};
 use crate::custom_css::CustomCss;
 use crate::document::{self, DocumentMeta, INLINE_CONTENT_LIMIT};
+use crate::error::CoreResult;
 use crate::settings::{Settings, SettingsLoad, SettingsProblem};
 use crate::store::{Panes, RecentEntry, StoreData};
 
@@ -40,6 +43,14 @@ pub struct Bootstrap {
     /// 指定が無ければフロントが「開いているファイルの親ディレクトリ」を基点にする。
     pub workspace_root: Option<String>,
     pub unknown_args: Vec<String>,
+    /// 復元するタブ（OQ-04 / M3 Phase 7）。**タブの並び順**である。
+    ///
+    /// 入るのは引数なしで起動したときだけである。
+    /// `document` には `session_active` が指すファイルが入っているので、
+    /// フロントはそれ以外を元の位置へ開き直す。
+    pub session: Vec<String>,
+    /// `session` の中で表示していたタブの位置。
+    pub session_active: usize,
     /// 最近開いたファイル（F-OPEN-09）。
     /// Welcome 画面が起動直後に描画するため、IPC 往復ではなくここに載せる（03.ux-spec/08-empty-states.md §1）。
     pub recent: Vec<RecentEntry>,
@@ -127,25 +138,36 @@ pub fn build(
         .map(|path| path.display().to_string());
 
     if let Some(first) = args.paths.iter().find(|path| !path.is_dir()) {
-        match document::read(first, None) {
-            Ok(payload) => {
-                let inline = payload.meta.size <= INLINE_CONTENT_LIMIT;
-                trace.set_document(crate::trace::TraceDocument {
-                    path: payload.meta.path.clone(),
-                    size: payload.meta.size,
-                    inlined: inline,
-                });
-                document = Some(BootstrapDocument {
-                    content: inline.then_some(payload.content),
-                    meta: payload.meta,
-                });
-            }
+        match read_first(first, trace) {
+            Ok(doc) => document = Some(doc),
             Err(e) => {
                 document_error = Some(BootstrapError {
                     path: first.display().to_string(),
                     kind: e.kind().to_string(),
                     message: e.to_string(),
                 });
+            }
+        }
+    }
+
+    // 前回のタブを復元する（OQ-04 の推奨 C / M3 Phase 7）。
+    //
+    // **引数が 1 つでもあれば復元しない。** `marxdown foo.md` には「foo.md を見たい」という
+    // 意図があり、そこへ前回の 8 枚を混ぜない。ディレクトリ（`marxdown <dir>`）も同じ扱いである。
+    //
+    // 表示していた 1 枚だけをここで読む。残りは `session` に載せてフロントが開き直す。
+    // 1 枚目を bootstrap に載せるのは、復元の最初の描画を `marxdown foo.md` と同じ速さにするためである
+    // （02.architecture/05-startup-sequence.md §1）。
+    let mut session = Vec::new();
+    let mut session_active = 0;
+    if args.paths.is_empty() && !store.session.paths.is_empty() {
+        let restored = store.session.clone().sanitized();
+        if let Some(path) = restored.paths.get(restored.active) {
+            // 開けなければ復元そのものを諦める。通知は出さない（消えていることは想定内である）。
+            if let Ok(doc) = read_first(Path::new(path), trace) {
+                document = Some(doc);
+                session_active = restored.active;
+                session = restored.paths;
             }
         }
     }
@@ -170,6 +192,8 @@ pub fn build(
             .collect(),
         workspace_root,
         unknown_args: args.unknown.clone(),
+        session,
+        session_active,
         recent: store.recent.clone(),
         zoom: store.zoom,
         panes: store.panes,
@@ -179,6 +203,23 @@ pub fn build(
         custom_css,
         editor_css,
     }
+}
+
+/// 1 枚目のドキュメントを読む。256KB 以下なら本文ごと bootstrap に載せる。
+///
+/// 引数で渡されたファイルと、セッションから復元するファイルの両方がここを通る。
+fn read_first(path: &Path, trace: &crate::trace::Trace) -> CoreResult<BootstrapDocument> {
+    let payload = document::read(path, None)?;
+    let inline = payload.meta.size <= INLINE_CONTENT_LIMIT;
+    trace.set_document(crate::trace::TraceDocument {
+        path: payload.meta.path.clone(),
+        size: payload.meta.size,
+        inlined: inline,
+    });
+    Ok(BootstrapDocument {
+        content: inline.then_some(payload.content),
+        meta: payload.meta,
+    })
 }
 
 /// `initialization_script` に渡す JS ソースを組み立てる。
@@ -450,5 +491,123 @@ mod tests {
         let script = to_init_script(&b);
         assert!(script.starts_with("globalThis.__MARXDOWN_BOOTSTRAP__ = Object.freeze({"));
         assert!(script.contains("__MARXDOWN_T4__"));
+    }
+
+    /// セッションの復元（OQ-04 / M3 Phase 7）。
+    mod session {
+        use super::*;
+
+        fn store_with(dir: &std::path::Path, names: &[&str], active: usize) -> StoreData {
+            let paths = names
+                .iter()
+                .map(|name| {
+                    let path = dir.join(name);
+                    std::fs::write(
+                        &path,
+                        format!(
+                            "# {name}
+"
+                        ),
+                    )
+                    .unwrap();
+                    path.display().to_string()
+                })
+                .collect();
+            StoreData {
+                session: crate::store::Session { paths, active },
+                ..Default::default()
+            }
+        }
+
+        fn build_with(args: CliArgs, store: &StoreData) -> Bootstrap {
+            let trace = crate::trace::Trace::start(Instant::now());
+            build(
+                &args,
+                &trace,
+                store,
+                &SettingsLoad::default(),
+                CustomCss::default(),
+                CustomCss::default(),
+            )
+        }
+
+        #[test]
+        fn without_arguments_the_active_tab_is_read_and_the_order_is_carried() {
+            let dir = temp_dir("session-restore");
+            let store = store_with(&dir, &["a.md", "b.md", "c.md"], 1);
+
+            let b = build_with(CliArgs::default(), &store);
+
+            // 表示していた 1 枚が bootstrap に載る（最初の描画を速くするため）。
+            assert_eq!(
+                b.document.expect("document").content.as_deref(),
+                Some(
+                    "# b.md
+"
+                )
+            );
+            assert_eq!(b.session.len(), 3);
+            assert_eq!(b.session_active, 1);
+            std::fs::remove_dir_all(&dir).ok();
+        }
+
+        /// **引数が 1 つでもあれば復元しない**（OQ-04 の推奨 C）。
+        #[test]
+        fn an_argument_suppresses_the_restore() {
+            let dir = temp_dir("session-arg");
+            let store = store_with(&dir, &["a.md", "b.md"], 0);
+            let opened = dir.join("opened.md");
+            std::fs::write(
+                &opened,
+                "# opened
+",
+            )
+            .unwrap();
+
+            let b = build_with(args_with(opened), &store);
+
+            assert_eq!(
+                b.document.expect("document").content.as_deref(),
+                Some(
+                    "# opened
+"
+                )
+            );
+            assert!(b.session.is_empty(), "引数があるときは前回のタブを混ぜない");
+            std::fs::remove_dir_all(&dir).ok();
+        }
+
+        /// `marxdown <dir>` も引数である。ファイルツリーの基点を指定した意図に前回の続きを混ぜない。
+        #[test]
+        fn a_directory_argument_also_suppresses_the_restore() {
+            let dir = temp_dir("session-dir");
+            let store = store_with(&dir, &["a.md"], 0);
+
+            let b = build_with(args_with(dir.clone()), &store);
+
+            assert!(b.session.is_empty());
+            assert_eq!(b.workspace_root, Some(dir.display().to_string()));
+            std::fs::remove_dir_all(&dir).ok();
+        }
+
+        /// 消えたファイルが表示中だった場合。復元を諦めるだけで、起動は続く。
+        #[test]
+        fn a_missing_active_file_gives_up_the_restore() {
+            let dir = temp_dir("session-gone");
+            let store = StoreData {
+                session: crate::store::Session {
+                    paths: vec![dir.join("gone.md").display().to_string()],
+                    active: 0,
+                },
+                ..Default::default()
+            };
+
+            let b = build_with(CliArgs::default(), &store);
+
+            assert!(b.document.is_none());
+            assert!(b.document_error.is_none(), "復元の失敗は通知に出さない");
+            assert!(b.session.is_empty());
+            std::fs::remove_dir_all(&dir).ok();
+        }
     }
 }

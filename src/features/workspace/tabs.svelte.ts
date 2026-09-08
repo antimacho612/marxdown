@@ -297,7 +297,7 @@ export async function reopenClosedTab(): Promise<boolean> {
  */
 export async function openPathInNewTab(
   path: string,
-  options: { scrollTop?: number; index?: number } = {},
+  options: { scrollTop?: number; index?: number; remember?: boolean } = {},
 ): Promise<boolean> {
   const existing = tabsStore.tabs.find((tab) => tabMeta(tab).path === path);
   if (existing !== undefined) return activateTab(existing.id);
@@ -322,6 +322,9 @@ export async function openPathInNewTab(
     confirm: false,
     resetScroll: scrollTop === 0,
     ...(scrollTop > 0 && { restoreScroll: scrollTop }),
+    // 復元では最近開いたファイルを積み直さない（M3 Phase 7）。
+    // 起動しただけで一覧が前回のタブで埋まると、「最後に開いた順」の意味が失われる。
+    ...(options.remember === false && { remember: false }),
   });
   if (opened !== null) return true;
 

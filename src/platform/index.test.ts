@@ -30,6 +30,7 @@ describe('getPlatform', () => {
       'allowImageDir',
       'listDir',
       'listFiles',
+      'setSession',
       'pushRecent',
       'removeRecent',
       'setZoom',

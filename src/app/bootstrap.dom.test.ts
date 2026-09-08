@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { documentStore } from '@/features/document';
 import { settingsStore } from '@/features/settings';
+import { resetTabs, tabsStore } from '@/features/workspace';
 import { ja } from '@/i18n/ja';
 import { resetCommands } from '@/lib/commands';
 import { resetShortcuts } from '@/lib/shortcuts';
@@ -47,6 +48,8 @@ function bootstrapWith(patch: Partial<Bootstrap>): Bootstrap {
     benchInput: false,
     trace: null,
     pendingPaths: [],
+    session: [],
+    sessionActive: 0,
     workspaceRoot: null,
     unknownArgs: [],
     recent: [],
@@ -71,6 +74,7 @@ beforeEach(() => {
   preview.id = 'mx-preview';
   document.body.append(preview);
   documentStore.notice = null;
+  resetTabs();
   settingsStore.values = DEFAULT_SETTINGS;
   document.documentElement.removeAttribute('style');
   delete document.documentElement.dataset['theme'];
@@ -80,6 +84,72 @@ afterEach(() => {
   resetShortcuts();
   resetCommands();
   setPlatform(original);
+});
+
+/** 1 枚目のドキュメント。中身は問わない。 */
+function documentAt(path: string): NonNullable<Bootstrap['document']> {
+  return {
+    path,
+    content: `# ${path}
+`,
+    eol: 'lf',
+    bom: false,
+    encoding: 'utf8',
+    mtimeMs: 1,
+    size: 8,
+    readonly: false,
+  };
+}
+
+/**
+ * 2 枚目以降のタブ（M3 Phase 7）。
+ *
+ * `pendingPaths`（`marxdown a.md b.md`）と `session`（前回のタブ）の 2 経路がある。
+ * どちらを使うかは Rust 側で決まり、同時には来ない。
+ */
+describe('2 枚目以降のタブ', () => {
+  beforeEach(() => {
+    setPlatform({
+      ...original,
+      readDocument: (path: string) => Promise.resolve({ ...documentAt(path), size: 8 }),
+      pushRecent: () => Promise.resolve([]),
+      watchPath: () => Promise.resolve(),
+      unwatchPath: () => Promise.resolve(),
+      setDirty: () => Promise.resolve(),
+      setSession: () => Promise.resolve(),
+    } as Platform);
+  });
+
+  it('引数の 2 枚目以降がタブとして開く', async () => {
+    const bootstrap = bootstrapWith({
+      document: documentAt('C:/notes/a.md'),
+      pendingPaths: ['C:/notes/b.md'],
+    });
+    setPlatform({ ...getPlatform(), getBootstrap: () => bootstrap } as Platform);
+
+    await startup(() => {});
+
+    await vi.waitFor(() => {
+      expect(tabsStore.tabs.map((tab) => tab.meta.path)).toEqual(['C:/notes/a.md', 'C:/notes/b.md']);
+    });
+  });
+
+  it('前回のタブは並び順のまま開き直される', async () => {
+    // 表示していたのは添字 1。bootstrap の `document` はそれになっている。
+    const bootstrap = bootstrapWith({
+      document: documentAt('C:/notes/b.md'),
+      session: ['C:/notes/a.md', 'C:/notes/b.md', 'C:/notes/c.md'],
+      sessionActive: 1,
+    });
+    setPlatform({ ...getPlatform(), getBootstrap: () => bootstrap } as Platform);
+
+    await startup(() => {});
+
+    await vi.waitFor(() => {
+      expect(tabsStore.tabs.map((tab) => tab.meta.path)).toEqual(['C:/notes/a.md', 'C:/notes/b.md', 'C:/notes/c.md']);
+    });
+    expect(tabsStore.active?.meta.path).toBe('C:/notes/b.md');
+  });
 });
 
 describe('startup', () => {

@@ -20,6 +20,8 @@ import { fileURLToPath } from 'node:url';
 
 import { APP } from './helpers/app';
 import { resetWorkspace } from './helpers/fixtures';
+import { seedRestoredSession } from './helpers/session';
+import { clearSession } from './helpers/store';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 
@@ -148,8 +150,17 @@ export const config: WebdriverIO.Config = {
    * 対象ファイルは**セッションを張る前**に無ければならない。argv 転送で開く以上、
    * ここより後に作っても間に合わない。
    */
-  beforeSession() {
+  beforeSession(_config: unknown, _capabilities: unknown, specs: string[]) {
     resetWorkspace();
+
+    // セッション復元（OQ-04）は起動時にしか効かない。
+    // アプリが立ち上がる前のここでしか仕込めず、**他の spec のためにここで消す必要もある**
+    // （E2E のアプリは引数なしで立ち上がるため、記録が残っていると全部の spec が復元から始まる）。
+    if (specs.some((spec) => spec.endsWith('session.e2e.ts'))) {
+      seedRestoredSession();
+    } else {
+      clearSession();
+    }
   },
 
   /**

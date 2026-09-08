@@ -185,6 +185,18 @@ Marxdown は単一インスタンスで、2 回目以降の `marxdown foo.md` �
 文字列で比べると、CRLF が LF に潰れたことも BOM が落ちたことも通ってしまう。
 N-CMP-03 はそこを見る要件である。
 
+### 前回のタブ（`state.json`）
+
+**E2E のアプリは引数なしで立ち上がる。** つまりセッション復元（[OQ-04](../docs/07.open-questions/decided.md)）が
+毎回効く条件で起動する。前の実行の記録が残っていると、**どの spec も 2 枚目のタブを
+抱えた状態から始まる**。
+
+そのため `beforeSession` で `state.json` の `session` を消し、復元を見る spec
+（`specs/session.e2e.ts`）にだけ仕込む（`helpers/store.ts` / `helpers/session.ts`）。
+
+**仕込むのは `beforeSession` でなければならない。** 復元はアプリの起動時にしか効かず、
+そのアプリはセッションを張った時点で既に立ち上がっている。spec の中では間に合わない。
+
 ## 依存の版について
 
 WebdriverIO は **9.31.2 に固定**してある（`^` を付けていない）。

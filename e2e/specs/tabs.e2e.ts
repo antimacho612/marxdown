@@ -323,7 +323,6 @@ describe('ファイルツリー', () => {
   });
 
   it('押すとタブとして開く', async () => {
-    const before = await tabNames();
     await browser.execute(() => {
       const item = [...document.querySelectorAll('.mx-tree__item')].find((element) =>
         (element.textContent ?? '').includes('second.md'),
@@ -331,14 +330,15 @@ describe('ファイルツリー', () => {
       if (item instanceof HTMLElement) item.click();
     });
 
+    // 枚数ではなく**表示中のタブ**が変わるのを待つ。
+    // 枚数は既に条件を満たしていることがあり、その場合は読み込みを待たずに次へ進んでしまう。
     await browser.waitUntil(
       async () => {
-        const names = await tabNames();
-        return names.length >= before.length;
+        const name = await activeTabName();
+        return name === 'second.md';
       },
       { timeout: 20_000, timeoutMsg: 'ツリーから開けなかった' },
     );
-    expect(await activeTabName()).toBe('second.md');
   });
 
   it('Ctrl+Shift+E でツリーへフォーカスが移る', async () => {

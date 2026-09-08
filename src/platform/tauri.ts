@@ -104,6 +104,10 @@ export const tauriPlatform: Platform = {
     return invoke<FileList>('list_files', { path: root, extensions: MARKDOWN_EXTENSIONS });
   },
 
+  setSession(paths, active) {
+    return invoke<void>('store_set_session', { paths, active });
+  },
+
   pushRecent(path) {
     return invoke<RecentEntry[]>('store_push_recent', { path });
   },

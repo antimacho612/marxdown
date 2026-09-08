@@ -239,6 +239,15 @@ export interface Bootstrap {
   trace: TraceConfig | null;
   pendingPaths: string[];
   /**
+   * 復元するタブ（OQ-04 / M3 Phase 7）。**タブの並び順**である。
+   *
+   * 入るのは引数なしで起動したときだけである。
+   * `document` には `sessionActive` が指すファイルが入っているので、それ以外を元の位置へ開き直す。
+   */
+  session: string[];
+  /** `session` の中で表示していたタブの位置。 */
+  sessionActive: number;
+  /**
    * ファイルツリーの基点（F-OPEN-02 / `marxdown <dir>`）。
    *
    * ディレクトリを指定して起動したときだけ入る。
@@ -368,6 +377,13 @@ export interface Platform {
    * 超えたときは `truncated` が立つ（`src-tauri/src/dir.rs`）。
    */
   listFiles(root: string): Promise<FileList>;
+  /**
+   * 開いているタブを覚える（OQ-04）。**引数なしで起動したときだけ復元される。**
+   *
+   * 覚えるのはパスと表示中の位置だけで、本文は持たない。
+   * パスを持たないタブ（`Ctrl+N`）は呼び出し側で除くこと。
+   */
+  setSession(paths: string[], active: number): Promise<void>;
   /** 最近開いたファイルに 1 件追加する。更新後の一覧を返す（F-OPEN-09）。 */
   pushRecent(path: string): Promise<RecentEntry[]>;
   /** 開けなくなったファイルを一覧から外す。更新後の一覧を返す。 */
