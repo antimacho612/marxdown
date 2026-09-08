@@ -118,16 +118,26 @@ export default defineConfig(({ mode }) => ({
           /*
            * エディター（M2 Phase 1）。menu / settings / outline と同じく**名前付けだけ**。
            *
-           * 下の `manualChunks` が `@codemirror/*` を `editor` へ寄せているが、
-           * それは**依存側**の話で、こちらは `features/editor/` から始まる
-           * 動的 import の入口に名前を付けている。両方が `editor-*.js` に
-           * 落ちることで、size-limit が 1 つの予算として指せる。
-           *
            * `src/features/editor/open-editor.ts` は `main` から静的に import
            * されているので `main` に残る（動的 import の一行だけを持つ入口）。
            */
           const isEditor = /[\\/]src[\\/]features[\\/]editor[\\/]/.test(chunk.facadeModuleId ?? '');
           if (isEditor) return 'assets/editor-[hash].js';
+
+          /*
+           * Monaco の実体（ADR-0009）。**ここも名前付けだけである。**
+           *
+           * 以前は `manualChunks` で 1 つの `editor` チャンクへ寄せていたが、
+           * **それが起動を遅くしていた。** まとめた結果、Vite が注入する動的 import の
+           * ヘルパ（`__vitePreload`）がその巨大なチャンクに同居し、`main` がヘルパを
+           * **静的に** import することになる。754KB が `index.html` の `modulepreload` に出て、
+           * 起動時の評価対象へ入っていた（M3 Phase 8 で実測 / measurements/03-cold-start.md）。
+           *
+           * 分割は Rollup に任せ、Monaco だけで構成されたチャンクに名前を付ける。
+           * size-limit が 1 つの予算として指せる状態は保たれる。
+           */
+          const isMonacoOnly = modules.length > 0 && modules.every((id) => id.includes('node_modules/monaco-editor'));
+          if (isMonacoOnly) return 'assets/editor-[hash].js';
 
           /*
            * 入力レスポンスの計測（M2 Phase 6 / `--bench-input`）。他と同じく**名前付けだけ**。
@@ -177,15 +187,6 @@ export default defineConfig(({ mode }) => ({
           return 'assets/[name]-[hash].js';
         },
         assetFileNames: 'assets/[name]-[hash][extname]',
-        manualChunks(id) {
-          // Monaco をまとめて `editor` へ寄せる（ADR-0009）。
-          // **予算の対象外だが、無審査に増やしてよいという意味ではない**
-          // （何を取っているかは `src/features/editor/lazy/monaco.ts`）。
-          if (id.includes('node_modules/monaco-editor')) {
-            return 'editor';
-          }
-          return undefined;
-        },
       },
     },
   },
