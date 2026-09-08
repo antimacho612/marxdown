@@ -1,11 +1,17 @@
 /**
- * 見出しのあいまい検索（`Ctrl+Shift+O` / 03.ux-spec/04-keybindings.md §3「移動」）。
- * `open-jump.ts` から先の遅延チャンク側にあり、使わない人には起動時に読ませない。
+ * あいまい検索（見出しジャンプ `Ctrl+Shift+O` / コマンドパレット `Ctrl+Shift+P`）。
  *
  * fzf 系のライブラリ（数十 KB）は入れず、「打った文字が順番に含まれるか」と「近いほうを上に出す」だけを自作する（04.tech-stack/05-frontend.md）。
- * 日本語の見出しは単語境界が無いため、単語境界ボーナスは付けず連続と位置だけでスコアする。
+ * 日本語には単語境界が無いため、単語境界ボーナスは付けず連続と位置だけでスコアする。
+ *
+ * **パレットの遅延チャンクの中に置く。** `lib/` へ出すと、パレット以外から import された時点で
+ * 共有チャンクへ切り出され、size-limit の critical path が拾ってしまう（`vite.config.ts` の
+ * `isPaletteOnly`）。使うのがパレットだけである限り、ここが正しい置き場所になる。
+ *
+ * クイックオープン（F-NAV-05 / M3 Phase 6）もここを使う予定である。
+ * 1000 ファイル規模で 1 打鍵 16ms を超えたら `fuzzysort` へ差し替える
+ * （[06.roadmap > m3 §1.1](../../../../docs/06.roadmap/m3-workspace.md)）。
  */
-import type { OutlineItem } from '@/markdown/plugins/line-map';
 
 /**
  * 部分列としての一致を測る。一致しなければ `null`。
@@ -39,18 +45,18 @@ export function fuzzyScore(text: string, query: string): number | null {
 }
 
 /**
- * 一致した見出しを、スコアの高い順に返す。
+ * 一致したものを、スコアの高い順に返す。`textOf` は照合する文字列を取り出す。
  *
- * 同点の場合は元の順序（文書内の並び）を維持する。
- * 空のクエリでは全件が文書順のまま返るため、開いた直後はアウトラインと同じ並びになる。
+ * 同点の場合は元の順序を維持する。
+ * 空のクエリでは全件が元の並びのまま返るため、開いた直後は一覧と同じ並びになる。
  *
- * 添字ではなく見出しそのものを返す。
- * 呼び出し側は `documentStore.outline` を持っており、添字を返すと 1 打鍵ごとに文字列の配列を作り直したうえで引き直すことになる。
+ * 添字ではなく要素そのものを返す。
+ * 呼び出し側は元の配列を持っており、添字を返すと 1 打鍵ごとに引き直すことになる。
  */
-export function fuzzyFilter(items: readonly OutlineItem[], query: string): OutlineItem[] {
-  const matches: { item: OutlineItem; index: number; score: number }[] = [];
+export function fuzzyFilter<T>(items: readonly T[], query: string, textOf: (item: T) => string): T[] {
+  const matches: { item: T; index: number; score: number }[] = [];
   for (const [index, item] of items.entries()) {
-    const score = fuzzyScore(item.text, query);
+    const score = fuzzyScore(textOf(item), query);
     if (score !== null) matches.push({ item, index, score });
   }
   const ordered = query === '' ? matches : matches.toSorted((a, b) => b.score - a.score || a.index - b.index);

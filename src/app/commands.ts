@@ -17,9 +17,11 @@ import {
   saveSafely,
   toggleEol,
 } from '@/features/document';
+import { gotoLineLazily } from '@/features/editor';
 import { canGoBack, canGoForward, goBack, goForward } from '@/features/history';
 import { cycleMode, openFind, openReplace, setMode, togglePreview, toggleSplit } from '@/features/mode';
 import { openJumpLazily, showOutline } from '@/features/outline';
+import { openCommandPaletteLazily } from '@/features/palette';
 import { toggleRightPane } from '@/features/panes';
 import { zoomIn, zoomOut, zoomReset } from '@/features/preview';
 import { openSettingsLazily } from '@/features/settings';
@@ -137,6 +139,19 @@ const COMMANDS: Command[] = [
 
   { id: 'settings.open', run: () => void openSettingsLazily() },
 
+  // コマンドパレット（F-NAV-06 / 03.ux-spec/01-screen-layout.md §3）。
+  // メニューバーを置かない代わりの、すべての機能への到達手段である。
+  // 一覧には出さない。開いている当人を並べても押せない。
+  { id: 'palette.open', run: () => void openCommandPaletteLazily() },
+
+  // 指定行へ移動（`Ctrl+G`）。実体は Monaco の組み込みアクションである。
+  // **Preview では一覧に出さない。** 行番号が見えていない面に「指定行へ移動」を並べても選べない。
+  {
+    id: 'editor.gotoLine',
+    run: () => void gotoLineLazily(),
+    isListed: () => hasDocument() && viewStore.mode !== 'preview',
+  },
+
   // タブ（F-NAV-01, 02 / 03.ux-spec/04-keybindings.md §3）。
   //
   // 閉じるのは表示中のタブである。対象を取らないのは、キーもメニューも「いま見ているもの」を指すためで、
@@ -231,6 +246,14 @@ export const KEY_BINDINGS: KeyBinding[] = [
   { key: 'Ctrl+Shift+U', id: 'outline.show' },
   { key: 'Ctrl+Shift+O', id: 'outline.jump' },
 
+  // コマンドパレット（F-NAV-06）。
+  // `Ctrl+Shift+P` は WebView の開発者ツールには割り当たっていないが（そちらは `Ctrl+Shift+I`）、
+  // 既定動作を止めておく点は他のキーと同じ扱いにする。
+  { key: 'Ctrl+Shift+P', id: 'palette.open' },
+
+  // 指定行へ移動（`Ctrl+G`）。Monaco 側の同じキーは `keymap.ts` が剥がしている。
+  { key: 'Ctrl+G', id: 'editor.gotoLine' },
+
   // 戻る / 進む（F-NAV-07）。
   // 相対リンクで辿った先から戻るための経路で、スクロール位置も一緒に復元する（`features/history/navigate.ts`）。
   //
@@ -279,6 +302,15 @@ export const KEY_BINDINGS: KeyBinding[] = [
  * メニューは id しか持たないため、登録が無いと項目が 1 つも表示されない。
  * 一方で Storybook でグローバルキーまで有効にすると、`Ctrl+F` がブラウザの検索ではなくアプリの検索を開いてしまう。
  */
+/**
+ * 登録してある id の一覧。
+ *
+ * コマンドパレットのカタログ（`features/palette/lazy/catalog.ts`）との突き合わせに使う。
+ * パレットは「すべての機能への到達手段」であり、載せ忘れは機能が埋もれることを意味するため、
+ * 目視ではなく `catalog.test.ts` が機械で見張る。
+ */
+export const COMMAND_IDS: CommandId[] = COMMANDS.map((command) => command.id);
+
 export function registerAppCommands(): () => void {
   return registerCommands(COMMANDS);
 }

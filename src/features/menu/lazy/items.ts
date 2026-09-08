@@ -9,7 +9,7 @@
  * 押せない項目（例: ファイル未オープン時の再読み込み・倍率・検索）は存在ごと消す（Principle 3）。
  * 判定は `app/commands.ts` の `isListed` が唯一の根拠で、メニューとパレットで結論がずれない。
  */
-import { viewStore } from '@/features/view';
+import { commandEntry, resolve } from '@/features/palette/lazy/catalog';
 import { recentStore } from '@/features/workspace';
 import { ja } from '@/i18n/ja';
 import { isCommandListed, runCommand, type CommandId } from '@/lib/commands';
@@ -47,14 +47,16 @@ export interface MenuGroup {
   empty?: string;
 }
 
-/** 表に書く 1 行。`command` が押せる状態のときだけ `MenuAction` になる。 */
+/**
+ * 表に書く 1 行。`command` が押せる状態のときだけ `MenuAction` になる。
+ *
+ * **ラベルとキーは持たない。** どちらも `features/palette/lazy/catalog.ts` にあり、
+ * メニューはそこから取る。同じ文言がメニューとパレットで 2 か所になると、片方だけ直る（M3 Phase 4）。
+ */
 interface MenuEntry {
   /** `{#each}` のキー。`CommandId` をそのまま使わないのは、短いほうが読めるため。 */
   id: string;
   command: CommandId;
-  /** ラベル。状態で変わるものだけ関数で渡す。 */
-  label: string | (() => string);
-  shortcut?: string;
 }
 
 interface MenuSection {
@@ -75,14 +77,14 @@ const MENU: MenuSection[] = [
   {
     id: 'file',
     entries: [
-      { id: 'open', command: 'document.open', label: ja.menu.open, shortcut: 'Ctrl+O' },
+      { id: 'open', command: 'document.open' },
       // 新規ファイル（`Ctrl+N`）。ファイルを開いていなくても実行できる。
       // 並び順は Welcome 画面に揃える（03.ux-spec/08-empty-states.md §1 は「開く」の次に「新規」）。
       // 同じ 2 つが場所によって異なる順で並ぶと、位置で覚えられなくなる。
-      { id: 'new', command: 'document.new', label: ja.menu.new, shortcut: 'Ctrl+N' },
+      { id: 'new', command: 'document.new' },
       // 保存（F-EDIT-02）。キーの割り当てを確認できる場所が他に無い（コマンドパレットは M3）。
-      { id: 'save', command: 'document.save', label: ja.menu.save, shortcut: 'Ctrl+S' },
-      { id: 'save-as', command: 'document.saveAs', label: ja.menu.saveAs, shortcut: 'Ctrl+Shift+S' },
+      { id: 'save', command: 'document.save' },
+      { id: 'save-as', command: 'document.saveAs' },
     ],
   },
   {
@@ -91,67 +93,50 @@ const MENU: MenuSection[] = [
     // ここに置くのは、`Alt+←` の割り当てを確認できる場所が他に無いためである
     // （コマンドパレットは M3 / 06.roadmap/m1.5-shell-and-settings.md §5）。
     entries: [
-      { id: 'back', command: 'history.back', label: ja.history.back, shortcut: 'Alt+←' },
-      { id: 'forward', command: 'history.forward', label: ja.history.forward, shortcut: 'Alt+→' },
+      { id: 'back', command: 'history.back' },
+      { id: 'forward', command: 'history.forward' },
     ],
   },
   {
     id: 'document',
     entries: [
       // モードの切り替え（F-MODE-06）。ラベルは行き先を言う（`ja.menu`）。
-      {
-        id: 'mode',
-        command: 'view.togglePreview',
-        label: () => (viewStore.mode === 'preview' ? ja.menu.toEdit : ja.menu.toPreview),
-        shortcut: 'Ctrl+Shift+V',
-      },
+      { id: 'mode', command: 'view.togglePreview' },
       // Split（F-MODE-03）。ラベルは行き先を言う（モードのトグルと同じ）。
-      {
-        id: 'split',
-        command: 'view.toggleSplit',
-        label: () => (viewStore.mode === 'split' ? ja.menu.fromSplit : ja.menu.toSplit),
-        shortcut: 'Ctrl+\\',
-      },
-      { id: 'reload', command: 'document.reload', label: ja.menu.reload, shortcut: 'F5' },
+      { id: 'split', command: 'view.toggleSplit' },
+      { id: 'reload', command: 'document.reload' },
       // 検索は面によって実体が変わる（`features/mode/find.ts`）。ラベルも変える。
-      {
-        id: 'search',
-        command: 'find.open',
-        label: () => (viewStore.mode === 'preview' ? ja.menu.search : ja.menu.find),
-        shortcut: 'Ctrl+F',
-      },
+      { id: 'search', command: 'find.open' },
       // 置換は Edit のときだけ出る（`isListed`）。
-      { id: 'replace', command: 'find.replace', label: ja.menu.replace, shortcut: 'Ctrl+H' },
+      { id: 'replace', command: 'find.replace' },
       // ペインの開閉（03.ux-spec/06-panes.md §4 の「ペイン」系）。
       // ラベルが状態で変わるのは、押した結果を先に言うため。
-      {
-        id: 'outline',
-        command: 'pane.toggleRight',
-        label: () => (viewStore.panes.right.open ? ja.pane.hideOutline : ja.pane.showOutline),
-        shortcut: 'Ctrl+Alt+B',
-      },
-      { id: 'jump', command: 'outline.jump', label: ja.outline.jump, shortcut: 'Ctrl+Shift+O' },
+      { id: 'outline', command: 'pane.toggleRight' },
+      { id: 'jump', command: 'outline.jump' },
     ],
   },
   {
     id: 'zoom',
     label: ja.menu.zoom,
     entries: [
-      { id: 'zoom-in', command: 'preview.zoomIn', label: ja.menu.zoomIn, shortcut: 'Ctrl+=' },
-      { id: 'zoom-out', command: 'preview.zoomOut', label: ja.menu.zoomOut, shortcut: 'Ctrl+-' },
-      { id: 'zoom-reset', command: 'preview.zoomReset', label: ja.menu.zoomReset, shortcut: 'Ctrl+0' },
+      { id: 'zoom-in', command: 'preview.zoomIn' },
+      { id: 'zoom-out', command: 'preview.zoomOut' },
+      { id: 'zoom-reset', command: 'preview.zoomReset' },
     ],
   },
   {
     id: 'app',
     entries: [
-      { id: 'settings', command: 'settings.open', label: ja.menu.settings, shortcut: 'Ctrl+,' },
+      // コマンドパレット（F-NAV-06）。**ここが初学者の逃げ道である**（03.ux-spec/01-screen-layout.md §3）。
+      // キーを知らない人がすべての機能へ辿り着ける経路は、メニューからパレットへ入る 2 手だけである。
+      { id: 'palette', command: 'palette.open' },
+      { id: 'settings', command: 'settings.open' },
       // 終了（ADR-0007 論点 3 の 3 経路のうちの 1 つ）。
       //
       // `✕` がトレイ格納の意味になったため、この項目が必要になった。
       // ウィンドウの中から確実に終了できる場所が無いと、閉じても終了していないことに気づいた場合の操作先がトレイアイコンだけになる。
       // ハンバーガーメニューは §3 が示す「初学者の逃げ道」にあたり、この項目はその役割を担う。
-      { id: 'quit', command: 'app.quit', label: ja.menu.quit, shortcut: 'Ctrl+Q' },
+      { id: 'quit', command: 'app.quit' },
     ],
   },
 ];
@@ -181,15 +166,23 @@ export function buildMenu(): MenuGroup[] {
   return groups;
 }
 
+/**
+ * 表示できる形にする。ラベルとキーはカタログから取る（`features/palette/lazy/catalog.ts`）。
+ *
+ * カタログに無いコマンドは id をそのまま出す。**起こらないはずの事態を黙って通さない**ためで、
+ * 追加したコマンドをカタログへ載せ忘れると、メニューにもパレットにも id が並んで気づく。
+ */
 function toAction(entry: MenuEntry): MenuAction {
+  const found = commandEntry(entry.command);
+  const shown = found === undefined ? { id: entry.command, label: entry.command } : resolve(found);
   const action: MenuAction = {
     id: entry.id,
-    label: typeof entry.label === 'function' ? entry.label() : entry.label,
+    label: shown.label,
     run: () => {
       runCommand(entry.command);
     },
   };
-  return entry.shortcut === undefined ? action : { ...action, shortcut: entry.shortcut };
+  return shown.shortcut === undefined ? action : { ...action, shortcut: shown.shortcut };
 }
 
 /**

@@ -50,6 +50,11 @@ async function tabCenters(): Promise<{ x: number; y: number }[]> {
   );
 }
 
+/** ステータスバーの文言。倍率やモードが出る。 */
+async function statusBarText(): Promise<string> {
+  return browser.execute(() => document.querySelector('.mx-statusbar')?.textContent ?? '');
+}
+
 /** タイトルバーに出ているファイル名（タブが 1 枚のときの表示）。 */
 async function titleName(): Promise<string> {
   return browser.execute(() => document.querySelector('.mx-titlebar__name')?.textContent ?? '');
@@ -212,5 +217,53 @@ describe('タブの並べ替え', () => {
       { timeout: 10_000, timeoutMsg: '並びが入れ替わらなかった' },
     );
     expect(await tabNames()).toEqual([before[1], before[0]]);
+  });
+});
+
+/**
+ * コマンドパレット（`Ctrl+Shift+P` / F-NAV-06 / M3 Phase 4）。
+ *
+ * **ここでしか確かめられないのは 2 つ。** 遅延チャンク（`palette-*.js`）が本物のビルドで載ること、
+ * `Ctrl+Shift+P` が WebView 既定の動作に取られていないことである。
+ */
+describe('コマンドパレット', () => {
+  it('Ctrl+Shift+P で開き、コマンドが並ぶ', async () => {
+    await browser.keys([Key.Control, Key.Shift, 'p']);
+
+    await browser.waitUntil(
+      async () => {
+        const count = await browser.execute(() => document.querySelectorAll('.mx-palette__list button').length);
+        return count > 0;
+      },
+      { timeout: 20_000, timeoutMsg: 'パレットが開かなかった' },
+    );
+  });
+
+  it('打つと絞り込まれ、Enter で実行される', async () => {
+    // 「拡大」を絞り込んで実行する。倍率はステータスバーに出るので、外から結果が見える。
+    // 倍率は `state.json` に保存されるため、絶対値ではなく**変わったこと**を見る。
+    const before = await statusBarText();
+
+    await browser.keys('拡大');
+    await browser.keys([Key.Enter]);
+
+    await browser.waitUntil(
+      async () => {
+        const after = await statusBarText();
+        return after !== before;
+      },
+      { timeout: 10_000, timeoutMsg: 'パレットから実行しても倍率が変わらなかった' },
+    );
+
+    // 次の実行に影響を残さない。
+    await browser.keys([Key.Control, '0']);
+  });
+
+  it('Escape で閉じる', async () => {
+    await browser.keys([Key.Control, Key.Shift, 'p']);
+    await browser.keys([Key.Escape]);
+
+    const open = await browser.execute(() => document.querySelector('.mx-palette') !== null);
+    expect(open).toBe(false);
   });
 });

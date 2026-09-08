@@ -90,6 +90,22 @@ export default defineConfig(({ mode }) => ({
           if (isOutlineJump) return 'assets/outline-[hash].js';
 
           /*
+           * パレットの器（M3 Phase 4）。**入口を持たないチャンクなので、判定が他と違う。**
+           *
+           * コマンドパレットと見出しジャンプの 2 つが同じ器を使うため、Vite は共有部分を
+           * 独立したチャンクへ切り出す。そのチャンクには入口が無く `facadeModuleId` も無い。
+           * 名前が付かないと `shared-*` に落ち、**size-limit の critical path が拾ってしまう**
+           * （実測 +2.72KB / 2026-09-08）。起動時には読み込まれないのに予算を食う形になる。
+           *
+           * そこで、含まれるモジュールが全部 `features/palette/lazy/` のものであるときだけ名前を付ける。
+           * `manualChunks` で寄せるのとは違い、**分割そのものには手を出していない**（menu と同じ方針）。
+           */
+          const modules = chunk.moduleIds ?? [];
+          const isPaletteOnly =
+            modules.length > 0 && modules.every((id) => /[\\/]src[\\/]features[\\/]palette[\\/]lazy[\\/]/.test(id));
+          if (isPaletteOnly) return 'assets/palette-[hash].js';
+
+          /*
            * ステータスバーのポップアップメニュー（M2 Phase 7）。他と同じく**名前付けだけ**。
            *
            * `src/features/status/lazy/` に置いてあるのは**押されるまで要らないもの**だけで、

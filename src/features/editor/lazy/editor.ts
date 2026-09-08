@@ -319,6 +319,17 @@ export function openEditorSearch(replace: boolean): void {
 }
 
 /**
+ * 指定行へ移動する（`Ctrl+G`）。
+ *
+ * Monaco の組み込みアクションをそのまま実行する。行番号の入力欄も Monaco が持っている。
+ */
+export function gotoLine(): void {
+  if (!editor) return;
+  editor.focus();
+  void editor.getAction('editor.action.gotoLine')?.run();
+}
+
+/**
  * 検索・置換を閉じる（Split でプレビュー側の検索へ移るとき / `features/mode/find.ts`）。
  *
  * `getAction` では取得できない。
