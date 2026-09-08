@@ -129,6 +129,12 @@ export const ja = {
    */
   pane: {
     resizeRight: 'ライトペインの幅を変更',
+    resizeLeft: 'レフトペインの幅を変更',
+    /** レフトペイン（Explorer / F-NAV-03）。中身は Phase 5b。 */
+    showExplorer: 'エクスプローラーを表示',
+    hideExplorer: 'エクスプローラーを隠す',
+    /** 中身が入るまでの仮置き（Phase 5b でファイルツリーに置き換わる）。 */
+    explorerPlaceholder: 'ファイルツリーは準備中です',
     showOutline: 'アウトラインを表示',
     hideOutline: 'アウトラインを隠す',
   },

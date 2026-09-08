@@ -22,7 +22,7 @@ import { canGoBack, canGoForward, goBack, goForward } from '@/features/history';
 import { cycleMode, openFind, openReplace, setMode, togglePreview, toggleSplit } from '@/features/mode';
 import { openJumpLazily, showOutline } from '@/features/outline';
 import { openCommandPaletteLazily } from '@/features/palette';
-import { toggleRightPane } from '@/features/panes';
+import { toggleLeftPane, toggleRightPane } from '@/features/panes';
 import { zoomIn, zoomOut, zoomReset } from '@/features/preview';
 import { openSettingsLazily } from '@/features/settings';
 import { viewStore } from '@/features/view';
@@ -93,6 +93,7 @@ const COMMANDS: Command[] = [
   //
   // 後者がトグルでないのは、アウトラインを見たいという意図に対して常に同じ結果を返すためである。
   // アウトラインを左ペインへ移しても意味が変わらない。
+  { id: 'pane.toggleLeft', run: () => toggleLeftPane(), isListed: hasDocument },
   { id: 'pane.toggleRight', run: () => toggleRightPane(), isListed: hasDocument },
   { id: 'outline.show', run: () => void showOutline() },
 
@@ -242,6 +243,8 @@ export const KEY_BINDINGS: KeyBinding[] = [
   { key: 'Ctrl+\\', id: 'view.toggleSplit' },
   { key: 'Ctrl+Shift+M', id: 'view.cycleMode' },
 
+  // レフトペイン（F-NAV-04 / 03.ux-spec/04-keybindings.md §3）。VS Code のサイドバーと同じキー。
+  { key: 'Ctrl+Shift+B', id: 'pane.toggleLeft' },
   { key: 'Ctrl+Alt+B', id: 'pane.toggleRight' },
   { key: 'Ctrl+Shift+U', id: 'outline.show' },
   { key: 'Ctrl+Shift+O', id: 'outline.jump' },

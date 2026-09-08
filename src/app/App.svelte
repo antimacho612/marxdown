@@ -7,9 +7,10 @@
 <script lang="ts">
   import { documentStore } from '@/features/document';
   import { Outline } from '@/features/outline';
-  import { RightPane } from '@/features/panes';
+  import { LeftPane, RightPane } from '@/features/panes';
   import { SplitDivider, viewStore } from '@/features/view';
   import { tabsStore, TabStrip, Welcome } from '@/features/workspace';
+  import { ja } from '@/i18n/ja';
 
   import NoticeBar from './NoticeBar.svelte';
   import StatusBar from './StatusBar.svelte';
@@ -48,6 +49,16 @@
 {/if}
 
 <!--
+  レフトペイン（03.ux-spec/06-panes.md §1 / F-NAV-04）。ライトペインと同じ扱いで、開いていなければ要素ごと無い。
+  中身（ファイルツリー / F-NAV-03）は M3 Phase 5b で入る。それまでは枠だけが開く。
+-->
+{#if viewStore.panes.left.open}
+  <LeftPane>
+    <p class="mx-pane-placeholder">{ja.pane.explorerPlaceholder}</p>
+  </LeftPane>
+{/if}
+
+<!--
   ライトペイン（03.ux-spec/06-panes.md）。開いていなければ要素自体が存在しない。
   `rightpane` の列は `auto` であるため、配置しなければ幅 0 になる（`shell.css`）。
   フラグで幅を 0 にするのではなく要素ごと削除するため、閉じている間はアウトラインの `IntersectionObserver` も動作しない（N-PERF-05）。
@@ -64,3 +75,13 @@
 {/if}
 
 <StatusBar />
+
+<style>
+  /* 中身が入るまでの仮置き（Phase 5b）。ペインを開いたときに空白だけが出ないようにする。 */
+  .mx-pane-placeholder {
+    margin: 0;
+    padding: var(--mx-space-3);
+    color: var(--mx-color-fg-subtle);
+    font-size: var(--mx-font-size-ui);
+  }
+</style>

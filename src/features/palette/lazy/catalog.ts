@@ -52,6 +52,11 @@ export const COMMAND_CATALOG: CommandEntry[] = [
 
   // ペインとビューは意味が違う（`app/commands.ts`）。ラベルもそれに合わせる。
   {
+    id: 'pane.toggleLeft',
+    label: () => (viewStore.panes.left.open ? ja.pane.hideExplorer : ja.pane.showExplorer),
+    shortcut: 'Ctrl+Shift+B',
+  },
+  {
     id: 'pane.toggleRight',
     label: () => (viewStore.panes.right.open ? ja.pane.hideOutline : ja.pane.showOutline),
     shortcut: 'Ctrl+Alt+B',

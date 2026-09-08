@@ -31,6 +31,7 @@ export type CommandId =
   | 'outline.jump'
   | 'palette.open'
   | 'outline.show'
+  | 'pane.toggleLeft'
   | 'pane.toggleRight'
   | 'preview.zoomIn'
   | 'preview.zoomOut'
