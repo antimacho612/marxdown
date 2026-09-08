@@ -210,6 +210,9 @@ function initialBootstrap(): Bootstrap {
     benchInput: params.has('benchInput'),
     trace: { enabled: params.has('trace'), t0EpochMs: Date.now() },
     pendingPaths: [],
+    session: [],
+    sessionActive: 0,
+    workspaceRoot: null,
     unknownArgs: [],
     recent: state.recent,
     zoom: state.zoom,
@@ -353,6 +356,29 @@ export const webPlatform: Platform = {
   async resolveAsset(href) {
     return href;
   },
+
+  /**
+   * `dev:web` の仮想 FS にはディレクトリが無い。
+   *
+   * 実体を返さないのは、ここで木構造を模しても確かめられるのが並べ方だけだからである。
+   * ファイルツリーの見た目は Storybook で見る（`FileTree.stories.svelte`）。
+   */
+  /** 仮想 FS にはスコープが無い。許可するものも無いので、そのまま返す。 */
+  async allowImageDir(href) {
+    return href;
+  },
+
+  async listDir() {
+    return [];
+  },
+
+  /** 同じ理由で候補も返さない。クイックオープンは開くが、一覧は空になる。 */
+  async listFiles() {
+    return { files: [], truncated: false };
+  },
+
+  /** `dev:web` では復元しない。起動のたびに同じ状態から始まるほうが確かめやすい。 */
+  async setSession() {},
 
   async pushRecent(path) {
     const state = loadState();

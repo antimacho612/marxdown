@@ -10,7 +10,6 @@
  */
 import {
   documentStore,
-  newDocument,
   openPath,
   openViaDialog,
   reloadCurrent,
@@ -18,13 +17,24 @@ import {
   saveSafely,
   toggleEol,
 } from '@/features/document';
+import { gotoLineLazily } from '@/features/editor';
 import { canGoBack, canGoForward, goBack, goForward } from '@/features/history';
-import { cycleMode, openFind, openReplace, togglePreview, toggleSplit } from '@/features/mode';
+import { cycleMode, openFind, openReplace, setMode, togglePreview, toggleSplit } from '@/features/mode';
 import { openJumpLazily, showOutline } from '@/features/outline';
-import { toggleRightPane } from '@/features/panes';
+import { openCommandPaletteLazily, openQuickOpenLazily } from '@/features/palette';
+import { toggleLeftPane, toggleRightPane } from '@/features/panes';
 import { zoomIn, zoomOut, zoomReset } from '@/features/preview';
 import { openSettingsLazily } from '@/features/settings';
 import { viewStore } from '@/features/view';
+import {
+  closeTab,
+  cycleTab,
+  openUntitledTab,
+  reopenClosedTab,
+  selectTabAt,
+  showExplorer,
+  tabsStore,
+} from '@/features/workspace';
 import { registerCommands, runCommand, type Command, type CommandId } from '@/lib/commands';
 import { toMessage } from '@/lib/error';
 import { bindKeys } from '@/lib/shortcuts';
@@ -35,6 +45,11 @@ function hasDocument(): boolean {
   return documentStore.meta !== null;
 }
 
+/** タブが 2 枚以上あるか。切り替えは 1 枚では意味を持たない。 */
+function hasTabs(): boolean {
+  return tabsStore.tabs.length > 1;
+}
+
 /**
  * 実体の表。
  *
@@ -43,7 +58,8 @@ function hasDocument(): boolean {
  */
 const COMMANDS: Command[] = [
   // 新規ファイル（`Ctrl+N` / 03.ux-spec/04-keybindings.md §3）。何も開いていなくても実行できる。
-  { id: 'document.new', run: () => void newDocument() },
+  // **新しいタブで開く**（M3 Phase 2b）。いまの文書はタブとして残るため、破棄の確認は要らない。
+  { id: 'document.new', run: () => void newUntitled() },
 
   { id: 'document.open', run: () => void openViaDialogSafely() },
 
@@ -58,6 +74,10 @@ const COMMANDS: Command[] = [
     },
   },
 
+  // クイックオープン（`Ctrl+P` / F-NAV-05）。実体は遅延チャンクにある。
+  // **文書を開いていなくても実行できる。** 基点が無くても最近開いたファイルは並ぶ。
+  { id: 'document.quickOpen', run: () => void openQuickOpenLazily() },
+
   { id: 'document.reload', run: () => void reloadCurrent(), isListed: hasDocument },
 
   // 保存（F-EDIT-02）。ダーティでなくても実行できる。
@@ -71,8 +91,13 @@ const COMMANDS: Command[] = [
   { id: 'document.toggleEol', run: () => toggleEol(), isListed: hasDocument },
 
   // 戻る / 進む（F-NAV-07）。辿れるときにしか一覧に出さない。
-  { id: 'history.back', run: () => void goBack(), isListed: canGoBack },
-  { id: 'history.forward', run: () => void goForward(), isListed: canGoForward },
+  // 履歴はタブごとに分かれている（M3 Phase 2b）。対象は表示中のタブである。
+  { id: 'history.back', run: () => void goBack(tabsStore.activeId), isListed: () => canGoBack(tabsStore.activeId) },
+  {
+    id: 'history.forward',
+    run: () => void goForward(tabsStore.activeId),
+    isListed: () => canGoForward(tabsStore.activeId),
+  },
 
   // ペインとビュー（03.ux-spec/06-panes.md §4）。キーの意味が 2 系統に分かれている。
   //   ペイン: `pane.toggleRight` はライトペインを開閉する。中身が何であるかは問わない。
@@ -80,8 +105,11 @@ const COMMANDS: Command[] = [
   //
   // 後者がトグルでないのは、アウトラインを見たいという意図に対して常に同じ結果を返すためである。
   // アウトラインを左ペインへ移しても意味が変わらない。
+  { id: 'pane.toggleLeft', run: () => toggleLeftPane(), isListed: hasDocument },
   { id: 'pane.toggleRight', run: () => toggleRightPane(), isListed: hasDocument },
   { id: 'outline.show', run: () => void showOutline() },
+  // Explorer を出してフォーカスする（`Ctrl+Shift+E`）。`outline.show` と対になるビュー側のキーである。
+  { id: 'explorer.show', run: () => void showExplorer() },
 
   // 見出しへジャンプ（03.ux-spec/04-keybindings.md §3「移動」）。実体は遅延チャンクにある。
   // コマンドパレット（`Ctrl+Shift+P` / M3）ではなく、見出し専用である。
@@ -126,6 +154,37 @@ const COMMANDS: Command[] = [
 
   { id: 'settings.open', run: () => void openSettingsLazily() },
 
+  // コマンドパレット（F-NAV-06 / 03.ux-spec/01-screen-layout.md §3）。
+  // メニューバーを置かない代わりの、すべての機能への到達手段である。
+  // 一覧には出さない。開いている当人を並べても押せない。
+  { id: 'palette.open', run: () => void openCommandPaletteLazily() },
+
+  // 指定行へ移動（`Ctrl+G`）。実体は Monaco の組み込みアクションである。
+  // **Preview では一覧に出さない。** 行番号が見えていない面に「指定行へ移動」を並べても選べない。
+  {
+    id: 'editor.gotoLine',
+    run: () => void gotoLineLazily(),
+    isListed: () => hasDocument() && viewStore.mode !== 'preview',
+  },
+
+  // タブ（F-NAV-01, 02 / 03.ux-spec/04-keybindings.md §3）。
+  //
+  // 閉じるのは表示中のタブである。対象を取らないのは、キーもメニューも「いま見ているもの」を指すためで、
+  // 個別のタブを閉じるのは `✕`（`TabStrip.svelte`）が直接呼ぶ。
+  { id: 'tab.close', run: () => void closeCurrentTab(), isListed: hasDocument },
+  // 切り替えは 2 枚以上のときだけ意味を持つ。1 枚のときはタブバーも出ていない。
+  { id: 'tab.next', run: () => void cycleTab(1), isListed: hasTabs },
+  { id: 'tab.previous', run: () => void cycleTab(-1), isListed: hasTabs },
+  // n 番目のタブ。一覧には出さない（`Ctrl+1`〜`Ctrl+9` を 9 行並べても読めない）。
+  {
+    id: 'tab.select',
+    run: (target) => {
+      if (target !== undefined) void selectTabAt(Number(target));
+    },
+  },
+  // 閉じたタブを開き直す。閉じた覚えが無いときに押しても何も起きない。
+  { id: 'tab.reopen', run: () => void reopenClosedTab() },
+
   // 終了（ADR-0007 論点 3）。
   // 確実に終了できる導線を 3 つ用意するという決定のうち、キーとハンバーガーメニューの 2 つがこのコマンドを共有する（残りはトレイメニュー）。
   //
@@ -136,6 +195,12 @@ const COMMANDS: Command[] = [
 interface KeyBinding {
   key: string;
   id: CommandId;
+  /**
+   * コマンドに渡す対象（`Command.run` の引数）。
+   *
+   * 使うのは `Ctrl+1`〜`Ctrl+9` だけである。9 つのコマンドを並べる代わりに、同じ id へ番号を渡す。
+   */
+  target?: string;
 }
 
 /**
@@ -192,9 +257,24 @@ export const KEY_BINDINGS: KeyBinding[] = [
   { key: 'Ctrl+\\', id: 'view.toggleSplit' },
   { key: 'Ctrl+Shift+M', id: 'view.cycleMode' },
 
+  // レフトペイン（F-NAV-04 / 03.ux-spec/04-keybindings.md §3）。VS Code のサイドバーと同じキー。
+  { key: 'Ctrl+Shift+B', id: 'pane.toggleLeft' },
   { key: 'Ctrl+Alt+B', id: 'pane.toggleRight' },
+  { key: 'Ctrl+Shift+E', id: 'explorer.show' },
   { key: 'Ctrl+Shift+U', id: 'outline.show' },
   { key: 'Ctrl+Shift+O', id: 'outline.jump' },
+
+  // コマンドパレット（F-NAV-06）。
+  // `Ctrl+Shift+P` は WebView の開発者ツールには割り当たっていないが（そちらは `Ctrl+Shift+I`）、
+  // 既定動作を止めておく点は他のキーと同じ扱いにする。
+  { key: 'Ctrl+Shift+P', id: 'palette.open' },
+
+  // クイックオープン（F-NAV-05）。
+  // `Ctrl+P` は WebView 自身の印刷に割り当たっているため、既定動作を止めること自体に意味がある。
+  { key: 'Ctrl+P', id: 'document.quickOpen' },
+
+  // 指定行へ移動（`Ctrl+G`）。Monaco 側の同じキーは `keymap.ts` が剥がしている。
+  { key: 'Ctrl+G', id: 'editor.gotoLine' },
 
   // 戻る / 進む（F-NAV-07）。
   // 相対リンクで辿った先から戻るための経路で、スクロール位置も一緒に復元する（`features/history/navigate.ts`）。
@@ -224,6 +304,17 @@ export const KEY_BINDINGS: KeyBinding[] = [
   //
   // トレイ常駐では `✕` が格納の意味になるため、明示的に終了するキーが別に必要になる。
   { key: 'Ctrl+Q', id: 'app.quit' },
+
+  // タブ（03.ux-spec/04-keybindings.md §3「移動」「ファイル」）。
+  //
+  // `Ctrl+Tab` は WebView 自身のフォーカス移動にも割り当たっているため、既定動作を止めること自体に意味がある。
+  // `Ctrl+W` はブラウザではウィンドウを閉じるキーであり、こちらは必ず止める（トレイ常駐のため、閉じるべきはタブである / ADR-0007）。
+  { key: 'Ctrl+Tab', id: 'tab.next' },
+  { key: 'Ctrl+Shift+Tab', id: 'tab.previous' },
+  { key: 'Ctrl+W', id: 'tab.close' },
+  { key: 'Ctrl+Shift+T', id: 'tab.reopen' },
+  // n 番目のタブ。番号は `target` で渡す（`KeyBinding.target`）。
+  ...Array.from({ length: 9 }, (_, i) => ({ key: `Ctrl+${i + 1}`, id: 'tab.select' as const, target: String(i + 1) })),
 ];
 
 /**
@@ -233,6 +324,15 @@ export const KEY_BINDINGS: KeyBinding[] = [
  * メニューは id しか持たないため、登録が無いと項目が 1 つも表示されない。
  * 一方で Storybook でグローバルキーまで有効にすると、`Ctrl+F` がブラウザの検索ではなくアプリの検索を開いてしまう。
  */
+/**
+ * 登録してある id の一覧。
+ *
+ * コマンドパレットのカタログ（`features/palette/lazy/catalog.ts`）との突き合わせに使う。
+ * パレットは「すべての機能への到達手段」であり、載せ忘れは機能が埋もれることを意味するため、
+ * 目視ではなく `catalog.test.ts` が機械で見張る。
+ */
+export const COMMAND_IDS: CommandId[] = COMMANDS.map((command) => command.id);
+
 export function registerAppCommands(): () => void {
   return registerCommands(COMMANDS);
 }
@@ -248,7 +348,7 @@ export function installCommands(): () => void {
     KEY_BINDINGS.map((binding) => ({
       key: binding.key,
       run: () => {
-        runCommand(binding.id);
+        runCommand(binding.id, binding.target);
       },
     })),
   );
@@ -257,6 +357,27 @@ export function installCommands(): () => void {
     unbind();
     unregister();
   };
+}
+
+/**
+ * 無題の文書を新しいタブで開き、編集できるモードへ移す（`Ctrl+N`）。
+ *
+ * モードの切り替えをここで行うのは、`features/workspace` が表示モードを知らないためである
+ * （以前は `configureNewDocument` で注入していた。組み立ては composition root の仕事なので、こちらへ寄せた）。
+ */
+async function newUntitled(): Promise<void> {
+  if (await openUntitledTab()) await setMode('edit');
+}
+
+/**
+ * 表示中のタブを閉じる（`Ctrl+W`）。
+ *
+ * 何も開いていなければ何もしない。
+ * トレイ常駐（ADR-0007）では、タブが無いこととアプリが終わることは別である。
+ */
+async function closeCurrentTab(): Promise<void> {
+  const id = tabsStore.activeId;
+  if (id !== null) await closeTab(id);
 }
 
 /**

@@ -29,8 +29,8 @@ const DRIVER_PORT = 4444;
 /** 基準ファイルの置き場所（`pnpm fixtures` が作る。Git 管理外）。 */
 export const FIXTURES = path.resolve(here, '..', '..', 'bench', 'fixtures');
 
-/** 計測結果の書き出し先。[measurements](../../docs/measurements/README.md) の他の JSON と同じ場所に置く。 */
-export const REPORT = path.resolve(here, '..', '..', 'docs', 'measurements', 'memory-oq18.json');
+/** 計測結果の置き場所。[measurements](../../docs/measurements/README.md) の他の JSON と同じ。 */
+const REPORT_DIR = path.resolve(here, '..', '..', 'docs', 'measurements');
 
 /**
  * WebView2 に渡す追加スイッチ。`wdio.memory.conf.ts` が環境変数 `WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS` として置く。
@@ -255,11 +255,16 @@ export async function waitForPaintSettled(): Promise<number> {
   return last;
 }
 
-/** 計測結果を JSON に書く。 */
-export function writeReport(samples: MemorySample[], notes: Record<string, unknown>): string {
-  mkdirSync(path.dirname(REPORT), { recursive: true });
-  writeFileSync(REPORT, `${JSON.stringify({ generatedAt: new Date().toISOString(), ...notes, samples }, null, 2)}\n`);
-  return REPORT;
+/** 計測結果を JSON に書く。シナリオごとにファイルを分ける。 */
+export function writeReport(
+  samples: MemorySample[],
+  notes: Record<string, unknown>,
+  fileName = 'memory-oq18.json',
+): string {
+  const target = path.join(REPORT_DIR, fileName);
+  mkdirSync(REPORT_DIR, { recursive: true });
+  writeFileSync(target, `${JSON.stringify({ generatedAt: new Date().toISOString(), ...notes, samples }, null, 2)}\n`);
+  return target;
 }
 
 /** 標準出力へ表にして出す。JSON を開かなくても結論が読める状態にしておく。 */

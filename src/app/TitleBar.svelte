@@ -1,7 +1,7 @@
 <!--
   カスタムタイトルバー（03.ux-spec/01-screen-layout.md §1）。
   `decorations: false`（`src-tauri/src/window.rs`）により、この 1 行が OS タイトルバーの代わりになる（06.roadmap/m1.5-shell-and-settings.md §2）。
-  中央領域は `center` スニペットとして外部に公開してあり、M3 のタブストリップはここへ差し込むだけで済む（`shell.css` の grid は変更不要）。
+  中央領域は `center` スニペットとして外部に公開してあり、タブストリップはここへ差し込む（`shell.css` の grid は変更不要）。
   `data-tauri-drag-region="deep"` により、掴めばネイティブドラッグ、ダブルクリックで最大化になる（`<button>` は自動的に除外される）。
   ボタン以外の要素を含む開いたメニューパネルは `MenuButton.svelte` 側でドラッグ領域から除外している。
 -->
@@ -17,10 +17,13 @@
 
   interface Props {
     /**
-     * 中央領域。M3 でタブストリップを差し込むための拡張点である。
+     * 中央領域。タブストリップ（`features/workspace/TabStrip.svelte`）が入る。
      * 渡されなければ、開いているファイル名を表示する（タブが 1 枚のときの表示）。
+     *
+     * `undefined` を明示的に渡せる形にしてある。差し込む側は「2 枚以上か」で切り替えるため、
+     * 省略ではなく `undefined` の代入になる（`exactOptionalPropertyTypes`）。
      */
-    center?: Snippet;
+    center?: Snippet | undefined;
   }
 
   const { center }: Props = $props();
@@ -50,7 +53,7 @@
         未保存の印（03.ux-spec/07-status-and-notifications.md §1）。ファイル名の右に `●` を表示する。
 
         ステータスバーには表示しない（§1 の表が「変更なし」と定めている）。
-        M3 でタブが入ると、この印はタブ側へ移る。
+        タブが 2 枚以上あるときは、この印はタブ側に出る（`TabStrip.svelte`）。
       -->
       {#if meta && dirty}
         <span class="mx-titlebar__dirty" title={ja.save.dirtyLabel} aria-label={ja.save.dirtyLabel}>●</span>
@@ -86,7 +89,7 @@
   }
 
   /*
-   * 中央領域。M3 でタブストリップに置き換わる。
+   * 中央領域。2 枚以上のときはタブストリップに置き換わる。
    *
    * `min-width: 0` が必要である。これが無いと、長いパスが縮まずにウィンドウ操作ボタンを画面外へ押し出す。
    */

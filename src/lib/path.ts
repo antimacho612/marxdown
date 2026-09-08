@@ -47,11 +47,22 @@ export function isAbsolutePath(path: string): boolean {
 }
 
 /**
+ * Marxdown が自分で開く拡張子（F-VIEW-05）。**この判断の唯一の置き場所。**
+ *
+ * クイックオープン（F-NAV-05）は候補を集める段で絞り込む必要があるため、この一覧を Rust へ渡す
+ * （`platform/tauri.ts` の `listFiles` / `src-tauri/src/dir.rs`）。
+ * Rust 側にも一覧を置くと、同じ判断が 2 か所に分かれる。
+ */
+export const MARKDOWN_EXTENSIONS = ['md', 'markdown', 'mdown', 'mkd'];
+
+const MARKDOWN_PATTERN = new RegExp(`\\.(?:${MARKDOWN_EXTENSIONS.join('|')})$`, 'i');
+
+/**
  * Marxdown が自分で開く拡張子か（F-VIEW-05）。
  *
  * クエリとフラグメント（`./other.md#section`）を落としてから見る。
  */
 export function isMarkdownPath(path: string): boolean {
   const bare = path.replace(/[?#].*$/, '');
-  return /\.(?:md|markdown|mdown|mkd)$/i.test(bare);
+  return MARKDOWN_PATTERN.test(bare);
 }

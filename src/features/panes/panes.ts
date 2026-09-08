@@ -40,6 +40,35 @@ export function initPanes(bootstrap: Bootstrap | null): void {
   };
 }
 
+/** レフトペインを開閉する（`Ctrl+Shift+B` / 03.ux-spec/06-panes.md §4）。中身が何であれ、開閉だけを行う。 */
+export function toggleLeftPane(): void {
+  setLeftPaneOpen(!viewStore.panes.left.open);
+}
+
+/** レフトペインを開く。既に開いていれば何もしない（`outline.show` と同じ形）。 */
+export function openLeftPane(): void {
+  setLeftPaneOpen(true);
+}
+
+/** レフトペインの開閉を設定する。値が変わらなければ何もしない。 */
+export function setLeftPaneOpen(open: boolean): void {
+  if (viewStore.panes.left.open === open) return;
+  viewStore.panes.left.open = open;
+  schedulePersist();
+}
+
+/**
+ * レフトペインの幅を変える（ドラッグ / キーボード）。
+ *
+ * 左右で別々に記憶する（§3）。ライトペインと同じ丸めを通す。
+ */
+export function setLeftPaneWidth(width: number, persist = true): number {
+  const next = clampPaneWidth(width);
+  viewStore.panes.left.width = next;
+  if (persist) schedulePersist();
+  return next;
+}
+
 /** ライトペインを開閉する（`Ctrl+Alt+B` / 03.ux-spec/06-panes.md §4）。中身が何であれ、開閉だけを行う。 */
 export function toggleRightPane(): void {
   setRightPaneOpen(!viewStore.panes.right.open);

@@ -24,6 +24,12 @@ pub const STORE_VERSION: u32 = 1;
 /// 03.ux-spec/08-empty-states.md §1 が表示するのは数件だが、存在しなくなったファイルを除外した後でも埋まるよう多めに保持する。
 pub const RECENT_LIMIT: usize = 20;
 
+/// セッションとして覚えるタブの上限（OQ-04 / M3 Phase 7）。
+///
+/// 引数なしで起動したときに開き直す枚数である。
+/// 起動直後に読み込むファイル数がそのまま増えるため、際限なく覚えない。
+pub const SESSION_LIMIT: usize = 20;
+
 /// 表示倍率の範囲（F-VIEW-11）。ここを外れる値は読み込み時に丸める。
 pub const ZOOM_MIN: f64 = 0.5;
 pub const ZOOM_MAX: f64 = 3.0;
@@ -133,6 +139,38 @@ impl Panes {
     }
 }
 
+/// 前回開いていたタブ（OQ-04 / F-NAV-01）。
+///
+/// **引数なしで起動したときだけ復元する**（[decided.md](../../docs/07.open-questions/decided.md) の OQ-04）。
+/// `marxdown foo.md` には「foo.md を見たい」という意図があり、そこへ前回の 8 枚を混ぜない。
+///
+/// 未保存の本文は持たない。パスだけである。
+/// 本文をここに置くと `state.json` がドキュメントの複製を抱えることになり、
+/// 触っていないバイト列を保持しないという方針（N-CMP-03）とも噛み合わない。
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Session {
+    /// 開いていたファイル。**タブの並び順**である。
+    pub paths: Vec<String>,
+    /// 表示していたタブの位置（`paths` の添字）。
+    pub active: usize,
+}
+
+impl Session {
+    /// 覚えている枚数を上限で切り、消えたファイルを落とす。
+    ///
+    /// 存在確認をここで行うのは、起動時に「開けなかった」通知が枚数ぶん出るのを避けるためである。
+    /// 前回開いていたファイルが消えていることは、利用者にとって想定内の出来事でしかない。
+    pub fn sanitized(mut self) -> Self {
+        self.paths.retain(|path| Path::new(path).is_file());
+        self.paths.truncate(SESSION_LIMIT);
+        if self.active >= self.paths.len() {
+            self.active = 0;
+        }
+        self
+    }
+}
+
 /// `state.json` の全体。
 /// ユーザーの成果物ではなくキャッシュであり、読めなければ既定値へ戻す（[`load`]）。
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -160,6 +198,10 @@ pub struct StoreData {
     /// `state.json` に置くのは、アプリが自動的に書く値だからである（02.architecture/04-rust-responsibilities.md §5）。
     #[serde(default)]
     pub tray_intro_shown: bool,
+    /// 前回開いていたタブ（OQ-04 / M3 Phase 7）。
+    /// `panes` と同じく `#[serde(default)]` で、この値を持たない古い `state.json` も読める。
+    #[serde(default)]
+    pub session: Session,
 }
 
 impl Default for StoreData {
@@ -172,6 +214,7 @@ impl Default for StoreData {
             panes: Panes::default(),
             split: SPLIT_DEFAULT,
             tray_intro_shown: false,
+            session: Session::default(),
         }
     }
 }
@@ -193,6 +236,7 @@ impl StoreData {
         }
         self.split = self.split.clamp(SPLIT_MIN, SPLIT_MAX);
         self.recent.truncate(RECENT_LIMIT);
+        self.session = std::mem::take(&mut self.session).sanitized();
         if let Some(w) = self.window {
             let finite =
                 w.x.is_finite() && w.y.is_finite() && w.width.is_finite() && w.height.is_finite();
@@ -519,5 +563,73 @@ mod tests {
         assert_eq!(back.zoom, 1.25);
         assert_eq!(back.window.map(|w| w.width), Some(800.0));
         std::fs::remove_dir_all(&d).ok();
+    }
+
+    /// セッション（OQ-04 / M3 Phase 7）。
+    mod session {
+        use super::*;
+
+        #[test]
+        fn missing_files_are_dropped_on_load() {
+            let d = temp_dir("session-missing");
+            let alive = d.join("alive.md");
+            std::fs::write(&alive, "# a").unwrap();
+
+            let session = Session {
+                paths: vec![
+                    d.join("gone.md").display().to_string(),
+                    alive.display().to_string(),
+                ],
+                active: 1,
+            }
+            .sanitized();
+
+            assert_eq!(session.paths, vec![alive.display().to_string()]);
+            // 表示していたタブが繰り上がる。添字が範囲の外に残ると復元そのものが失敗する。
+            assert_eq!(session.active, 0);
+            std::fs::remove_dir_all(&d).ok();
+        }
+
+        #[test]
+        fn the_active_index_falls_back_when_out_of_range() {
+            let session = Session {
+                paths: Vec::new(),
+                active: 7,
+            }
+            .sanitized();
+            assert_eq!(session.active, 0);
+        }
+
+        #[test]
+        fn the_number_of_tabs_is_capped() {
+            let d = temp_dir("session-cap");
+            let mut paths = Vec::new();
+            for i in 0..(SESSION_LIMIT + 5) {
+                let path = d.join(format!("{i}.md"));
+                std::fs::write(&path, "# x").unwrap();
+                paths.push(path.display().to_string());
+            }
+
+            let session = Session { paths, active: 0 }.sanitized();
+            assert_eq!(session.paths.len(), SESSION_LIMIT);
+            std::fs::remove_dir_all(&d).ok();
+        }
+
+        /// `session` を持たない `state.json` も読める（`#[serde(default)]`）。
+        #[test]
+        fn an_older_store_without_a_session_still_loads() {
+            let d = temp_dir("session-old");
+            let path = d.join("state.json");
+            std::fs::write(
+                &path,
+                r#"{"version":1,"recent":[],"zoom":1.0,"window":null}"#,
+            )
+            .unwrap();
+
+            let data = load(Some(&path));
+            assert!(data.session.paths.is_empty());
+            assert_eq!(data.zoom, 1.0);
+            std::fs::remove_dir_all(&d).ok();
+        }
     }
 }

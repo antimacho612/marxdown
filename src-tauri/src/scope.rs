@@ -62,6 +62,35 @@ pub fn resolve_within(roots: &[PathBuf], candidate: &Path) -> CoreResult<PathBuf
     Err(CoreError::OutOfScope(resolved.display().to_string()))
 }
 
+/// `candidate` を正規化し、その**親ディレクトリ**が `dirs` のいずれかと一致することを検証する。
+///
+/// [`resolve_within`] と違い**再帰しない**。`dirs` の直下にあるものだけを通す。
+/// スコープ外の画像を 1 クリックで許可する導線（OQ-17）がこれを使う。
+/// 許可したのが `C:\work\assets` なら、`C:\work\assets\sub\x.png` は通らない。
+///
+/// 再帰しないことが防御の要である。
+/// ボタン 1 つで木が丸ごと開くなら、`![](../../../.ssh/id_rsa)` に対する防御は形骸化する。
+pub fn resolve_in_dirs(dirs: &[PathBuf], candidate: &Path) -> CoreResult<PathBuf> {
+    let resolved = dunce::canonicalize(candidate)
+        .map_err(|_| CoreError::NotFound(candidate.display().to_string()))?;
+    let Some(parent) = resolved.parent() else {
+        return Err(CoreError::OutOfScope(resolved.display().to_string()));
+    };
+
+    for dir in dirs {
+        // dir 自身も symlink である可能性があるため、毎回解決する
+        let Ok(dir) = dunce::canonicalize(dir) else {
+            continue;
+        };
+        // 「配下」ではなく「一致」を見る。長さも比べるのはそのためである。
+        if dir.components().count() == parent.components().count() && is_within(&dir, parent) {
+            return Ok(resolved);
+        }
+    }
+
+    Err(CoreError::OutOfScope(resolved.display().to_string()))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -152,6 +181,34 @@ mod tests {
         assert!(resolve_within(&roots, &inside.join(".").join("a.png")).is_ok());
 
         std::fs::remove_dir_all(&dir).ok();
+    }
+
+    /// 許可した 1 ディレクトリの直下だけが通る（OQ-17 の「再帰しない」）。
+    #[test]
+    fn allowing_one_directory_does_not_open_its_subdirectories() {
+        let base = std::env::temp_dir().join(format!("marxdown-scope-flat-{}", std::process::id()));
+        let sub = base.join("sub");
+        std::fs::create_dir_all(&sub).unwrap();
+        std::fs::write(base.join("a.png"), "x").unwrap();
+        std::fs::write(sub.join("b.png"), "x").unwrap();
+
+        let dirs = vec![base.clone()];
+        assert!(resolve_in_dirs(&dirs, &base.join("a.png")).is_ok());
+
+        // 1 段でも下がれば通らない。
+        let err = resolve_in_dirs(&dirs, &sub.join("b.png")).unwrap_err();
+        assert_eq!(err.kind(), "out-of-scope");
+
+        // 上へも広がらない。
+        std::fs::write(base.join("..").join("marxdown-scope-flat-outside.png"), "x").ok();
+        let err = resolve_in_dirs(
+            &dirs,
+            &base.join("..").join("marxdown-scope-flat-outside.png"),
+        );
+        assert!(err.is_err());
+
+        std::fs::remove_dir_all(&base).ok();
+        std::fs::remove_file(base.join("..").join("marxdown-scope-flat-outside.png")).ok();
     }
 
     #[test]

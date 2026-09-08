@@ -18,7 +18,7 @@ type PrepareHook = Exclude<NonNullable<WebdriverIO.Config['onPrepare']>, unknown
 
 export const config: WebdriverIO.Config = {
   ...base,
-  specs: [path.join(here, 'specs', 'memory.e2e.ts')],
+  specs: [path.join(here, 'specs', 'memory.e2e.ts'), path.join(here, 'specs', 'memory-tabs.e2e.ts')],
   exclude: [],
 
   mochaOpts: {

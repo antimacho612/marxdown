@@ -16,6 +16,9 @@
  * タブごとの `ITextModel` を持つには破棄の設計（N-PERF-06 / Phase 3）と一体で決める必要があり、Phase 2 で入れる。
  */
 import {
+  closeDocument,
+  confirmDiscard,
+  disposeDocumentText,
   documentStore,
   getDocumentText,
   isTextDirty,
@@ -24,9 +27,11 @@ import {
   previewScrollTop,
   setDirty,
   toMeta,
+  untitledPayload,
   type StoredMeta,
   type StoredPayload,
 } from '@/features/document';
+import { dropHistory } from '@/features/history';
 import type { Eol } from '@/platform';
 
 /**
@@ -68,9 +73,54 @@ export const tabsStore = new TabsStore();
 
 let nextId = 1;
 
-/** 未保存の変更があるか。ダーティの源を合成した値で、タブに付ける印（`●`）はこれで決まる。 */
+/**
+ * そのタブのメタ情報。
+ *
+ * アクティブなタブだけはストアを見る。
+ * `Save As`（`document/save.ts`）は保存先とサイズをストアへ直接書き戻すため、タブ側の値は古くなる。
+ * 本文・ダーティと同じく、いま表示しているものの真実はタブの外にある（ADR-0005）。
+ *
+ * 古いまま使うと、切り替えて戻ったときに**保存前のファイルを開き直す**ことになる。
+ */
+export function tabMeta(tab: Tab): StoredMeta {
+  if (tab.id !== tabsStore.activeId) return tab.meta;
+  return documentStore.meta ?? tab.meta;
+}
+
+/**
+ * 未保存の変更があるか。タブに付ける印（`●`）と、閉じるときに尋ねるかはこれで決まる。
+ *
+ * アクティブなタブだけはストアを見る。
+ * タブ側の値は切り替えのときにしか更新されないため（`stashActive`）、打鍵しても古いままである。
+ * 本文と同じく、いま表示しているものの真実はタブの外にある（ADR-0005）。
+ */
 export function isTabDirty(tab: Tab): boolean {
+  if (tab.id === tabsStore.activeId) return documentStore.isDirty;
   return tab.textDirty || tab.eolOverride !== null;
+}
+
+/**
+ * 開く先のタブ。**無ければここで作る**（`OpenerConfig.targetKey`）。
+ *
+ * 作る場面は起動直後の 1 枚目だけである。
+ * 2 枚目以降はタブ側が先にアクティブを移してから開く（`activateTab` / `openPathInNewTab`）。
+ * 中身は直後に `adoptOpened` が入れる。
+ */
+export function targetTabKey(): number {
+  const active = tabsStore.active;
+  if (active !== null) return active.id;
+
+  const tab: Tab = {
+    id: nextId++,
+    meta: placeholder(''),
+    text: null,
+    scrollTop: 0,
+    textDirty: false,
+    eolOverride: null,
+  };
+  tabsStore.tabs = [...tabsStore.tabs, tab];
+  tabsStore.activeId = tab.id;
+  return tab.id;
 }
 
 /**
@@ -121,6 +171,16 @@ export async function openInNewTab(payload: StoredPayload): Promise<boolean> {
 }
 
 /**
+ * 無題の文書を新しいタブで開く（`Ctrl+N` / F-OPEN-03）。
+ *
+ * 開いた後に編集できるモードへ移すのは呼び出し側（`app/commands.ts`）である。
+ * 空の本文は Preview では読めないが、モードの切り替えはこの feature の関心ではない。
+ */
+export async function openUntitledTab(): Promise<boolean> {
+  return openInNewTab(untitledPayload());
+}
+
+/**
  * タブを切り替える。既にアクティブなら何もしない。
  *
  * 本文は、退避してあればそれを、無ければディスクから読み直す。
@@ -145,7 +205,13 @@ export async function activateTab(id: number): Promise<boolean> {
 
   const opened =
     held === null && target.meta.path !== null
-      ? await openPath(target.meta.path, { resetScroll: false, restoreScroll: scrollTop, remember: false })
+      ? await openPath(target.meta.path, {
+          resetScroll: false,
+          restoreScroll: scrollTop,
+          remember: false,
+          // 捨てるものは無い。切り替え元はタブとして残る（`OpenOptions.confirm`）。
+          confirm: false,
+        })
       : await openDocument(
           { ...target.meta, content: held ?? '' },
           { resetScroll: false, restoreScroll: scrollTop, remember: false },
@@ -163,39 +229,212 @@ export async function activateTab(id: number): Promise<boolean> {
 }
 
 /**
- * タブを閉じる（F-NAV-02）。
+ * タブを閉じる（F-NAV-02 / `Ctrl+W`）。
  *
- * **最後の 1 枚は閉じない。**
- * 0 枚の状態は Welcome 画面（`App.svelte`）に戻ることを意味し、そこにはエディターとウォッチャの解放が伴う。
- * 解放は N-PERF-06 の担当であり、[M3](../../../docs/06.roadmap/m3-workspace.md) Phase 3 で入れる。
+ * 未保存の変更があるタブは、**先にそのタブを表示してから**尋ねる。
+ * 何を失うのかが見えない状態で「破棄しますか」と聞かれても答えられない。
  *
- * 未保存の変更があっても尋ねない。
- * 尋ねるのは失う操作だけであり、その確認は Phase 2 で閉じる導線（`Ctrl+W`）と一緒に入れる。
+ * 最後の 1 枚を閉じると 0 枚になり、Welcome 画面へ戻る（`closeDocument`）。
+ * プロセスは終わらない。`✕` が格納の意味になるトレイ常駐（ADR-0007）と揃えてある。
  */
 export async function closeTab(id: number): Promise<boolean> {
-  if (tabsStore.tabs.length <= 1) return false;
-
   const index = tabsStore.tabs.findIndex((tab) => tab.id === id);
-  if (index === -1) return false;
+  const target = tabsStore.tabs[index];
+  if (target === undefined) return false;
+
+  if (isTabDirty(target)) {
+    if (tabsStore.activeId !== id && !(await activateTab(id))) return false;
+    if (!(await confirmDiscard())) return false;
+  }
 
   const wasActive = tabsStore.activeId === id;
-  const neighbor = tabsStore.tabs[index + 1] ?? tabsStore.tabs[index - 1];
+  rememberClosed(target, index);
   tabsStore.tabs = tabsStore.tabs.filter((tab) => tab.id !== id);
 
-  // 閉じたのが表示中のタブなら、隣を表示する。
-  // 閉じた側は既に一覧から外してあるので、退避（`stashActive`）は空振りする。
-  if (wasActive && neighbor !== undefined) {
-    tabsStore.activeId = null;
-    return activateTab(neighbor.id);
+  // そのタブのために抱えているものを捨てる（N-PERF-06）。
+  // エディターのモデル（Undo 履歴を含む）と、戻る / 進むの履歴が対象である。
+  // 閉じたタブのぶんが残ると、常駐しているあいだ枚数分だけ積算する。
+  disposeDocumentText(id);
+  dropHistory(id);
+
+  if (!wasActive) return true;
+
+  // 右隣を表示する。右端を閉じたときだけ左隣になる（VS Code と同じ）。
+  // 一覧から外した後なので、`index` は元の右隣を指している。
+  const neighbor = tabsStore.tabs[index] ?? tabsStore.tabs[index - 1];
+  tabsStore.activeId = null;
+
+  if (neighbor === undefined) {
+    closeDocument();
+    return true;
   }
+  return activateTab(neighbor.id);
+}
+
+/**
+ * 直前に閉じたタブを開き直す（`Ctrl+Shift+T`）。
+ *
+ * 覚えているのはパスとスクロール位置だけである。
+ * 未保存の内容は閉じるときに確認したうえで捨てているため、復元すると「捨てたはずのものが戻る」ことになる。
+ */
+export async function reopenClosedTab(): Promise<boolean> {
+  const entry = closed.pop();
+  if (entry === undefined) return false;
+  // 閉じた位置へ戻す。末尾に付けると、開き直しただけで並びが変わる。
+  return openPathInNewTab(entry.path, { scrollTop: entry.scrollTop, index: entry.index });
+}
+
+/**
+ * パスを新しいタブで開く（argv 転送 / D&D / タブの復元）。
+ *
+ * 既に開いているファイルなら、そのタブへ切り替えるだけで開き直さない。
+ * 同じファイルが 2 枚並ぶと、片方で編集して片方を保存したときにどちらが正しいのか決められなくなる。
+ *
+ * 先にタブの枠を作ってから開く。
+ * 読み込みの失敗・通知・履歴からの除去は `openPath` に集約されているため（`document/open.ts`）、
+ * ここで先に読んで枠を作る形にすると、その経路を迂回することになる。
+ * 開けなかった場合は枠を捨てて元のタブへ戻す。
+ */
+export async function openPathInNewTab(
+  path: string,
+  options: { scrollTop?: number; index?: number; remember?: boolean } = {},
+): Promise<boolean> {
+  const existing = tabsStore.tabs.find((tab) => tabMeta(tab).path === path);
+  if (existing !== undefined) return activateTab(existing.id);
+
+  const previousId = tabsStore.activeId;
+  stashActive();
+
+  const scrollTop = options.scrollTop ?? 0;
+  const tab: Tab = {
+    id: nextId++,
+    meta: placeholder(path),
+    text: null,
+    scrollTop,
+    textDirty: false,
+    eolOverride: null,
+  };
+  tabsStore.tabs = insertAt(tabsStore.tabs, tab, options.index);
+  tabsStore.activeId = tab.id;
+
+  const opened = await openPath(path, {
+    // 捨てるものは無い。いまの文書はタブとして残る。
+    confirm: false,
+    resetScroll: scrollTop === 0,
+    ...(scrollTop > 0 && { restoreScroll: scrollTop }),
+    // 復元では最近開いたファイルを積み直さない（M3 Phase 7）。
+    // 起動しただけで一覧が前回のタブで埋まると、「最後に開いた順」の意味が失われる。
+    ...(options.remember === false && { remember: false }),
+  });
+  if (opened !== null) return true;
+
+  // 開けなかった。表示は変わっていない（`openPath` は読み込みに失敗した時点で戻る）ので、枠を捨てて元へ戻す。
+  tabsStore.tabs = tabsStore.tabs.filter((entry) => entry.id !== tab.id);
+  tabsStore.activeId = previousId;
+  // 退避は不要だった。アクティブなタブは本文を持たない（`Tab.text`）。
+  const previous = tabsStore.active;
+  if (previous !== null) previous.text = null;
+  return false;
+}
+
+/**
+ * 落とされた / 転送されたファイルを順に開く（F-OPEN-08 / ADR-0004）。
+ *
+ * 直列に開く。並行にすると、どのタブがアクティブなのかを開く処理どうしが取り合う。
+ * 最後に開けたものが表示された状態になる。
+ */
+export async function openPathsInTabs(paths: string[]): Promise<boolean> {
+  let opened = false;
+  for (const path of paths) {
+    // eslint-disable-next-line no-await-in-loop -- 直列に開くこと自体が目的（上記）
+    if (await openPathInNewTab(path)) opened = true;
+  }
+  return opened;
+}
+
+/**
+ * タブを並べ替える（F-NAV-02）。`toIndex` は移動後の位置（0 始まり）。
+ *
+ * 端は丸める。掴んだまま行き過ぎたときに、並びが飛ぶより端で止まるほうが扱いやすい。
+ * 動かなかったときは `false` を返す。ドラッグ中は 1 ピクセルごとに呼ばれるため、
+ * 呼び出し側が「変わったか」を判断せずに済むようにしてある。
+ */
+export function moveTab(id: number, toIndex: number): boolean {
+  const from = tabsStore.tabs.findIndex((tab) => tab.id === id);
+  if (from === -1) return false;
+
+  const to = Math.min(Math.max(toIndex, 0), tabsStore.tabs.length - 1);
+  if (from === to) return false;
+
+  const next = [...tabsStore.tabs];
+  const [moved] = next.splice(from, 1);
+  if (moved === undefined) return false;
+  next.splice(to, 0, moved);
+  tabsStore.tabs = next;
   return true;
+}
+
+/** 次 / 前のタブ（`Ctrl+Tab` / `Ctrl+Shift+Tab`）。端では折り返す。 */
+export async function cycleTab(delta: 1 | -1): Promise<boolean> {
+  const count = tabsStore.tabs.length;
+  if (count < 2) return false;
+
+  const current = tabsStore.tabs.findIndex((tab) => tab.id === tabsStore.activeId);
+  const next = tabsStore.tabs[(current + delta + count) % count];
+  return next === undefined ? false : activateTab(next.id);
+}
+
+/**
+ * n 番目のタブ（`Ctrl+1`〜`Ctrl+9`）。`index` は 1 始まり。
+ *
+ * 9 番目より後ろには行けない。VS Code の `Ctrl+9`（最後のタブ）とは違うが、
+ * 03.ux-spec/04-keybindings.md §3 が「n 番目のタブ」と定めている。
+ */
+export async function selectTabAt(index: number): Promise<boolean> {
+  const target = tabsStore.tabs[index - 1];
+  return target === undefined ? false : activateTab(target.id);
 }
 
 /** テスト用。一覧と採番を初期状態に戻す。 */
 export function resetTabs(): void {
   tabsStore.tabs = [];
   tabsStore.activeId = null;
+  closed.length = 0;
   nextId = 1;
+}
+
+/**
+ * 直前に閉じたタブ（`Ctrl+Shift+T`）。新しいものが末尾。
+ *
+ * 上限を置くのは、常駐で日をまたいで使うためである（ADR-0007）。
+ * 復元できるのは直前の数枚で足り、それ以前は「最近開いたファイル」（F-OPEN-09）の担当になる。
+ */
+const closed: { path: string; scrollTop: number; index: number }[] = [];
+
+const CLOSED_KEPT = 10;
+
+/** 閉じたタブを覚える。パスを持たない無題の文書は開き直せないので覚えない。 */
+function rememberClosed(tab: Tab, index: number): void {
+  const path = tabMeta(tab).path;
+  if (path === null) return;
+  closed.push({ path, scrollTop: tab.scrollTop, index });
+  if (closed.length > CLOSED_KEPT) closed.shift();
+}
+
+/** 指定の位置に入れる。位置が無ければ末尾。 */
+function insertAt(tabs: Tab[], tab: Tab, index: number | undefined): Tab[] {
+  if (index === undefined || index >= tabs.length) return [...tabs, tab];
+  return [...tabs.slice(0, index), tab, ...tabs.slice(index)];
+}
+
+/**
+ * 開く前のタブが持つメタ情報。
+ *
+ * 開けた時点で `adoptOpened` が本物に差し替える。
+ * 枠を先に作るのは、読み込みの間もタブとして見えているようにするためである。
+ */
+function placeholder(path: string): StoredMeta {
+  return { path, eol: 'lf', bom: false, encoding: 'utf8', mtimeMs: 0, size: 0, readonly: false };
 }
 
 /**
@@ -208,6 +447,8 @@ function stashActive(): void {
   const active = tabsStore.active;
   if (active === null) return;
 
+  // `Save As` でストア側だけが新しくなっていることがある（`tabMeta`）。
+  active.meta = tabMeta(active);
   active.textDirty = isTextDirty();
   active.eolOverride = documentStore.eolOverride;
   active.scrollTop = previewScrollTop();

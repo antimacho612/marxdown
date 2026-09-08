@@ -44,6 +44,14 @@ pub struct AppState {
     /// アセット参照を許可するディレクトリ（N-SEC-05）。
     /// 開いたドキュメントの親ディレクトリを追加していく。
     asset_roots: Mutex<Vec<PathBuf>>,
+    /// 利用者が 1 件ずつ許可した画像のディレクトリ（OQ-17）。
+    ///
+    /// `asset_roots` と分けてある。こちらは**再帰しない**（直下だけ）うえ、
+    /// ファイルツリー（`list_dir` / `list_files`）からは辿れない。
+    /// 画像 1 枚のために押したボタンで、フォルダが閲覧できるようになってはいけない。
+    ///
+    /// 永続化しない。誤って押した許可を次の起動へ持ち越さない。
+    image_dirs: Mutex<Vec<PathBuf>>,
     /// ウォーム起動（S6）の計測。argv 転送を受けた時刻を要求 ID ごとに保持する。
     warm: Mutex<HashMap<u64, Instant>>,
     warm_counter: AtomicU64,
@@ -79,6 +87,11 @@ impl AppState {
                 roots.push(parent.to_path_buf());
             }
         }
+        // `marxdown <dir>` で開いたフォルダも許可範囲に入れる（F-OPEN-02 / OQ-17）。
+        // ファイルツリーがそこを辿る以上、辿れる範囲と読める範囲は一致していなければならない。
+        if let Some(root) = bootstrap.workspace_root.as_ref() {
+            roots.push(PathBuf::from(root));
+        }
         Self {
             args,
             trace,
@@ -86,6 +99,7 @@ impl AppState {
             paths,
             settings: Mutex::new(settings),
             asset_roots: Mutex::new(roots),
+            image_dirs: Mutex::new(Vec::new()),
             warm: Mutex::new(HashMap::new()),
             warm_counter: AtomicU64::new(1),
             maximized: AtomicBool::new(false),
@@ -251,6 +265,26 @@ impl AppState {
                 roots.push(dir);
             }
         }
+    }
+
+    /// 利用者が許可した画像のディレクトリを 1 件加える（OQ-17）。同じパスは重複させない。
+    ///
+    /// 効果はそのディレクトリの直下だけで、配下のディレクトリには及ばない
+    /// （検証は `scope::resolve_in_dirs`）。
+    pub fn allow_image_dir(&self, dir: PathBuf) {
+        if let Ok(mut dirs) = self.image_dirs.lock() {
+            if !dirs.contains(&dir) {
+                dirs.push(dir);
+            }
+        }
+    }
+
+    /// 許可済みの画像ディレクトリ一覧。`scope::resolve_in_dirs` に渡す。
+    pub fn image_dirs(&self) -> Vec<PathBuf> {
+        self.image_dirs
+            .lock()
+            .map(|d| d.clone())
+            .unwrap_or_default()
     }
 
     /// 現在の許可ディレクトリ一覧。`scope::resolve_within` に渡す。

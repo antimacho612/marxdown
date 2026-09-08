@@ -15,10 +15,13 @@ import {
 import {
   clampPaneWidth,
   initPanes,
+  openLeftPane,
   PANE_WIDTH_DEFAULT,
   PANE_WIDTH_MAX,
   PANE_WIDTH_MIN,
+  setLeftPaneWidth,
   setRightPaneWidth,
+  toggleLeftPane,
   toggleRightPane,
 } from './panes';
 
@@ -35,6 +38,9 @@ function bootstrapWith(panes: Panes): Bootstrap {
     benchInput: false,
     trace: null,
     pendingPaths: [],
+    session: [],
+    sessionActive: 0,
+    workspaceRoot: null,
     unknownArgs: [],
     recent: [],
     zoom: 1,
@@ -138,5 +144,39 @@ describe('ライトペインのトグル (Ctrl+Alt+B)', () => {
     vi.runAllTimers();
 
     expect(setPanes).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('レフトペイン (F-NAV-04 / 03.ux-spec/06-panes.md §3)', () => {
+  it('開閉できる。幅は左右で別々に記憶する', () => {
+    toggleLeftPane();
+    expect(viewStore.panes.left.open).toBe(true);
+    expect(viewStore.panes.right.open).toBe(false);
+
+    setLeftPaneWidth(320);
+    setRightPaneWidth(200);
+
+    expect(viewStore.panes.left.width).toBe(320);
+    expect(viewStore.panes.right.width).toBe(200);
+  });
+
+  it('幅はライトペインと同じ範囲へ丸める', () => {
+    setLeftPaneWidth(PANE_WIDTH_MIN - 100);
+    expect(viewStore.panes.left.width).toBe(PANE_WIDTH_MIN);
+
+    setLeftPaneWidth(PANE_WIDTH_MAX + 100);
+    expect(viewStore.panes.left.width).toBe(PANE_WIDTH_MAX);
+  });
+
+  it('開閉が変わらなければ書き込まない', () => {
+    toggleLeftPane();
+    vi.advanceTimersByTime(1000);
+    setPanes.mockClear();
+
+    // 既に開いているものを開いても、`state.json` は書き換えない。
+    openLeftPane();
+    vi.advanceTimersByTime(1000);
+
+    expect(setPanes).not.toHaveBeenCalled();
   });
 });

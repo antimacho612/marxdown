@@ -32,6 +32,51 @@ export const ja = {
    * ウィンドウ操作ボタンには文字を表示せず、アイコンだけを表示する。
    * ここにあるのはすべてスクリーンリーダー向けの名前とツールチップであり、Windows の標準タイトルバーが読み上げる文言に合わせてある。
    */
+  /** ファイルツリー（F-NAV-03 / レフトペイン）。 */
+  tree: {
+    loading: '読み込み中…',
+    empty: 'このフォルダには何もありません',
+    /** 何も開いていないとき。基点が決まらない。 */
+    noRoot: 'ファイルを開くと、その場所が表示されます',
+    failed: 'ファイルツリーを読み込めませんでした',
+  },
+  /**
+   * コマンドパレット（`Ctrl+Shift+P` / F-NAV-06）。
+   *
+   * すべての機能への到達手段であり、ここの文言がそのまま機能の名前になる。
+   */
+  palette: {
+    title: 'コマンドパレット',
+    placeholder: 'コマンドを検索',
+    noMatch: '一致するコマンドがありません',
+  },
+  /**
+   * クイックオープン（`Ctrl+P` / F-NAV-05）。
+   *
+   * 並びは「最近開いたファイル → フォルダ内 Markdown」である（03.ux-spec/05-command-palette.md）。
+   */
+  quickOpen: {
+    title: 'クイックオープン',
+    placeholder: 'ファイル名で検索',
+    noMatch: '一致するファイルがありません',
+    /** 基点が無く、最近開いたファイルも無い。 */
+    empty: 'ファイルを開くと、その場所から検索できます',
+    /** 最近開いたファイルであることの目印。右端に出す。 */
+    recent: '最近',
+    /** 上限で打ち切ったとき。全体を検索できていないことを伝える。 */
+    truncated: (count: number) => `ファイルが多いため、先頭 ${count} 件だけを検索します`,
+  },
+  tab: {
+    /** タブ全体の読み上げ名（`role="tablist"`）。 */
+    list: '開いているファイル',
+    /** パレットに並べるときの名前。キーだけでは何が起きるか分からない。 */
+    next: '次のタブ',
+    previous: '前のタブ',
+    closeCurrent: 'タブを閉じる',
+    reopen: '閉じたタブを開き直す',
+    /** タブを閉じる `✕`。読み上げと `title` に使う。 */
+    close: (name: string) => `${name} を閉じる`,
+  },
   titlebar: {
     menu: 'メニュー',
     /**
@@ -70,6 +115,20 @@ export const ja = {
     recent: '最近開いたファイル',
     noRecent: 'まだ何も開いていません',
     reload: '再読み込み',
+    /** ステータスバーの `LF` / `CRLF` と同じ操作（F-EDIT-14）。 */
+    toggleEol: '改行コードを切り替える',
+    /** 表示モードの順送り（`Ctrl+Shift+M`）。トグル 2 つとは別の操作である。 */
+    cycleMode: '表示モードを順に切り替える',
+    /** 指定行へ移動（`Ctrl+G`）。**編集面があるときだけ**（Preview には行番号が無い）。 */
+    gotoLine: '指定行へ移動',
+    /** スクロール同期（Split のときだけ意味を持つ）。 */
+    toggleScrollSync: 'スクロール同期を切り替える',
+    /** アウトラインを表示してフォーカスする（閉じない）。 */
+    showOutline: 'アウトラインへ移動',
+    /** ファイルツリーを表示してフォーカスする（閉じない）。 */
+    showExplorer: 'エクスプローラーへ移動',
+    /** クイックオープン（`Ctrl+P`）。「ファイルを開く」はダイアログのほうが使っている。 */
+    quickOpen: 'ファイルへ移動',
     zoom: '表示倍率',
     zoomIn: '拡大',
     zoomOut: '縮小',
@@ -98,6 +157,10 @@ export const ja = {
    */
   pane: {
     resizeRight: 'ライトペインの幅を変更',
+    resizeLeft: 'レフトペインの幅を変更',
+    /** レフトペイン（Explorer / F-NAV-03）。中身は Phase 5b。 */
+    showExplorer: 'エクスプローラーを表示',
+    hideExplorer: 'エクスプローラーを隠す',
     showOutline: 'アウトラインを表示',
     hideOutline: 'アウトラインを隠す',
   },
@@ -123,7 +186,6 @@ export const ja = {
     forward: '進む',
   },
   open: {
-    droppedExtra: (n: number) => `${n} 件は開いていません（複数タブは M3 で対応）`,
     reloaded: '再読み込みしました',
     /**
      * 外部変更を自動で読み込んだとき（03.ux-spec/07-status-and-notifications.md §2 の 1 行目）。
@@ -158,6 +220,14 @@ export const ja = {
     copyLabel: 'コードブロックをコピー',
     imageOutOfScope: 'この画像は参照が許可されていない場所にあります',
     imageMissing: '画像が見つかりません',
+    /**
+     * スコープ外の画像を許可するボタン（OQ-17）。
+     *
+     * 何が起きるかを文言で言い切る。「許可する」だけだと、どこまで開くのかが読み取れない。
+     */
+    imageAllow: 'このフォルダの画像を許可',
+    imageAllowHint: (dir: string) => `${dir} の直下だけを、アプリを終了するまで許可します`,
+    imageAllowFailed: '許可できませんでした',
   },
   /** プレビュー内検索（F-VIEW-10）。 */
   search: {

@@ -41,6 +41,20 @@ export async function preloadEditor(): Promise<void> {
 }
 
 /**
+ * 指定行へ移動する（`Ctrl+G` / 03.ux-spec/04-keybindings.md §3「移動」）。
+ *
+ * Monaco の `editor.action.gotoLine` に委ねる。行番号の入力欄は Monaco 自身が持っており、
+ * こちらでパレットを作ると、同じ用途の入力欄が 2 つになる。
+ *
+ * マウントされていなければ何もしない。**Preview には行番号が無い**ため、
+ * このコマンドは Preview では一覧に出ない（`app/commands.ts`）。
+ */
+export async function gotoLineLazily(): Promise<void> {
+  const { gotoLine } = await import('./lazy/editor');
+  gotoLine();
+}
+
+/**
  * 検索・置換パネルを開く（F-EDIT-05）。
  *
  * エディターがマウントされていなければ何も起きない。
