@@ -88,6 +88,13 @@ export interface CoreError {
     | 'settings-broken'
     | 'io';
   message: string;
+  /**
+   * 検証済みの解決先。`out-of-scope` のときだけ入る（OQ-17）。
+   *
+   * symlink を解決した後のパスであり、ドキュメントに書かれた文字列ではない。
+   * 何を許可しようとしているのかを見せるには、解決後のほうでなければ意味がない。
+   */
+  path?: string | null;
 }
 
 /** ペイン 1 枚の状態（`src-tauri/src/store.rs` の `PaneState`）。 */
@@ -340,6 +347,13 @@ export interface Platform {
    * 相対パスの画像を、許可ディレクトリ配下であることを検証したうえで、`<img src>` にそのまま指定できる URL へ変換する（F-VIEW-08 / N-SEC-05）。
    */
   resolveAsset(href: string, baseDir: string): Promise<string>;
+  /**
+   * スコープ外の画像を 1 件だけ許可する（OQ-17 / ADR-0006）。
+   *
+   * 許可されるのは**その画像があるディレクトリ 1 つだけ**で、配下へは広がらない。
+   * アプリを終了すれば消える。利用者がプレースホルダのボタンを押したときにだけ呼ぶこと。
+   */
+  allowImageDir(href: string, baseDir: string): Promise<string>;
   /**
    * ディレクトリの中身を 1 階層ぶん返す（F-NAV-03 / ファイルツリー）。
    *

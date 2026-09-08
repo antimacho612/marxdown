@@ -91,6 +91,10 @@ export const tauriPlatform: Platform = {
     return convertFileSrc(await invoke<string>('resolve_asset', { href, baseDir }));
   },
 
+  async allowImageDir(href, baseDir) {
+    return convertFileSrc(await invoke<string>('allow_image_dir', { href, baseDir }));
+  },
+
   listDir(path) {
     return invoke<DirEntry[]>('list_dir', { path });
   },

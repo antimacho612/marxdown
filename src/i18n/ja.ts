@@ -220,6 +220,14 @@ export const ja = {
     copyLabel: 'コードブロックをコピー',
     imageOutOfScope: 'この画像は参照が許可されていない場所にあります',
     imageMissing: '画像が見つかりません',
+    /**
+     * スコープ外の画像を許可するボタン（OQ-17）。
+     *
+     * 何が起きるかを文言で言い切る。「許可する」だけだと、どこまで開くのかが読み取れない。
+     */
+    imageAllow: 'このフォルダの画像を許可',
+    imageAllowHint: (dir: string) => `${dir} の直下だけを、アプリを終了するまで許可します`,
+    imageAllowFailed: '許可できませんでした',
   },
   /** プレビュー内検索（F-VIEW-10）。 */
   search: {

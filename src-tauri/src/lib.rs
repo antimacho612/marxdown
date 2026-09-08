@@ -243,6 +243,7 @@ pub fn run() {
             commands::resolve_asset,
             commands::list_dir,
             commands::list_files,
+            commands::allow_image_dir,
             commands::pick_file,
             commands::pick_save_path,
             commands::set_dirty,

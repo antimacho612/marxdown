@@ -39,6 +39,18 @@ pub enum CoreError {
 }
 
 impl CoreError {
+    /// 検証済みの解決先。プレースホルダに実際のパスを出すために使う（OQ-17）。
+    ///
+    /// [`Self::OutOfScope`] だけが持つ。`message` から切り出すと、文言を変えた瞬間に壊れる。
+    /// symlink を解決した後のパスであり、ドキュメントに書かれた文字列ではない。
+    /// 何を許可しようとしているのかを見せるには、解決後のほうでなければ意味がない。
+    pub fn path(&self) -> Option<&str> {
+        match self {
+            Self::OutOfScope(path) => Some(path),
+            _ => None,
+        }
+    }
+
     /// フロントエンドが `switch` で分岐するための安定した識別子。
     pub fn kind(&self) -> &'static str {
         match self {
@@ -69,9 +81,10 @@ impl From<std::io::Error> for CoreError {
 impl Serialize for CoreError {
     fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         use serde::ser::SerializeStruct;
-        let mut s = serializer.serialize_struct("CoreError", 2)?;
+        let mut s = serializer.serialize_struct("CoreError", 3)?;
         s.serialize_field("kind", self.kind())?;
         s.serialize_field("message", &self.to_string())?;
+        s.serialize_field("path", &self.path())?;
         s.end()
     }
 }

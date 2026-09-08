@@ -361,6 +361,11 @@ export const webPlatform: Platform = {
    * 実体を返さないのは、ここで木構造を模しても確かめられるのが並べ方だけだからである。
    * ファイルツリーの見た目は Storybook で見る（`FileTree.stories.svelte`）。
    */
+  /** 仮想 FS にはスコープが無い。許可するものも無いので、そのまま返す。 */
+  async allowImageDir(href) {
+    return href;
+  },
+
   async listDir() {
     return [];
   },
