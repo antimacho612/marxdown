@@ -136,9 +136,6 @@ importers:
       markdown-it-github-alerts:
         specifier: ^1.0.1
         version: 1.0.1(markdown-it@15.0.0)
-      markdown-it-task-lists:
-        specifier: ^2.1.1
-        version: 2.1.1
       mermaid:
         specifier: ^11.17.2
         version: 11.17.2
@@ -3657,9 +3654,6 @@ packages:
     resolution: {integrity: sha512-NNATF4QdoGI07hyCitoB2YqJ1YcNVCKT89ut2VtfFY9rkeFCXe/V2lOonKQLpJiq5DjiZZepf97BJx5xOjFIAw==}
     peerDependencies:
       markdown-it: '>= 13.0.0'
-
-  markdown-it-task-lists@2.1.1:
-    resolution: {integrity: sha512-TxFAc76Jnhb2OUu+n3yz9RMu4CwGfaT788br6HhEDlvWfdeJcLUsxk1Hgw2yJio0OXsxv7pyIPmvECY7bMbluA==}
 
   markdown-it@15.0.0:
     resolution: {integrity: sha512-Lf8ajvVNdRpzSNB4VegxNy7gjs8gU35l4b4+ET49LrQC5PKYwLZ72u60LeJ9gv3qiaesuYjJWCyVeQmv/QWKQw==}
@@ -8132,8 +8126,6 @@ snapshots:
   markdown-it-github-alerts@1.0.1(markdown-it@15.0.0):
     dependencies:
       markdown-it: 15.0.0
-
-  markdown-it-task-lists@2.1.1: {}
 
   markdown-it@15.0.0:
     dependencies:

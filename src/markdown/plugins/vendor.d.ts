@@ -13,20 +13,3 @@ declare module 'markdown-it-footnote' {
   const footnote: (md: MarkdownIt) => void;
   export default footnote;
 }
-
-declare module 'markdown-it-task-lists' {
-  import type { MarkdownIt } from 'markdown-it';
-
-  export interface TaskListsOptions {
-    /** チェックボックスを操作可能にする。既定は false（OQ-05 が未決のため）。 */
-    enabled?: boolean;
-    /** `<label>` で包む。 */
-    label?: boolean;
-    /** `<label>` をチェックボックスの後ろに置く。 */
-    labelAfter?: boolean;
-  }
-
-  /** タスクリスト（GFM）。`<input type="checkbox" disabled>` を出力する。 */
-  const taskLists: (md: MarkdownIt, options?: TaskListsOptions) => void;
-  export default taskLists;
-}

@@ -200,16 +200,42 @@ describe('OQ-27 で前倒した記法 (06.roadmap/m2-editor.md §1.4)', () => {
     const { html } = render('- [ ] 未完了\n- [x] 完了\n');
     expect(html).toContain('contains-task-list');
     expect(html).toContain('task-list-item');
-    expect(html).toContain('type="checkbox"');
+    expect(html).toContain('role="checkbox"');
   });
 
-  it('タスクリストのチェックボックスは disabled のまま出す (OQ-05 は未決着)', () => {
-    expect(render('- [x] 完了\n').html).toContain('disabled');
+  it('チェックボックスに input を使わない (OQ-05)', () => {
+    // 生 HTML を書いたドキュメントが本文へ操作可能なフォーム部品を持ち込む経路を塞いである。
+    expect(render('- [x] 完了\n').html).not.toContain('<input');
+  });
+
+  it('チェック状態を aria-checked で表す', () => {
+    expect(render('- [ ] 未完了\n').html).toContain('aria-checked="false"');
+    expect(render('- [x] 完了\n').html).toContain('aria-checked="true"');
+    expect(render('- [X] 完了\n').html).toContain('aria-checked="true"');
+  });
+
+  it('記号を本文から取り除く', () => {
+    const { html } = render('- [ ] 未完了\n');
+    expect(html).toContain('未完了');
+    expect(html).not.toContain('[ ]');
+  });
+
+  it('キーボードで到達できる', () => {
+    expect(render('- [ ] a\n').html).toContain('tabindex="0"');
+  });
+
+  it('タスクの形をしていない項目には出さない', () => {
+    expect(render('- 普通の項目\n').html).not.toContain('mx-task');
+    // 記号の直後に空白が無いものは GFM でもタスクではない
+    expect(render('- [x]空白なし\n').html).not.toContain('mx-task');
+  });
+
+  it('順序付きリストでも拾う (GFM)', () => {
+    expect(render('1. [ ] a\n').html).toContain('role="checkbox"');
   });
 
   it('タスクリストの li にも data-line が残る', () => {
-    // `markdown-it-task-lists` は `list_item_open` の class を上書きする。
-    // data-line まで巻き添えにしていないことを見張る。
+    // プラグインは `list_item_open` の class を書き換える。data-line まで巻き添えにしていないことを見張る。
     expect(render('- [ ] a\n').html).toContain('data-line="0"');
   });
 });

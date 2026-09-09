@@ -4,6 +4,7 @@
  * この層は文字列の変換だけを行い、DOM には触れない（サニタイズは `paint.ts` が呼ぶ DOMPurify の担当 / ADR-0006）。
  * プラグイン構成は 04.tech-stack/04-markdown.md §2 の既定に従う。
  * 脚注・タスクリスト・GitHub Alerts は M4 から M2 へ前倒し済みである（OQ-27 / 06.roadmap/m2-editor.md §1.4）。
+ * タスクリストは M4 でプレビュー上の操作を入れたため自作へ置き換えた（OQ-05 / `plugins/task-list.ts`）。
  *
  * `use` の順序は仕様であり、`lineMapPlugin` を最後に置くこと。
  * `md.renderer.rules[...]` をその時点の中身ごと包むため、先に置くと後続プラグインの代入で上書きされる。
@@ -12,12 +13,12 @@ import MarkdownItCallable, { type MarkdownIt, type Token } from 'markdown-it';
 import anchor from 'markdown-it-anchor';
 import footnote from 'markdown-it-footnote';
 import githubAlerts from 'markdown-it-github-alerts';
-import taskLists from 'markdown-it-task-lists';
 
 import { splitFrontMatter } from './plugins/front-matter';
 import { extractOutline, lineMapPlugin, type OutlineItem } from './plugins/line-map';
 import { mathPlugin } from './plugins/math';
 import { mermaidPlugin } from './plugins/mermaid';
+import { taskListPlugin } from './plugins/task-list';
 
 /** `render` の結果。HTML と、そこから導出した派生値をまとめて返す。 */
 export interface RenderResult {
@@ -60,11 +61,10 @@ export function createMarkdownIt(breaks = false): MarkdownIt {
   // チャンク分割はこのブロックの内側では行わない（`renderChunks`）。
   md.use(footnote);
 
-  // タスクリスト（F-VIEW-01 の GFM 相当）。`<input type="checkbox" disabled>` を出力する。
-  // 既定のまま disabled で出力する。
-  // プレビュー上でチェックを許可するかは未決（OQ-05、期限は M4）であり、ここで `enabled: true` にすると決定を先取りすることになる
-  // （サニタイザ側も `markdown/sanitize.ts` で disabled を要求している）。
-  md.use(taskLists);
+  // タスクリスト（F-VIEW-01 の GFM 相当）。`<input>` ではなく `role="checkbox"` の `<span>` を出す。
+  // プレビュー上でのチェックを許可すると決めた（OQ-05）ため、`markdown-it-task-lists` から自作へ置き換えてある。
+  // 理由は `plugins/task-list.ts` の冒頭にある。
+  md.use(taskListPlugin);
 
   // 数式（F-VIEW-13）。ここではプレースホルダを出すだけで、KaTeX は `features/preview/lazy/math.ts` が遅延ロードする。
   // critical path の残余が 23.64KB しかないため、パーサ側のプラグインを載せる選択肢が無い（06.roadmap/m4-markdown.md §1.2）。

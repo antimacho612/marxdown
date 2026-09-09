@@ -12,12 +12,13 @@ import {
   openPath,
   previewScrollTop,
   saveThenQuit,
+  toggleTaskAtLine,
 } from '@/features/document';
 import { mountEditorLazily, preloadEditor, setSplitSyncLazily } from '@/features/editor';
 import { configureHistory } from '@/features/history';
 import { decideInitialMode, initMode } from '@/features/mode';
 import { initPanes } from '@/features/panes';
-import { applyZoom, installLinkHandler } from '@/features/preview';
+import { applyZoom, installLinkHandler, installTaskHandler } from '@/features/preview';
 import {
   applyCustomCss,
   initSettings,
@@ -304,6 +305,9 @@ function installLinks(): void {
       documentStore.notice = notice;
     },
   });
+
+  // プレビュー上のタスクリスト操作（OQ-05）。リンクと同じく逆向きの呼び出しをここで接続する。
+  installTaskHandler(container, { toggle: toggleTaskAtLine });
 }
 
 /**

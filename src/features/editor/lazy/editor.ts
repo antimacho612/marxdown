@@ -207,6 +207,27 @@ export function mountEditor(host: HTMLElement): monaco.editor.IStandaloneCodeEdi
       // ここを通るのは同じ文書の読み直し（`F5` / 外部変更）だけである。別の文書へ移るときは `switchTo` を通る。
       current.pushEditOperations(null, [{ range: current.getFullModelRange(), text }], () => null);
     },
+    replaceLine: (line, text) => {
+      const current = currentModel();
+      if (!current) return;
+      // Monaco の行番号は 1 始まり。`data-line` は 0 始まりである。
+      const number = line + 1;
+      if (number < 1 || number > current.getLineCount()) return;
+      // Undo の 1 手として積む。プレビュー上でチェックした後、`Ctrl+Z` で戻せる。
+      current.pushEditOperations(
+        null,
+        [
+          {
+            range: current
+              .getFullModelRange()
+              .setStartPosition(number, 1)
+              .setEndPosition(number, current.getLineMaxColumn(number)),
+            text,
+          },
+        ],
+        () => null,
+      );
+    },
     sync: () => {
       const entry = currentEntry();
       if (entry) entry.cleanVersionId = entry.model.getAlternativeVersionId();
