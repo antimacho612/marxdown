@@ -1,5 +1,5 @@
 /**
- * URL のスマートペースト（F-EDIT-12 / `editor` チャンク）。
+ * 貼り付けの横取り（F-EDIT-12 / F-EDIT-13 / `editor` チャンク）。
  * 選択範囲への URL 貼り付けで `[選択文字](URL)` になる。
  * CodeMirror では `pasteURLAsLink` が既定で持っていたが Monaco には無いため自作した（ADR-0009 の受け入れコスト 1）。
  *
@@ -7,6 +7,10 @@
  * DOM の `paste` を先に捕まえて `preventDefault()` すれば 1 回の編集で済む。
  * 判定はスキーム付きで空白を含まない 1 行に限り、緩めると普通の文字列貼り付けまでリンク化されてしまう。
  */
+import { documentStore } from '@/features/document';
+import { ja } from '@/i18n/ja';
+import { getPlatform } from '@/platform';
+
 import { byRange, runEdit, textAt, type MarkdownEdit } from './edits';
 import type { monaco } from './monaco';
 
@@ -36,17 +40,89 @@ export function linkFromUrl(url: string): MarkdownEdit {
 }
 
 /**
+ * クリップボードから取り出せる画像（F-EDIT-13）。
+ *
+ * `svg+xml` は含めない。中身が実行可能なマークアップであり、Rust 側も受け付けない（`src-tauri/src/asset.rs`）。
+ */
+const IMAGE_TYPES: Record<string, string> = {
+  'image/png': 'png',
+  'image/jpeg': 'jpg',
+  'image/gif': 'gif',
+  'image/webp': 'webp',
+};
+
+/** 貼り付けの中に画像があれば、その 1 枚目と拡張子を返す。 */
+export function imageInClipboard(data: DataTransfer | null): { file: File; extension: string } | null {
+  for (const file of data?.files ?? []) {
+    const extension = IMAGE_TYPES[file.type.toLowerCase()];
+    if (extension !== undefined) return { file, extension };
+  }
+  return null;
+}
+
+/** `![](path)` を組み立てる。 */
+export function imageLink(relativePath: string): MarkdownEdit {
+  return (model, selections) =>
+    byRange(model, selections, ({ from, to }) => {
+      // 選択があれば、それを代替テキストにする。URL のスマートペーストと同じ扱いである。
+      const alt = textAt(model, from, to);
+      const inserted = `![${alt}](${relativePath})`;
+      return {
+        edits: [{ from, to, text: inserted }],
+        select: { from: from + inserted.length, to: from + inserted.length },
+      };
+    });
+}
+
+/**
+ * 画像を保存してリンクを挿入する（F-EDIT-13）。
+ *
+ * 保存先は `<ファイル名>.assets/` に固定である（`src-tauri/src/asset.rs`）。
+ * 無題の文書には基点が無いため、保存せずに知らせて終わる。
+ * ここで「保存ダイアログを出す」形にすると、貼り付けという 1 動作の途中で保存の判断を求めることになる。
+ */
+async function pasteImage(editor: monaco.editor.IStandaloneCodeEditor, file: File, extension: string): Promise<void> {
+  const path = documentStore.meta?.path ?? null;
+  if (path === null || path === '') {
+    documentStore.notice = { level: 'info', message: ja.editor.pasteImageUntitled };
+    return;
+  }
+
+  try {
+    const data = new Uint8Array(await file.arrayBuffer());
+    const relative = await getPlatform().writeAsset(path, extension, data);
+    runEdit(editor, imageLink(relative), 'markdown.paste');
+  } catch {
+    // 書き込めなかった（容量・権限・拡張子）。本文には何も入れない。
+    // 入れてから失敗を知らせると、指す先の無いリンクが残る。
+    documentStore.notice = { level: 'error', message: ja.editor.pasteImageFailed };
+  }
+}
+
+/**
  * 貼り付けを監視する。`mountEditor` から 1 回だけ呼ぶ。
  *
- * 選択が無いとき、複数カーソルのとき、URL でないときは何もしないため、通常の貼り付けはそのまま Monaco が処理する。
+ * 拾うのは 2 つだけである。選択範囲への URL（F-EDIT-12）と、画像（F-EDIT-13）。
+ * どちらでもなければ何もしないため、通常の貼り付けはそのまま Monaco が処理する。
+ *
+ * **登録先は `editor.getDomNode()` ではなく、マウント先の要素である。**
+ * `mountEditor` は `model: null` でエディターを作るため（どのタブのものかは後から決まる）、
+ * この時点では Monaco がビューを構築しておらず `getDomNode()` は `null` を返す。
+ * そちらに登録する形にすると**登録そのものが行われず、URL の貼り付けも画像の貼り付けも動かない。**
  */
-export function installUrlPaste(editor: monaco.editor.IStandaloneCodeEditor): void {
-  const node = editor.getDomNode();
-  if (!node) return;
-
-  node.addEventListener(
+export function installPaste(editor: monaco.editor.IStandaloneCodeEditor, host: HTMLElement): void {
+  host.addEventListener(
     'paste',
     (event) => {
+      // 画像が先。画像を貼ったときのクリップボードにはファイル名などのテキストも同時に入っていることがある。
+      const image = imageInClipboard(event.clipboardData);
+      if (image) {
+        event.preventDefault();
+        event.stopPropagation();
+        void pasteImage(editor, image.file, image.extension);
+        return;
+      }
+
       const url = event.clipboardData?.getData('text/plain')?.trim() ?? '';
       if (!isPastedUrl(url)) return;
 

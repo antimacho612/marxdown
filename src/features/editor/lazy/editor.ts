@@ -19,7 +19,7 @@ import { runEdit } from './edits';
 import { installEditorKeymap } from './keymap';
 import { MARKDOWN_LANGUAGE_ID, monaco } from './monaco';
 import { applyEditorOptions, editorOptions } from './options';
-import { installUrlPaste } from './paste';
+import { installPaste } from './paste';
 import { createScrollPort } from './scroll-port';
 import { formatTable } from './table';
 import { applyEditorTheme, watchEditorTokens } from './theme';
@@ -189,8 +189,9 @@ export function mountEditor(host: HTMLElement): monaco.editor.IStandaloneCodeEdi
   // Markdown の書式（F-EDIT-08）とリストの継続入力（F-EDIT-09, 10）。
   // アプリ側が処理するキーを Monaco から外すのもここで行う（`keymap.ts`）。
   installEditorKeymap(editor);
-  // 選択範囲への URL 貼り付け（F-EDIT-12）。
-  installUrlPaste(editor);
+  // 選択範囲への URL 貼り付け（F-EDIT-12）と画像の貼り付け（F-EDIT-13）。
+  // 渡すのは `host` である（`editor.getDomNode()` はこの時点でまだ `null` / `paste.ts`）。
+  installPaste(editor, host);
   // カーソル位置をステータスバーへ通知する（03.ux-spec/07-status-and-notifications.md §3）。更新は rAF で間引く（`cursor.ts`）。
   installCursorReport(editor);
 

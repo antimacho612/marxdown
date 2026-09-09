@@ -357,6 +357,16 @@ export interface Platform {
    */
   resolveAsset(href: string, baseDir: string): Promise<string>;
   /**
+   * 貼り付けた画像を保存する（F-EDIT-13）。
+   *
+   * 保存先は `<ファイル名>.assets/` に固定で、こちらからは場所を渡さない（`src-tauri/src/asset.rs`）。
+   * 返るのはドキュメントから見た相対パスで、そのまま `![](...)` に書ける形をしている。
+   *
+   * `documentPath` は開いているファイルの絶対パスである。
+   * 無題の文書には基点が無いため、呼ぶ側が手前で断ること。
+   */
+  writeAsset(documentPath: string, extension: string, data: Uint8Array): Promise<string>;
+  /**
    * スコープ外の画像を 1 件だけ許可する（OQ-17 / ADR-0006）。
    *
    * 許可されるのは**その画像があるディレクトリ 1 つだけ**で、配下へは広がらない。

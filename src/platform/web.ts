@@ -410,6 +410,17 @@ export const webPlatform: Platform = {
   },
 
   /**
+   * `dev:web` にはディスクが無い。
+   *
+   * 保存したふりをして相対パスだけ返す。挿入される Markdown の形と、無題の文書を断る経路は確認できる。
+   * 実際に書けているかどうかは Rust 側のテスト（`src-tauri/src/asset.rs`）が見る。
+   */
+  async writeAsset(documentPath, extension) {
+    const name = documentPath.split('/').pop() ?? 'untitled.md';
+    return `${name}.assets/paste-${String(Date.now())}.${extension}`;
+  },
+
+  /**
    * `dev:web` の仮想 FS にはディレクトリが無い。
    *
    * 実体を返さないのは、ここで木構造を模しても確かめられるのが並べ方だけだからである。

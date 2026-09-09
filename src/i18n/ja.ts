@@ -273,6 +273,17 @@ export const ja = {
   notice: {
     dismiss: '通知を閉じる',
   },
+  /** 編集面から出す通知（`features/editor/lazy/`）。設定の中の `settings.editor` とは別である。 */
+  editor: {
+    /**
+     * 画像を貼ったが保存先が決まらない（F-EDIT-13）。
+     *
+     * 「保存してください」ではなく「保存できません」と言い切る。
+     * 保存先は開いているファイルの隣に決まるため、名前が付くまでは置き場所が存在しない。
+     */
+    pasteImageUntitled: '無題の文書には画像を貼り付けられません。先にファイルを保存してください。',
+    pasteImageFailed: '画像を保存できませんでした',
+  },
   /**
    * ユーザー設定（02.architecture/04-rust-responsibilities.md §5 / 03.ux-spec/07-status-and-notifications.md §2）。
    *
