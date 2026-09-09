@@ -341,6 +341,20 @@ export const LAYOUT = [
     ],
   },
   {
+    id: 'outline',
+    label: ja.settings.categories.outline,
+    entries: [
+      {
+        kind: 'field',
+        key: 'outline.maxDepth',
+        widget: 'number',
+        step: 1,
+        label: ja.settings.outline.maxDepth.label,
+        description: ja.settings.outline.maxDepth.description,
+      },
+    ],
+  },
+  {
     id: 'window',
     label: ja.settings.categories.window,
     entries: [

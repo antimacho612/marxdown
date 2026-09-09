@@ -11,8 +11,9 @@
   import { defineMeta } from '@storybook/addon-svelte-csf';
 
   import { documentStore } from '@/features/document';
+  import { settingsStore } from '@/features/settings';
   import type { OutlineItem } from '@/markdown/plugins/line-map';
-  import type { DocumentMeta } from '@/platform';
+  import { DEFAULT_SETTINGS, type DocumentMeta } from '@/platform';
 
   import Outline from './Outline.svelte';
 
@@ -70,6 +71,15 @@
     return () => {
       documentStore.meta = META;
       documentStore.outline = outline;
+      // 深さ設定は前の story から持ち越さない。他の story は既定（制限なし）を前提にしている。
+      settingsStore.values = { ...settingsStore.values, 'outline.maxDepth': DEFAULT_SETTINGS['outline.maxDepth'] };
+    };
+  }
+
+  /** `seed` の後に重ねて呼ぶ。深さを絞った状態を見るための story だけが使う。 */
+  function depth(maxDepth: number) {
+    return () => {
+      settingsStore.values = { ...settingsStore.values, 'outline.maxDepth': maxDepth };
     };
   }
 </script>
@@ -94,6 +104,12 @@
 <Story name="見出しが 2 個 (自動で折りたたむ)" loaders={[seed(FEW)]} template={pane} />
 
 <Story name="深い階層" loaders={[seed(DEEP)]} template={pane} />
+
+<!-- #61。設定で「h3 まで」を指定した状態。h4 以下は一覧から外れ、その節にいる間は h3 側がハイライトされ続ける。 -->
+<Story name="深い階層 (h3 までに制限)" loaders={[seed(DEEP), depth(3)]} template={pane} />
+
+<!-- #61。h2 から始まる文書に「h1 まで」を指定すると、該当する見出しが 1 つも無くなる。 -->
+<Story name="深さの制限で該当が無い" loaders={[seed(STARTS_AT_H2), depth(1)]} template={pane} />
 
 <Story name="H2 から始まる文書" loaders={[seed(STARTS_AT_H2)]} template={pane} />
 
