@@ -309,6 +309,27 @@
   color: var(--mx-color-warning);
 }
 
+/*
+ * 「このフォルダの画像を許可」（OQ-17）。
+ * 押した結果が防御を 1 段緩めるものなので、本文の中で目立ちすぎない見た目にする。
+ * 押せるものが `<button>` であることは崩さない。
+ */
+.mx-image-blocked__allow {
+  flex: none;
+  padding: 2px var(--mx-space-2);
+  border: 1px solid currentcolor;
+  border-radius: var(--mx-radius-sm);
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-size: 0.9em;
+  cursor: pointer;
+}
+
+.mx-image-blocked__allow:hover {
+  background: var(--mx-color-bg-hover);
+}
+
 .mx-image-blocked__path {
   min-width: 0;
   overflow: hidden;

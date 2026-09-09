@@ -8,18 +8,11 @@
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { recentStore } from '@/features/workspace';
+import { openUntitledTab, recentStore, resetTabs, tabsStore, workspaceOpenerHooks } from '@/features/workspace';
 import type { MarkdownParser } from '@/markdown/parser';
 import { getPlatform, setPlatform, type Platform } from '@/platform';
 
-/**
- * 移る先は注入で差し替える。**実体は Monaco をロードする**（`open-editor.ts`）ので、
- * ここで通すと本題と関係のない数秒がかかる。見たいのは「移すこと」だけ。
- */
-const toEditMode = vi.fn(() => Promise.resolve());
-
 const { configureOpener } = await import('./open');
-const { configureNewDocument, newDocument } = await import('./new');
 const { documentStore } = await import('./store.svelte');
 const { setDirty } = await import('./dirty');
 
@@ -58,8 +51,6 @@ beforeEach(() => {
   setDirty(false);
   recentStore.entries = [];
 
-  toEditMode.mockClear();
-  configureNewDocument(toEditMode);
   pushRecent.mockClear();
   watchPath.mockClear();
   confirmDiscard.mockClear();
@@ -71,12 +62,13 @@ beforeEach(() => {
     confirmDiscard,
     setDirty: () => Promise.resolve(),
   } as unknown as Platform);
-  configureOpener({ parser: fakeParser() });
+  resetTabs();
+  configureOpener({ parser: fakeParser(), ...workspaceOpenerHooks() });
 });
 
 describe('新規ファイル', () => {
   it('パスを持たない空の文書が開く', async () => {
-    expect(await newDocument()).toBe(true);
+    expect(await openUntitledTab()).toBe(true);
 
     expect(documentStore.meta).not.toBeNull();
     expect(documentStore.meta?.path).toBeNull();
@@ -88,27 +80,20 @@ describe('新規ファイル', () => {
   });
 
   it('最近開いたファイルにも監視にも載せない', async () => {
-    await newDocument();
+    await openUntitledTab();
 
     expect(pushRecent).not.toHaveBeenCalled();
     expect(watchPath).not.toHaveBeenCalled();
   });
 
-  it('打てる場所へ移す（空の本文を Preview で開いても何も見えない）', async () => {
-    await newDocument();
-
-    expect(toEditMode).toHaveBeenCalled();
-  });
-
-  it('未保存の変更があるときは確認を通る', async () => {
+  it('新しいタブとして開く。いまの文書は残る', async () => {
+    // 置き換えないので、未保存の確認も通らない（M3 Phase 2b）。
+    await openUntitledTab();
     setDirty(true);
-    confirmDiscard.mockResolvedValueOnce('cancel' as never);
 
-    expect(await newDocument()).toBe(false);
+    await openUntitledTab();
 
-    expect(confirmDiscard).toHaveBeenCalled();
-    // 取り消したので、文書は差し替わっていない。
-    expect(documentStore.meta).toBeNull();
-    expect(toEditMode).not.toHaveBeenCalled();
+    expect(tabsStore.tabs).toHaveLength(2);
+    expect(confirmDiscard).not.toHaveBeenCalled();
   });
 });

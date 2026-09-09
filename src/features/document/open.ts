@@ -6,7 +6,6 @@
  */
 import { pushHistory } from '@/features/history';
 import { enhance, paint, scrollToAnchor } from '@/features/preview';
-import { forgetRecent, rememberRecent } from '@/features/workspace';
 import { ja } from '@/i18n/ja';
 import { toMessage } from '@/lib/error';
 import { dirOf } from '@/lib/path';
@@ -17,7 +16,7 @@ import { getPlatform, type DocumentPayload, type Encoding } from '@/platform';
 
 import { markClean } from './dirty';
 import { confirmDiscard } from './discard';
-import { documentStore, INFO_NOTICE_MS, notifyInfo, type StoredPayload } from './store.svelte';
+import { documentStore, notifyInfo, toMeta, type StoredMeta, type StoredPayload } from './store.svelte';
 import { setDocumentText } from './text';
 
 const PREVIEW_SELECTOR = '#mx-preview';
@@ -25,6 +24,24 @@ const PREVIEW_SELECTOR = '#mx-preview';
 /** 開く経路に注入する依存。起動時に `configureOpener` で 1 回だけ渡す。 */
 export interface OpenerConfig {
   parser: MarkdownParser;
+  /**
+   * 開けたことを知らせる先（`features/workspace` のタブと最近開いたファイル）。
+   *
+   * 直接呼ばずに注入で受ける。
+   * タブは「いま開いている文書の集合」であって文書より外側の概念であり、依存を workspace → document の 1 方向に保つ。
+   * 逆向きにすると、タブが文書のメタ情報を参照した時点で feature が循環する。
+   */
+  onOpened: (meta: StoredMeta, options: { remember: boolean }) => void;
+  /** 開けなかったことを知らせる先。消えたファイルを最近開いた一覧から外す。 */
+  onMissing: (path: string) => void;
+  /**
+   * 開く先のタブ（`features/workspace`）。**無ければそちらで作る。**
+   *
+   * エディターはこれをキーにモデルを分け（`document/text.ts` の `DocumentIdentity`）、履歴もこれで分かれる（F-NAV-07）。
+   * 5 つの入口すべてに引数として足す代わりに、ここで 1 回だけ問う。
+   * タブ側は開く前にアクティブを移してあるため（`activateTab` / `openPathInNewTab`）、この時点の値が行き先である。
+   */
+  targetKey: () => number;
 }
 
 let config: OpenerConfig | null = null;
@@ -64,6 +81,14 @@ export interface OpenOptions {
   restoreScroll?: number;
   /** 最近開いたファイルに積むか。既定 true。 */
   remember?: boolean;
+  /**
+   * 未保存の変更を捨ててよいか尋ねるか。既定 true（F-EDIT-03）。
+   *
+   * false にするのは、**捨てるものが無い**ことが呼び出し側で分かっている場合だけである。
+   * タブへ開く経路がこれにあたる。いまの文書はタブとして残るため何も失われず、
+   * タブを切り替えるたびに確認が出ると操作が成立しない（`features/workspace/tabs.svelte.ts`）。
+   */
+  confirm?: boolean;
   /**
    * 描画後に移動するページ内アンカー（`./other.md#section` の `#` 以降）。
    *
@@ -130,22 +155,32 @@ export interface OpenOutcome {
  * ファイルを読み直さないことが要点で、Rust が WebView 初期化と並行して読んだ内容をそのまま使う。
  */
 export async function openDocument(payload: StoredPayload, options: OpenOptions = {}): Promise<OpenOutcome | null> {
-  if (!config) throw new Error('configureOpener が呼ばれていない');
+  const opener = config;
+  if (!opener) throw new Error('configureOpener が呼ばれていない');
 
   const startedAt = options.startedAt ?? performance.now();
   // パースを先に開始してから待つ（シェル描画と重ねるため）。
   traceMark(options, 'T6', `${payload.content.length} chars`);
-  const parsing = config.parser.parse(payload.content);
+  const parsing = opener.parser.parse(payload.content);
+
+  // 開く先のタブ。本文の載せ先（Monaco のモデル）と履歴の分かれ目がこれで決まる。
+  const key = opener.targetKey();
 
   // 本文を差し替える前に、現在のスクロール位置を履歴へ記録する（F-NAV-07）。
   // 無題の文書は戻り先として指定できないため積まない。
-  if (options.history !== false && payload.path !== null) pushHistory(payload.path, previewScrollTop());
+  if (options.history !== false && payload.path !== null) pushHistory(key, payload.path, previewScrollTop());
 
-  documentStore.meta = payload;
+  // 本文を落としてから入れる。
+  // そのまま代入すると `content` が実行時に残り、ストアが本文を保持し続ける（`toMeta`）。
+  const meta = toMeta(payload);
+  documentStore.meta = meta;
 
   // 本文はストアではなく素のモジュールへ（ADR-0005 / `document/text.ts`）。
   // エディターがマウントされていれば Monaco への書き込みを伴うため、T6→T7 の並行処理を維持できるようパースの開始後に置く。
-  setDocumentText(payload.content);
+  //
+  // どのタブのどの文書かを一緒に渡す。
+  // これが無いと 1 つのモデルを使い回すことになり、切り替えた先で Undo したときに前の文書の本文が編集面へ入る（N-CMP-03）。
+  setDocumentText(payload.content, { key, documentId: payload.path ?? UNTITLED_ID });
 
   // ディスクと一致した状態から始める。開き直しでもここを通るので
   // 再読み込み後にダーティが残らない（F-EDIT-03）。
@@ -210,12 +245,11 @@ export async function openDocument(payload: StoredPayload, options: OpenOptions 
       return at;
     });
 
-    // 無題の文書は履歴にも監視にも載らない（ディスクに実体が無いため）。
-    if (payload.path !== null) {
-      if (options.remember !== false) void rememberRecent(payload.path);
-      // 開いているファイルだけを監視する（N-PERF-05）。前のファイルの監視は Rust 側で外れる。
-      void watch(payload.path);
-    }
+    opener.onOpened(meta, { remember: options.remember !== false });
+
+    // 無題の文書は監視に載らない（ディスクに実体が無いため）。
+    // 開いているファイルだけを監視する（N-PERF-05）。前のファイルの監視は Rust 側で外れる。
+    if (payload.path !== null) void watch(payload.path);
 
     return outcome;
   } catch (e) {
@@ -232,7 +266,7 @@ export async function openDocument(payload: StoredPayload, options: OpenOptions 
  */
 export async function openPath(path: string, options: OpenOptions = {}): Promise<OpenOutcome | null> {
   // 編集中の内容を捨てる前に尋ねる（F-EDIT-03）。開くと決まっていないので I/O より前に置く。
-  if (!(await confirmDiscard())) return null;
+  if (options.confirm !== false && !(await confirmDiscard())) return null;
 
   const startedAt = options.startedAt ?? performance.now();
 
@@ -241,7 +275,7 @@ export async function openPath(path: string, options: OpenOptions = {}): Promise
     payload = await getPlatform().readDocument(path, options.encoding);
   } catch (e) {
     documentStore.notice = { level: 'error', message: describeOpenError(e, path) };
-    if (kindOf(e) === 'not-found') void forgetRecent(path);
+    if (kindOf(e) === 'not-found') config?.onMissing(path);
     return null;
   }
 
@@ -253,27 +287,6 @@ export async function openViaDialog(): Promise<OpenOutcome | null> {
   const picked = await getPlatform().pickFile();
   if (picked === null) return null;
   return openPath(picked);
-}
-
-/**
- * 落とされたファイルを開く（F-OPEN-08）。
- *
- * 複数ドロップされても先頭の 1 つだけを開く。
- * タブ（M3）が入るまで残りを開く先が無いためで、破棄したことは通知する。
- */
-export async function openDropped(paths: string[]): Promise<OpenOutcome | null> {
-  const first = paths[0];
-  if (first === undefined) return null;
-
-  const outcome = await openPath(first);
-  if (outcome && paths.length > 1) {
-    documentStore.notice = {
-      level: 'info',
-      message: ja.open.droppedExtra(paths.length - 1),
-      autoDismissMs: INFO_NOTICE_MS,
-    };
-  }
-  return outcome;
 }
 
 /**
@@ -321,6 +334,9 @@ async function watch(path: string): Promise<void> {
 export function previewScrollTop(): number {
   return document.querySelector<HTMLElement>(PREVIEW_SELECTOR)?.scrollTop ?? 0;
 }
+
+/** 無題の文書（`Ctrl+N`）の識別子。パスが無いものを 1 つの文書として表す。 */
+const UNTITLED_ID = '<untitled>';
 
 function traceMark(options: OpenOptions, id: string, note?: string): void {
   if (options.trace !== true) return;

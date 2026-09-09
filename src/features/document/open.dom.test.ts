@@ -1,13 +1,13 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { recentStore } from '@/features/workspace';
+import { recentStore, resetTabs, workspaceOpenerHooks } from '@/features/workspace';
 import { ja } from '@/i18n/ja';
 import type { MarkdownParser } from '@/markdown/parser';
 import type { ParseResult } from '@/markdown/protocol';
 import { getPlatform, setPlatform, type DocumentPayload, type Platform, type RecentEntry } from '@/platform';
 
-import { configureOpener, openDocument, openDropped, openPath, openViaDialog, reloadCurrent } from './open';
+import { configureOpener, openDocument, openPath, openViaDialog, reloadCurrent } from './open';
 import { documentStore } from './store.svelte';
 
 const original = getPlatform();
@@ -76,7 +76,8 @@ beforeEach(() => {
   documentStore.isDirty = false;
   recentStore.entries = [];
 
-  configureOpener({ parser: fakeParser() });
+  resetTabs();
+  configureOpener({ parser: fakeParser(), ...workspaceOpenerHooks() });
 });
 
 afterEach(() => {
@@ -175,6 +176,7 @@ describe('configureOpener', () => {
         },
         dispose: () => {},
       },
+      ...workspaceOpenerHooks(),
     });
 
     const opening = openDocument(payload('C:/work/a.md'), {
@@ -195,34 +197,6 @@ describe('configureOpener', () => {
     await opening;
 
     expect(document.querySelector('#mx-preview')?.textContent).toBe('x');
-  });
-});
-
-describe('openDropped', () => {
-  it('複数落とされても先頭だけ開き、残りがあることを伝える', async () => {
-    install();
-
-    await openDropped(['C:/work/a.md', 'C:/work/b.md', 'C:/work/c.md']);
-
-    expect(documentStore.meta?.path).toBe('C:/work/a.md');
-    expect(documentStore.notice?.level).toBe('info');
-    expect(documentStore.notice?.message).toContain('2');
-  });
-
-  it('1 つだけなら余計な通知を出さない', async () => {
-    install();
-
-    await openDropped(['C:/work/a.md']);
-
-    expect(documentStore.notice).toBeNull();
-  });
-
-  it('空のドロップは何もしない', async () => {
-    const spies = install();
-
-    await openDropped([]);
-
-    expect(spies.readDocument).not.toHaveBeenCalled();
   });
 });
 

@@ -8,13 +8,17 @@ import { convertFileSrc, invoke } from '@tauri-apps/api/core';
 import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import { getCurrentWebview } from '@tauri-apps/api/webview';
 
+import { MARKDOWN_EXTENSIONS } from '@/lib/path';
+
 import type { Settings } from './settings-schema';
 import type {
   Bootstrap,
   CustomCss,
+  DirEntry,
   DiscardChoice,
   DocumentPayload,
   FileChange,
+  FileList,
   OpenRequest,
   Platform,
   RecentEntry,
@@ -85,6 +89,23 @@ export const tauriPlatform: Platform = {
     // Rust が返すのは検証済みの絶対パスである。
     // `asset:` プロトコルの URL へ変換して初めて WebView から読み込める（CSP の `img-src` が許可しているのはこの形式）。
     return convertFileSrc(await invoke<string>('resolve_asset', { href, baseDir }));
+  },
+
+  async allowImageDir(href, baseDir) {
+    return convertFileSrc(await invoke<string>('allow_image_dir', { href, baseDir }));
+  },
+
+  listDir(path) {
+    return invoke<DirEntry[]>('list_dir', { path });
+  },
+
+  listFiles(root) {
+    // 拡張子はここから渡す。Markdown の判断は `lib/path.ts` の 1 か所にしかない。
+    return invoke<FileList>('list_files', { path: root, extensions: MARKDOWN_EXTENSIONS });
+  },
+
+  setSession(paths, active) {
+    return invoke<void>('store_set_session', { paths, active });
   },
 
   pushRecent(path) {

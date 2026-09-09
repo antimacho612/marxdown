@@ -8,7 +8,8 @@
  */
 import { ja } from '@/i18n/ja';
 import { processInIdle } from '@/lib/idle';
-import { getPlatform } from '@/platform';
+import { dirOf } from '@/lib/path';
+import { getPlatform, type CoreError } from '@/platform';
 
 /** 処理済みの印。2 回目の `enhance` はこれを見て未処理の要素だけを対象にする。 */
 const DONE = 'mxEnhanced';
@@ -139,18 +140,39 @@ async function resolveImage(img: HTMLImageElement, href: string, baseDir: string
     //
     // 中心ユースケースは「LLM が生成した、自分が書いていないファイルを開く」ことである（ADR-0006）。
     // `![](../../../.ssh/id_rsa)` が拒否されたことは、ユーザーに見える形で伝える。
-    img.replaceWith(blockedPlaceholder(href, isOutOfScope(e)));
+    img.replaceWith(blockedPlaceholder(img, href, baseDir, coreError(e)));
   }
 }
 
-function isOutOfScope(e: unknown): boolean {
-  return typeof e === 'object' && e !== null && 'kind' in e && e.kind === 'out-of-scope';
+/** Rust から返ったエラー（`src-tauri/src/error.rs`）。形が違えば `null`。 */
+function coreError(e: unknown): CoreError | null {
+  return typeof e === 'object' && e !== null && 'kind' in e ? (e as CoreError) : null;
 }
 
-function blockedPlaceholder(href: string, outOfScope: boolean): HTMLElement {
+/**
+ * 拒まれた画像のプレースホルダ。
+ *
+ * スコープ外のときは許可ボタンを添える（OQ-17 / 02.architecture/09-security.md §3）。
+ * **出すのは解決後のパスである**（`CoreError.path`）。
+ * ドキュメントに書かれた `../../../.ssh/id_rsa` ではなく、symlink まで解決した実際の行き先を見せないと、
+ * 何を許可しようとしているのかを判断できない。
+ */
+function blockedPlaceholder(
+  img: HTMLImageElement,
+  href: string,
+  baseDir: string,
+  error: CoreError | null,
+): HTMLElement {
+  const outOfScope = error?.kind === 'out-of-scope';
+  const real = error?.path ?? href;
+
   const box = document.createElement('span');
   box.className = 'mx-image-blocked';
   box.dataset['mxReason'] = outOfScope ? 'out-of-scope' : 'missing';
+  // 許可が通った後に、同じディレクトリの他の 1 枚をここから引き直す（`retryBlocked`）。
+  box.dataset['mxHref'] = href;
+  box.dataset['mxBase'] = baseDir;
+  box.dataset['mxAlt'] = img.alt;
 
   const label = document.createElement('span');
   label.className = 'mx-image-blocked__reason';
@@ -158,9 +180,78 @@ function blockedPlaceholder(href: string, outOfScope: boolean): HTMLElement {
 
   const path = document.createElement('code');
   path.className = 'mx-image-blocked__path';
-  // `textContent` で設定するため、href がどのような文字列でもここから HTML として解釈されることはない
-  path.textContent = href;
+  // `textContent` で設定するため、パスがどのような文字列でもここから HTML として解釈されることはない
+  path.textContent = real;
 
   box.append(label, path);
+  if (outOfScope) box.append(allowButton(box, href, baseDir, real, label));
   return box;
+}
+
+/**
+ * 「このフォルダの画像を許可」。
+ *
+ * 許可されるのはその画像があるディレクトリ 1 つだけで、配下へは広がらない。
+ * アプリを終了すれば消える（OQ-17 の決定）。
+ */
+function allowButton(
+  box: HTMLElement,
+  href: string,
+  baseDir: string,
+  real: string,
+  label: HTMLElement,
+): HTMLButtonElement {
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = 'mx-image-blocked__allow';
+  button.textContent = ja.preview.imageAllow;
+  button.title = ja.preview.imageAllowHint(dirOf(real));
+
+  button.addEventListener('click', () => {
+    void (async () => {
+      try {
+        restoreImage(box, await getPlatform().allowImageDir(href, baseDir));
+        // 同じディレクトリに他の画像があれば、押し直さずに表示される。
+        void retryBlocked();
+      } catch {
+        // 消えた / 権限が無い。通知バーには出さない。押したボタンの隣で伝わる。
+        label.textContent = ja.preview.imageAllowFailed;
+      }
+    })();
+  });
+
+  return button;
+}
+
+/** プレースホルダを画像へ戻す。 */
+function restoreImage(box: HTMLElement, src: string): void {
+  const img = document.createElement('img');
+  img.src = src;
+  img.alt = box.dataset['mxAlt'] ?? '';
+  // 解決済みである。次の `enhance` で拾い直さない。
+  img.dataset[DONE] = '';
+  box.replaceWith(img);
+}
+
+/**
+ * 残っているプレースホルダを引き直す。許可が通った直後に 1 回だけ呼ぶ。
+ *
+ * 許可の単位はディレクトリなので、同じ場所を指していた他の画像もここで表示される。
+ * **1 つのドキュメントに 20 枚あってもボタンは 1 回で済む**、というのが単位を
+ * 「画像 1 枚」にしなかった理由である（OQ-17）。他の場所を指すものは拒まれたまま残る。
+ */
+async function retryBlocked(): Promise<void> {
+  const boxes = [...document.querySelectorAll<HTMLElement>('.mx-image-blocked[data-mx-reason="out-of-scope"]')];
+  await processInIdle(boxes, (box) => {
+    const href = box.dataset['mxHref'];
+    const baseDir = box.dataset['mxBase'];
+    if (href === undefined || baseDir === undefined) return;
+
+    void getPlatform()
+      .resolveAsset(href, baseDir)
+      .then((src) => restoreImage(box, src))
+      .catch(() => {
+        // まだ許可されていない場所である。そのまま残す。
+      });
+  });
 }

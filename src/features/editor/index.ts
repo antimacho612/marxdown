@@ -8,6 +8,7 @@
  */
 export {
   closeEditorSearchLazily,
+  gotoLineLazily,
   mountEditorLazily,
   openEditorSearchLazily,
   preloadEditor,

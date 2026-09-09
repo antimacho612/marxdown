@@ -36,6 +36,12 @@
     "gzip": true
   },
   {
+    "name": "palette (コマンドパレット / クイックオープンと器。Ctrl+Shift+P / Ctrl+P / Ctrl+Shift+O まで読まない)",
+    "path": ["dist/assets/palette-*.js"],
+    "limit": "6 KB",
+    "gzip": true
+  },
+  {
     "name": "outline jump (見出しジャンプのパレット。Ctrl+Shift+O を押すまでロードしない)",
     "path": ["dist/assets/outline-*.js"],
     "limit": "6 KB",

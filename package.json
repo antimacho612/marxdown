@@ -19,6 +19,7 @@
     "fix": "eslint . --fix && prettier --write .",
     "test": "vitest run",
     "e2e": "wdio run e2e/wdio.conf.ts",
+    "e2e:memory": "wdio run e2e/wdio.memory.conf.ts",
     "test:watch": "vitest",
     "bench": "vitest bench --run",
     "size": "size-limit",

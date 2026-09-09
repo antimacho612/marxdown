@@ -36,6 +36,22 @@ export interface DocumentMeta {
   readonly: boolean;
 }
 
+/** ディレクトリの中の 1 件（F-NAV-03）。 */
+export interface DirEntry {
+  name: string;
+  /** 正規化済み絶対パス。そのまま `readDocument` へ渡せる。 */
+  path: string;
+  dir: boolean;
+}
+
+/** クイックオープンの候補（F-NAV-05）。 */
+export interface FileList {
+  /** 正規化済み絶対パス。パス順に並んでいる。 */
+  files: string[];
+  /** 上限で打ち切ったか。true なら候補は全体の一部である。 */
+  truncated: boolean;
+}
+
 /** メタ情報と本文の組。`readDocument` と bootstrap が返す。 */
 export interface DocumentPayload extends DocumentMeta {
   /** EOL を LF に正規化した本文 */
@@ -72,6 +88,13 @@ export interface CoreError {
     | 'settings-broken'
     | 'io';
   message: string;
+  /**
+   * 検証済みの解決先。`out-of-scope` のときだけ入る（OQ-17）。
+   *
+   * symlink を解決した後のパスであり、ドキュメントに書かれた文字列ではない。
+   * 何を許可しようとしているのかを見せるには、解決後のほうでなければ意味がない。
+   */
+  path?: string | null;
 }
 
 /** ペイン 1 枚の状態（`src-tauri/src/store.rs` の `PaneState`）。 */
@@ -215,6 +238,22 @@ export interface Bootstrap {
   benchInput: boolean;
   trace: TraceConfig | null;
   pendingPaths: string[];
+  /**
+   * 復元するタブ（OQ-04 / M3 Phase 7）。**タブの並び順**である。
+   *
+   * 入るのは引数なしで起動したときだけである。
+   * `document` には `sessionActive` が指すファイルが入っているので、それ以外を元の位置へ開き直す。
+   */
+  session: string[];
+  /** `session` の中で表示していたタブの位置。 */
+  sessionActive: number;
+  /**
+   * ファイルツリーの基点（F-OPEN-02 / `marxdown <dir>`）。
+   *
+   * ディレクトリを指定して起動したときだけ入る。
+   * 無ければ開いているファイルの親ディレクトリが基点になる（`features/workspace/Explorer.svelte`）。
+   */
+  workspaceRoot: string | null;
   unknownArgs: string[];
   /** Welcome 画面が起動直後に描画するため、IPC 往復ではなくここに載せる。 */
   recent: RecentEntry[];
@@ -317,6 +356,34 @@ export interface Platform {
    * 相対パスの画像を、許可ディレクトリ配下であることを検証したうえで、`<img src>` にそのまま指定できる URL へ変換する（F-VIEW-08 / N-SEC-05）。
    */
   resolveAsset(href: string, baseDir: string): Promise<string>;
+  /**
+   * スコープ外の画像を 1 件だけ許可する（OQ-17 / ADR-0006）。
+   *
+   * 許可されるのは**その画像があるディレクトリ 1 つだけ**で、配下へは広がらない。
+   * アプリを終了すれば消える。利用者がプレースホルダのボタンを押したときにだけ呼ぶこと。
+   */
+  allowImageDir(href: string, baseDir: string): Promise<string>;
+  /**
+   * ディレクトリの中身を 1 階層ぶん返す（F-NAV-03 / ファイルツリー）。
+   *
+   * 隠しファイル・`node_modules` は Rust 側で落ちてくる（`src-tauri/src/dir.rs`）。
+   * 再帰しないのは、開いたディレクトリだけを読む遅延展開のためである（03.ux-spec/06-panes.md §1）。
+   */
+  listDir(path: string): Promise<DirEntry[]>;
+  /**
+   * 基点の配下の Markdown を再帰的に集める（F-NAV-05 / クイックオープン）。
+   *
+   * 対象の拡張子は Platform 層が `lib/path.ts` から渡す。件数と深さには上限があり、
+   * 超えたときは `truncated` が立つ（`src-tauri/src/dir.rs`）。
+   */
+  listFiles(root: string): Promise<FileList>;
+  /**
+   * 開いているタブを覚える（OQ-04）。**引数なしで起動したときだけ復元される。**
+   *
+   * 覚えるのはパスと表示中の位置だけで、本文は持たない。
+   * パスを持たないタブ（`Ctrl+N`）は呼び出し側で除くこと。
+   */
+  setSession(paths: string[], active: number): Promise<void>;
   /** 最近開いたファイルに 1 件追加する。更新後の一覧を返す（F-OPEN-09）。 */
   pushRecent(path: string): Promise<RecentEntry[]>;
   /** 開けなくなったファイルを一覧から外す。更新後の一覧を返す。 */

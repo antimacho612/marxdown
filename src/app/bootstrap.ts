@@ -5,24 +5,29 @@
  * 開く経路自体は `features/document/open.ts` に一本化されており、このファイルは起動固有の処理（bootstrap 読み取り・ウィンドウ表示・購読登録）のみを扱う。
  */
 import {
-  configureNewDocument,
   configureOpener,
   documentStore,
   installFileWatch,
   openDocument,
-  openDropped,
   openPath,
   previewScrollTop,
   saveThenQuit,
 } from '@/features/document';
 import { mountEditorLazily, preloadEditor, setSplitSyncLazily } from '@/features/editor';
 import { configureHistory } from '@/features/history';
-import { decideInitialMode, initMode, setMode } from '@/features/mode';
+import { decideInitialMode, initMode } from '@/features/mode';
 import { initPanes } from '@/features/panes';
 import { applyZoom, installLinkHandler } from '@/features/preview';
 import { applyCustomCss, initSettings, installSettingsWatch, reportSettingsProblem } from '@/features/settings';
 import { initSplit, viewStore } from '@/features/view';
-import { recentStore } from '@/features/workspace';
+import {
+  openPathsInTabs,
+  recentStore,
+  restoreSession,
+  setTreeRoot,
+  watchSession,
+  workspaceOpenerHooks,
+} from '@/features/workspace';
 import { ja } from '@/i18n/ja';
 import { runCommand } from '@/lib/commands';
 import { toMessage } from '@/lib/error';
@@ -66,6 +71,11 @@ export async function startup(renderShell: () => void): Promise<void> {
   applyZoom(bootstrap?.zoom ?? 1, false);
   recentStore.entries = bootstrap?.recent ?? [];
 
+  // `marxdown <dir>` で開いたフォルダ（F-OPEN-02）。
+  // 決まっていればファイルツリーの基点になり、開いているファイルの親ディレクトリでは上書きされない。
+  // ここでは値を入れるだけで、読み込むのはペインを開いたときである（`Explorer.svelte`）。
+  if (bootstrap?.workspaceRoot) void setTreeRoot(bootstrap.workspaceRoot);
+
   // 後から適用すると、本文が一度全幅で描画された後に幅が縮小して見える。
   // ここで設定した値は、この下の `renderShell()` が描く最初のシェルに既に反映されている
   // （シェルの描画は本文の paint より前 / `betweenParseAndPaint`）。
@@ -89,11 +99,9 @@ export async function startup(renderShell: () => void): Promise<void> {
   const editorCss = bootstrap?.editorCss ?? null;
   const editorCssResult = applyCustomCss(editorCss?.css ?? null, 'editor');
 
-  configureOpener({ parser: createParser() });
-
-  // 新規作成のあとに移る先（`features/document/new.ts`）。
-  // 空の本文を Preview で開いても何も見えないので、打てる場所へ移す。
-  configureNewDocument(() => setMode('edit'));
+  // 開けた結果を受け取る側も渡す（`features/workspace/opened.ts`）。
+  // タブと最近開いたファイルはどちらも workspace の持ち物であり、依存を workspace → document の 1 方向に保つために注入で繋ぐ。
+  configureOpener({ parser: createParser(), ...workspaceOpenerHooks() });
 
   // 履歴を辿るときの開き直し（F-NAV-07）。引数の意味はここでしか決まらない。
   //
@@ -167,6 +175,13 @@ export async function startup(renderShell: () => void): Promise<void> {
   //
   // 最大化状態の追従も同じ扱いである。
   // 遅れた場合の最悪の結果は、最大化して起動した直後の数十 ms だけボタンの表示が `□` のままになることで、次に状態が変われば解消する。
+  // 2 枚目以降のタブ（起動時の引数 / 前回のセッション）。
+  //
+  // `ready()` の後に置く。本文が読める時点（T8）を、ファイル 20 枚の読み込みの後ろへ動かさない。
+  // 遅れた場合の最悪の結果は、起動直後の一瞬だけタブが 1 枚に見えることである
+  // （02.architecture/05-startup-sequence.md §1 の判断基準）。
+  void openRemainingTabs(bootstrap);
+
   installOpenRequestHandler();
   installTrayOpen();
   installSaveAndQuit();
@@ -175,6 +190,9 @@ export async function startup(renderShell: () => void): Promise<void> {
   installFileWatch();
   installSettingsWatch();
   installWindowState();
+  // タブの変化を `state.json` へ書き続ける（OQ-04）。
+  // 復元より後に張る。復元そのものを 1 枚ずつ書き戻すことに意味がない。
+  watchSession();
 
   // Snap Layouts の初回報告（OQ-30）。ここより前に置いてはいけない。
   //
@@ -211,6 +229,24 @@ export async function startup(renderShell: () => void): Promise<void> {
       return null;
     });
   }
+}
+
+/**
+ * 1 枚目より後のタブを開く。
+ *
+ * 経路は 2 つあり、同時には起きない（Rust 側で `session` が入るのは引数が無いときだけである）。
+ *
+ * - `pendingPaths`: `marxdown a.md b.md` の 2 枚目以降
+ * - `session`: 前回のタブ（[OQ-04](../../docs/07.open-questions/decided.md) の推奨 C）
+ */
+async function openRemainingTabs(bootstrap: Bootstrap | null): Promise<void> {
+  if (!bootstrap) return;
+
+  if (bootstrap.session.length > 1) {
+    await restoreSession(bootstrap.session, bootstrap.sessionActive);
+    return;
+  }
+  if (bootstrap.pendingPaths.length > 0) await openPathsInTabs(bootstrap.pendingPaths);
 }
 
 /**
@@ -359,11 +395,16 @@ function installTrayResume(): void {
 }
 
 /**
- * 別インスタンスからの起動要求（ウォーム起動）。
+ * 別インスタンスからの起動要求（ウォーム起動 / ADR-0004）。
  *
  * この経路には WebView の初期化もバンドルの評価も Svelte のマウントも含まれず、必要なのはパースの実行だけである（02.architecture/05-startup-sequence.md §2）。
  *
- * タブが実装される（M3）までは、「タブを増やす」のではなく現在の本文を置き換える。
+ * **転送されたファイルはタブとして増やす**（M3 Phase 2）。
+ * 既に開いているファイルなら、そのタブへ切り替えるだけで開き直さない（`openPathInNewTab`）。
+ *
+ * 計測はウォーム起動の実測値として Rust へ返す。
+ * 複数渡された場合も 1 回だけ返す。測っているのは「転送を受けてから読めるようになるまで」であり、
+ * 転送 1 回に対して 1 つの値である。
  */
 function installOpenRequestHandler(): void {
   const platform = getPlatform();
@@ -373,19 +414,14 @@ function installOpenRequestHandler(): void {
     if (path === undefined) return;
 
     const warmStart = performance.now();
-    void openPath(path, { startedAt: warmStart }).then(async (outcome) => {
-      if (!outcome) return outcome;
+    void openPathsInTabs(req.paths).then(async (opened) => {
+      if (!opened) return opened;
 
-      // ウォーム起動の実測値。
       // Rust 側は argv 転送を受けた時点から、こちらはイベント受信から測っている。
       // 両方を記録して差分も確認できるようにする。
       const fromEvent = performance.now() - warmStart;
-      await platform.warmDone(
-        req.requestId,
-        path,
-        `fromEvent=${fromEvent.toFixed(1)}ms parse=${outcome.parseMs.toFixed(1)}ms chunks=${outcome.chunks}`,
-      );
-      return outcome;
+      await platform.warmDone(req.requestId, path, `fromEvent=${fromEvent.toFixed(1)}ms paths=${req.paths.length}`);
+      return opened;
     });
   });
 }
@@ -408,7 +444,8 @@ function installDragAndDrop(): void {
     delete root.dataset['mxDragover'];
     if (event.type !== 'drop') return;
 
-    void openDropped(event.paths);
+    // 落とされた数だけタブを開く（F-OPEN-08 / M3 Phase 2）。
+    void openPathsInTabs(event.paths);
   });
 }
 

@@ -45,6 +45,11 @@ const REMOVED: { keybinding: number; why: string }[] = [
   { keybinding: KeyMod.CtrlCmd | KeyCode.KeyF, why: 'アプリの Ctrl+F が面ごとに振り分ける' },
   { keybinding: KeyMod.CtrlCmd | KeyCode.KeyH, why: 'Ctrl+H も同じ経路を通す' },
 
+  // 指定行へ移動はアプリ側が担当する（`Ctrl+G` / M3 Phase 4）。
+  // Monaco も同じキーに `editor.action.gotoLine` を持っており、剥がさないと `globalThis` のリスナと二重に処理される。
+  // アクションそのものはアプリ側から実行する（`editor.ts` の `gotoLine`）。
+  { keybinding: KeyMod.CtrlCmd | KeyCode.KeyG, why: 'アプリの Ctrl+G が指定行へ移動を開く' },
+
   // Markdown の書式に使う（§3）。割り当ては下の `MARKDOWN` が持つ。
   { keybinding: KeyMod.CtrlCmd | KeyMod.Shift | KeyCode.KeyL, why: 'Ctrl+Shift+L は箇条書きの切替' },
   { keybinding: KeyMod.CtrlCmd | KeyCode.Enter, why: 'Ctrl+Enter はタスクリストのチェック切替' },

@@ -21,6 +21,18 @@ export type StoredMeta = Omit<DocumentMeta, 'path'> & { path: string | null };
 /** 本文つき。無題の文書（`Ctrl+N`）も同じ形で開く経路に渡せる。 */
 export type StoredPayload = Omit<DocumentPayload, 'path'> & { path: string | null };
 
+/**
+ * 本文を落としてメタ情報だけにする。
+ *
+ * `StoredPayload` は `StoredMeta` を構造的に満たすため、そのまま代入しても型は通る。
+ * ただし実行時には `content` が残り、ストアが本文を保持し続けることになる（ADR-0005）。
+ * `huge.md` では 2MB がここに繋がったままになり、タブが入ると枚数ぶん積算する。
+ */
+export function toMeta(payload: StoredPayload): StoredMeta {
+  const { path, eol, bom, encoding, mtimeMs, size, readonly } = payload;
+  return { path, eol, bom, encoding, mtimeMs, size, readonly };
+}
+
 /** 通知バーの選択肢（03.ux-spec/07-status-and-notifications.md §2 の「再読み込み / 無視」など）。 */
 export interface NoticeAction {
   label: string;

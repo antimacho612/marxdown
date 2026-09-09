@@ -7,9 +7,9 @@
 <script lang="ts">
   import { documentStore } from '@/features/document';
   import { Outline } from '@/features/outline';
-  import { RightPane } from '@/features/panes';
+  import { LeftPane, RightPane } from '@/features/panes';
   import { SplitDivider, viewStore } from '@/features/view';
-  import { Welcome } from '@/features/workspace';
+  import { Explorer, tabsStore, TabStrip, Welcome } from '@/features/workspace';
 
   import NoticeBar from './NoticeBar.svelte';
   import StatusBar from './StatusBar.svelte';
@@ -18,7 +18,16 @@
   const meta = $derived(documentStore.meta);
 </script>
 
-<TitleBar />
+<!--
+  タブストリップ（M3 Phase 2）。**2 枚以上のときだけ渡す。**
+  1 枚のときは `center` を渡さないので、タイトルバーは M2 と同じファイル名表示のままになる
+  （03.ux-spec/01-screen-layout.md §1「タブも 1 枚のうちは出さない」）。
+-->
+{#snippet tabs()}
+  <TabStrip />
+{/snippet}
+
+<TitleBar center={tabsStore.tabs.length > 1 ? tabs : undefined} />
 
 {#if documentStore.notice}
   <NoticeBar notice={documentStore.notice} />
@@ -36,6 +45,16 @@
 -->
 {#if viewStore.mode === 'split'}
   <SplitDivider />
+{/if}
+
+<!--
+  レフトペイン（03.ux-spec/06-panes.md §1 / F-NAV-04）。ライトペインと同じ扱いで、開いていなければ要素ごと無い。
+  中身はファイルツリー（F-NAV-03）。本体は遅延チャンクにあり、ペインを開くまで読み込まない（`Explorer.svelte`）。
+-->
+{#if viewStore.panes.left.open}
+  <LeftPane>
+    <Explorer />
+  </LeftPane>
 {/if}
 
 <!--

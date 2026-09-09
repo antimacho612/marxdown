@@ -22,14 +22,14 @@ export function configureHistory(next: HistoryNavigator): void {
   navigator = next;
 }
 
-/** 1 つ戻る（`Alt+←`）。 */
-export function goBack(): Promise<void> {
-  return step(-1);
+/** 1 つ戻る（`Alt+←`）。`key` は辿る対象のタブ（`features/workspace`）。 */
+export function goBack(key: number | null): Promise<void> {
+  return step(key, -1);
 }
 
 /** 1 つ進む（`Alt+→`）。 */
-export function goForward(): Promise<void> {
-  return step(1);
+export function goForward(key: number | null): Promise<void> {
+  return step(key, 1);
 }
 
 /**
@@ -39,15 +39,15 @@ export function goForward(): Promise<void> {
  * 移動先が先頭から表示されると、長い文書では読んでいた位置を探し直すことになる。
  * 仕組みは `F5`（`reloadCurrent`）と同じ `restoreScroll` であり、段階的描画で高さが足りない場合の再設定も `open.ts` が担当する。
  */
-async function step(delta: -1 | 1): Promise<void> {
+async function step(key: number | null, delta: -1 | 1): Promise<void> {
   if (!navigator) throw new Error('configureHistory が呼ばれていない');
 
-  const target = stepHistory(delta, navigator.scrollTop());
+  const target = stepHistory(key, delta, navigator.scrollTop());
   if (!target) return;
 
   const opened = await navigator.reopen(target.path, target.scrollTop);
 
   // 開けなかった場合（削除された、または移動された）。操作回数と移動段数を一致させ直す。
   // 失敗の通知は `openPath` が既に出している。
-  if (!opened) revertHistoryStep(delta);
+  if (!opened) revertHistoryStep(key, delta);
 }
