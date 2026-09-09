@@ -135,6 +135,9 @@ export const SETTINGS_SCHEMA = defineSettingsSchema({
   },
   'editor.wordWrapColumn': { kind: 'number', default: 80, min: 20, max: 500 },
 
+  /** アウトラインに表示する見出しの最大階層（`h1`〜`h6`）。6 は見出しの最大階層で、実質「制限なし」を意味する。 */
+  'outline.maxDepth': { kind: 'number', default: 6, min: 1, max: 6 },
+
   /** 空文字は「トークン層の既定スタックを使う」。 */
   'preview.codeFontFamily': { kind: 'string', default: '' },
   'preview.fontFamily': { kind: 'string', default: '' },

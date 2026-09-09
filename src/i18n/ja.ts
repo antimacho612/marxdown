@@ -174,6 +174,8 @@ export const ja = {
     title: 'アウトライン',
     empty: '見出しがありません',
     emptyHint: '# で始まる行が見出しになります',
+    /** #61。指定した深さより浅い見出しが 1 つも無いとき。 */
+    filtered: 'この深さまでの見出しがありません',
     collapse: 'アウトラインを折りたたむ',
     expand: 'アウトラインを展開する',
     jump: '見出しへジャンプ',
@@ -299,6 +301,7 @@ export const ja = {
       appearance: '外観',
       preview: 'プレビュー',
       editor: 'エディター',
+      outline: 'アウトライン',
       window: 'ウィンドウ',
     },
     /** エディターの中の節。項目が 22 個あるので、見出し無しでは探せない。 */
@@ -433,6 +436,14 @@ export const ja = {
       scrollBeyondLastLine: {
         label: '最終行より下へのスクロール',
         description: '最後の行を超えてスクロールするかどうかを制御します。',
+      },
+    },
+
+    /** アウトライン（#61）。 */
+    outline: {
+      maxDepth: {
+        label: '表示する見出しの階層',
+        description: 'アウトラインに表示する見出しの深さを制御します（h1〜h6）。それより深い見出しは一覧から外れます。',
       },
     },
 

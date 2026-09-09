@@ -9,6 +9,7 @@
   import { untrack } from 'svelte';
 
   import { documentStore, refreshOutlineOnOpen } from '@/features/document';
+  import { settingsStore } from '@/features/settings';
   import { viewStore } from '@/features/view';
   import { ja } from '@/i18n/ja';
   import { registerOutlineRefresher, setOutlineOnScreen } from '@/lib/refresh';
@@ -17,6 +18,13 @@
   import { followHeadings, headingAtLine } from './follow';
   import { jumpToHeading } from './jump';
   import { registerOutlineFocus } from './show';
+
+  /** アウトラインの 1 項目。元の `items` 上の位置と、インデント用の相対深さを添える。 */
+  interface Row {
+    item: OutlineItem;
+    index: number;
+    depth: number;
+  }
 
   const PREVIEW_SELECTOR = '#mx-preview';
 
@@ -30,6 +38,21 @@
 
   const items = $derived(documentStore.outline);
   const depths = $derived(toDepths(items));
+
+  /**
+   * 表示する見出しの最大階層（設定 #61）。
+   *
+   * `depths` ではなく `item.level`（`h1`〜`h6`）で比較する。
+   * `depths` は文書ごとに最浅見出しを 0 とする相対値であり、同じ設定値でも文書によって切れる位置が変わってしまう。
+   */
+  const maxDepth = $derived(settingsStore.values['outline.maxDepth']);
+
+  /** 深さで絞った後の行。インデントは絞り込み前の `depths` をそのまま使う（絞るたびに詰め直さない）。 */
+  const rows = $derived(
+    items
+      .map((item, index): Row => ({ item, index, depth: depths[index] ?? 0 }))
+      .filter((row) => row.item.level <= maxDepth),
+  );
 
   /**
    * 追う相手がプレビューではなくエディターか（#59）。
@@ -52,7 +75,7 @@
    */
   let manualExpanded = $state<boolean | null>(null);
 
-  const expanded = $derived(manualExpanded ?? items.length > AUTO_COLLAPSE_MAX);
+  const expanded = $derived(manualExpanded ?? rows.length > AUTO_COLLAPSE_MAX);
 
   let list: HTMLElement | null = $state(null);
   let section: HTMLElement | null = $state(null);
@@ -137,10 +160,29 @@
     return () => registerOutlineFocus(null);
   });
 
+  /**
+   * 現在位置に対応する行。深さで絞られて非表示になっている場合は、直近の可視な祖先を代わりに示す
+   * （VS Code のアウトラインで折りたたんだ節の親がハイライトされるのと同じ扱い）。
+   *
+   * `rows` は文書の並び順を保っているので、`activeIndex` 以前で最後に見つかった行が祖先にあたる。
+   */
+  const highlightIndex = $derived(nearestVisibleIndex(rows, activeIndex));
+
+  function nearestVisibleIndex(list: Row[], active: number): number {
+    if (active < 0) return -1;
+    let found = -1;
+    for (const row of list) {
+      if (row.index > active) break;
+      found = row.index;
+    }
+    return found;
+  }
+
   /** 現在位置が動いたら、ペインの中でも見えるところへ寄せる。 */
   $effect(() => {
-    if (activeIndex < 0 || !expanded) return;
-    list?.querySelectorAll('button')[activeIndex]?.scrollIntoView({ block: 'nearest' });
+    if (highlightIndex < 0 || !expanded) return;
+    const position = rows.findIndex((row) => row.index === highlightIndex);
+    list?.querySelectorAll('button')[position]?.scrollIntoView({ block: 'nearest' });
   });
 
   /**
@@ -201,7 +243,7 @@
       >
         <span class="mx-outline__twisty" aria-hidden="true">{expanded ? '▾' : '▸'}</span>
         <span class="mx-outline__title">{ja.outline.title}</span>
-        <span class="mx-outline__count">{items.length}</span>
+        <span class="mx-outline__count">{rows.length}</span>
       </button>
     {/if}
   </div>
@@ -215,24 +257,27 @@
       {ja.outline.empty}
       <span class="mx-outline__hint">{ja.outline.emptyHint}</span>
     </p>
+  {:else if expanded && rows.length === 0}
+    <!-- 見出しはあるが、設定した深さより浅いものが 1 つも無い（例: 本文が h2 以下から始まる文書に「h1 まで」を指定した）。 -->
+    <p class="mx-outline__empty">{ja.outline.filtered}</p>
   {:else if expanded}
     <!--
       `tabindex="-1"`: ツリー自身は Tab の順路に入らない。着地するのは
       現在位置の項目（`registerOutlineFocus`）で、そこから上下キーで動く。
     -->
     <div class="mx-outline__list" bind:this={list} role="tree" tabindex="-1" onkeydown={onKeyDown}>
-      {#each items as item, index (`${item.line}:${item.slug}`)}
+      {#each rows as row (`${row.item.line}:${row.item.slug}`)}
         <button
           type="button"
           role="treeitem"
-          aria-level={(depths[index] ?? 0) + 1}
-          aria-selected={index === activeIndex}
-          aria-current={index === activeIndex ? 'true' : undefined}
-          style:padding-inline-start="calc(var(--mx-space-2) + {(depths[index] ?? 0) * 12}px)"
-          title={item.text}
-          onclick={() => jumpToHeading(item)}
+          aria-level={row.depth + 1}
+          aria-selected={row.index === highlightIndex}
+          aria-current={row.index === highlightIndex ? 'true' : undefined}
+          style:padding-inline-start="calc(var(--mx-space-2) + {row.depth * 12}px)"
+          title={row.item.text}
+          onclick={() => jumpToHeading(row.item)}
         >
-          {item.text}
+          {row.item.text}
         </button>
       {/each}
     </div>

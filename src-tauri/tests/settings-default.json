@@ -23,6 +23,7 @@
   "editor.tabSize": 2.0,
   "editor.wordWrap": "on",
   "editor.wordWrapColumn": 80.0,
+  "outline.maxDepth": 6.0,
   "preview.codeFontFamily": "",
   "preview.fontFamily": "",
   "preview.fontSize": 16.0,

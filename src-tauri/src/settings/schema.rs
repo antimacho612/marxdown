@@ -45,6 +45,8 @@ pub const KEY_EDITOR_TAB_SIZE: &str = "editor.tabSize";
 pub const KEY_EDITOR_WORD_WRAP: &str = "editor.wordWrap";
 pub const KEY_EDITOR_WORD_WRAP_COLUMN: &str = "editor.wordWrapColumn";
 
+pub const KEY_OUTLINE_MAX_DEPTH: &str = "outline.maxDepth";
+
 pub const KEY_PREVIEW_CODE_FONT_FAMILY: &str = "preview.codeFontFamily";
 pub const KEY_PREVIEW_FONT_FAMILY: &str = "preview.fontFamily";
 pub const KEY_PREVIEW_FONT_SIZE: &str = "preview.fontSize";
@@ -70,6 +72,9 @@ pub const DEFAULT_EDITOR_PADDING_TOP: f64 = 12.0;
 pub const DEFAULT_EDITOR_TAB_SIZE: f64 = 2.0;
 pub const DEFAULT_EDITOR_WORD_WRAP_COLUMN: f64 = 80.0;
 
+/// アウトラインの既定。6（`h6`）は見出しの最大階層であり、実質「制限なし」を意味する。
+pub const DEFAULT_OUTLINE_MAX_DEPTH: f64 = 6.0;
+
 /// 数値の許容範囲。
 /// 0 や負数がそのまま CSS / Monaco に渡るとレイアウトが壊れるため、読んだ時点で範囲内に丸める。
 /// `src/platform/settings-schema.ts` の `min` / `max` と一致させる。
@@ -86,6 +91,8 @@ const WORD_WRAP_COLUMN_RANGE: (f64, f64) = (20.0, 500.0);
 const CURSOR_SURROUNDING_LINES_RANGE: (f64, f64) = (0.0, 30.0);
 const PADDING_TOP_RANGE: (f64, f64) = (0.0, 100.0);
 const RULER_RANGE: (f64, f64) = (1.0, 500.0);
+/// 見出しの階層（`h1`〜`h6`）に対応する範囲。
+const OUTLINE_MAX_DEPTH_RANGE: (f64, f64) = (1.0, 6.0);
 
 /// 縦罫線の本数の上限。
 /// 上限を置かないと、手で書いた `[1,2,3,...]` がそのまま描画コストになる。
@@ -269,6 +276,10 @@ pub struct Settings {
     #[serde(rename = "editor.wordWrapColumn")]
     pub editor_word_wrap_column: f64,
 
+    /// アウトラインに表示する見出しの最大階層（`h1`〜`h6`）。それより深い見出しは一覧から外れる。
+    #[serde(rename = "outline.maxDepth")]
+    pub outline_max_depth: f64,
+
     /// 空文字は「トークン層の既定スタックを使う」。
     #[serde(rename = "preview.codeFontFamily")]
     pub preview_code_font_family: String,
@@ -326,6 +337,8 @@ impl Default for Settings {
             editor_tab_size: DEFAULT_EDITOR_TAB_SIZE,
             editor_word_wrap: WordWrap::default(),
             editor_word_wrap_column: DEFAULT_EDITOR_WORD_WRAP_COLUMN,
+
+            outline_max_depth: DEFAULT_OUTLINE_MAX_DEPTH,
 
             // 具体的なフォント名を既定に書くと、そのフォントが存在しない環境で `tokens.css` の混植スタックがすべて無効になる（F-CONF-04）。
             preview_code_font_family: String::new(),
@@ -410,6 +423,9 @@ impl Settings {
                 WORD_WRAP_COLUMN_RANGE,
             )
             .unwrap_or(d.editor_word_wrap_column),
+
+            outline_max_depth: take_int(&mut map, KEY_OUTLINE_MAX_DEPTH, OUTLINE_MAX_DEPTH_RANGE)
+                .unwrap_or(d.outline_max_depth),
 
             preview_code_font_family: take(&mut map, KEY_PREVIEW_CODE_FONT_FAMILY)
                 .unwrap_or(d.preview_code_font_family),
