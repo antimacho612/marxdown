@@ -13,7 +13,7 @@ import { toMessage } from '@/lib/error';
 import { dirOf } from '@/lib/path';
 import { isOutlineOnScreen, refreshOutline, refreshSearch } from '@/lib/refresh';
 
-import { getParser } from './open';
+import { getParseOptions, getParser } from './open';
 import { documentStore } from './store.svelte';
 import { getDocumentText } from './text';
 
@@ -160,7 +160,7 @@ export async function renderNow(): Promise<void> {
   const scheduledFor = scheduledAt;
   const startedAt = observer ? performance.now() : 0;
   try {
-    const parsed = await parser.parse(getDocumentText());
+    const parsed = await parser.parse(getDocumentText(), getParseOptions());
     const parsedAt = observer ? performance.now() : 0;
 
     // 表示していない面の DOM は作り直さない（N-PERF-05）。

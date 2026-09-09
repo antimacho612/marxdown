@@ -86,7 +86,7 @@ beforeEach(() => {
   recentStore.entries = [];
 
   resetTabs();
-  configureOpener({ parser: fakeParser(), ...workspaceOpenerHooks() });
+  configureOpener({ parser: fakeParser(), softBreak: () => false, ...workspaceOpenerHooks() });
 });
 
 /** F-EDIT-16 / 03.ux-spec/07-status-and-notifications.md §2 の 1 行目。 */

@@ -27,15 +27,21 @@ export interface RenderResult {
 }
 
 let cached: MarkdownIt | null = null;
+let cachedBreaks: boolean | null = null;
 
-/** markdown-it を組み立てる。`use` の順序は仕様である（モジュール冒頭を参照）。 */
-export function createMarkdownIt(): MarkdownIt {
+/**
+ * markdown-it を組み立てる。`use` の順序は仕様である（モジュール冒頭を参照）。
+ *
+ * `breaks` はユーザー設定 `preview.softBreak`（#45）。既定は CommonMark 準拠の false で、
+ * 単独の改行を `<br>` にしない。日本語文書では改行がそのまま反映されるほうを好む場合があるため選べるようにしてある。
+ */
+export function createMarkdownIt(breaks = false): MarkdownIt {
   const md = new MarkdownItCallable({
     // 02.architecture/09-security.md §1 Layer 2: html は通すが、出力は必ず Layer 3 (DOMPurify) を通す。
     // ここで false にすると、生 HTML を書いた正当なドキュメントが壊れる。
     html: true,
     linkify: true, // GFM の自動リンク
-    breaks: false, // CommonMark 準拠。改行を <br> にしない
+    breaks,
     typographer: false, // 勝手な記号変換はしない（Markdown Is the Product）
   });
 
@@ -64,9 +70,16 @@ export function createMarkdownIt(): MarkdownIt {
   return md;
 }
 
-/** 構築済みのインスタンスを使い回す。構築コストは 1 回だけになる。 */
-export function getMarkdownIt(): MarkdownIt {
-  cached ??= createMarkdownIt();
+/**
+ * 構築済みのインスタンスを使い回す。構築コストは 1 回だけになる。
+ *
+ * `breaks` が前回と違えば作り直す。設定変更は頻繁ではないため、キャッシュより設定値を優先する。
+ */
+export function getMarkdownIt(breaks = false): MarkdownIt {
+  if (cached === null || cachedBreaks !== breaks) {
+    cached = createMarkdownIt(breaks);
+    cachedBreaks = breaks;
+  }
   return cached;
 }
 
@@ -89,8 +102,8 @@ export function slugifyHeading(text: string): string {
  *
  * Front Matter を切り離したうえで、`data-line` が元テキストの行番号を指すよう env でオフセットを渡す。
  */
-export function render(text: string): RenderResult {
-  const md = getMarkdownIt();
+export function render(text: string, breaks = false): RenderResult {
+  const md = getMarkdownIt(breaks);
   const { frontMatter, body, bodyStartLine } = splitFrontMatter(text);
 
   const env: Record<string, unknown> = {};
@@ -126,12 +139,13 @@ export function renderChunks(
   text: string,
   firstChunkBlocks: number,
   chunkBlocks: number,
+  breaks = false,
 ): {
   chunks: string[];
   outline: OutlineItem[];
   frontMatter: string | null;
 } {
-  const md = getMarkdownIt();
+  const md = getMarkdownIt(breaks);
   const { frontMatter, body, bodyStartLine } = splitFrontMatter(text);
 
   const env: Record<string, unknown> = {};

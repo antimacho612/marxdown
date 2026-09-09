@@ -14,6 +14,8 @@ import { DEFAULT_CHUNK_BLOCKS, DEFAULT_FIRST_CHUNK_BLOCKS, type ParseResult } fr
 export interface ParseOptions {
   firstChunkBlocks?: number;
   chunkBlocks?: number;
+  /** 単独の改行を `<br>` にするか（`preview.softBreak` / #45）。省略時は false。 */
+  breaks?: boolean;
 }
 
 /** パースの窓口。実体は `createParser` が返す。 */
@@ -42,6 +44,7 @@ export function createParser(): MarkdownParser {
         text,
         options.firstChunkBlocks ?? DEFAULT_FIRST_CHUNK_BLOCKS,
         options.chunkBlocks ?? DEFAULT_CHUNK_BLOCKS,
+        options.breaks ?? false,
       );
       const parseMs = performance.now() - started;
 

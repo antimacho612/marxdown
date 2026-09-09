@@ -146,6 +146,8 @@ export const SETTINGS_SCHEMA = defineSettingsSchema({
   'preview.lineHeight': { kind: 'number', default: 1.75, min: 1, max: 3 },
   /** 本文幅。単位は `ch`（02.architecture/10-theming.md §2）。 */
   'preview.maxWidth': { kind: 'number', default: 100, min: 20, max: 200 },
+  /** 段落内の単独の改行を `<br>` として描画するか（`markdown-it` の `breaks` / #45）。既定は CommonMark 準拠で false。 */
+  'preview.softBreak': { kind: 'boolean', default: false },
   /** 本文の配色。 */
   'preview.theme': { kind: 'enum', values: PALETTES, default: 'default' },
 

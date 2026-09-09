@@ -50,6 +50,7 @@ pub const KEY_PREVIEW_FONT_FAMILY: &str = "preview.fontFamily";
 pub const KEY_PREVIEW_FONT_SIZE: &str = "preview.fontSize";
 pub const KEY_PREVIEW_LINE_HEIGHT: &str = "preview.lineHeight";
 pub const KEY_PREVIEW_MAX_WIDTH: &str = "preview.maxWidth";
+pub const KEY_PREVIEW_SOFT_BREAK: &str = "preview.softBreak";
 pub const KEY_PREVIEW_THEME: &str = "preview.theme";
 
 pub const KEY_WINDOW_CLOSE_BEHAVIOR: &str = "window.closeBehavior";
@@ -282,6 +283,9 @@ pub struct Settings {
     /// px ではないのは、フォントサイズを変えても 1 行あたりの文字数が変わらないようにするためである。
     #[serde(rename = "preview.maxWidth")]
     pub preview_max_width: f64,
+    /// 段落内の単独の改行を `<br>` として描画するか（`markdown-it` の `breaks` / #45）。
+    #[serde(rename = "preview.softBreak")]
+    pub preview_soft_break: bool,
     /// 本文の配色。
     #[serde(rename = "preview.theme")]
     pub preview_theme: Palette,
@@ -333,6 +337,8 @@ impl Default for Settings {
             preview_font_size: DEFAULT_FONT_SIZE,
             preview_line_height: DEFAULT_LINE_HEIGHT,
             preview_max_width: DEFAULT_MAX_WIDTH,
+            // CommonMark 準拠。改行を <br> にしない（#45）。
+            preview_soft_break: false,
             preview_theme: Palette::default(),
 
             window_close_behavior: CloseBehavior::default(),
@@ -421,6 +427,8 @@ impl Settings {
                 .unwrap_or(d.preview_line_height),
             preview_max_width: take_number(&mut map, KEY_PREVIEW_MAX_WIDTH, MAX_WIDTH_RANGE)
                 .unwrap_or(d.preview_max_width),
+            preview_soft_break: take(&mut map, KEY_PREVIEW_SOFT_BREAK)
+                .unwrap_or(d.preview_soft_break),
             preview_theme: take(&mut map, KEY_PREVIEW_THEME).unwrap_or(d.preview_theme),
 
             window_close_behavior: take(&mut map, KEY_WINDOW_CLOSE_BEHAVIOR)

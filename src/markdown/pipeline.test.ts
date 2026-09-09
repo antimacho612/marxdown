@@ -25,9 +25,13 @@ describe('CommonMark / GFM', () => {
     expect(render('see https://example.com/ ok').html).toContain('<a href="https://example.com/"');
   });
 
-  it('breaks: false なので単独の改行を <br> にしない', () => {
-    // CommonMark 準拠。ここを true にすると LLM 生成の折り返しが全部改行になる。
+  it('既定では単独の改行を <br> にしない', () => {
+    // CommonMark 準拠。`preview.softBreak` を true にすると LLM 生成の折り返しが全部改行になる（#45）。
     expect(render('a\nb').html).not.toContain('<br>');
+  });
+
+  it('preview.softBreak が true なら単独の改行を <br> にする (#45)', () => {
+    expect(render('a\nb', true).html).toContain('<br>');
   });
 
   it('typographer: false なので記号を勝手に変換しない', () => {

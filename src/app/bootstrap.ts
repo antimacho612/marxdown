@@ -18,7 +18,13 @@ import { configureHistory } from '@/features/history';
 import { decideInitialMode, initMode } from '@/features/mode';
 import { initPanes } from '@/features/panes';
 import { applyZoom, installLinkHandler } from '@/features/preview';
-import { applyCustomCss, initSettings, installSettingsWatch, reportSettingsProblem } from '@/features/settings';
+import {
+  applyCustomCss,
+  initSettings,
+  installSettingsWatch,
+  reportSettingsProblem,
+  settingsStore,
+} from '@/features/settings';
 import { initSplit, viewStore } from '@/features/view';
 import {
   openPathsInTabs,
@@ -37,6 +43,7 @@ import { createParser } from '@/markdown/parser';
 import { getPlatform, type Bootstrap, type DocumentPayload } from '@/platform';
 
 import { installCommands } from './commands';
+import { installSoftBreakRerender } from './watch-render-settings.svelte';
 import { installWindowState, reportSnapLayoutsTarget } from './window';
 
 const PREVIEW_SELECTOR = '#mx-preview';
@@ -101,7 +108,11 @@ export async function startup(renderShell: () => void): Promise<void> {
 
   // 開けた結果を受け取る側も渡す（`features/workspace/opened.ts`）。
   // タブと最近開いたファイルはどちらも workspace の持ち物であり、依存を workspace → document の 1 方向に保つために注入で繋ぐ。
-  configureOpener({ parser: createParser(), ...workspaceOpenerHooks() });
+  configureOpener({
+    parser: createParser(),
+    softBreak: () => settingsStore.values['preview.softBreak'],
+    ...workspaceOpenerHooks(),
+  });
 
   // 履歴を辿るときの開き直し（F-NAV-07）。引数の意味はここでしか決まらない。
   //
@@ -190,6 +201,8 @@ export async function startup(renderShell: () => void): Promise<void> {
   installFileWatch();
   installSettingsWatch();
   installWindowState();
+  // `preview.softBreak` の変更に追従して本文を描き直す（#45）。CSS だけでは反映できない唯一のプレビュー設定である。
+  installSoftBreakRerender();
   // タブの変化を `state.json` へ書き続ける（OQ-04）。
   // 復元より後に張る。復元そのものを 1 枚ずつ書き戻すことに意味がない。
   watchSession();
