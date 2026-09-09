@@ -7,69 +7,46 @@
     ワードマークの色が片方で読めなくなる。`<picture>` で 2 枚出し分けている。
     SVG 内部の prefers-color-scheme は <img> 経由だと効かない環境がある。
 
-    マークは透過版。台座版（`source-plate.svg`）はこの表示サイズ（高さ 48px）では中身が潰れる。
-    ハイライト（`spec`）だけはマスターから落としてある。48px では 1px 未満にしかならない。
+    マークは透過版。台座版（`source-plate.svg`）はこの表示サイズ（高さ 46px）では中身が潰れる。
 
     ワードマークは <text> のまま置いてある。アウトライン化していないので、
     環境によって字形と幅が変わる。厳密な再現が要る用途では使わないこと。
   -->
   <defs>
-    <clipPath id="cw"><path d="M185 -241 L 87 553 L -500 553 L -500 -241 Z" /></clipPath>
-    <clipPath id="ce"><path d="M185 -241 L 87 553 L 700 553 L 700 -241 Z" /></clipPath>
-    <linearGradient id="b" gradientUnits="userSpaceOnUse" x1="92" y1="40" x2="46" y2="215">
-      <stop offset="0" stop-color="#7f97ff" />
-      <stop offset="0.42" stop-color="#4a64e8" />
-      <stop offset="1" stop-color="#2938ae" />
+    <clipPath id="cw"><rect x="-64" y="-64" width="192" height="384" /></clipPath>
+    <clipPath id="ce"><rect x="128" y="-64" width="192" height="384" /></clipPath>
+    <linearGradient id="b" gradientUnits="userSpaceOnUse" x1="48" y1="54" x2="112" y2="206">
+      <stop offset="0" stop-color="#8e9dff" />
+      <stop offset="0.45" stop-color="#5566ee" />
+      <stop offset="1" stop-color="#2f35b4" />
     </linearGradient>
-    <linearGradient id="r" gradientUnits="userSpaceOnUse" x1="182" y1="78" x2="216" y2="212">
-      <stop offset="0" stop-color="#ff8189" />
-      <stop offset="0.42" stop-color="#ee4753" />
-      <stop offset="1" stop-color="#c31f2f" />
+    <linearGradient id="r" gradientUnits="userSpaceOnUse" x1="146" y1="62" x2="212" y2="208">
+      <stop offset="0" stop-color="#ff8fa8" />
+      <stop offset="0.45" stop-color="#f2506a" />
+      <stop offset="1" stop-color="#b81c46" />
     </linearGradient>
-    <radialGradient id="y" cx="0.32" cy="0.24" r="0.9">
-      <stop offset="0" stop-color="#fff3cd" />
-      <stop offset="0.4" stop-color="#ffcf5e" />
-      <stop offset="1" stop-color="#dd9410" />
-    </radialGradient>
-    <radialGradient id="ysh" cx="0.33" cy="0.27" r="0.92">
-      <stop offset="0.55" stop-color="#6b3200" stop-opacity="0" />
-      <stop offset="1" stop-color="#6b3200" stop-opacity="0.42" />
-    </radialGradient>
+    <linearGradient id="y" x1="0.14" y1="0.02" x2="0.86" y2="0.98">
+      <stop offset="0" stop-color="#ffe9a3" />
+      <stop offset="0.5" stop-color="#ffc44a" />
+      <stop offset="1" stop-color="#e8940e" />
+    </linearGradient>
   </defs>
 
-  <!-- 0.2254 = 48 / 213（マークの実描画高）。左端に高さ 48 で置く -->
-  <g transform="translate(0 12) scale(0.2254) translate(-29 -10)">
-    <g clip-path="url(#cw)">
-      <path
-        d="M52 200 C 70 176, 92 132, 86 58 L 163.3 209.5"
-        fill="none"
-        stroke="url(#b)"
-        stroke-width="46"
-        stroke-linecap="round"
-        stroke-linejoin="round"
-      />
+  <!-- 0.276 = 46 / 166.66（マークの実描画高）。左端に高さ 46 で置く -->
+  <g transform="translate(0 13) scale(0.276) translate(-31.53 -41.67)">
+    <g fill="none" stroke-width="42.8" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M58.75 184.55 L58.75 68.89 L158 214.33" stroke="url(#b)" clip-path="url(#cw)" />
+      <path d="M197.25 184.55 L197.25 68.89 L98 214.33" stroke="url(#r)" clip-path="url(#ce)" />
     </g>
-    <g clip-path="url(#ce)">
-      <path
-        d="M96.5 201.1 L 192 92 C 196 124, 202 164, 210 196"
-        fill="none"
-        stroke="url(#r)"
-        stroke-width="46"
-        stroke-linecap="round"
-        stroke-linejoin="round"
-      />
-    </g>
-    <circle cx="74" cy="42" r="32" fill="url(#y)" />
-    <circle cx="74" cy="42" r="32" fill="url(#ysh)" />
-    <circle cx="200" cy="72" r="27" fill="url(#y)" />
-    <circle cx="200" cy="72" r="27" fill="url(#ysh)" />
+    <circle cx="58.75" cy="68.89" r="27.22" fill="url(#y)" />
+    <circle cx="197.25" cy="68.89" r="21.4" fill="url(#y)" />
   </g>
 
   <text
-    x="56"
+    x="61"
     y="50"
     font-family="'Segoe UI Variable Display', 'Segoe UI', system-ui, -apple-system, 'Helvetica Neue', Arial, sans-serif"
-    font-size="40"
+    font-size="38"
     font-weight="650"
     letter-spacing="-0.4"
     fill="#1c2024"

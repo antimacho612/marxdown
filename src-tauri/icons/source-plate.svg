@@ -1,161 +1,119 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256" role="img" aria-label="Marxdown">
   <!--
     Marxdown アプリアイコンのマスター（台座版 / 128px 以上で使う）。
-    透過版は `source.svg`。**形を直すときは両方直す。**（パス・線幅・玉の径は 2 ファイルで同一）
+    透過版は `source.svg`。形を直すときは両方直す。骨格の座標・線幅・玉の径は 2 ファイルで同一。
+    骨格そのものの導出は `source.svg` のコメントを見ること。
 
     小サイズに台座を敷かないのは、地を敷くとマークの実効サイズが落ちるため。
     逆に 128px 以上では余白がありすぎてマークが浮くので、そこだけ地を敷く。
     境界は ICO の標準サイズに合わせて 64 / 128 の間。
 
-    ## 台座が円ではなく squircle なのはなぜか
+    台座が squircle ではなく円なのは、squircle が Windows 11 / macOS のタイルと同じ形の言語で、
+    同じ言語で並ぶぶん輪郭では見分けがつかないため。円は角の情報量が無いぶん中身のマークが立つ。
+    円は squircle より面積が狭いので、そのぶんマークを 0.923 倍に縮めて余白を確保している。
 
-    n=4 のスーパー楕円（制御点 = 半径の 0.909 倍）。Windows 11 / macOS のタイルと
-    同じ形の言語に乗せるため。円のままだと、他アプリと並んだときだけ「素材」に見える。
-    面積が円より広いぶん、同じ余白でマークを大きく置ける。
+    倍率 0.923 は、マークの最遠点が台座の半径から 128 / φ^4 = 18.67 内側に収まる値。
+    透過版が字面の外に 256 / φ^5 の余白を取るのと同じ、φ の冪で余白を決める規則に揃えてある。
+    最遠点は左の玉で、半径が最大かつ中心から最も遠い。
 
-    ## 色と光
-
-    地は #38477f → #080b18 の対角グラデーション。マークの青・赤・金と同系に振ってある。
+    地は #29304f から #070910 への対角グラデーション。マークの藍・薔薇・金と同系に振ってある。
     その上に:
 
-      - `sweep`: 左上からの光の帯（白 9%）
-      - `rim`:   上縁を白 40%、下縁を白 13% で締める。地と背景の境界を立てる役目で、
-                 **暗いタスクバーの上でタイルの輪郭が消えるのを防いでいるのはこれ**
+      sweep: 左上からの光（白 10%）
+      rim:   上縁を白 34%、下縁を白 14% で締める。暗いタスクバー上で台座の輪郭が消えるのを防ぐ
 
-    マークの落とす影は下へ 8px / ぼかし 9 / 不透明度 0.4。これ以上強くすると
-    2010 年代のスキューモーフィズムに寄る。玉の接地影（`cs`）は別に持たせてあり、
-    これが無いと玉が茎に貼り付いたシールに見える。
+    マークの落とす影は下へ 5 / ぼかし 5 / 不透明度 0.26。これ以上強くするとスキューモーフィズムに寄る。
+    玉の接地影（`cs`）は別に持たせてある。これが無いと玉が茎に貼り付いたシールに見える。
 
-    ## 谷の尖点
-
-    仕掛けの説明は `source.svg` のコメントを見ること。**線幅を変えたら両方引き直す。**
+    谷の継ぎ目には薔薇側から藍側へ落ちる影（`seam`）を 12px 幅で入れてある。
+    2 色が単に隣接するのではなく、薔薇のリボンが手前で重なっているという読みを作るため。
+    以前あった玉の鏡面ハイライト（ぼかした楕円）と球体の放射グラデーションは落とした。
+    艶のある球はアイコンの見た目を古くする主因だった。
   -->
   <defs>
-    <clipPath id="cw"><path d="M185 -241 L 87 553 L -500 553 L -500 -241 Z" /></clipPath>
-    <clipPath id="ce"><path d="M185 -241 L 87 553 L 700 553 L 700 -241 Z" /></clipPath>
-    <linearGradient id="bg" gradientUnits="userSpaceOnUse" x1="30" y1="6" x2="226" y2="252">
-      <stop offset="0" stop-color="#38477f" />
-      <stop offset="0.5" stop-color="#151e40" />
-      <stop offset="1" stop-color="#080b18" />
+    <clipPath id="cw"><rect x="-64" y="-64" width="192" height="384" /></clipPath>
+    <clipPath id="ce"><rect x="128" y="-64" width="192" height="384" /></clipPath>
+    <linearGradient id="bg" gradientUnits="userSpaceOnUse" x1="26" y1="8" x2="230" y2="248">
+      <stop offset="0" stop-color="#29304f" />
+      <stop offset="0.5" stop-color="#141930" />
+      <stop offset="1" stop-color="#070910" />
     </linearGradient>
-    <linearGradient id="sweep" gradientUnits="userSpaceOnUse" x1="20" y1="0" x2="150" y2="150">
-      <stop offset="0" stop-color="#ffffff" stop-opacity="0.09" />
+    <radialGradient id="sweep" cx="0.3" cy="0.24" r="0.72">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.1" />
       <stop offset="1" stop-color="#ffffff" stop-opacity="0" />
-    </linearGradient>
+    </radialGradient>
     <linearGradient id="rim" gradientUnits="userSpaceOnUse" x1="128" y1="0" x2="128" y2="256">
-      <stop offset="0" stop-color="#ffffff" stop-opacity="0.4" />
-      <stop offset="0.34" stop-color="#ffffff" stop-opacity="0.06" />
-      <stop offset="0.7" stop-color="#ffffff" stop-opacity="0" />
-      <stop offset="1" stop-color="#ffffff" stop-opacity="0.13" />
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.34" />
+      <stop offset="0.35" stop-color="#ffffff" stop-opacity="0.05" />
+      <stop offset="0.72" stop-color="#ffffff" stop-opacity="0" />
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0.14" />
     </linearGradient>
-    <linearGradient id="b" gradientUnits="userSpaceOnUse" x1="92" y1="40" x2="46" y2="215">
-      <stop offset="0" stop-color="#9db1ff" />
-      <stop offset="0.42" stop-color="#5a75f2" />
-      <stop offset="1" stop-color="#3143c6" />
+    <linearGradient id="b" gradientUnits="userSpaceOnUse" x1="48" y1="54" x2="112" y2="206">
+      <stop offset="0" stop-color="#9aa8ff" />
+      <stop offset="0.45" stop-color="#5f70f5" />
+      <stop offset="1" stop-color="#3540c4" />
     </linearGradient>
-    <linearGradient id="r" gradientUnits="userSpaceOnUse" x1="182" y1="78" x2="216" y2="212">
-      <stop offset="0" stop-color="#ff989e" />
-      <stop offset="0.42" stop-color="#f5555f" />
-      <stop offset="1" stop-color="#d02535" />
+    <linearGradient id="r" gradientUnits="userSpaceOnUse" x1="146" y1="62" x2="212" y2="208">
+      <stop offset="0" stop-color="#ff9bb1" />
+      <stop offset="0.45" stop-color="#f75b74" />
+      <stop offset="1" stop-color="#c72150" />
     </linearGradient>
-    <radialGradient id="y" cx="0.32" cy="0.24" r="0.9">
-      <stop offset="0" stop-color="#fff3cd" />
-      <stop offset="0.4" stop-color="#ffcf5e" />
-      <stop offset="1" stop-color="#dd9410" />
-    </radialGradient>
-    <radialGradient id="ysh" cx="0.33" cy="0.27" r="0.92">
-      <stop offset="0.55" stop-color="#6b3200" stop-opacity="0" />
-      <stop offset="1" stop-color="#6b3200" stop-opacity="0.42" />
-    </radialGradient>
-    <linearGradient id="yrim" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="0" y2="256">
-      <stop offset="0" stop-color="#fff8e0" stop-opacity="0.5" />
-      <stop offset="0.5" stop-color="#ffffff" stop-opacity="0" />
-      <stop offset="1" stop-color="#ffd98a" stop-opacity="0.42" />
+    <linearGradient id="y" x1="0.14" y1="0.02" x2="0.86" y2="0.98">
+      <stop offset="0" stop-color="#ffeaa8" />
+      <stop offset="0.5" stop-color="#ffc750" />
+      <stop offset="1" stop-color="#e89512" />
     </linearGradient>
-    <filter id="soft" x="-45%" y="-45%" width="190%" height="190%"><feGaussianBlur stdDeviation="9" /></filter>
-    <filter id="spec" x="-90%" y="-90%" width="280%" height="280%"><feGaussianBlur stdDeviation="2.6" /></filter>
-    <filter id="cs" x="-90%" y="-90%" width="280%" height="280%"><feGaussianBlur stdDeviation="3.6" /></filter>
+    <linearGradient id="yrim" gradientUnits="userSpaceOnUse" x1="0" y1="41.67" x2="0" y2="96.11">
+      <stop offset="0" stop-color="#fffaea" stop-opacity="0.45" />
+      <stop offset="0.55" stop-color="#ffffff" stop-opacity="0" />
+      <stop offset="1" stop-color="#ffd98a" stop-opacity="0.3" />
+    </linearGradient>
+    <linearGradient id="seamFade" gradientUnits="userSpaceOnUse" x1="128" y1="0" x2="140" y2="0">
+      <stop offset="0" stop-color="#ffffff" />
+      <stop offset="1" stop-color="#000000" />
+    </linearGradient>
+    <mask id="seam" maskUnits="userSpaceOnUse" x="128" y="0" width="12" height="256">
+      <rect x="128" y="0" width="12" height="256" fill="url(#seamFade)" />
+    </mask>
+    <filter id="soft" x="-45%" y="-45%" width="190%" height="190%"><feGaussianBlur stdDeviation="5" /></filter>
+    <filter id="cs" x="-90%" y="-90%" width="280%" height="280%"><feGaussianBlur stdDeviation="4" /></filter>
   </defs>
 
-  <path
-    d="M 256 128 C 256 244.35, 244.35 256, 128 256 C 11.65 256, 0 244.35, 0 128 C 0 11.65, 11.65 0, 128 0 C 244.35 0, 256 11.65, 256 128 Z"
-    fill="url(#bg)"
-  />
-  <path
-    d="M 256 128 C 256 244.35, 244.35 256, 128 256 C 11.65 256, 0 244.35, 0 128 C 0 11.65, 11.65 0, 128 0 C 244.35 0, 256 11.65, 256 128 Z"
-    fill="url(#sweep)"
-  />
-  <path
-    d="M 254.5 128 C 254.5 243.0, 243.0 254.5, 128 254.5 C 13.0 254.5, 1.5 243.0, 1.5 128 C 1.5 13.0, 13.0 1.5, 128 1.5 C 243.0 1.5, 254.5 13.0, 254.5 128 Z"
-    fill="none"
-    stroke="url(#rim)"
-    stroke-width="3"
-  />
+  <circle cx="128" cy="128" r="128" fill="url(#bg)" />
+  <circle cx="128" cy="128" r="128" fill="url(#sweep)" />
+  <circle cx="128" cy="128" r="126.5" fill="none" stroke="url(#rim)" stroke-width="3" />
 
-  <!--
-    0.9 倍。外接矩形（204 x 213）が 184 x 192 になり、四辺に 32〜36px のリングが残る。
-    0.93 まで上げると左右の足が角のカーブに触って窮屈になる。上げるならここが上限。
-
-    中心を (131, 130) に置いているのは光学補正で、台座の中心から右 +3 / 下 +2。
-    左上に大きい玉があるぶん、幾何中心だと左上に寄って見える。
-  -->
-  <g transform="translate(131 130) scale(0.9) translate(-131 -116.5)">
-    <g filter="url(#soft)" opacity="0.4" transform="translate(1 8)">
-      <g clip-path="url(#cw)">
-        <path
-          d="M52 200 C 70 176, 92 132, 86 58 L 163.3 209.5"
-          fill="none"
-          stroke="#000"
-          stroke-width="46"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        />
+  <g transform="translate(128 125) scale(0.923) translate(-128 -125)">
+    <g filter="url(#soft)" opacity="0.26" transform="translate(0 5)">
+      <g fill="none" stroke="#000" stroke-width="42.8" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M58.75 184.55 L58.75 68.89 L158 214.33" clip-path="url(#cw)" />
+        <path d="M197.25 184.55 L197.25 68.89 L98 214.33" clip-path="url(#ce)" />
       </g>
-      <g clip-path="url(#ce)">
-        <path
-          d="M96.5 201.1 L 192 92 C 196 124, 202 164, 210 196"
-          fill="none"
-          stroke="#000"
-          stroke-width="46"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        />
-      </g>
-      <circle cx="74" cy="42" r="32" fill="#000" />
-      <circle cx="200" cy="72" r="27" fill="#000" />
+      <circle cx="58.75" cy="68.89" r="27.22" fill="#000" />
+      <circle cx="197.25" cy="68.89" r="21.4" fill="#000" />
     </g>
 
-    <g clip-path="url(#cw)">
-      <path
-        d="M52 200 C 70 176, 92 132, 86 58 L 163.3 209.5"
-        fill="none"
-        stroke="url(#b)"
-        stroke-width="46"
-        stroke-linecap="round"
-        stroke-linejoin="round"
-      />
+    <g fill="none" stroke-width="42.8" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M58.75 184.55 L58.75 68.89 L158 214.33" stroke="url(#b)" clip-path="url(#cw)" />
+      <path d="M197.25 184.55 L197.25 68.89 L98 214.33" stroke="url(#r)" clip-path="url(#ce)" />
     </g>
-    <g clip-path="url(#ce)">
+    <g mask="url(#seam)" clip-path="url(#ce)" opacity="0.3">
       <path
-        d="M96.5 201.1 L 192 92 C 196 124, 202 164, 210 196"
+        d="M197.25 184.55 L197.25 68.89 L98 214.33"
         fill="none"
-        stroke="url(#r)"
-        stroke-width="46"
+        stroke="#0a0a1e"
+        stroke-width="42.8"
         stroke-linecap="round"
         stroke-linejoin="round"
       />
     </g>
 
-    <circle cx="76" cy="46" r="32" fill="#000" opacity="0.24" filter="url(#cs)" />
-    <circle cx="74" cy="42" r="32" fill="url(#y)" />
-    <circle cx="74" cy="42" r="32" fill="url(#ysh)" />
-    <circle cx="74" cy="42" r="32" fill="none" stroke="url(#yrim)" stroke-width="1.6" />
-    <ellipse cx="63" cy="30" rx="11" ry="7.5" fill="#fffaea" opacity="0.62" filter="url(#spec)" transform="rotate(-32 63 30)" />
+    <circle cx="58.75" cy="72.89" r="27.22" fill="#000" opacity="0.28" filter="url(#cs)" />
+    <circle cx="58.75" cy="68.89" r="27.22" fill="url(#y)" />
+    <circle cx="58.75" cy="68.89" r="27.22" fill="none" stroke="url(#yrim)" stroke-width="1.4" />
 
-    <circle cx="202" cy="76" r="27" fill="#000" opacity="0.24" filter="url(#cs)" />
-    <circle cx="200" cy="72" r="27" fill="url(#y)" />
-    <circle cx="200" cy="72" r="27" fill="url(#ysh)" />
-    <circle cx="200" cy="72" r="27" fill="none" stroke="url(#yrim)" stroke-width="1.6" />
-    <ellipse cx="191" cy="62" rx="9.5" ry="6" fill="#fffaea" opacity="0.62" filter="url(#spec)" transform="rotate(-32 191 62)" />
+    <circle cx="197.25" cy="72.89" r="21.4" fill="#000" opacity="0.28" filter="url(#cs)" />
+    <circle cx="197.25" cy="68.89" r="21.4" fill="url(#y)" />
+    <circle cx="197.25" cy="68.89" r="21.4" fill="none" stroke="url(#yrim)" stroke-width="1.4" />
   </g>
 </svg>

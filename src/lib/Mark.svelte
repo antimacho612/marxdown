@@ -2,7 +2,7 @@
   ブランドマーク。形のマスターは `src-tauri/icons/source.svg`（アプリアイコンと同じ）。
   直すときは必ずマスター側も直して `pnpm icons` を回すこと（食い違い防止）。
   クリティカルパスに載るのでインライン SVG で持つ。
-  viewBox は実際の描画範囲だけを切り出し、谷の尖点を作るクリップ（`cw`/`ce`）以外の暗端・反射リム・ハイライト・台座は意図的に省いてある（既定 28px では効果が無い割にバイト数だけ増えるため）。
+  viewBox は実際の描画範囲だけを切り出し、谷の尖点を作るクリップ（`cw`/`ce`）以外の縁の光・接地影・台座は意図的に省いてある（既定 28px では効果が無い割にバイト数だけ増えるため）。
 -->
 <script lang="ts">
   interface Props {
@@ -22,39 +22,39 @@
 <!-- 隣に「Marxdown」の見出しが出るので、マーク自体は読み上げ対象にしない -->
 <svg
   class="mx-mark"
-  viewBox="29 10 204 213"
+  viewBox="31.5 41.6 187.2 166.8"
   height={size}
   aria-hidden="true"
   focusable="false"
   xmlns="http://www.w3.org/2000/svg"
 >
   <defs>
-    <clipPath id="{uid}-cw"><path d="M185 -241 L 87 553 L -500 553 L -500 -241 Z" /></clipPath>
-    <clipPath id="{uid}-ce"><path d="M185 -241 L 87 553 L 700 553 L 700 -241 Z" /></clipPath>
-    <linearGradient id="{uid}-b" gradientUnits="userSpaceOnUse" x1="92" y1="40" x2="46" y2="215">
-      <stop offset="0" stop-color="#7f97ff" />
-      <stop offset="0.42" stop-color="#4a64e8" />
-      <stop offset="1" stop-color="#2938ae" />
+    <clipPath id="{uid}-cw"><rect x="-64" y="-64" width="192" height="384" /></clipPath>
+    <clipPath id="{uid}-ce"><rect x="128" y="-64" width="192" height="384" /></clipPath>
+    <linearGradient id="{uid}-b" gradientUnits="userSpaceOnUse" x1="48" y1="54" x2="112" y2="206">
+      <stop offset="0" stop-color="#8e9dff" />
+      <stop offset="0.45" stop-color="#5566ee" />
+      <stop offset="1" stop-color="#2f35b4" />
     </linearGradient>
-    <linearGradient id="{uid}-r" gradientUnits="userSpaceOnUse" x1="182" y1="78" x2="216" y2="212">
-      <stop offset="0" stop-color="#ff8189" />
-      <stop offset="0.42" stop-color="#ee4753" />
-      <stop offset="1" stop-color="#c31f2f" />
+    <linearGradient id="{uid}-r" gradientUnits="userSpaceOnUse" x1="146" y1="62" x2="212" y2="208">
+      <stop offset="0" stop-color="#ff8fa8" />
+      <stop offset="0.45" stop-color="#f2506a" />
+      <stop offset="1" stop-color="#b81c46" />
     </linearGradient>
-    <radialGradient id="{uid}-y" cx="0.32" cy="0.24" r="0.9">
-      <stop offset="0" stop-color="#fff3cd" />
-      <stop offset="0.4" stop-color="#ffcf5e" />
-      <stop offset="1" stop-color="#dd9410" />
-    </radialGradient>
+    <linearGradient id="{uid}-y" x1="0.14" y1="0.02" x2="0.86" y2="0.98">
+      <stop offset="0" stop-color="#ffe9a3" />
+      <stop offset="0.5" stop-color="#ffc44a" />
+      <stop offset="1" stop-color="#e8940e" />
+    </linearGradient>
   </defs>
 
-  <g fill="none" stroke-width="46" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M52 200 C 70 176, 92 132, 86 58 L 163.3 209.5" stroke="url(#{uid}-b)" clip-path="url(#{uid}-cw)" />
-    <path d="M96.5 201.1 L 192 92 C 196 124, 202 164, 210 196" stroke="url(#{uid}-r)" clip-path="url(#{uid}-ce)" />
+  <g fill="none" stroke-width="42.8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M58.75 184.55 L58.75 68.89 L158 214.33" stroke="url(#{uid}-b)" clip-path="url(#{uid}-cw)" />
+    <path d="M197.25 184.55 L197.25 68.89 L98 214.33" stroke="url(#{uid}-r)" clip-path="url(#{uid}-ce)" />
   </g>
 
-  <circle cx="74" cy="42" r="32" fill="url(#{uid}-y)" />
-  <circle cx="200" cy="72" r="27" fill="url(#{uid}-y)" />
+  <circle cx="58.75" cy="68.89" r="27.22" fill="url(#{uid}-y)" />
+  <circle cx="197.25" cy="68.89" r="21.4" fill="url(#{uid}-y)" />
 </svg>
 
 <style>
