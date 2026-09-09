@@ -42,6 +42,12 @@ export interface OpenerConfig {
    */
   softBreak: () => boolean;
   /**
+   * 有効になっている追加記法（`markdown.*` / 04.tech-stack/04-markdown.md §3）。
+   *
+   * `softBreak` と同じ理由で、値ではなく読む関数として受ける。
+   */
+  syntax: () => readonly string[];
+  /**
    * 開く先のタブ（`features/workspace`）。**無ければそちらで作る。**
    *
    * エディターはこれをキーにモデルを分け（`document/text.ts` の `DocumentIdentity`）、履歴もこれで分かれる（F-NAV-07）。
@@ -74,7 +80,7 @@ export function getParser(): MarkdownParser | null {
 
 /** 現在の設定を反映したパース指定。`live.ts` の再描画がこれを使う。 */
 export function getParseOptions(): ParseOptions {
-  return { breaks: config?.softBreak() ?? false };
+  return { breaks: config?.softBreak() ?? false, syntax: config?.syntax() ?? [] };
 }
 
 /** `openDocument` / `openPath` の振る舞いの差を表す。5 つの入口の違いはすべてここに現れる。 */
@@ -173,7 +179,7 @@ export async function openDocument(payload: StoredPayload, options: OpenOptions 
   const startedAt = options.startedAt ?? performance.now();
   // パースを先に開始してから待つ（シェル描画と重ねるため）。
   traceMark(options, 'T6', `${payload.content.length} chars`);
-  const parsing = opener.parser.parse(payload.content, { breaks: opener.softBreak() });
+  const parsing = opener.parser.parse(payload.content, { breaks: opener.softBreak(), syntax: opener.syntax() });
 
   // 開く先のタブ。本文の載せ先（Monaco のモデル）と履歴の分かれ目がこれで決まる。
   const key = opener.targetKey();

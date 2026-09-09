@@ -1,0 +1,314 @@
+/**
+ * Mermaid ダイアグラムの描画（F-VIEW-12 / 04.tech-stack/04-markdown.md §4）。
+ *
+ * このモジュール自体は小さく、**Mermaid 本体はさらに動的 import する。**
+ * フェンスが 1 つあるだけでビューポート外の図まで含めて 400KB 超を読み込む形にしないためである。
+ * 実際にロードされるのは、図が 1 つでも画面に入ったときになる。
+ *
+ * 04.tech-stack/04-markdown.md §4 が課す 5 つの制約がそのままこのファイルの構造である。
+ * 完全な動的 import / `IntersectionObserver` / 解放 / 1 図ずつ非同期 / 失敗時はコードブロック。
+ */
+import type mermaid from 'mermaid';
+
+import { sanitizeSvg } from '@/markdown/sanitize';
+
+import '@/styles/preview/mermaid.css';
+
+/** 処理の状態。`data-mx-mermaid-state` として要素に載る。 */
+const STATE = 'mxMermaidState';
+
+type State = 'pending' | 'done' | 'error';
+
+function stateOf(element: HTMLElement): State | undefined {
+  return element.dataset[STATE] as State | undefined;
+}
+
+/**
+ * 描画済み SVG のキャッシュ。キーはフェンスの中身そのものである。
+ *
+ * Split で編集している間、`live.ts` は打鍵ごと（debounce 120ms）に `paint` と `enhance` を呼ぶ。
+ * キャッシュが無いと、本文のどこか 1 文字を直すたびに全部の図が描き直される。
+ *
+ * 上限を置いているのは、常駐アプリだからである（N-PERF-06）。
+ * 文書を渡り歩くあいだ、開いたことのある図の SVG 文字列を無制限に抱えることになる。
+ */
+const cache = new Map<string, string>();
+const CACHE_LIMIT = 32;
+
+/**
+ * 要素ごとの元の記述。
+ *
+ * 描画に成功するとプレースホルダの中身は SVG に置き換わり、元の記述はどこにも残らない。
+ * 配色が変わったときに描き直すにはそれが要る（`resetForTheme`）。
+ * `WeakMap` にしてあるのは、`paint` が本文を差し替えた時点で要素ごと解放されるようにするためである。
+ */
+const sources = new WeakMap<HTMLElement, string>();
+
+function remember(source: string, svg: string): void {
+  // 先頭が最も古い（Map は挿入順を保つ）。
+  if (cache.size >= CACHE_LIMIT) {
+    const oldest = cache.keys().next();
+    if (!oldest.done) cache.delete(oldest.value);
+  }
+  cache.set(source, svg);
+}
+
+/** Mermaid 本体。最初の 1 図が画面に入った時点で解決する。 */
+let engine: Promise<typeof mermaid> | null = null;
+
+let observer: IntersectionObserver | null = null;
+let unwatchTheme: (() => void) | null = null;
+
+/** `id` の重複を避けるための連番。Mermaid は id を DOM とスタイルの両方に使う。 */
+let sequence = 0;
+
+/**
+ * プレースホルダを監視の対象にする。`enhance` から呼ぶ。
+ *
+ * 呼ばれるたびに監視をやり直す。
+ * `paint` は本文を差し替えるため、前回観測していた要素は既に DOM から外れている。
+ * `IntersectionObserver` は観測対象を強く持つので、入れ替えないとその要素が解放されない（OQ-18 と同じ形の保持）。
+ *
+ * 段階的描画では `enhance` が 2 回呼ばれるが、未描画のものを毎回すべて観測し直すため、1 回目の分が落ちることはない。
+ */
+export function observeMermaid(container: HTMLElement): void {
+  const targets = [...container.querySelectorAll<HTMLElement>('.mx-mermaid')].filter(
+    (element) => stateOf(element) === undefined,
+  );
+
+  observer?.disconnect();
+  if (targets.length === 0) return;
+
+  observer ??= new IntersectionObserver(onIntersect, {
+    // 少し手前から描き始める。スクロールが止まってから描画が始まると、空白が見えている時間ができる。
+    rootMargin: '200px',
+  });
+
+  for (const element of targets) observer.observe(element);
+  watchTheme();
+}
+
+/**
+ * 抱えているものを全部捨てる（N-PERF-06 / 04.tech-stack/04-markdown.md §4-3）。
+ *
+ * 呼ぶのは文書を閉じたときだけである。
+ * `paint` のたびに呼ぶとキャッシュが毎回空になり、Split の編集中に全図が描き直される。
+ */
+export function disposeMermaid(): void {
+  observer?.disconnect();
+  observer = null;
+  unwatchTheme?.();
+  unwatchTheme = null;
+  cache.clear();
+  // Mermaid 本体の参照も落とす。次に必要になったときは import が解決済みのため、再取得のコストはほぼ無い。
+  engine = null;
+}
+
+function onIntersect(entries: IntersectionObserverEntry[]): void {
+  for (const entry of entries) {
+    if (!entry.isIntersecting) continue;
+    const element = entry.target;
+    if (!(element instanceof HTMLElement)) continue;
+
+    observer?.unobserve(element);
+    void render(element);
+  }
+}
+
+/**
+ * 図を 1 つ描く。
+ *
+ * `await` を挟むため、同じ要素に対して 2 回走らないよう先に印を付ける。
+ * 描画そのものは Mermaid が 1 図ずつ処理する形になっており、メインスレッドを長時間占有しない（§4-4）。
+ */
+async function render(element: HTMLElement): Promise<void> {
+  if (stateOf(element) !== undefined) return;
+  element.dataset[STATE] = 'pending';
+
+  const source = element.textContent ?? '';
+  if (source.trim() === '') {
+    element.dataset[STATE] = 'done';
+    return;
+  }
+
+  const cached = cache.get(source);
+  if (cached !== undefined) {
+    sources.set(element, source);
+    element.innerHTML = cached;
+    element.dataset[STATE] = 'done';
+    return;
+  }
+
+  sequence += 1;
+  const id = `mx-mermaid-${sequence}`;
+
+  try {
+    const mermaid = await load();
+    const { svg } = await mermaid.render(id, source);
+
+    // 描画のあいだに次の文書が開かれていることがある。切り離された要素には入れない（OQ-18）。
+    if (!element.isConnected) {
+      delete element.dataset[STATE];
+      return;
+    }
+
+    // Mermaid 自身も内部でサニタイズするが、それは Mermaid の許可リストであってこちらの許可リストではない。
+    // 「DOM に入る HTML は必ず Layer 3 を通る」を例外なく適用する（ADR-0006 / §4 の注意書き）。
+    const safe = sanitizeSvg(svg);
+    remember(source, safe);
+    sources.set(element, source);
+    element.innerHTML = safe;
+    element.dataset[STATE] = 'done';
+  } catch {
+    // 記述の誤りと、Mermaid 側の想定外の両方がここへ来る（N-REL-04）。
+    fallbackToCodeBlock(element, source);
+  } finally {
+    removeScratch(id);
+  }
+}
+
+/**
+ * Mermaid が描画のために `body` へ置いた要素を片付ける。
+ *
+ * `render` は測定用の要素を `body` 直下に作る。
+ * 成功時は自分で消すが、**記述が誤っていたときは「Syntax error in text」の図を置いたまま残す。**
+ * 常駐アプリなので、消さないと本文の上にその図が重なったまま蓄積する。
+ *
+ * `d` 付きの id は Mermaid が内部で使う別名である。
+ */
+function removeScratch(id: string): void {
+  for (const scratch of [document.querySelector(`#${id}`), document.querySelector(`#d${id}`)]) {
+    // 本文の中に入れた図まで消さない。片付ける対象は `body` 直下に残ったものだけである。
+    if (scratch?.parentElement === document.body) scratch.remove();
+  }
+}
+
+/**
+ * 描けなかった図をコードブロックとして見せる（N-REL-04 / §4-5）。
+ *
+ * 空欄にはしない。中心ユースケースは「LLM が生成した Markdown を読む」ことであり、
+ * 描けない図の記述こそ、読んで直す対象である。
+ */
+function fallbackToCodeBlock(element: HTMLElement, source: string): void {
+  const pre = document.createElement('pre');
+  const code = document.createElement('code');
+  // `textContent` で入れるため、記述がどのような文字列でもここから HTML として解釈されることはない。
+  code.textContent = source;
+  pre.append(code);
+
+  element.replaceChildren(pre);
+  element.dataset[STATE] = 'error';
+}
+
+async function load(): Promise<typeof mermaid> {
+  engine ??= initialize();
+  return engine;
+}
+
+async function initialize(): Promise<typeof mermaid> {
+  const module = await import('mermaid');
+  module.default.initialize({
+    // 自動描画は使わない。どの図をいつ描くかはこちら側が決める（§4-2）。
+    startOnLoad: false,
+    // `securityLevel` は Mermaid 側の防御。こちらの `sanitizeSvg` と二重に効く。
+    securityLevel: 'strict',
+    theme: isDarkSurface() ? 'dark' : 'default',
+    fontFamily: readToken('--mx-font-content'),
+    // ラベルを SVG の `<text>` として出力させる。
+    //
+    // 既定では `<foreignObject>` の中の HTML になる。
+    // `foreignObject` は mXSS の経路として知られており `sanitizeSvg` が落とすため、そのままでは**ラベルが消えた図**になる。
+    // サニタイザを広げる側では直さない（ADR-0006 の多層防御を薄くしない）。
+    //
+    // **図種ごとの `flowchart.htmlLabels` では効かない。** 11.17 で確認した範囲では、
+    // そちらを false にしても `foreignObject` は出力され、`<text>` は空のまま残る。
+    // 効果があるのはこの最上位のキーだけである。
+    htmlLabels: false,
+  });
+  return module.default;
+}
+
+/** プレビュー面。配色はここに乗る（ADR-0013）。 */
+function previewRoot(): HTMLElement | null {
+  return document.querySelector<HTMLElement>('#mx-preview');
+}
+
+function readToken(name: string): string {
+  const root = previewRoot() ?? document.documentElement;
+  return getComputedStyle(root).getPropertyValue(name).trim();
+}
+
+/**
+ * 明暗の判定。
+ *
+ * テーマ名ではなく解決後の背景色の明度で見る（`features/editor/lazy/theme.ts` と同じ理由）。
+ * `theme` が `system` のときやカスタム CSS でトークンを上書きしたとき、名前を見る分岐は外れる。
+ */
+function isDarkSurface(): boolean {
+  const root = previewRoot();
+  if (!root) return false;
+
+  const matched = /(\d+)\D+(\d+)\D+(\d+)/.exec(getComputedStyle(root).backgroundColor);
+  if (!matched) return false;
+
+  const [r, g, b] = [Number(matched[1]), Number(matched[2]), Number(matched[3])];
+  return 0.299 * r + 0.587 * g + 0.114 * b < 128;
+}
+
+/**
+ * 配色の変更に追従する。
+ *
+ * Mermaid のテーマは `initialize` の時点で SVG に焼き付くため、切り替えても描き直さなければ古い色のまま残る。
+ * 監視するのは `<html>` の `data-theme`（F-CONF-01）、プレビュー面の `data-mx-theme`（F-CONF-08）、
+ * および OS 側の設定（`theme` が `system` のときは属性が付かない）である。
+ */
+function watchTheme(): void {
+  if (unwatchTheme !== null) return;
+
+  const observers: MutationObserver[] = [];
+  const invalidate = () => resetForTheme();
+
+  const root = new MutationObserver(invalidate);
+  root.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+  observers.push(root);
+
+  const preview = previewRoot();
+  if (preview) {
+    const surface = new MutationObserver(invalidate);
+    surface.observe(preview, { attributes: true, attributeFilter: ['data-mx-theme'] });
+    observers.push(surface);
+  }
+
+  const media = globalThis.matchMedia('(prefers-color-scheme: dark)');
+  media.addEventListener('change', invalidate);
+
+  unwatchTheme = () => {
+    for (const each of observers) each.disconnect();
+    media.removeEventListener('change', invalidate);
+  };
+}
+
+/**
+ * 描画済みの図を捨てて描き直させる。
+ *
+ * キャッシュも Mermaid 本体の参照も落とす。
+ * `initialize` はモジュールの内部状態を書き換えるため、テーマを変えるには読み込み直すのが最も確実である。
+ */
+function resetForTheme(): void {
+  cache.clear();
+  engine = null;
+
+  const container = previewRoot();
+  if (!container) return;
+
+  for (const element of container.querySelectorAll<HTMLElement>('.mx-mermaid')) {
+    if (stateOf(element) !== 'done') continue;
+
+    // 中身は SVG に置き換わっているので、元の記述へ戻してから未処理に落とす。
+    const source = sources.get(element);
+    if (source === undefined) continue;
+    element.textContent = source;
+    delete element.dataset[STATE];
+  }
+  observeMermaid(container);
+}

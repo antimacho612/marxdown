@@ -91,6 +91,11 @@ export const tauriPlatform: Platform = {
     return convertFileSrc(await invoke<string>('resolve_asset', { href, baseDir }));
   },
 
+  writeAsset(documentPath, extension, data) {
+    // Tauri の IPC は `Uint8Array` をそのまま渡せない。数値の配列にして Rust 側の `Vec<u8>` へ受ける。
+    return invoke<string>('write_asset', { documentPath, extension, data: [...data] });
+  },
+
   async allowImageDir(href, baseDir) {
     return convertFileSrc(await invoke<string>('allow_image_dir', { href, baseDir }));
   },

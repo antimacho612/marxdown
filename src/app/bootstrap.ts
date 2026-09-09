@@ -12,14 +12,16 @@ import {
   openPath,
   previewScrollTop,
   saveThenQuit,
+  toggleTaskAtLine,
 } from '@/features/document';
 import { mountEditorLazily, preloadEditor, setSplitSyncLazily } from '@/features/editor';
 import { configureHistory } from '@/features/history';
 import { decideInitialMode, initMode } from '@/features/mode';
 import { initPanes } from '@/features/panes';
-import { applyZoom, installLinkHandler } from '@/features/preview';
+import { applyZoom, installLinkHandler, installTaskHandler } from '@/features/preview';
 import {
   applyCustomCss,
+  enabledSyntax,
   initSettings,
   installSettingsWatch,
   reportSettingsProblem,
@@ -111,6 +113,7 @@ export async function startup(renderShell: () => void): Promise<void> {
   configureOpener({
     parser: createParser(),
     softBreak: () => settingsStore.values['preview.softBreak'],
+    syntax: () => enabledSyntax(settingsStore.values),
     ...workspaceOpenerHooks(),
   });
 
@@ -201,7 +204,7 @@ export async function startup(renderShell: () => void): Promise<void> {
   installFileWatch();
   installSettingsWatch();
   installWindowState();
-  // `preview.softBreak` の変更に追従して本文を描き直す（#45）。CSS だけでは反映できない唯一のプレビュー設定である。
+  // パースの結果そのものを変える設定（`preview.softBreak` と `markdown.*`）に追従して本文を描き直す。
   installSoftBreakRerender();
   // タブの変化を `state.json` へ書き続ける（OQ-04）。
   // 復元より後に張る。復元そのものを 1 枚ずつ書き戻すことに意味がない。
@@ -304,6 +307,9 @@ function installLinks(): void {
       documentStore.notice = notice;
     },
   });
+
+  // プレビュー上のタスクリスト操作（OQ-05）。リンクと同じく逆向きの呼び出しをここで接続する。
+  installTaskHandler(container, { toggle: toggleTaskAtLine });
 }
 
 /**

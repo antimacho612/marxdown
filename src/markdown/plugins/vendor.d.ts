@@ -14,19 +14,55 @@ declare module 'markdown-it-footnote' {
   export default footnote;
 }
 
-declare module 'markdown-it-task-lists' {
+/*
+ * 設定で有効化する追加記法（04.tech-stack/04-markdown.md §3 / `plugins/syntax.ts`）。
+ * どれも既定 OFF で、ON になったときだけ動的 import される。
+ */
+
+declare module 'markdown-it-abbr' {
   import type { MarkdownIt } from 'markdown-it';
 
-  export interface TaskListsOptions {
-    /** チェックボックスを操作可能にする。既定は false（OQ-05 が未決のため）。 */
-    enabled?: boolean;
-    /** `<label>` で包む。 */
-    label?: boolean;
-    /** `<label>` をチェックボックスの後ろに置く。 */
-    labelAfter?: boolean;
-  }
+  /** 略語（`*[HTML]: HyperText Markup Language`）。 */
+  const abbr: (md: MarkdownIt) => void;
+  export default abbr;
+}
 
-  /** タスクリスト（GFM）。`<input type="checkbox" disabled>` を出力する。 */
-  const taskLists: (md: MarkdownIt, options?: TaskListsOptions) => void;
-  export default taskLists;
+declare module 'markdown-it-deflist' {
+  import type { MarkdownIt } from 'markdown-it';
+
+  /** 定義リスト（`用語` の次行に `: 説明`）。 */
+  const deflist: (md: MarkdownIt) => void;
+  export default deflist;
+}
+
+declare module 'markdown-it-ins' {
+  import type { MarkdownIt } from 'markdown-it';
+
+  /** 挿入（`++文字++` を `<ins>` にする）。 */
+  const ins: (md: MarkdownIt) => void;
+  export default ins;
+}
+
+declare module 'markdown-it-mark' {
+  import type { MarkdownIt } from 'markdown-it';
+
+  /** マーカー（`==文字==` を `<mark>` にする）。 */
+  const mark: (md: MarkdownIt) => void;
+  export default mark;
+}
+
+declare module 'markdown-it-sub' {
+  import type { MarkdownIt } from 'markdown-it';
+
+  /** 下付き（`H~2~O`）。 */
+  const sub: (md: MarkdownIt) => void;
+  export default sub;
+}
+
+declare module 'markdown-it-sup' {
+  import type { MarkdownIt } from 'markdown-it';
+
+  /** 上付き（`x^2^`）。 */
+  const sup: (md: MarkdownIt) => void;
+  export default sup;
 }

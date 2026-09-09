@@ -45,6 +45,15 @@ pub const KEY_EDITOR_TAB_SIZE: &str = "editor.tabSize";
 pub const KEY_EDITOR_WORD_WRAP: &str = "editor.wordWrap";
 pub const KEY_EDITOR_WORD_WRAP_COLUMN: &str = "editor.wordWrapColumn";
 
+/// 追加記法（`src/markdown/plugins/syntax.ts` の `SYNTAX_NAMES` と 1:1）。どれも既定 OFF。
+pub const KEY_MARKDOWN_ABBREVIATIONS: &str = "markdown.abbreviations";
+pub const KEY_MARKDOWN_DEFINITION_LISTS: &str = "markdown.definitionLists";
+pub const KEY_MARKDOWN_INSERTIONS: &str = "markdown.insertions";
+pub const KEY_MARKDOWN_MARKS: &str = "markdown.marks";
+pub const KEY_MARKDOWN_MULTILINE_TABLES: &str = "markdown.multilineTables";
+pub const KEY_MARKDOWN_SUBSCRIPT: &str = "markdown.subscript";
+pub const KEY_MARKDOWN_SUPERSCRIPT: &str = "markdown.superscript";
+
 pub const KEY_OUTLINE_MAX_DEPTH: &str = "outline.maxDepth";
 
 pub const KEY_PREVIEW_CODE_FONT_FAMILY: &str = "preview.codeFontFamily";
@@ -277,6 +286,23 @@ pub struct Settings {
     #[serde(rename = "editor.wordWrapColumn")]
     pub editor_word_wrap_column: f64,
 
+    /// 設定で有効化する追加記法（04.tech-stack/04-markdown.md §3）。
+    /// **どれも既定 OFF である。** 標準的でない記法が意図せず発火して本文が壊れるほうが、認知負荷が高い。
+    #[serde(rename = "markdown.abbreviations")]
+    pub markdown_abbreviations: bool,
+    #[serde(rename = "markdown.definitionLists")]
+    pub markdown_definition_lists: bool,
+    #[serde(rename = "markdown.insertions")]
+    pub markdown_insertions: bool,
+    #[serde(rename = "markdown.marks")]
+    pub markdown_marks: bool,
+    #[serde(rename = "markdown.multilineTables")]
+    pub markdown_multiline_tables: bool,
+    #[serde(rename = "markdown.subscript")]
+    pub markdown_subscript: bool,
+    #[serde(rename = "markdown.superscript")]
+    pub markdown_superscript: bool,
+
     /// アウトラインに表示する見出しの最大階層（`h1`〜`h6`）。それより深い見出しは一覧から外れる。
     #[serde(rename = "outline.maxDepth")]
     pub outline_max_depth: f64,
@@ -341,6 +367,14 @@ impl Default for Settings {
             editor_tab_size: DEFAULT_EDITOR_TAB_SIZE,
             editor_word_wrap: WordWrap::default(),
             editor_word_wrap_column: DEFAULT_EDITOR_WORD_WRAP_COLUMN,
+
+            markdown_abbreviations: false,
+            markdown_definition_lists: false,
+            markdown_insertions: false,
+            markdown_marks: false,
+            markdown_multiline_tables: false,
+            markdown_subscript: false,
+            markdown_superscript: false,
 
             outline_max_depth: DEFAULT_OUTLINE_MAX_DEPTH,
 
@@ -429,6 +463,20 @@ impl Settings {
                 WORD_WRAP_COLUMN_RANGE,
             )
             .unwrap_or(d.editor_word_wrap_column),
+
+            markdown_abbreviations: take(&mut map, KEY_MARKDOWN_ABBREVIATIONS)
+                .unwrap_or(d.markdown_abbreviations),
+            markdown_definition_lists: take(&mut map, KEY_MARKDOWN_DEFINITION_LISTS)
+                .unwrap_or(d.markdown_definition_lists),
+            markdown_insertions: take(&mut map, KEY_MARKDOWN_INSERTIONS)
+                .unwrap_or(d.markdown_insertions),
+            markdown_marks: take(&mut map, KEY_MARKDOWN_MARKS).unwrap_or(d.markdown_marks),
+            markdown_multiline_tables: take(&mut map, KEY_MARKDOWN_MULTILINE_TABLES)
+                .unwrap_or(d.markdown_multiline_tables),
+            markdown_subscript: take(&mut map, KEY_MARKDOWN_SUBSCRIPT)
+                .unwrap_or(d.markdown_subscript),
+            markdown_superscript: take(&mut map, KEY_MARKDOWN_SUPERSCRIPT)
+                .unwrap_or(d.markdown_superscript),
 
             outline_max_depth: take_int(&mut map, KEY_OUTLINE_MAX_DEPTH, OUTLINE_MAX_DEPTH_RANGE)
                 .unwrap_or(d.outline_max_depth),

@@ -135,6 +135,21 @@ export const SETTINGS_SCHEMA = defineSettingsSchema({
   },
   'editor.wordWrapColumn': { kind: 'number', default: 80, min: 20, max: 500 },
 
+  /*
+   * 追加記法（04.tech-stack/04-markdown.md §3）。**どれも既定 OFF である。**
+   *
+   * 標準的でない記法が意図せず発火して本文が壊れるほうが、ユーザーの認知負荷が高い（Principle 3）。
+   * ON にしたものだけが動的 import される（`markdown/plugins/syntax.ts`）。既定では 1 バイトも読み込まない。
+   * キーの名前は記法の呼び名にしてある。パッケージ名（`deflist`）では何が起きるか読めない。
+   */
+  'markdown.abbreviations': { kind: 'boolean', default: false },
+  'markdown.definitionLists': { kind: 'boolean', default: false },
+  'markdown.insertions': { kind: 'boolean', default: false },
+  'markdown.marks': { kind: 'boolean', default: false },
+  'markdown.multilineTables': { kind: 'boolean', default: false },
+  'markdown.subscript': { kind: 'boolean', default: false },
+  'markdown.superscript': { kind: 'boolean', default: false },
+
   /** アウトラインに表示する見出しの最大階層（`h1`〜`h6`）。6 は見出しの最大階層で、実質「制限なし」を意味する。 */
   'outline.maxDepth': { kind: 'number', default: 6, min: 1, max: 6 },
 

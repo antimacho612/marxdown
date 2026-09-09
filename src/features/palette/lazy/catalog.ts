@@ -80,6 +80,7 @@ export const COMMAND_CATALOG: CommandEntry[] = [
   { id: 'view.toggleScrollSync', label: ja.menu.toggleScrollSync },
 
   { id: 'editor.gotoLine', label: ja.menu.gotoLine, shortcut: 'Ctrl+G' },
+  { id: 'editor.formatTable', label: ja.menu.formatTable, shortcut: 'Shift+Alt+F' },
 
   { id: 'find.open', label: () => (viewStore.mode === 'preview' ? ja.menu.search : ja.menu.find), shortcut: 'Ctrl+F' },
   { id: 'find.replace', label: ja.menu.replace, shortcut: 'Ctrl+H' },

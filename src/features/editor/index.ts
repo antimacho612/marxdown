@@ -8,6 +8,7 @@
  */
 export {
   closeEditorSearchLazily,
+  formatTableLazily,
   gotoLineLazily,
   mountEditorLazily,
   openEditorSearchLazily,

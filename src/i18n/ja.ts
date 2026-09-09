@@ -121,6 +121,8 @@ export const ja = {
     cycleMode: '表示モードを順に切り替える',
     /** 指定行へ移動（`Ctrl+G`）。**編集面があるときだけ**（Preview には行番号が無い）。 */
     gotoLine: '指定行へ移動',
+    /** 表の列幅を揃える（`Shift+Alt+F`）。`gotoLine` と同じく編集面があるときだけ。 */
+    formatTable: '表の列幅を揃える',
     /** スクロール同期（Split のときだけ意味を持つ）。 */
     toggleScrollSync: 'スクロール同期を切り替える',
     /** アウトラインを表示してフォーカスする（閉じない）。 */
@@ -271,6 +273,17 @@ export const ja = {
   notice: {
     dismiss: '通知を閉じる',
   },
+  /** 編集面から出す通知（`features/editor/lazy/`）。設定の中の `settings.editor` とは別である。 */
+  editor: {
+    /**
+     * 画像を貼ったが保存先が決まらない（F-EDIT-13）。
+     *
+     * 「保存してください」ではなく「保存できません」と言い切る。
+     * 保存先は開いているファイルの隣に決まるため、名前が付くまでは置き場所が存在しない。
+     */
+    pasteImageUntitled: '無題の文書には画像を貼り付けられません。先にファイルを保存してください。',
+    pasteImageFailed: '画像を保存できませんでした',
+  },
   /**
    * ユーザー設定（02.architecture/04-rust-responsibilities.md §5 / 03.ux-spec/07-status-and-notifications.md §2）。
    *
@@ -301,6 +314,7 @@ export const ja = {
       appearance: '外観',
       preview: 'プレビュー',
       editor: 'エディター',
+      markdown: '記法',
       outline: 'アウトライン',
       window: 'ウィンドウ',
     },
@@ -348,6 +362,31 @@ export const ja = {
     softBreak: {
       label: 'ソフトブレーク',
       description: '段落内の単独の改行をそのまま <br> として描画するかどうかを制御します。',
+    },
+
+    /**
+     * 追加記法（04.tech-stack/04-markdown.md §3）。どれも既定 OFF。
+     *
+     * 説明には記法そのものを書く。名前だけでは何が起きるか判断できず、
+     * 「操作する前に結果を判断できる」（Principle 3）を満たさない。
+     */
+    markdown: {
+      abbreviations: {
+        label: '略語',
+        description: '`*[HTML]: HyperText Markup Language` と定義した語に説明を付けます。',
+      },
+      definitionLists: {
+        label: '定義リスト',
+        description: '用語の次の行を `: 説明` で始めると定義リストになります。',
+      },
+      insertions: { label: '挿入', description: '`++文字++` を挿入（下線）として描画します。' },
+      marks: { label: 'マーカー', description: '`==文字==` を蛍光ペンで引いたように描画します。' },
+      multilineTables: {
+        label: '複数行のテーブル',
+        description: '1 つのセルの中で改行できるテーブル記法を有効にします。',
+      },
+      subscript: { label: '下付き文字', description: '`H~2~O` の `2` を下付きで描画します。' },
+      superscript: { label: '上付き文字', description: '`x^2^` の `2` を上付きで描画します。' },
     },
 
     /**

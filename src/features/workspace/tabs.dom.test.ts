@@ -80,7 +80,7 @@ beforeEach(() => {
   documentStore.eolOverride = null;
   setDirty(false);
   resetTabs();
-  configureOpener({ parser: fakeParser(), softBreak: () => false, ...workspaceOpenerHooks() });
+  configureOpener({ parser: fakeParser(), softBreak: () => false, syntax: () => [], ...workspaceOpenerHooks() });
 });
 
 afterEach(() => {

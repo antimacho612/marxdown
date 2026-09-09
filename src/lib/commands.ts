@@ -25,6 +25,7 @@ export type CommandId =
   | 'document.saveAs'
   | 'document.toggleEol'
   | 'editor.gotoLine'
+  | 'editor.formatTable'
   | 'explorer.show'
   | 'find.open'
   | 'find.replace'

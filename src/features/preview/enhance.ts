@@ -29,6 +29,66 @@ export interface EnhanceOptions {
 export function enhance(container: HTMLElement, options: EnhanceOptions): void {
   void enhanceCodeBlocks(container);
   void enhanceImages(container, options.baseDir);
+  void enhanceMath(container);
+  void enhanceMermaid(container);
+}
+
+/**
+ * 遅延チャンクが抱えているものを捨てる（N-PERF-06）。
+ *
+ * 対象はいまのところ Mermaid だけである（`IntersectionObserver` と描画済み SVG のキャッシュ）。
+ * ロードされていなければ何もしない。
+ *
+ * **`paint` のたびに呼んではいけない。** キャッシュが毎回空になり、Split の編集中に全図が描き直される。
+ * 呼ぶのは文書を閉じたときだけである（`features/document/close.ts`）。
+ */
+export function releasePreviewResources(): void {
+  disposeMermaid?.();
+  disposeMermaid = null;
+}
+
+/** ロード済みの Mermaid の解放口。`main` から Mermaid を静的に辿らせないため、関数だけを預かる。 */
+let disposeMermaid: (() => void) | null = null;
+
+/**
+ * Mermaid ダイアグラム（F-VIEW-12）。
+ *
+ * ここでは `IntersectionObserver` に載せるところまでしか行わない。
+ * Mermaid 本体がロードされるのは、図が 1 つでも画面に入ったときである（`lazy/mermaid.ts`）。
+ * フェンスが 1 つも無い文書ではここに到達しない。
+ */
+async function enhanceMermaid(container: HTMLElement): Promise<void> {
+  // 監視のやり直しは `observeMermaid` の担当なので、ここでは処理済みの印を見ない。
+  if (container.querySelector('.mx-mermaid') === null) return;
+
+  const { observeMermaid, disposeMermaid: dispose } = await import('./lazy/mermaid');
+  disposeMermaid = dispose;
+
+  // 読み込んでいるあいだに次の文書が開かれていることがある（OQ-18）。
+  if (!container.isConnected) return;
+  observeMermaid(container);
+}
+
+/**
+ * 数式の描画（F-VIEW-13）。
+ *
+ * KaTeX は遅延チャンクに置いてある。
+ * 数式が 1 つも無い文書ではここに到達しないため、`math` チャンクは読み込まれない
+ * （02.architecture/05-startup-sequence.md §3 の分割境界）。
+ */
+async function enhanceMath(container: HTMLElement): Promise<void> {
+  const targets = [...container.querySelectorAll<HTMLElement>('.mx-math')].filter((el) => !(DONE in el.dataset));
+  if (targets.length === 0) return;
+
+  for (const element of targets) element.dataset[DONE] = '';
+
+  const { renderMath } = await import('./lazy/math');
+
+  await processInIdle(targets, (element) => {
+    // DOM から切り離された要素は処理しない（`enhanceCodeBlocks` と同じ理由 / OQ-18）
+    if (!element.isConnected) return;
+    renderMath(element);
+  });
 }
 
 async function enhanceCodeBlocks(container: HTMLElement): Promise<void> {

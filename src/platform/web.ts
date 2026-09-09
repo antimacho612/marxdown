@@ -107,6 +107,11 @@ function saveState(state: WebState): void {
   }
 }
 
+/*
+ * TeX の `\begin{aligned}` が `${aligned}` の書き損じに見えるため、この定数の間だけ落とす。
+ * 中身は Markdown の本文であって、テンプレートリテラルの補間を意図した箇所は無い。
+ */
+/* eslint-disable unicorn/no-incorrect-template-string-interpolation */
 const SAMPLE = `# Marxdown — dev:web
 
 Tauri を起動せずに UI を反復するためのモック環境。ファイル I/O は
@@ -155,7 +160,54 @@ const platform: Platform = import.meta.env.DEV ? webPlatform : tauriPlatform
 脚注はこう書く[^note]。
 
 [^note]: 本文の末尾にまとまって出る。
+
+## 表（F-EDIT-11）
+
+| 記法 | 対応 | 備考 |
+| --- | --- | --- |
+| GFM のテーブル | 済 | Tab でセル移動、Shift+Alt+F で整形 |
+| 日本語の列 | 済 | 全角を 2 桁として揃える |
+
+## 追加記法（既定 OFF）
+
+設定で有効にするまで、下の記法は素のテキストのまま残る。
+
+H~2~O / x^2^ / ==マーカー== / ++挿入++
+
+用語
+: 定義リストの説明
+
+## 数式（F-VIEW-13）
+
+インラインは $E = mc^2$ のように書く。$5 と $10 は数式にならない。
+
+$$
+\\int_{-\\infty}^{\\infty} e^{-x^2}\\,dx = \\sqrt{\\pi}
+$$
+
+$$
+\\begin{aligned}
+a &= b + c \\\\
+  &= d
+\\end{aligned}
+$$
+
+## Mermaid（F-VIEW-12）
+
+\`\`\`mermaid
+flowchart LR
+  A[Markdown] --> B[markdown-it]
+  B --> C[DOMPurify]
+  C --> D[DOM]
+\`\`\`
+
+描けない記述はコードブロックとして残る。
+
+\`\`\`mermaid
+これは Mermaid の記法ではない
+\`\`\`
 `;
+/* eslint-enable unicorn/no-incorrect-template-string-interpolation */
 
 /**
  * 実ファイルを仮想 FS に取り込み、仮想パスを返す。
@@ -355,6 +407,17 @@ export const webPlatform: Platform = {
 
   async resolveAsset(href) {
     return href;
+  },
+
+  /**
+   * `dev:web` にはディスクが無い。
+   *
+   * 保存したふりをして相対パスだけ返す。挿入される Markdown の形と、無題の文書を断る経路は確認できる。
+   * 実際に書けているかどうかは Rust 側のテスト（`src-tauri/src/asset.rs`）が見る。
+   */
+  async writeAsset(documentPath, extension) {
+    const name = documentPath.split('/').pop() ?? 'untitled.md';
+    return `${name}.assets/paste-${String(Date.now())}.${extension}`;
   },
 
   /**

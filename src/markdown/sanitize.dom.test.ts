@@ -154,32 +154,33 @@ describe('リンクの後処理', () => {
   });
 });
 
-describe('タスクリストのチェックボックスだけ input を通す (F-VIEW-01 / OQ-05)', () => {
-  it('タスクリストの記法はチェックボックスとして残る', () => {
+describe('input は 1 つも通さない (F-VIEW-01 / OQ-05)', () => {
+  it('タスクリストのチェックボックスは span で出る', () => {
+    // OQ-05 で操作を許可した結果、`<input>` に例外を設ける理由が無くなった
+    // （`markdown/plugins/task-list.ts`）。
     const out = pipeline('- [ ] 未完了\n- [x] 完了\n');
-    expect(out).toContain('type="checkbox"');
-    expect(out).toContain('disabled');
-    expect(out).toContain('checked');
+    expect(out).not.toContain('<input');
+    expect(out).toContain('role="checkbox"');
+    expect(out).toContain('aria-checked="true"');
   });
 
   it('テキスト入力欄は落とす', () => {
     expect(pipeline('<input type="text" name="password">')).not.toContain('<input');
   });
 
-  it('disabled でないチェックボックスは落とす', () => {
-    // プレビュー上でチェックを許すか（OQ-05）は未決着。生 HTML から
-    // 操作可能なチェックボックスを持ち込ませない。
+  it('生 HTML のチェックボックスは disabled の有無によらず落とす', () => {
     expect(pipeline('<input type="checkbox">')).not.toContain('<input');
+    expect(pipeline('<input type="checkbox" disabled>')).not.toContain('<input');
   });
 
   it('type の無い input は落とす', () => {
     expect(pipeline('<input disabled>')).not.toContain('<input');
   });
 
-  it('残ったチェックボックスからも on* 属性は落ちる', () => {
-    const out = pipeline('<input type="checkbox" disabled onfocus="alert(1)">');
-    expect(out).toContain('<input');
-    expect(out).not.toContain('onfocus');
+  it('生 HTML の span は残るが、行が対応しなければ操作しても何も起きない', () => {
+    // 落とす理由が無い span を落とすと、本文の普通の記述まで消える。
+    // 押しても何も起きないことは `features/preview/task.ts` と `document/task.ts` が担保する。
+    expect(pipeline('<span class="mx-task" role="checkbox"></span>')).toContain('mx-task');
   });
 
   it('button / textarea / select は引き続き落とす', () => {

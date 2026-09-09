@@ -15,11 +15,13 @@ import { settingsStore } from '@/features/settings';
 import { attachEditorScrollPort, startScrollSync, stopScrollSync } from '@/features/view';
 
 import { installCursorReport } from './cursor';
+import { runEdit } from './edits';
 import { installEditorKeymap } from './keymap';
 import { MARKDOWN_LANGUAGE_ID, monaco } from './monaco';
 import { applyEditorOptions, editorOptions } from './options';
-import { installUrlPaste } from './paste';
+import { installPaste } from './paste';
 import { createScrollPort } from './scroll-port';
+import { formatTable } from './table';
 import { applyEditorTheme, watchEditorTokens } from './theme';
 import { watchEditorSettings } from './watch-settings.svelte';
 
@@ -187,8 +189,9 @@ export function mountEditor(host: HTMLElement): monaco.editor.IStandaloneCodeEdi
   // Markdown の書式（F-EDIT-08）とリストの継続入力（F-EDIT-09, 10）。
   // アプリ側が処理するキーを Monaco から外すのもここで行う（`keymap.ts`）。
   installEditorKeymap(editor);
-  // 選択範囲への URL 貼り付け（F-EDIT-12）。
-  installUrlPaste(editor);
+  // 選択範囲への URL 貼り付け（F-EDIT-12）と画像の貼り付け（F-EDIT-13）。
+  // 渡すのは `host` である（`editor.getDomNode()` はこの時点でまだ `null` / `paste.ts`）。
+  installPaste(editor, host);
   // カーソル位置をステータスバーへ通知する（03.ux-spec/07-status-and-notifications.md §3）。更新は rAF で間引く（`cursor.ts`）。
   installCursorReport(editor);
 
@@ -206,6 +209,27 @@ export function mountEditor(host: HTMLElement): monaco.editor.IStandaloneCodeEdi
       // Undo の履歴に残す。`setValue` にすると履歴が失われる。
       // ここを通るのは同じ文書の読み直し（`F5` / 外部変更）だけである。別の文書へ移るときは `switchTo` を通る。
       current.pushEditOperations(null, [{ range: current.getFullModelRange(), text }], () => null);
+    },
+    replaceLine: (line, text) => {
+      const current = currentModel();
+      if (!current) return;
+      // Monaco の行番号は 1 始まり。`data-line` は 0 始まりである。
+      const number = line + 1;
+      if (number < 1 || number > current.getLineCount()) return;
+      // Undo の 1 手として積む。プレビュー上でチェックした後、`Ctrl+Z` で戻せる。
+      current.pushEditOperations(
+        null,
+        [
+          {
+            range: current
+              .getFullModelRange()
+              .setStartPosition(number, 1)
+              .setEndPosition(number, current.getLineMaxColumn(number)),
+            text,
+          },
+        ],
+        () => null,
+      );
     },
     sync: () => {
       const entry = currentEntry();
@@ -327,6 +351,18 @@ export function gotoLine(): void {
   if (!editor) return;
   editor.focus();
   void editor.getAction('editor.action.gotoLine')?.run();
+}
+
+/**
+ * カーソルのある表の列幅を揃える（F-EDIT-11 / `Shift+Alt+F`）。
+ *
+ * キーからは `keymap.ts` が直接呼ぶ。ここを通るのはコマンドパレットからの実行だけである。
+ * 表の中にカーソルが無ければ何も起きない。
+ */
+export function formatTableAtCursor(): void {
+  if (!editor) return;
+  editor.focus();
+  runEdit(editor, formatTable, 'markdown.table');
 }
 
 /**

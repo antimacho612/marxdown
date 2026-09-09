@@ -31,7 +31,7 @@ describe('CommonMark / GFM', () => {
   });
 
   it('preview.softBreak が true なら単独の改行を <br> にする (#45)', () => {
-    expect(render('a\nb', true).html).toContain('<br>');
+    expect(render('a\nb', { breaks: true }).html).toContain('<br>');
   });
 
   it('typographer: false なので記号を勝手に変換しない', () => {
@@ -200,16 +200,42 @@ describe('OQ-27 で前倒した記法 (06.roadmap/m2-editor.md §1.4)', () => {
     const { html } = render('- [ ] 未完了\n- [x] 完了\n');
     expect(html).toContain('contains-task-list');
     expect(html).toContain('task-list-item');
-    expect(html).toContain('type="checkbox"');
+    expect(html).toContain('role="checkbox"');
   });
 
-  it('タスクリストのチェックボックスは disabled のまま出す (OQ-05 は未決着)', () => {
-    expect(render('- [x] 完了\n').html).toContain('disabled');
+  it('チェックボックスに input を使わない (OQ-05)', () => {
+    // 生 HTML を書いたドキュメントが本文へ操作可能なフォーム部品を持ち込む経路を塞いである。
+    expect(render('- [x] 完了\n').html).not.toContain('<input');
+  });
+
+  it('チェック状態を aria-checked で表す', () => {
+    expect(render('- [ ] 未完了\n').html).toContain('aria-checked="false"');
+    expect(render('- [x] 完了\n').html).toContain('aria-checked="true"');
+    expect(render('- [X] 完了\n').html).toContain('aria-checked="true"');
+  });
+
+  it('記号を本文から取り除く', () => {
+    const { html } = render('- [ ] 未完了\n');
+    expect(html).toContain('未完了');
+    expect(html).not.toContain('[ ]');
+  });
+
+  it('キーボードで到達できる', () => {
+    expect(render('- [ ] a\n').html).toContain('tabindex="0"');
+  });
+
+  it('タスクの形をしていない項目には出さない', () => {
+    expect(render('- 普通の項目\n').html).not.toContain('mx-task');
+    // 記号の直後に空白が無いものは GFM でもタスクではない
+    expect(render('- [x]空白なし\n').html).not.toContain('mx-task');
+  });
+
+  it('順序付きリストでも拾う (GFM)', () => {
+    expect(render('1. [ ] a\n').html).toContain('role="checkbox"');
   });
 
   it('タスクリストの li にも data-line が残る', () => {
-    // `markdown-it-task-lists` は `list_item_open` の class を上書きする。
-    // data-line まで巻き添えにしていないことを見張る。
+    // プラグインは `list_item_open` の class を書き換える。data-line まで巻き添えにしていないことを見張る。
     expect(render('- [ ] a\n').html).toContain('data-line="0"');
   });
 });
@@ -237,5 +263,103 @@ describe('脚注があってもチャンク分割が壊れない (N-PERF-04)', (
   it('脚注だけのドキュメントでも 1 チャンクに収まる', () => {
     const { chunks } = renderChunks('a[^1]\n\n[^1]: b\n', 1, 1);
     expect(chunks.join('')).toBe(render('a[^1]\n\n[^1]: b\n').html);
+  });
+});
+
+describe('数式のプレースホルダ (F-VIEW-13)', () => {
+  it('インラインの数式を span にする', () => {
+    const { html } = render('式は $E = mc^2$ である。');
+    expect(html).toContain('<span class="mx-math" data-mx-math="inline">E = mc^2</span>');
+  });
+
+  it('ブロックの数式を div にして data-line を付ける', () => {
+    const { html } = render('前文\n\n$$\na = b\n$$\n');
+    expect(html).toContain('<div data-line="2" class="mx-math" data-mx-math="block">a = b</div>');
+  });
+
+  it('1 行で閉じた $$ もブロックにする', () => {
+    expect(render('$$a = b$$\n').html).toContain('data-mx-math="block">a = b</div>');
+  });
+
+  it('段落の中の $$ は span のまま出す', () => {
+    // `<p>` の内側に `<div>` を出すと、ブラウザが段落を閉じて data-line の対応が崩れる。
+    const { html } = render('文中に $$x^2$$ を書く。');
+    expect(html).toContain('<span class="mx-math" data-mx-math="inline-display">x^2</span>');
+  });
+
+  it('KaTeX へ渡す前に HTML としてエスケープする', () => {
+    expect(render('$a < b$').html).toContain('>a &lt; b</span>');
+  });
+
+  it('通貨の表記を数式にしない', () => {
+    // 終了記号の直前が空白であるか、直後が数字であるものを弾く。
+    expect(render('$5 と $10 です').html).not.toContain('mx-math');
+    expect(render('$5$10').html).not.toContain('mx-math');
+  });
+
+  it('開始記号の直後が空白なら数式にしない', () => {
+    expect(render('$ x $').html).not.toContain('mx-math');
+  });
+
+  it('行をまたぐインライン数式は認めない', () => {
+    expect(render('$a\nb$').html).not.toContain('mx-math');
+  });
+
+  it('エスケープした $ は数式の記号にならない', () => {
+    const { html } = render(String.raw`\$a\$`);
+    expect(html).not.toContain('mx-math');
+    expect(html).toContain('$a$');
+  });
+
+  it('閉じていない $$ は本文のまま残す', () => {
+    // 末尾まで飲み込む実装にすると、記号を 1 つ書き損なっただけで以降の本文が消える。
+    const { html } = render('$$\na = b\n\n次の段落\n');
+    expect(html).not.toContain('mx-math');
+    expect(html).toContain('次の段落');
+  });
+
+  it('4 スペース字下げはコードブロックのままにする', () => {
+    const { html } = render('    $$a$$\n');
+    expect(html).toContain('<pre');
+    expect(html).not.toContain('mx-math');
+  });
+
+  it('数式ブロックがチャンク分割の境界になる', () => {
+    const { chunks } = renderChunks('# h\n\n$$\na\n$$\n\npara\n', 1, 1);
+    expect(chunks.length).toBe(3);
+    expect(chunks[1]).toContain('data-mx-math="block"');
+  });
+});
+
+describe('Mermaid のプレースホルダ (F-VIEW-12)', () => {
+  it('mermaid フェンスを div にして data-line を付ける', () => {
+    const { html } = render('前文\n\n```mermaid\ngraph TD;\nA-->B;\n```\n');
+    expect(html).toContain('<div data-line="2" class="mx-mermaid">graph TD;\nA--&gt;B;\n</div>');
+  });
+
+  it('言語指定の大文字と前後の空白を無視する', () => {
+    expect(render('``` Mermaid \ngraph TD;\n```\n').html).toContain('class="mx-mermaid"');
+  });
+
+  it('他の言語のフェンスはコードブロックのままにする', () => {
+    const { html } = render('```ts\nconst a = 1;\n```\n');
+    expect(html).toContain('<pre');
+    expect(html).not.toContain('mx-mermaid');
+  });
+
+  it('言語指定の無いフェンスはコードブロックのままにする', () => {
+    expect(render('```\ngraph TD;\n```\n').html).not.toContain('mx-mermaid');
+  });
+
+  it('記述を HTML としてエスケープする', () => {
+    const { html } = render('```mermaid\ngraph TD;\nA["<img onerror=x>"]\n```\n');
+    expect(html).not.toContain('<img');
+    expect(html).toContain('&lt;img');
+  });
+
+  it('図がチャンク分割の境界になる', () => {
+    const { chunks } = renderChunks('# h\n\n```mermaid\ngraph TD;\n```\n\npara\n', 1, 1);
+    expect(chunks.length).toBe(3);
+    expect(chunks[1]).toContain('mx-mermaid');
   });
 });

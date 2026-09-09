@@ -17,7 +17,7 @@ import {
   saveSafely,
   toggleEol,
 } from '@/features/document';
-import { gotoLineLazily } from '@/features/editor';
+import { formatTableLazily, gotoLineLazily } from '@/features/editor';
 import { canGoBack, canGoForward, goBack, goForward } from '@/features/history';
 import { cycleMode, openFind, openReplace, setMode, togglePreview, toggleSplit } from '@/features/mode';
 import { openJumpLazily, showOutline } from '@/features/outline';
@@ -164,6 +164,14 @@ const COMMANDS: Command[] = [
   {
     id: 'editor.gotoLine',
     run: () => void gotoLineLazily(),
+    isListed: () => hasDocument() && viewStore.mode !== 'preview',
+  },
+
+  // 表の列幅を揃える（F-EDIT-11 / `Shift+Alt+F`）。
+  // `gotoLine` と同じく、カーソルのある面でしか意味を持たないため Preview では一覧に出さない。
+  {
+    id: 'editor.formatTable',
+    run: () => void formatTableLazily(),
     isListed: () => hasDocument() && viewStore.mode !== 'preview',
   },
 

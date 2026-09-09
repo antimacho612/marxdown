@@ -2,9 +2,70 @@ import { fileURLToPath, URL } from 'node:url';
 
 import { svelte } from '@sveltejs/vite-plugin-svelte';
 import { visualizer } from 'rollup-plugin-visualizer';
-import { defineConfig } from 'vite';
+import { defineConfig, type Plugin } from 'vite';
 
 const host = process.env.TAURI_DEV_HOST;
+
+/**
+ * Mermaid だけが引くパッケージ（F-VIEW-12 / `chunkFileNames` の `isVendorOnly` 判定）。
+ *
+ * ここに無いパッケージが Mermaid の依存に増えても、そのぶんが `shared-*` に落ちて
+ * critical path の実測が跳ねるだけであり、起動時に読み込まれるものは変わらない。
+ * **数字が跳ねたらこの一覧を疑うこと。**
+ *
+ * `dompurify` と `katex` は Mermaid も引くが、こちらも直接使うため入れていない。
+ */
+const MERMAID_PACKAGES = [
+  '@braintree',
+  '@iconify',
+  '@mermaid-js',
+  '@upsetjs',
+  'cytoscape',
+  'cytoscape-cose-bilkent',
+  'cytoscape-fcose',
+  'd3',
+  'dagre-d3-es',
+  'dayjs',
+  'delaunator',
+  'es-toolkit',
+  'fastdom',
+  'internmap',
+  'khroma',
+  'marked',
+  'mermaid',
+  'path-data-parser',
+  'points-on-curve',
+  'points-on-path',
+  'robust-predicates',
+  'roughjs',
+  'stylis',
+  'ts-dedent',
+  'uuid',
+];
+
+/**
+ * KaTeX のフォント参照を woff2 だけに削る（F-VIEW-13）。
+ *
+ * `katex.min.css` の `@font-face` は woff2 / woff / ttf の 3 形式を並べる。
+ * 対象は WebView2 Evergreen と WKWebView だけなので（`tsconfig.json` の `target` と同じ理由）、
+ * 残り 2 形式は表示を何も変えないままインストーラを 1MB 近く太らせる。
+ *
+ * 一致しなかった場合は 3 形式がそのまま同梱される。
+ * KaTeX 側の書き方が変わっても、フォントが引けなくなる側には倒れない。
+ */
+function katexWoff2Only(): Plugin {
+  return {
+    name: 'marxdown:katex-woff2-only',
+    enforce: 'pre',
+    transform(code, id) {
+      if (!id.includes('katex') || !/\.css(?:\?|$)/.test(id)) return null;
+      return {
+        code: code.replaceAll(/,url\(fonts\/[^)]+\.(?:woff|ttf)\)\s*format\("(?:woff|truetype)"\)/g, ''),
+        map: null,
+      };
+    },
+  };
+}
 
 /**
  * チャンク境界は 02.architecture.md §5.3 の表がそのまま仕様になっている。
@@ -13,6 +74,7 @@ const host = process.env.TAURI_DEV_HOST;
 export default defineConfig(({ mode }) => ({
   plugins: [
     svelte(),
+    katexWoff2Only(),
     ...(mode === 'analyze'
       ? [visualizer({ filename: 'dist/stats.html', gzipSize: true, brotliSize: true, open: false })]
       : []),
@@ -32,6 +94,19 @@ export default defineConfig(({ mode }) => ({
 
   build: {
     target: 'esnext', // WebView2 Evergreen / WKWebView のみを対象にするため
+    /*
+     * フォントは必ずファイルとして出す。
+     *
+     * 既定では小さいアセットが `data:` URI として CSS に埋め込まれる。
+     * CSP の `font-src` は `'self'` だけなので（02.architecture/09-security.md §1 Layer 1）、
+     * 埋め込まれたフォントは実行時に弾かれ、その face だけ描画に使われない。
+     * KaTeX の `KaTeX_Size3-Regular.woff2` が実際にこれに該当した。
+     *
+     * CSP に `data:` を足す側では直さない。
+     */
+    assetsInlineLimit(filePath) {
+      return /\.(?:woff2?|ttf|otf|eot)$/i.test(filePath) ? false : undefined;
+    },
     sourcemap: mode !== 'production',
     reportCompressedSize: true,
     rollupOptions: {
@@ -193,6 +268,39 @@ export default defineConfig(({ mode }) => ({
           //
           // `manualChunks` で名前を付けたもの（`editor`）は facade を持たないが、
           // **意図して分けた遅延チャンク**なのでここに落としてはいけない。
+          /*
+           * KaTeX の実体（F-VIEW-13）。Monaco と同じ理由で**名前付けだけ**である。
+           *
+           * `preview/lazy/math.ts` から動的 import しているが、74.2KB あるため
+           * rolldown が KaTeX だけのチャンクへ切り出すことがある。そのチャンクは
+           * facade を持たないので、名前を付けないと下の `shared-*` に落ち、
+           * **size-limit の critical path が数えてしまう**（palette で実測済みの事故と同じ形）。
+           */
+          const isKatexOnly = modules.length > 0 && modules.every((id) => id.includes('node_modules/katex'));
+          if (isKatexOnly) return 'assets/math-[hash].js';
+
+          /*
+           * Mermaid の依存グラフ（F-VIEW-12）。**ここも名前付けだけである。**
+           *
+           * Mermaid は cytoscape / d3 / dagre / roughjs など 100 枚近いチャンクに割れ、
+           * そのほとんどが facade を持たない。名前を付けないと全部が下の `shared-*` に落ち、
+           * **size-limit の critical path が 480KB ぶん多く数える**（実測 127.7 → 608.5KB）。
+           * 起動時に実際に読み込まれるものは何も変わっていない（`index.html` の modulepreload は 12 枚のまま）。
+           *
+           * 判定は「node_modules だけで構成され、かつ Mermaid しか引かないパッケージを含む」。
+           * `dompurify` と `katex` は Mermaid も引くがこちらも直接使うため、
+           * 「アプリのパッケージを含まない」という条件では拾えない。
+           * それらが同居したチャンクは遅延側にしか現れず（`index.html` に載らない）、
+           * `main` は自分のぶんを別のチャンクで持っている。
+           */
+          const isVendorOnly = modules.length > 0 && modules.every((id) => id.includes('node_modules'));
+          if (
+            isVendorOnly &&
+            modules.some((id) => MERMAID_PACKAGES.some((name) => id.includes(`node_modules/${name}/`)))
+          ) {
+            return 'assets/mermaid-[hash].js';
+          }
+
           const hasFacade = chunk.facadeModuleId !== null && chunk.facadeModuleId !== undefined;
           if (!hasFacade && chunk.name !== 'editor') {
             return 'assets/shared-[hash].js';

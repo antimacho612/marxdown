@@ -8,7 +8,8 @@
 //!
 //! UI ロジックと Markdown の意味解釈は TypeScript 側にある。
 
-pub mod bootstrap;
+pub mod asset;
+mod bootstrap;
 pub mod cli;
 pub mod close;
 pub mod commands;
@@ -241,6 +242,7 @@ pub fn run() {
             commands::read_document,
             commands::write_document,
             commands::resolve_asset,
+            commands::write_asset,
             commands::list_dir,
             commands::list_files,
             commands::allow_image_dir,

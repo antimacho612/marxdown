@@ -76,3 +76,50 @@ export function runAt(edit: MarkdownEdit, doc: string, ranges: number[][]): stri
   const marked = ranges.map(([from, to]) => ({ from: from ?? 0, to: to ?? from ?? 0 }));
   return apply(edit, doc, marked);
 }
+
+/**
+ * コマンドを 1 回流し、**本文だけ**を返す（表の整形 / F-EDIT-11）。
+ *
+ * `|` 記法を使わない。表の本文にも `|` が現れ、カーソルの印と区別が付かなくなる。
+ * カーソルの行き先を見たいコマンドでは `run` / `runAt` を使うこと。
+ */
+export function runTextAt(edit: MarkdownEdit, doc: string, cursor: number): string | null {
+  const target = harnessEditor();
+  const model = currentModel();
+
+  model.setValue(doc);
+  model.setEOL(monaco.editor.EndOfLineSequence.LF);
+  target.setSelections([selectionAt(model, cursor, cursor)]);
+
+  if (!runEdit(target, edit, 'test')) return null;
+  return model.getValue(monaco.editor.EndOfLinePreference.LF);
+}
+
+/**
+ * 選択範囲だけを動かす処理を 1 回流す（表のセル移動 / F-EDIT-11）。
+ *
+ * `|` 記法は使わない。表の本文にも `|` が現れ、区別が付かなくなる。
+ * 位置は `doc` に対する数値で渡し、結果も数値で返す。
+ *
+ * **手を引いた（`false` を返した）ときは `null`。**
+ * `Tab` は表でなければ既定の動作へ渡す必要があり、そこを取り違えられない形にしてある。
+ */
+export function runMoveAt(
+  move: (editor: monaco.editor.ICodeEditor) => boolean,
+  doc: string,
+  cursor: number,
+): { from: number; to: number; text: string } | null {
+  const target = harnessEditor();
+  const model = currentModel();
+
+  model.setValue(doc);
+  model.setEOL(monaco.editor.EndOfLineSequence.LF);
+  target.setSelections([selectionAt(model, cursor, cursor)]);
+
+  if (!move(target)) return null;
+
+  const selection = (target.getSelections() ?? [])[0];
+  if (!selection) return null;
+  const { from, to } = offsetsOf(model, selection);
+  return { from, to, text: model.getValueInRange(selection) };
+}

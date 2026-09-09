@@ -45,5 +45,6 @@ export {
   type StoredMeta,
   type StoredPayload,
 } from './store.svelte';
+export { toggleTaskAtLine } from './task';
 export { attachEditor, disposeDocumentText, getDocumentText, resetDocumentText, setDocumentText } from './text';
 export { installFileWatch } from './watch';

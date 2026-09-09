@@ -28,6 +28,7 @@ import {
 } from './format';
 import { indentList, outdentList } from './list';
 import { monaco } from './monaco';
+import { formatTable, moveToNextCell, moveToPreviousCell } from './table';
 
 const { KeyCode, KeyMod } = monaco;
 
@@ -85,6 +86,10 @@ const MARKDOWN: { keybinding: number; edit: MarkdownEdit }[] = [
     edit: setHeading(level),
   })),
   { keybinding: KeyMod.CtrlCmd | KeyMod.Alt | KeyCode.Digit0, edit: setHeading(0) },
+
+  // 表の列幅を揃える（F-EDIT-11）。VS Code の「ドキュメントのフォーマット」と同じキーである。
+  // Markdown にフォーマッタは無く、このアプリが整形するのは表だけなので、押した結果は 1 つに定まる。
+  { keybinding: KeyMod.Shift | KeyMod.Alt | KeyCode.KeyF, edit: formatTable },
 ];
 
 /**
@@ -100,9 +105,21 @@ const MARKDOWN: { keybinding: number; edit: MarkdownEdit }[] = [
  * 別の名前を渡すと `Enter` が `autoIndent: 'keep'` を通らず、前の行のインデントを引き継がない
  * （`dev:web` で `  段落` の末尾から改行したときに桁 1 になることで確認した）。
  */
-const FALLTHROUGH: { keybinding: number; edit: MarkdownEdit; handler: string; payload?: unknown }[] = [
-  { keybinding: KeyCode.Tab, edit: indentList, handler: 'tab' },
-  { keybinding: KeyMod.Shift | KeyCode.Tab, edit: outdentList, handler: 'outdent' },
+const FALLTHROUGH: {
+  keybinding: number;
+  /**
+   * 編集を伴わない処理（表のセル移動 / F-EDIT-11）。`edit` より先に試す。
+   *
+   * 選択範囲を動かすだけなので `MarkdownEdit` では表せない。
+   * `runEdit` は編集が 0 件なら「処理しなかった」と見なすため、そちらに載せると必ず既定動作へ流れる。
+   */
+  move?: (editor: monaco.editor.ICodeEditor) => boolean;
+  edit: MarkdownEdit;
+  handler: string;
+  payload?: unknown;
+}[] = [
+  { keybinding: KeyCode.Tab, move: moveToNextCell, edit: indentList, handler: 'tab' },
+  { keybinding: KeyMod.Shift | KeyCode.Tab, move: moveToPreviousCell, edit: outdentList, handler: 'outdent' },
   // F-EDIT-09 / F-EDIT-10。既定は「前の行のインデントを継ぐ改行」（`autoIndent: 'keep'`）。
   { keybinding: KeyCode.Enter, edit: continueList, handler: 'type', payload: { text: '\n' } },
   { keybinding: KeyCode.Backspace, edit: deleteMarkupBackward, handler: 'deleteLeft' },
@@ -140,10 +157,11 @@ export function installEditorKeymap(editor: monaco.editor.IStandaloneCodeEditor)
     editor.addCommand(keybinding, commandFor(editor, edit, 'markdown.format'), EDITOR_TEXT_FOCUS);
   }
 
-  for (const { keybinding, edit, handler, payload } of FALLTHROUGH) {
+  for (const { keybinding, move, edit, handler, payload } of FALLTHROUGH) {
     editor.addCommand(
       keybinding,
       () => {
+        if (move?.(editor) === true) return;
         if (runEdit(editor, edit, 'markdown.list')) return;
         editor.trigger(KEYBOARD_SOURCE, handler, payload ?? null);
       },

@@ -8,7 +8,7 @@
  * インスタンスの解放は N-PERF-06 の担当であり、タブごとのモデルと一体で決める（06.roadmap/m3-workspace.md Phase 3）。
  * ここでは本文を空にするところまでを行う。
  */
-import { paint } from '@/features/preview';
+import { paint, releasePreviewResources } from '@/features/preview';
 import { getPlatform } from '@/platform';
 
 import { markClean } from './dirty';
@@ -30,6 +30,10 @@ export function closeDocument(): void {
   // 空のチャンク列で描き直すと、段階的描画の打ち切り（`cancelPaint`）も同時に行われる（OQ-18）。
   const container = document.querySelector<HTMLElement>(PREVIEW_SELECTOR);
   if (container) paint(container, []);
+
+  // 遅延チャンクが抱えているもの（Mermaid の observer と描画済み SVG）を捨てる（N-PERF-06）。
+  // `paint` は本文を消すだけで、その外側で持っているものには手が届かない。
+  releasePreviewResources();
 
   const path = documentStore.meta?.path ?? null;
 

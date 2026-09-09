@@ -28,6 +28,12 @@ function fakePort(initial: string): EditorTextPort & {
       port.text = next;
     }),
     sync: vi.fn(),
+    /** 1 行だけの差し替え（F-VIEW-01 / OQ-05）。 */
+    replaceLine: vi.fn((line: number, next: string) => {
+      const lines = port.text.split('\n');
+      lines[line] = next;
+      port.text = lines.join('\n');
+    }),
     /** 文書の切り替え（M3 Phase 2b）。どのタブのどの文書で呼ばれたかを覚える。 */
     switchTo: vi.fn((key: number, documentId: string, next: string) => {
       port.text = next;

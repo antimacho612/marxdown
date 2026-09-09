@@ -66,8 +66,20 @@
     "gzip": true
   },
   {
-    "name": "total (no mermaid, no editor) — 上限の根拠は 05.performance-budget.md §5.1",
-    "path": ["dist/assets/*.js", "!dist/assets/mermaid-*.js", "!dist/assets/editor-*.js"],
+    "name": "math (KaTeX。数式を含む文書を開くまでロードしない)",
+    "path": ["dist/assets/math-*.js", "dist/assets/math-*.css"],
+    "limit": "85 KB",
+    "gzip": true
+  },
+  {
+    "name": "mermaid (図を含む文書で、図が画面に入るまでロードしない。予算の対象外 — 05-operations.md §1)",
+    "path": ["dist/assets/mermaid-*.js", "dist/assets/mermaid-*.css"],
+    "limit": "900 KB",
+    "gzip": true
+  },
+  {
+    "name": "total (no mermaid, no math, no editor) — 上限の根拠は 05.performance-budget/05-operations.md §1",
+    "path": ["dist/assets/*.js", "!dist/assets/mermaid-*.js", "!dist/assets/math-*.js", "!dist/assets/editor-*.js"],
     "limit": "235 KB",
     "gzip": true
   }

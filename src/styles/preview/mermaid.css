@@ -1,0 +1,38 @@
+/**
+ * Mermaid の面（F-VIEW-12）。
+ *
+ * 遅延チャンク `mermaid` に載る。図を含む文書を開くまで読み込まれない。
+ * 図そのものの配色は Mermaid が SVG に焼き付けるため、ここに置くのは本文との取り合いだけである。
+ */
+
+/*
+ * 横に広い図は、本文ではなく図の中でスクロールさせる。
+ * `.mx-preview` は `overflow-x: hidden` なので、ここで受けないと右側が読めないまま切れる。
+ */
+.mx-mermaid {
+  overflow-x: auto;
+  overflow-y: hidden;
+  margin-block: var(--mx-space-4);
+  text-align: center;
+}
+
+/* 描画前は元の記述が入っている。等幅で出し、本文の字面と区別できるようにする */
+.mx-mermaid:not([data-mx-mermaid-state]) {
+  font-family: var(--mx-font-code);
+  white-space: pre-wrap;
+  text-align: start;
+}
+
+/*
+ * 描けなかった図（N-REL-04）。
+ * 中身は本物の `<pre><code>` なので、コードブロックの見た目はそちらの規則がそのまま当たる。
+ * 図として扱う中央寄せだけを解く。
+ */
+.mx-mermaid[data-mx-mermaid-state='error'] {
+  text-align: start;
+}
+
+.mx-mermaid svg {
+  max-width: 100%;
+  height: auto;
+}

@@ -77,7 +77,7 @@ beforeEach(() => {
   recentStore.entries = [];
 
   resetTabs();
-  configureOpener({ parser: fakeParser(), softBreak: () => false, ...workspaceOpenerHooks() });
+  configureOpener({ parser: fakeParser(), softBreak: () => false, syntax: () => [], ...workspaceOpenerHooks() });
 });
 
 afterEach(() => {
@@ -177,6 +177,7 @@ describe('configureOpener', () => {
         dispose: () => {},
       },
       softBreak: () => false,
+      syntax: () => [],
       ...workspaceOpenerHooks(),
     });
 

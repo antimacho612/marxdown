@@ -27,6 +27,15 @@ export interface EditorTextPort {
    * そのまま保存すれば、触っていない箇所どころかファイル全体が別物になる（N-CMP-03）。
    */
   switchTo: (key: number, documentId: string, text: string) => void;
+  /**
+   * 1 行だけ差し替える（F-VIEW-01 / OQ-05）。
+   *
+   * 全体を差し替える `replace` と分けてある。
+   * `huge.md` でチェックボックスを 1 つ押すたびに全文を置き換えると、その 1 回に再トークナイズが丸ごと乗る。
+   *
+   * @param line 0 始まりの行番号。
+   */
+  replaceLine: (line: number, text: string) => void;
   /** そのタブが抱えているものを捨てる（タブを閉じたとき / N-PERF-06）。 */
   dispose: (key: number) => void;
 }
@@ -78,6 +87,30 @@ export interface DocumentIdentity {
 /** そのタブが抱えているものを捨てる。タブを閉じたときに呼ぶ（N-PERF-06）。 */
 export function disposeDocumentText(key: number): void {
   port?.dispose(key);
+}
+
+/**
+ * 1 行だけ差し替える（`features/document/task.ts`）。
+ *
+ * エディターが載っていればそちらへ渡し、Undo の 1 手として積む。
+ * 載っていなければこちらの保持分を書き換える。
+ *
+ * ダーティ化はここでは行わない。
+ * エディター経由なら `onDidChangeContent` から立つため、ここでも立てると経路によって二重になる。
+ *
+ * @returns 差し替えたら `true`。行が存在しなければ `false`。
+ */
+export function replaceDocumentLine(line: number, text: string): boolean {
+  if (port) {
+    port.replaceLine(line, text);
+    return true;
+  }
+
+  const lines = (held ?? '').split('\n');
+  if (lines[line] === undefined) return false;
+  lines[line] = text;
+  held = lines.join('\n');
+  return true;
 }
 
 /** 現在の本文。エディターがマウントされていれば、そちらの内容を返す。 */
