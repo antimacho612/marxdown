@@ -161,6 +161,13 @@ const platform: Platform = import.meta.env.DEV ? webPlatform : tauriPlatform
 
 [^note]: 本文の末尾にまとまって出る。
 
+## 表（F-EDIT-11）
+
+| 記法 | 対応 | 備考 |
+| --- | --- | --- |
+| GFM のテーブル | 済 | Tab でセル移動、Shift+Alt+F で整形 |
+| 日本語の列 | 済 | 全角を 2 桁として揃える |
+
 ## 追加記法（既定 OFF）
 
 設定で有効にするまで、下の記法は素のテキストのまま残る。

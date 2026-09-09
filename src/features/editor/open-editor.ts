@@ -55,6 +55,17 @@ export async function gotoLineLazily(): Promise<void> {
 }
 
 /**
+ * カーソルのある表の列幅を揃える（F-EDIT-11 / `Shift+Alt+F`）。
+ *
+ * エディターがマウントされていなければ何もしない。
+ * **Preview では一覧に出さない**（`app/commands.ts`）。カーソルが無い面に「カーソルのある表」は存在しない。
+ */
+export async function formatTableLazily(): Promise<void> {
+  const { formatTableAtCursor } = await import('./lazy/editor');
+  formatTableAtCursor();
+}
+
+/**
  * 検索・置換パネルを開く（F-EDIT-05）。
  *
  * エディターがマウントされていなければ何も起きない。

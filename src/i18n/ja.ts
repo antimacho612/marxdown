@@ -121,6 +121,8 @@ export const ja = {
     cycleMode: '表示モードを順に切り替える',
     /** 指定行へ移動（`Ctrl+G`）。**編集面があるときだけ**（Preview には行番号が無い）。 */
     gotoLine: '指定行へ移動',
+    /** 表の列幅を揃える（`Shift+Alt+F`）。`gotoLine` と同じく編集面があるときだけ。 */
+    formatTable: '表の列幅を揃える',
     /** スクロール同期（Split のときだけ意味を持つ）。 */
     toggleScrollSync: 'スクロール同期を切り替える',
     /** アウトラインを表示してフォーカスする（閉じない）。 */

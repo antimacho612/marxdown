@@ -15,11 +15,13 @@ import { settingsStore } from '@/features/settings';
 import { attachEditorScrollPort, startScrollSync, stopScrollSync } from '@/features/view';
 
 import { installCursorReport } from './cursor';
+import { runEdit } from './edits';
 import { installEditorKeymap } from './keymap';
 import { MARKDOWN_LANGUAGE_ID, monaco } from './monaco';
 import { applyEditorOptions, editorOptions } from './options';
 import { installUrlPaste } from './paste';
 import { createScrollPort } from './scroll-port';
+import { formatTable } from './table';
 import { applyEditorTheme, watchEditorTokens } from './theme';
 import { watchEditorSettings } from './watch-settings.svelte';
 
@@ -348,6 +350,18 @@ export function gotoLine(): void {
   if (!editor) return;
   editor.focus();
   void editor.getAction('editor.action.gotoLine')?.run();
+}
+
+/**
+ * カーソルのある表の列幅を揃える（F-EDIT-11 / `Shift+Alt+F`）。
+ *
+ * キーからは `keymap.ts` が直接呼ぶ。ここを通るのはコマンドパレットからの実行だけである。
+ * 表の中にカーソルが無ければ何も起きない。
+ */
+export function formatTableAtCursor(): void {
+  if (!editor) return;
+  editor.focus();
+  runEdit(editor, formatTable, 'markdown.table');
 }
 
 /**
