@@ -114,10 +114,44 @@ export function sanitize(html: string): string {
 }
 
 /**
- * Mermaid が生成した SVG も同じサニタイザを通す（§1 Layer 3）。
- * 使用するのは Mermaid を導入する M4 だが、DOM に入る HTML の経路を分岐させないためにここへ置いてある。
+ * Mermaid が生成した SVG も同じサニタイザを通す（F-VIEW-12 / §1 Layer 3）。
+ *
+ * 本文用の設定から変えるのは `style` 属性だけである。理由は `sanitizeMath` と同じ形で、
+ * Mermaid は図形の位置と大きさをインラインの `style` で表現しており、除去すると図が崩れる。
+ * 値を組み立てるのは Mermaid であってドキュメントではない。
+ *
+ * **`foreignObject` は通さない**（DOMPurify の既定のまま）。
+ * mXSS の経路として知られており、許可すると SVG の内側に HTML の名前空間が入る。
+ * Mermaid は既定でノードのラベルをそこに置くため、そのままでは**ラベルが消えた図**になる。
+ * サニタイザを広げる側では直さず、Mermaid 側で `htmlLabels: false` にして
+ * ラベルを SVG の `<text>` として出力させている（`features/preview/lazy/mermaid.ts`）。
  */
 export function sanitizeSvg(svg: string): string {
   configure();
-  return DOMPurify.sanitize(svg, { ...CONFIG, USE_PROFILES: { svg: true, svgFilters: true } });
+  return DOMPurify.sanitize(svg, {
+    ...CONFIG,
+    USE_PROFILES: { svg: true, svgFilters: true },
+    FORBID_ATTR: ['srcset', 'formaction', 'ping'],
+  });
+}
+
+/**
+ * KaTeX が生成した HTML をサニタイズする（F-VIEW-13 / §1 Layer 3）。
+ *
+ * 本文用の設定と 2 点だけ違う。
+ *
+ * MathML を通す。KaTeX の既定出力は視覚表現の HTML と、支援技術が読む MathML の 2 本立てであり、
+ * `mathMl` プロファイルが無いと後者が丸ごと落ちてスクリーンリーダーから数式が消える。
+ *
+ * `style` 属性を通す。KaTeX は文字の高さと位置を全部インラインの `style` で表現しており、除去すると数式が縦に潰れて読めなくなる。
+ * 値を組み立てるのは KaTeX であってドキュメントではない。
+ * ドキュメント側から `style` を書ける記法（`\htmlStyle` など）は `trust: false` で無効化してある（`features/preview/lazy/math.ts`）。
+ */
+export function sanitizeMath(html: string): string {
+  configure();
+  return DOMPurify.sanitize(html, {
+    ...CONFIG,
+    USE_PROFILES: { html: true, mathMl: true, svg: true, svgFilters: true },
+    FORBID_ATTR: ['srcset', 'formaction', 'ping'],
+  });
 }

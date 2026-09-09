@@ -1,0 +1,36 @@
+/**
+ * 数式の面（F-VIEW-13）。
+ *
+ * 遅延チャンク `math` に載る。数式を含む文書を開くまで読み込まれない。
+ * KaTeX 自身のスタイルは `katex.min.css` が持つので、ここに置くのは本文との取り合いだけである。
+ */
+
+/*
+ * 横に長い数式は、本文ではなく数式の中でスクロールさせる。
+ * `.mx-preview` は `overflow-x: hidden` なので、ここで受けないと右側が読めないまま切れる。
+ */
+.mx-math[data-mx-math='block'] {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-block: var(--mx-space-2);
+}
+
+/* 描画前は元の TeX が入っている。等幅で出し、本文の字面と区別できるようにする */
+.mx-math:not([data-mx-math-rendered]) {
+  font-family: var(--mx-font-code);
+}
+
+/*
+ * `$$...$$` を段落の中に書いた場合。
+ *
+ * `<p>` の内側なので要素は `<span>` のままだが（`markdown/plugins/math.ts`）、
+ * KaTeX が中に出す `.katex-display` はブロックである。span 側も合わせないと行の高さが崩れる。
+ */
+.mx-math[data-mx-math='inline-display'] {
+  display: block;
+}
+
+/* 数式の直後に付く余白は KaTeX 側が持っている。本文のリズムに合わせて詰める */
+.mx-math .katex-display {
+  margin-block: 0;
+}

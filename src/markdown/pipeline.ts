@@ -16,6 +16,8 @@ import taskLists from 'markdown-it-task-lists';
 
 import { splitFrontMatter } from './plugins/front-matter';
 import { extractOutline, lineMapPlugin, type OutlineItem } from './plugins/line-map';
+import { mathPlugin } from './plugins/math';
+import { mermaidPlugin } from './plugins/mermaid';
 
 /** `render` の結果。HTML と、そこから導出した派生値をまとめて返す。 */
 export interface RenderResult {
@@ -63,6 +65,14 @@ export function createMarkdownIt(breaks = false): MarkdownIt {
   // プレビュー上でチェックを許可するかは未決（OQ-05、期限は M4）であり、ここで `enabled: true` にすると決定を先取りすることになる
   // （サニタイザ側も `markdown/sanitize.ts` で disabled を要求している）。
   md.use(taskLists);
+
+  // 数式（F-VIEW-13）。ここではプレースホルダを出すだけで、KaTeX は `features/preview/lazy/math.ts` が遅延ロードする。
+  // critical path の残余が 23.64KB しかないため、パーサ側のプラグインを載せる選択肢が無い（06.roadmap/m4-markdown.md §1.2）。
+  md.use(mathPlugin);
+
+  // Mermaid（F-VIEW-12）。`mermaid` フェンスの型を差し替えてプレースホルダにするだけで、描画は遅延チャンクが行う。
+  // Mermaid は全依存の中で突出して重い（04.tech-stack/04-markdown.md §4）。
+  md.use(mermaidPlugin);
 
   // 最後に登録する。上のプラグインが登録したレンダラごと包む必要がある。
   md.use(lineMapPlugin);

@@ -34,11 +34,15 @@ const BLOCK_OPEN_RULES = [
  * `alert_open`（GitHub Alerts / F-VIEW-14）も同じ構造である。
  * これは `blockquote_open` を書き換えて生成される（`markdown-it-github-alerts` の core ルール）ため、`BLOCK_OPEN_RULES` の `blockquote_open` には該当しない。
  * レンダラはタイトル行とアイコンを含む `<div>` を文字列で組み立て、トークンの属性を参照しない。
+ *
+ * `math_block`（F-VIEW-13）と `mermaid_block`（F-VIEW-12）も自作のレンダラが `<div>` を文字列で組み立てるため同じ扱いになる。
  */
 const RAW_OPEN_RULES = [
   ['fence', '<pre'],
   ['code_block', '<pre'],
   ['alert_open', '<div'],
+  ['math_block', '<div'],
+  ['mermaid_block', '<div'],
 ] as const;
 
 /** `data-line` を付けるレンダラで既存のルールを包む。`use` は他のプラグインより後に行う。 */

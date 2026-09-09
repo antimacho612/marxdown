@@ -6,7 +6,7 @@
  * 遅延側は `lazy/` にあり（シンタックスハイライトと本文内検索）、呼び出し元が 2 つあるため動的 import で実体を参照する。
  */
 export { scrollToAnchor } from './anchor';
-export { enhance } from './enhance';
+export { enhance, releasePreviewResources } from './enhance';
 export { installLinkHandler, type LinkTargets } from './links';
 export { openSearchLazily } from './open-search';
 export { paint } from './paint';

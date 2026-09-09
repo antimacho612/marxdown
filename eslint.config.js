@@ -217,7 +217,15 @@ export default tseslint.config(
     // CSS の副作用インポートと、テストのセットアップは代入しようがない。
     // `features/editor/monaco.ts` は **Monaco から何を取るかの一覧**そのもので、
     // contrib の登録は副作用インポート以外の書き方が無い（ADR-0009）。
-    files: ['src/main.ts', 'tests/setup.ts', 'src/features/editor/lazy/monaco.ts', '.storybook/**'],
+    // `features/preview/lazy/math.ts` は KaTeX の CSS を遅延チャンク側へ載せる入口である（F-VIEW-13）。
+    files: [
+      'src/main.ts',
+      'tests/setup.ts',
+      'src/features/editor/lazy/monaco.ts',
+      'src/features/preview/lazy/math.ts',
+      'src/features/preview/lazy/mermaid.ts',
+      '.storybook/**',
+    ],
     rules: { 'import-x/no-unassigned-import': 'off' },
   },
 
