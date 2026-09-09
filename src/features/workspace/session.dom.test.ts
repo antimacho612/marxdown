@@ -73,7 +73,7 @@ beforeEach(() => {
   setDirty(false);
   resetTabs();
   resetSessionWatch();
-  configureOpener({ parser: fakeParser(), ...workspaceOpenerHooks() });
+  configureOpener({ parser: fakeParser(), softBreak: () => false, ...workspaceOpenerHooks() });
 });
 
 afterEach(() => {

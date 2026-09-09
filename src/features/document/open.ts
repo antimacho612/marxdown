@@ -11,7 +11,7 @@ import { toMessage } from '@/lib/error';
 import { dirOf } from '@/lib/path';
 import { refreshOutline, refreshSearch } from '@/lib/refresh';
 import { mark } from '@/lib/trace';
-import type { MarkdownParser } from '@/markdown/parser';
+import type { MarkdownParser, ParseOptions } from '@/markdown/parser';
 import { getPlatform, type DocumentPayload, type Encoding } from '@/platform';
 
 import { markClean } from './dirty';
@@ -34,6 +34,13 @@ export interface OpenerConfig {
   onOpened: (meta: StoredMeta, options: { remember: boolean }) => void;
   /** 開けなかったことを知らせる先。消えたファイルを最近開いた一覧から外す。 */
   onMissing: (path: string) => void;
+  /**
+   * 現在の `preview.softBreak` の値（#45）。
+   *
+   * `document` は `settings` feature を直接参照できないため（02.architecture/03-layers.md §3）、
+   * パースのたびに読む関数として注入する。値そのものを固定すると設定変更後も古い値でパースし続ける。
+   */
+  softBreak: () => boolean;
   /**
    * 開く先のタブ（`features/workspace`）。**無ければそちらで作る。**
    *
@@ -63,6 +70,11 @@ export function configureOpener(next: OpenerConfig): void {
  */
 export function getParser(): MarkdownParser | null {
   return config?.parser ?? null;
+}
+
+/** 現在の設定を反映したパース指定。`live.ts` の再描画がこれを使う。 */
+export function getParseOptions(): ParseOptions {
+  return { breaks: config?.softBreak() ?? false };
 }
 
 /** `openDocument` / `openPath` の振る舞いの差を表す。5 つの入口の違いはすべてここに現れる。 */
@@ -161,7 +173,7 @@ export async function openDocument(payload: StoredPayload, options: OpenOptions 
   const startedAt = options.startedAt ?? performance.now();
   // パースを先に開始してから待つ（シェル描画と重ねるため）。
   traceMark(options, 'T6', `${payload.content.length} chars`);
-  const parsing = opener.parser.parse(payload.content);
+  const parsing = opener.parser.parse(payload.content, { breaks: opener.softBreak() });
 
   // 開く先のタブ。本文の載せ先（Monaco のモデル）と履歴の分かれ目がこれで決まる。
   const key = opener.targetKey();

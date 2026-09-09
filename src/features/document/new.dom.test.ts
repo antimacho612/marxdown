@@ -63,7 +63,7 @@ beforeEach(() => {
     setDirty: () => Promise.resolve(),
   } as unknown as Platform);
   resetTabs();
-  configureOpener({ parser: fakeParser(), ...workspaceOpenerHooks() });
+  configureOpener({ parser: fakeParser(), softBreak: () => false, ...workspaceOpenerHooks() });
 });
 
 describe('新規ファイル', () => {

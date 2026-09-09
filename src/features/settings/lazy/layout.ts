@@ -146,6 +146,13 @@ export const LAYOUT = [
         label: ja.settings.maxWidth.label,
         description: ja.settings.maxWidth.description,
       },
+      {
+        kind: 'field',
+        key: 'preview.softBreak',
+        widget: 'toggle',
+        label: ja.settings.softBreak.label,
+        description: ja.settings.softBreak.description,
+      },
       { kind: 'sample', sample: 'content' },
     ],
   },
