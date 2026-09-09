@@ -31,7 +31,7 @@ describe('CommonMark / GFM', () => {
   });
 
   it('preview.softBreak が true なら単独の改行を <br> にする (#45)', () => {
-    expect(render('a\nb', true).html).toContain('<br>');
+    expect(render('a\nb', { breaks: true }).html).toContain('<br>');
   });
 
   it('typographer: false なので記号を勝手に変換しない', () => {

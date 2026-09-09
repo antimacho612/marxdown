@@ -18,7 +18,10 @@ import { splitFrontMatter } from './plugins/front-matter';
 import { extractOutline, lineMapPlugin, type OutlineItem } from './plugins/line-map';
 import { mathPlugin } from './plugins/math';
 import { mermaidPlugin } from './plugins/mermaid';
+import { useSyntax } from './plugins/syntax';
 import { taskListPlugin } from './plugins/task-list';
+
+export { loadSyntax, SYNTAX_NAMES, type SyntaxName } from './plugins/syntax';
 
 /** `render` の結果。HTML と、そこから導出した派生値をまとめて返す。 */
 export interface RenderResult {
@@ -29,8 +32,31 @@ export interface RenderResult {
   blockCount: number;
 }
 
+/**
+ * 描画に影響するユーザー設定。
+ *
+ * ここに入るのは「CSS では表現できない、パースの結果そのものが変わるもの」だけである。
+ * 文字サイズや配色はトークン層で当たるため、パイプラインは知らなくてよい。
+ */
+export interface RenderConfig {
+  /** 単独の改行を `<br>` にするか（`preview.softBreak` / #45）。 */
+  breaks?: boolean;
+  /**
+   * 有効にする追加記法（`markdown.*` / 04.tech-stack/04-markdown.md §3）。
+   *
+   * **実際に適用されるのは `loadSyntax` で読み込み済みのものだけである。**
+   * 読み込みは呼び出し側（`markdown/parser.ts`）が描画の前に待つ。
+   */
+  syntax?: readonly string[];
+}
+
 let cached: MarkdownIt | null = null;
-let cachedBreaks: boolean | null = null;
+let cachedKey: string | null = null;
+
+/** キャッシュの一致判定。設定が変われば作り直す。 */
+function configKey(config: RenderConfig): string {
+  return `${String(config.breaks ?? false)}|${(config.syntax ?? []).toSorted().join(',')}`;
+}
 
 /**
  * markdown-it を組み立てる。`use` の順序は仕様である（モジュール冒頭を参照）。
@@ -38,13 +64,13 @@ let cachedBreaks: boolean | null = null;
  * `breaks` はユーザー設定 `preview.softBreak`（#45）。既定は CommonMark 準拠の false で、
  * 単独の改行を `<br>` にしない。日本語文書では改行がそのまま反映されるほうを好む場合があるため選べるようにしてある。
  */
-export function createMarkdownIt(breaks = false): MarkdownIt {
+export function createMarkdownIt(config: RenderConfig = {}): MarkdownIt {
   const md = new MarkdownItCallable({
     // 02.architecture/09-security.md §1 Layer 2: html は通すが、出力は必ず Layer 3 (DOMPurify) を通す。
     // ここで false にすると、生 HTML を書いた正当なドキュメントが壊れる。
     html: true,
     linkify: true, // GFM の自動リンク
-    breaks,
+    breaks: config.breaks ?? false,
     typographer: false, // 勝手な記号変換はしない（Markdown Is the Product）
   });
 
@@ -74,6 +100,10 @@ export function createMarkdownIt(breaks = false): MarkdownIt {
   // Mermaid は全依存の中で突出して重い（04.tech-stack/04-markdown.md §4）。
   md.use(mermaidPlugin);
 
+  // 設定で有効化された追加記法（`markdown.*`）。既定では 1 つも入らない。
+  // 標準の記法より後に置く。定義リストや上付き下付きが、既定の記法の解釈を変えないようにするためである。
+  useSyntax(md, config.syntax ?? []);
+
   // 最後に登録する。上のプラグインが登録したレンダラごと包む必要がある。
   md.use(lineMapPlugin);
 
@@ -85,12 +115,24 @@ export function createMarkdownIt(breaks = false): MarkdownIt {
  *
  * `breaks` が前回と違えば作り直す。設定変更は頻繁ではないため、キャッシュより設定値を優先する。
  */
-export function getMarkdownIt(breaks = false): MarkdownIt {
-  if (cached === null || cachedBreaks !== breaks) {
-    cached = createMarkdownIt(breaks);
-    cachedBreaks = breaks;
+export function getMarkdownIt(config: RenderConfig = {}): MarkdownIt {
+  const key = configKey(config);
+  if (cached === null || cachedKey !== key) {
+    cached = createMarkdownIt(config);
+    cachedKey = key;
   }
   return cached;
+}
+
+/**
+ * キャッシュを捨てる。
+ *
+ * 追加記法は非同期に読み込まれるため、読み込みが済んだ時点で組み立て直す必要がある。
+ * 設定キーが同じでも、`useSyntax` が返すものが変わっているためキャッシュは使えない。
+ */
+export function resetMarkdownIt(): void {
+  cached = null;
+  cachedKey = null;
 }
 
 /**
@@ -112,8 +154,8 @@ export function slugifyHeading(text: string): string {
  *
  * Front Matter を切り離したうえで、`data-line` が元テキストの行番号を指すよう env でオフセットを渡す。
  */
-export function render(text: string, breaks = false): RenderResult {
-  const md = getMarkdownIt(breaks);
+export function render(text: string, config: RenderConfig = {}): RenderResult {
+  const md = getMarkdownIt(config);
   const { frontMatter, body, bodyStartLine } = splitFrontMatter(text);
 
   const env: Record<string, unknown> = {};
@@ -149,13 +191,13 @@ export function renderChunks(
   text: string,
   firstChunkBlocks: number,
   chunkBlocks: number,
-  breaks = false,
+  config: RenderConfig = {},
 ): {
   chunks: string[];
   outline: OutlineItem[];
   frontMatter: string | null;
 } {
-  const md = getMarkdownIt(breaks);
+  const md = getMarkdownIt(config);
   const { frontMatter, body, bodyStartLine } = splitFrontMatter(text);
 
   const env: Record<string, unknown> = {};

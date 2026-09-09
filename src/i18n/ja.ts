@@ -301,6 +301,7 @@ export const ja = {
       appearance: '外観',
       preview: 'プレビュー',
       editor: 'エディター',
+      markdown: '記法',
       outline: 'アウトライン',
       window: 'ウィンドウ',
     },
@@ -348,6 +349,31 @@ export const ja = {
     softBreak: {
       label: 'ソフトブレーク',
       description: '段落内の単独の改行をそのまま <br> として描画するかどうかを制御します。',
+    },
+
+    /**
+     * 追加記法（04.tech-stack/04-markdown.md §3）。どれも既定 OFF。
+     *
+     * 説明には記法そのものを書く。名前だけでは何が起きるか判断できず、
+     * 「操作する前に結果を判断できる」（Principle 3）を満たさない。
+     */
+    markdown: {
+      abbreviations: {
+        label: '略語',
+        description: '`*[HTML]: HyperText Markup Language` と定義した語に説明を付けます。',
+      },
+      definitionLists: {
+        label: '定義リスト',
+        description: '用語の次の行を `: 説明` で始めると定義リストになります。',
+      },
+      insertions: { label: '挿入', description: '`++文字++` を挿入（下線）として描画します。' },
+      marks: { label: 'マーカー', description: '`==文字==` を蛍光ペンで引いたように描画します。' },
+      multilineTables: {
+        label: '複数行のテーブル',
+        description: '1 つのセルの中で改行できるテーブル記法を有効にします。',
+      },
+      subscript: { label: '下付き文字', description: '`H~2~O` の `2` を下付きで描画します。' },
+      superscript: { label: '上付き文字', description: '`x^2^` の `2` を上付きで描画します。' },
     },
 
     /**

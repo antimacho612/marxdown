@@ -72,6 +72,24 @@ export interface Category {
 /** 左のカテゴリの ID。`LAYOUT` に書いた綴りがそのまま型になる。 */
 export type CategoryId = (typeof LAYOUT)[number]['id'];
 
+/**
+ * 追加記法の項目（04.tech-stack/04-markdown.md §3）。
+ *
+ * 7 つとも同じ形（トグル 1 つ）なので、名前を書き下さずに文言の側から作る。
+ * 書き下すと、キーと文言の組み合わせを取り違えても型では気づけない。
+ *
+ * ここで作る `key` は `markdown.<名前>` であり、`SettingKey` に無い名前があれば
+ * `LAYOUT` の `satisfies` が型エラーにする。
+ * `markdown/plugins/syntax.ts` の `SYNTAX_NAMES` との一致は `features/settings/syntax.test.ts` が見張る。
+ */
+const SYNTAX_FIELDS = (Object.keys(ja.settings.markdown) as (keyof typeof ja.settings.markdown)[]).map((name) => ({
+  kind: 'field' as const,
+  key: `markdown.${name}` as const,
+  widget: 'toggle' as const,
+  label: ja.settings.markdown[name].label,
+  description: ja.settings.markdown[name].description,
+}));
+
 /** 折り返し桁は、折り返しの設定が桁を見る 2 つの値のときだけ意味を持つ。 */
 function wrapsByColumn(values: Settings): boolean {
   const wrap = values['editor.wordWrap'];
@@ -339,6 +357,19 @@ export const LAYOUT = [
         description: ja.settings.editor.scrollBeyondLastLine.description,
       },
     ],
+  },
+  {
+    /*
+     * 追加記法（04.tech-stack/04-markdown.md §3）。どれも既定 OFF である。
+     *
+     * カテゴリを分けているのは、プレビューの中に混ぜると
+     * 「見た目の調整」と「本文の解釈が変わる設定」が同じ並びに来るためである。
+     * 後者は押した結果が本文そのものに出る。
+     */
+    id: 'markdown',
+    label: ja.settings.categories.markdown,
+    // 節の見出しは置かない。カテゴリ自体が「記法」であり、7 項目に見出しを足しても分かれ目が増えるだけである。
+    entries: SYNTAX_FIELDS,
   },
   {
     id: 'outline',

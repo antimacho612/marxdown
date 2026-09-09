@@ -77,7 +77,7 @@ beforeEach(() => {
   });
 
   resetTabs();
-  configureOpener({ parser: fakeParser(), softBreak: () => false, ...workspaceOpenerHooks() });
+  configureOpener({ parser: fakeParser(), softBreak: () => false, syntax: () => [], ...workspaceOpenerHooks() });
   // 開き直しの手は `app/bootstrap.ts` が渡す。ここでは同じ形を組み立てる。
   configureHistory({
     scrollTop: previewScrollTop,

@@ -161,6 +161,15 @@ const platform: Platform = import.meta.env.DEV ? webPlatform : tauriPlatform
 
 [^note]: 本文の末尾にまとまって出る。
 
+## 追加記法（既定 OFF）
+
+設定で有効にするまで、下の記法は素のテキストのまま残る。
+
+H~2~O / x^2^ / ==マーカー== / ++挿入++
+
+用語
+: 定義リストの説明
+
 ## 数式（F-VIEW-13）
 
 インラインは $E = mc^2$ のように書く。$5 と $10 は数式にならない。
