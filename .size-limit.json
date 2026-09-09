@@ -30,6 +30,12 @@
     "gzip": true
   },
   {
+    "name": "settings samples (設定の見本。プレビュー / エディターのカテゴリを開くまでロードしない)",
+    "path": ["dist/assets/sample-*.js"],
+    "limit": "2 KB",
+    "gzip": true
+  },
+  {
     "name": "palette (コマンドパレット / クイックオープンと器。Ctrl+Shift+P / Ctrl+P / Ctrl+Shift+O まで読まない)",
     "path": ["dist/assets/palette-*.js"],
     "limit": "6 KB",

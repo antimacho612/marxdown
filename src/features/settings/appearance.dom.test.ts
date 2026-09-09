@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 
 import { clampSetting, DEFAULT_SETTINGS, type Settings } from '@/platform';
 
-import { applyAppearance, formatFontFamily } from './appearance';
+import { applyAppearance } from './appearance';
 
 function root(): HTMLElement {
   return document.documentElement;
@@ -106,32 +106,6 @@ describe('applyAppearance', () => {
     applyAppearance(withSettings({ 'preview.maxWidth': 100_000 }));
 
     expect(root().style.getPropertyValue('--mx-content-width')).toBe('200ch');
-  });
-});
-
-describe('formatFontFamily', () => {
-  it('空白入りの名前も数字始まりも、引用符で包んで一様に扱う', () => {
-    expect(formatFontFamily('Meiryo UI')).toBe('"Meiryo UI"');
-    expect(formatFontFamily('  Yu Gothic  ')).toBe('"Yu Gothic"');
-  });
-
-  it('カンマ区切りで複数指定できる。ユーザーの引用符は剥がして付け直す', () => {
-    expect(formatFontFamily("'Noto Sans JP', Meiryo")).toBe('"Noto Sans JP", "Meiryo"');
-  });
-
-  it('空文字と空白だけの指定は「指定なし」', () => {
-    expect(formatFontFamily('')).toBeNull();
-    expect(formatFontFamily(' , , ')).toBeNull();
-  });
-
-  /**
-   * `settings.json` は手で書ける。**検証されていない文字列**が
-   * `font-family` の宣言に入る経路なので、包めない文字を含む名前は捨てる。
-   */
-  it('宣言を抜け出せる文字を含む名前は捨てる', () => {
-    expect(formatFontFamily('Meiryo"; color: red; x: "')).toBeNull();
-    expect(formatFontFamily('a}b')).toBeNull();
-    expect(formatFontFamily('Meiryo, bad;name')).toBe('"Meiryo"');
   });
 });
 
