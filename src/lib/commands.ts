@@ -28,6 +28,7 @@ export type CommandId =
   | 'editor.formatTable'
   | 'explorer.show'
   | 'find.open'
+  | 'folder.open'
   | 'find.replace'
   | 'history.back'
   | 'history.forward'

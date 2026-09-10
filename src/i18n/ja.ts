@@ -14,13 +14,13 @@ export const ja = {
    * Welcome 画面（03.ux-spec/08-empty-states.md §1）。
    *
    * チュートリアルもツアーも表示しない。ショートカットの併記だけで操作を伝える。
-   * 「フォルダを開く」（M3）は未実装であるため並べない。
    * 押せない項目を並べるのは Principle 3「Simple Means Low Cognitive Load」に反する。
    */
   welcome: {
     title: 'Marxdown',
     newFile: '新規ファイル',
     openFile: 'ファイルを開く',
+    openFolder: 'フォルダを開く',
     recent: '最近開いたファイル',
     noRecent: 'まだ何も開いていません',
     dropHint: 'ここに Markdown ファイルをドロップ',
@@ -36,8 +36,17 @@ export const ja = {
   tree: {
     loading: '読み込み中…',
     empty: 'このフォルダには何もありません',
-    /** 何も開いていないとき。基点が決まらない。 */
-    noRoot: 'ファイルを開くと、その場所が表示されます',
+    /**
+     * 基点が決まっていないとき（#103）。
+     *
+     * ファイルを開いただけでは基点は決まらない。フォルダを開く操作が要る。
+     * 文言だけでは次の操作が分からないため、下の 2 つのボタンと組で表示する。
+     */
+    noRoot: 'まだフォルダを開いていません',
+    /** ダイアログでフォルダを選ぶ（`Ctrl+Alt+O`）。 */
+    openFolder: 'フォルダを開く',
+    /** 表示中のファイルの親ディレクトリを基点にする。VS Code には無い導線である。 */
+    openCurrentFolder: '表示中のファイルがあるフォルダを開く',
     failed: 'ファイルツリーを読み込めませんでした',
   },
   /**
@@ -100,6 +109,8 @@ export const ja = {
   menu: {
     new: '新規ファイル',
     open: 'ファイルを開く',
+    /** フォルダを開く（`Ctrl+Alt+O`）。ファイルツリーの基点を決める（F-NAV-03）。 */
+    openFolder: 'フォルダを開く',
     save: '保存',
     saveAs: '名前を付けて保存',
     /**

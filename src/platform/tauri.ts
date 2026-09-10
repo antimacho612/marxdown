@@ -137,6 +137,10 @@ export const tauriPlatform: Platform = {
     return invoke<string | null>('pick_file');
   },
 
+  pickFolder() {
+    return invoke<string | null>('pick_folder');
+  },
+
   pickSavePath(suggested) {
     return invoke<string | null>('pick_save_path', { suggested });
   },

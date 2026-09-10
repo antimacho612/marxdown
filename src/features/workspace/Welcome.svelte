@@ -1,7 +1,6 @@
 <!--
   引数なしで起動したときの画面（F-OPEN-03 / F-OPEN-09 / 03.ux-spec/08-empty-states.md §1）。
   チュートリアルもツアーも出さず、ショートカットの併記だけを教育手段にする。
-  「フォルダを開く」（M3）はまだ並べていない。
   押しても何も起きない項目を置くのは Principle 3 に反する。
 -->
 <script lang="ts">
@@ -31,13 +30,17 @@
     </h1>
 
     <!--
-      並びは 03.ux-spec/08-empty-states.md §1 のスケッチどおり（開く → 新規）。
+      並びは 03.ux-spec/08-empty-states.md §1 のスケッチどおり（ファイル → フォルダ → 新規）。
       「開く」を先に置くのは、閲覧を中心とした道具であるためである（Principle 2）。
-      「フォルダを開く」（M3）はこの 2 つの間に入る。
     -->
     <button type="button" class="mx-welcome__action" onclick={() => runCommand('document.open')}>
       <span>{ja.welcome.openFile}</span>
       <kbd>Ctrl+O</kbd>
+    </button>
+
+    <button type="button" class="mx-welcome__action" onclick={() => runCommand('folder.open')}>
+      <span>{ja.welcome.openFolder}</span>
+      <kbd>Ctrl+Alt+O</kbd>
     </button>
 
     <button type="button" class="mx-welcome__action" onclick={() => runCommand('document.new')}>

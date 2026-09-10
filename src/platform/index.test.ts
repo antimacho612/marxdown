@@ -36,6 +36,7 @@ describe('getPlatform', () => {
       'setZoom',
       'setSplit',
       'pickFile',
+      'pickFolder',
       'pickSavePath',
       'setDirty',
       'confirmDiscard',
