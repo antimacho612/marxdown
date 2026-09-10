@@ -1,7 +1,8 @@
 /**
- * カスタム CSS の適用（F-CONF-07 / 02.architecture/10-theming.md §3 / ADR-0006 / ADR-0013）。
+ * カスタム CSS の適用（F-CONF-07 / 02.architecture/10-theming.md §3 / ADR-0006）。
  *
- * 当てる面は 2 つ（本文 `preview.css` / エディター `editor.css`）だが閉じ込めの仕組みは 1 つで根が違うだけである。
+ * 当てる面は本文（`preview.css`）だけである。
+ * エディター用の `editor.css` は配色のカタログへ統合して廃止した（ADR-0014 §3.5）。
  * 遅延取得・監視・通知は `lazy/install-custom-css.ts` にあるが、ここだけは `main` に残る。
  * 64KB 以下は bootstrap に同梱され、本文を描く前に当てないと FOUC になるためである。
  *
@@ -12,25 +13,16 @@
  * そのため数えずにブラウザの CSS パーサへ渡し、生成されたスタイルシートが `@scope (#mx-preview)` ただ 1 つの規則になっているかで判定する。
  * 1 つでも外に出ていれば丸ごと適用しない（部分適用は効果範囲が見えなくなる）。
  */
-import { bumpStyleEpoch } from './style-epoch.svelte';
 
 /**
- * カスタム CSS が当たる面（ADR-0013 / `src-tauri/src/custom_css.rs` の `Surface`）。
- *
- * どちらも `index.html` にあり、コンポーネントツリーの外にある（ADR-0005）。
- * 面が 2 つになっても仕組みは 1 つのままで、変わるのは `@scope` の起点と、挿入先の `<style>` だけである。
+ * 適用先。`index.html` にあり、コンポーネントツリーの外にある（ADR-0005）。
  */
-export type CssSurface = 'preview' | 'editor';
+const ROOT = '#mx-preview';
 
-const SURFACES = {
-  preview: { root: '#mx-preview', styleId: 'mx-custom-css' },
-  editor: { root: '#mx-editor', styleId: 'mx-editor-css' },
-} as const;
+const STYLE_ID = 'mx-custom-css';
 
 /** 包んだ後の前置き。判定でも使うため、組み立てと同じ文字列を 1 か所に置く。 */
-function prelude(surface: CssSurface): string {
-  return `@scope (${SURFACES[surface].root})`;
-}
+const PRELUDE = `@scope (${ROOT})`;
 
 /**
  * 適用の結果。
@@ -41,26 +33,22 @@ function prelude(surface: CssSurface): string {
 export type CustomCssResult = 'applied' | 'empty' | 'rejected';
 
 /**
- * カスタム CSS を面に適用する。`null` / 空文字は「無い」（＝当てていたものを外す）。
+ * カスタム CSS を本文へ適用する。`null` / 空文字は「無い」（＝当てていたものを外す）。
  *
  * 同期的に完了する。
  * bootstrap 経路では本文を描画する前に呼ばれるため、ここで非同期の待機を挟んではいけない。
  */
-export function applyCustomCss(css: string | null, surface: CssSurface = 'preview'): CustomCssResult {
-  const style = styleElement(surface);
-  // 通知するのはエディター側だけである。
-  // Monaco はトークンを JS で読み出しており、`<style>` が追加されたことを自分で検出できない（`style-epoch.svelte.ts`）。
-  // 本文側は CSS がそのまま適用されるため、通知先が存在しない。
-  if (surface === 'editor') bumpStyleEpoch();
+export function applyCustomCss(css: string | null): CustomCssResult {
+  const style = styleElement();
 
   if (css === null || css.trim() === '') {
     style.textContent = '';
     return 'empty';
   }
 
-  style.textContent = `${prelude(surface)} {\n${css}\n}\n`;
+  style.textContent = `${PRELUDE} {\n${css}\n}\n`;
 
-  if (contained(style.sheet, surface)) return 'applied';
+  if (contained(style.sheet)) return 'applied';
 
   // 適用範囲を保証できなかった内容は残さない。
   // 直前のカスタム CSS を残す方法もあるが、画面の表示とファイルの内容が食い違ったままになる。
@@ -77,13 +65,12 @@ export function applyCustomCss(css: string | null, surface: CssSurface = 'previe
  * ただし `@scope` された規則はスコープ近接（CSS Cascade 6）によってスコープ外の規則より優先されるため、`h1 { … }` のような単純なセレクタでも `.mx-preview h1 { … }` に優先する。
  * ユーザーが単純なセレクタのまま記述できる（§3）のはこの性質による。
  */
-function styleElement(surface: CssSurface): HTMLStyleElement {
-  const id = SURFACES[surface].styleId;
-  const existing = document.querySelector<HTMLStyleElement>(`style#${id}`);
+function styleElement(): HTMLStyleElement {
+  const existing = document.querySelector<HTMLStyleElement>(`style#${STYLE_ID}`);
   if (existing) return existing;
 
   const style = document.createElement('style');
-  style.id = id;
+  style.id = STYLE_ID;
   document.head.append(style);
   return style;
 }
@@ -98,7 +85,7 @@ function styleElement(surface: CssSurface): HTMLStyleElement {
  * `@scope` を解釈できない WebView では包んだ規則ごと失われて 0 個になるが、その場合も拒否でよい。
  * 適用範囲を限定できない CSS を適用するより、適用しないほうが安全である（ADR-0006）。
  */
-function contained(sheet: CSSStyleSheet | null, surface: CssSurface): boolean {
+function contained(sheet: CSSStyleSheet | null): boolean {
   if (!sheet) return false;
 
   let rules: CSSRuleList;
@@ -118,5 +105,5 @@ function contained(sheet: CSSStyleSheet | null, surface: CssSurface): boolean {
 
   // スコープの起点が適用対象の面と一致していること。
   // 確認しないと、`@scope` 規則ではあるが起点が異なるものを通してしまう。
-  return rule.cssText.startsWith(prelude(surface));
+  return rule.cssText.startsWith(PRELUDE);
 }

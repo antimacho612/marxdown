@@ -51,7 +51,9 @@
         },
         openSettingsFile: () => Promise.resolve(),
         openCustomCssFile: () => Promise.resolve(),
-        openEditorCssFile: () => Promise.resolve(),
+        openThemesDir: () => Promise.resolve(),
+        // 組み込みの 50 枚だけを見せる。Storybook にアプリデータ領域は無い。
+        listUserThemes: () => Promise.resolve([]),
       } as Platform);
     };
   }
@@ -83,11 +85,18 @@
 />
 
 <!--
-  配色（ADR-0013）。**見本がその場でそのパレットになる**ことが要点で、
+  配色（ADR-0013 / ADR-0014）。**見本がその場でそのパレットになる**ことが要点で、
   モーダルにしたぶん（ADR-0011）の埋め合わせがここに出ている。
   周りのダイアログはクロームの配色のままである（テーマは面にしか効かない）。
 -->
-<Story name="配色を選んでいる" loaders={[seed({ 'preview.theme': 'solarized', 'editor.theme': 'gruvbox' })]} />
+<Story name="配色を選んでいる" loaders={[seed({ 'preview.theme': 'solarized', 'editor.theme': 'dracula' })]} />
+
+<!--
+  設定ファイルに書かれているが、組み込みにも themes/ にも無い綴り（ADR-0014）。
+  **既定へ落とさず、見つからないことを選択肢自身が言う。**
+  落とすと、打ち間違いと未適用をユーザーが区別できない。
+-->
+<Story name="配色が見つからない" loaders={[seed({ 'editor.theme': 'no-such-theme' })]} />
 
 <!--
   折り返しが `off` のとき、**「折り返す桁」が出ない**こと。

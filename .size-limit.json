@@ -30,6 +30,12 @@
     "gzip": true
   },
   {
+    "name": "editor themes (配色 50 枚。エディターか設定を開くまでロードしない — ADR-0014)",
+    "path": ["dist/assets/theme-*.js"],
+    "limit": "14 KB",
+    "gzip": true
+  },
+  {
     "name": "settings samples (設定の見本。プレビュー / エディターのカテゴリを開くまでロードしない)",
     "path": ["dist/assets/sample-*.js"],
     "limit": "2 KB",

@@ -92,6 +92,7 @@ const FEATURE_BARREL_ENFORCED = [
   'preview',
   'settings',
   'status',
+  'theme',
   'view',
   'workspace',
 ];

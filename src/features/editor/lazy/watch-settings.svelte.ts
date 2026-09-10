@@ -3,13 +3,14 @@
  * 当てる値の組み立ては `options.ts` にあり、ここはルーン（`$effect.root`）を使う購読だけを持つ。
  * Monaco も設定の意味も持ち込まない。
  */
-import { settingsStore, styleEpoch } from '@/features/settings';
+import { settingsStore } from '@/features/settings';
 
 /**
  * 設定の変化に追従する。解除する関数を返す。
  *
  * `theme.ts` の MutationObserver は `<html>` の属性（CSS に現れる変化）しか拾えない。
- * 折り返し・タブ幅・行番号や `editor.css` の注入はトークン層に出ないため、ここがストアを直接見て拾う。
+ * 折り返し・タブ幅・行番号はトークン層に出ないため、ここがストアを直接見て拾う。
+ * 配色（`editor.theme`）もここを通る。値の変化そのものは設定であり、注入した `<style>` はトークン層に現れるが、注入するのは購読を受けた側である（`palette.ts`）。
  * コンポーネントではないので `$effect.root` で効果を張る器を自作し、`editor` チャンクの中に閉じることで `main` 側に購読の口を増やさない。
  * 効果はマイクロタスクで走るためマウント直後に 1 回余分に呼ばれるが、`updateOptions` は同じ値なら何もしないので無害である。
  */
@@ -19,8 +20,6 @@ export function watchEditorSettings(reapply: () => void): () => void {
       // 依存を明示的に読む。
       // `reapply` の中で読まれることに依存すると、呼び出し側を差し替えたときに追従しなくなる。
       void settingsStore.values;
-      // `editor.css` の差し替え（ADR-0013）。設定ではないため別の経路で通知される。
-      void styleEpoch.value;
       reapply();
     });
   });

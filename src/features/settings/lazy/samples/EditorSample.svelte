@@ -1,6 +1,6 @@
 <!--
 @component
-エディターの見本（ADR-0011 / ADR-0012）。
+エディターの見本（ADR-0011 / ADR-0012 / ADR-0014）。
 
 エディターの設定はトークン層（CSS 変数）に反映されないため、適用するスタイルをここで組み立てる。
 空欄のときのフォールバック先は `options.ts` と同じ `--mx-font-code` である。
@@ -12,12 +12,12 @@
 
 <script lang="ts">
   import { ja } from '@/i18n/ja';
-  import type { Palette } from '@/platform';
 
   import { formatFontFamily, paletteAttr } from '../../format';
 
   interface Props {
-    palette: Palette;
+    /** `editor.theme` の値そのまま。組み込みの id か `themes/` のファイル名（ADR-0014）。 */
+    palette: string;
     /** `editor.fontFamily` の値そのまま。空欄なら既定のコードフォントに落ちる。 */
     fontFamily: string;
     fontSize: number;
@@ -51,7 +51,7 @@
   見出しとリストの記号は Monarch では 1 つのトークン（`keyword.md`）になり、`--mx-color-code-function` が適用される。
   ここで別の色を使うと、見本と実際の表示が食い違う。
 -->
-<div class="mx-settings__sample mx-settings__sample--code" {style} data-mx-theme={paletteAttr(palette)}>
+<div class="mx-settings__sample mx-settings__sample--code" {style} data-mx-editor-theme={paletteAttr(palette)}>
   {#if showLineNumbers}
     <span class="mx-settings__sample-gutter" aria-hidden="true">1<br />2<br />3<br />4</span>
   {/if}
