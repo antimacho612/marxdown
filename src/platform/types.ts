@@ -422,6 +422,13 @@ export interface Platform {
    */
   pickFile(): Promise<string | null>;
   /**
+   * フォルダ選択ダイアログを開き、選ばれたフォルダをファイルツリーの基点として許可する（F-NAV-03）。
+   *
+   * 選ばれなければ `null`。返るのは正規化済み絶対パス。
+   * 返ったパスをそのまま `listDir` に渡せる。`marxdown <dir>` で開いた場合と同じ許可範囲になる（N-SEC-05）。
+   */
+  pickFolder(): Promise<string | null>;
+  /**
    * 保存先を選ばせる（F-EDIT-02「名前を付けて保存」）。
    *
    * `suggested` は初期表示するディレクトリとファイル名の元になる値である。

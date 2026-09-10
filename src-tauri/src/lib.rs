@@ -247,6 +247,7 @@ pub fn run() {
             commands::list_files,
             commands::allow_image_dir,
             commands::pick_file,
+            commands::pick_folder,
             commands::pick_save_path,
             commands::set_dirty,
             commands::confirm_discard,

@@ -29,6 +29,7 @@ import { viewStore } from '@/features/view';
 import {
   closeTab,
   cycleTab,
+  openFolderViaDialog,
   openUntitledTab,
   reopenClosedTab,
   selectTabAt,
@@ -62,6 +63,10 @@ const COMMANDS: Command[] = [
   { id: 'document.new', run: () => void newUntitled() },
 
   { id: 'document.open', run: () => void openViaDialogSafely() },
+
+  // フォルダを開く（`Ctrl+Alt+O` / F-NAV-03）。ファイルツリーの基点を決める唯一の操作である
+  // （`marxdown <dir>` を除く）。文書を開いていなくても実行できる。
+  { id: 'folder.open', run: () => void openFolderSafely() },
 
   // 一覧（メニュー）には出さない。
   // 対象を指定して開く経路であり、「最近開いたファイル」の 1 件ごとがこれを呼ぶ。
@@ -238,6 +243,9 @@ export const KEY_BINDINGS: KeyBinding[] = [
   // そのまま通すと WebView 自身の「新しいウィンドウ」が動作するため、`Ctrl+O` や `Ctrl+S` と同じ理由で必ず既定動作を止める。
   { key: 'Ctrl+N', id: 'document.new' },
   { key: 'Ctrl+O', id: 'document.open' },
+  // フォルダを開く（03.ux-spec/04-keybindings.md §3）。
+  // VS Code の `Ctrl+K Ctrl+O` に対応するが、和音は採らないため単打の空きキーへ移してある（§2）。
+  { key: 'Ctrl+Alt+O', id: 'folder.open' },
 
   // 保存（F-EDIT-02）。
   // そのまま通すと WebView 自身の「名前を付けて保存」が開き、アプリの本文と無関係な HTML が保存される。
@@ -397,6 +405,19 @@ async function closeCurrentTab(): Promise<void> {
 async function openViaDialogSafely(): Promise<void> {
   try {
     await openViaDialog();
+  } catch (e) {
+    documentStore.notice = { level: 'error', message: toMessage(e) };
+  }
+}
+
+/**
+ * フォルダを開くダイアログ（`Ctrl+Alt+O`）。
+ *
+ * 失敗の扱いは `openViaDialogSafely` と同じで、取り消しは失敗ではない。
+ */
+async function openFolderSafely(): Promise<void> {
+  try {
+    await openFolderViaDialog();
   } catch (e) {
     documentStore.notice = { level: 'error', message: toMessage(e) };
   }

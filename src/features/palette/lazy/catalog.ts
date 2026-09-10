@@ -37,6 +37,7 @@ export interface CommandEntry {
 export const COMMAND_CATALOG: CommandEntry[] = [
   { id: 'document.new', label: ja.menu.new, shortcut: 'Ctrl+N' },
   { id: 'document.open', label: ja.menu.open, shortcut: 'Ctrl+O' },
+  { id: 'folder.open', label: ja.menu.openFolder, shortcut: 'Ctrl+Alt+O' },
   { id: 'document.quickOpen', label: ja.menu.quickOpen, shortcut: 'Ctrl+P' },
   { id: 'document.reload', label: ja.menu.reload, shortcut: 'F5' },
   { id: 'document.save', label: ja.menu.save, shortcut: 'Ctrl+S' },

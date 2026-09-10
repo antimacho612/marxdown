@@ -60,7 +60,7 @@ describe('ハンバーガーメニューの項目 (03.ux-spec/01-screen-layout.m
     const groups = buildMenu();
 
     // 「新規ファイル」「設定」「終了」は文書に依存しないので、ここでも押せる。
-    expect(ids(groups)).toEqual(['open', 'new', 'palette', 'settings', 'quit']);
+    expect(ids(groups)).toEqual(['open', 'open-folder', 'new', 'palette', 'settings', 'quit']);
     expect(group(groups, 'document')).toBeUndefined();
     expect(group(groups, 'zoom')).toBeUndefined();
   });
@@ -70,6 +70,7 @@ describe('ハンバーガーメニューの項目 (03.ux-spec/01-screen-layout.m
 
     expect(ids(buildMenu())).toEqual([
       'open',
+      'open-folder',
       'new',
       'save',
       'save-as',

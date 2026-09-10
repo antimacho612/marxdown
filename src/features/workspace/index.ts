@@ -6,7 +6,8 @@
  */
 export { default as Welcome } from './Welcome.svelte';
 export { workspaceOpenerHooks } from './opened';
-export { setTreeRoot, treeStore, workspaceRoot } from './tree.svelte';
+export { openFolderViaDialog } from './open-folder';
+export { setTreeRoot, setTreeRootFromFile, treeStore, workspaceRoot } from './tree.svelte';
 export { forgetRecent, recentStore, rememberRecent } from './recent.svelte';
 export { default as Explorer } from './Explorer.svelte';
 export { registerExplorerFocus, showExplorer } from './show-explorer';

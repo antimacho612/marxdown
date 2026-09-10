@@ -78,6 +78,8 @@ const MENU: MenuSection[] = [
     id: 'file',
     entries: [
       { id: 'open', command: 'document.open' },
+      // フォルダを開く（F-NAV-03）。ファイルツリーの基点はここか `marxdown <dir>` でしか決まらない。
+      { id: 'open-folder', command: 'folder.open' },
       // 新規ファイル（`Ctrl+N`）。ファイルを開いていなくても実行できる。
       // 並び順は Welcome 画面に揃える（03.ux-spec/08-empty-states.md §1 は「開く」の次に「新規」）。
       // 同じ 2 つが場所によって異なる順で並ぶと、位置で覚えられなくなる。

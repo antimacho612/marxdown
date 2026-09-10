@@ -564,6 +564,18 @@ export const webPlatform: Platform = {
   },
 
   /**
+   * フォルダ選択（F-NAV-03）。
+   *
+   * ブラウザにはネイティブのフォルダ選択ダイアログが無く、`listDir` も空を返す。
+   * ここで確かめられるのは「基点が決まる前と後で Explorer の表示が入れ替わること」だけであるため、
+   * 名前を入力させて仮想 FS 上のパスにする。取り消しは `null` を返す。
+   */
+  async pickFolder() {
+    const name = globalThis.prompt('開くフォルダ名（dev:web の仮想 FS）', 'virtual');
+    return name === null || name.trim() === '' ? null : `/${name.trim()}`;
+  },
+
+  /**
    * 保存先（F-EDIT-02）。
    * ブラウザにはネイティブの保存ダイアログが無いため、仮想 FS 上の名前を入力させるだけにしてある。
    * 実際の書き込み先は `localStorage` である。
