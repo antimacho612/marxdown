@@ -62,6 +62,15 @@ class TabsStore {
   tabs = $state<Tab[]>([]);
   activeId = $state<number | null>(null);
 
+  /**
+   * `documentStore.meta` が実際にどのタブの内容と同期しているか。
+   *
+   * `activateTab` はディスクから読み直す間も先に `activeId` を新しいタブへ移すため（`activateTab` 内のコメント参照）、
+   * 読み込みが終わるまで `documentStore.meta` は前のタブの値のままになる。
+   * これが `activeId` と食い違っている間は `documentStore.meta` を信用しない（`tabMeta`）。
+   */
+  loadedId = $state<number | null>(null);
+
   /** いま表示しているタブ。1 枚も開いていなければ `null`（Welcome 画面）。 */
   get active(): Tab | null {
     return this.tabs.find((tab) => tab.id === this.activeId) ?? null;
@@ -76,26 +85,27 @@ let nextId = 1;
 /**
  * そのタブのメタ情報。
  *
- * アクティブなタブだけはストアを見る。
+ * アクティブかつ読み込みが終わっているタブだけはストアを見る。
  * `Save As`（`document/save.ts`）は保存先とサイズをストアへ直接書き戻すため、タブ側の値は古くなる。
  * 本文・ダーティと同じく、いま表示しているものの真実はタブの外にある（ADR-0005）。
  *
  * 古いまま使うと、切り替えて戻ったときに**保存前のファイルを開き直す**ことになる。
+ * `loadedId` が無いと、切り替え直後の読み込み中に前のタブのメタ情報が新しいタブのものとして一瞬出る（#107）。
  */
 export function tabMeta(tab: Tab): StoredMeta {
-  if (tab.id !== tabsStore.activeId) return tab.meta;
+  if (tab.id !== tabsStore.activeId || tab.id !== tabsStore.loadedId) return tab.meta;
   return documentStore.meta ?? tab.meta;
 }
 
 /**
  * 未保存の変更があるか。タブに付ける印（`●`）と、閉じるときに尋ねるかはこれで決まる。
  *
- * アクティブなタブだけはストアを見る。
+ * アクティブかつ読み込みが終わっているタブだけはストアを見る。
  * タブ側の値は切り替えのときにしか更新されないため（`stashActive`）、打鍵しても古いままである。
  * 本文と同じく、いま表示しているものの真実はタブの外にある（ADR-0005）。
  */
 export function isTabDirty(tab: Tab): boolean {
-  if (tab.id === tabsStore.activeId) return documentStore.isDirty;
+  if (tab.id === tabsStore.activeId && tab.id === tabsStore.loadedId) return documentStore.isDirty;
   return tab.textDirty || tab.eolOverride !== null;
 }
 
@@ -138,6 +148,7 @@ export function adoptOpened(meta: StoredMeta): void {
     const tab: Tab = { id: nextId++, meta, text: null, scrollTop: 0, textDirty: false, eolOverride: null };
     tabsStore.tabs = [...tabsStore.tabs, tab];
     tabsStore.activeId = tab.id;
+    tabsStore.loadedId = tab.id;
     return;
   }
 
@@ -145,6 +156,7 @@ export function adoptOpened(meta: StoredMeta): void {
   active.text = null;
   active.textDirty = false;
   active.eolOverride = null;
+  tabsStore.loadedId = active.id;
 }
 
 /**
@@ -399,6 +411,7 @@ export async function selectTabAt(index: number): Promise<boolean> {
 export function resetTabs(): void {
   tabsStore.tabs = [];
   tabsStore.activeId = null;
+  tabsStore.loadedId = null;
   closed.length = 0;
   nextId = 1;
 }
