@@ -198,6 +198,8 @@ export async function openUntitledTab(): Promise<boolean> {
  * 本文は、退避してあればそれを、無ければディスクから読み直す。
  * 読み直す側が既定なのは、クリーンなタブが本文を抱えないためである（`Tab.text`）。
  * 読み直しは外部変更を拾い直すことにもなる。監視は開いているファイルにしか掛かっていないため（N-PERF-05）、背後のタブは古くなりうる。
+ *
+ * 読み直せなかったタブ（外部で削除・リネームされたファイル）は取り除く（`dropUnopenable`）。
  */
 export async function activateTab(id: number): Promise<boolean> {
   if (tabsStore.activeId === id) return true;
@@ -205,6 +207,7 @@ export async function activateTab(id: number): Promise<boolean> {
   const target = tabsStore.tabs.find((tab) => tab.id === id);
   if (target === undefined) return false;
 
+  const previousId = tabsStore.activeId;
   stashActive();
 
   // 開く前に移す。
@@ -214,6 +217,9 @@ export async function activateTab(id: number): Promise<boolean> {
   // 退避してあった値は開く前に読む。
   // 開く途中で `adoptOpened` がこのタブを「開いた直後の状態」に落とすため、後から読むと消えている。
   const { text: held, textDirty, eolOverride, scrollTop } = target;
+
+  // 開く前の表示。開けなかったときに、表示が切り替わったかどうかを見分けるために持つ。
+  const shown = documentStore.meta;
 
   const opened =
     held === null && target.meta.path !== null
@@ -229,7 +235,12 @@ export async function activateTab(id: number): Promise<boolean> {
           { resetScroll: false, restoreScroll: scrollTop, remember: false },
         );
 
-  if (opened === null) return false;
+  if (opened === null) {
+    // 表示が切り替わっていれば、失敗したのは描画であり文書は載っている。タブはそのままにする。
+    if (documentStore.meta !== shown) return false;
+    await dropUnopenable(id, previousId);
+    return false;
+  }
 
   // `openDocument` はディスクと一致した状態から始める（`markClean`）ので、ダーティは開いた後に戻す。
   // EOL の希望を先に戻すのは、`setDirty` が合成後の値を出し直すためである。順序が逆だと、本文だけがダーティなタブとして 1 度描かれる。
@@ -342,10 +353,7 @@ export async function openPathInNewTab(
 
   // 開けなかった。表示は変わっていない（`openPath` は読み込みに失敗した時点で戻る）ので、枠を捨てて元へ戻す。
   tabsStore.tabs = tabsStore.tabs.filter((entry) => entry.id !== tab.id);
-  tabsStore.activeId = previousId;
-  // 退避は不要だった。アクティブなタブは本文を持たない（`Tab.text`）。
-  const previous = tabsStore.active;
-  if (previous !== null) previous.text = null;
+  restoreActive(previousId);
   return false;
 }
 
@@ -414,6 +422,52 @@ export function resetTabs(): void {
   tabsStore.loadedId = null;
   closed.length = 0;
   nextId = 1;
+}
+
+/**
+ * 開けなかったタブを取り除き、表示と一致した状態へ戻す（#106）。
+ *
+ * 外部で削除・リネームされたファイルのタブがこれにあたる。
+ * クリーンなタブは本文を抱えないため（`Tab.text`）、読み直せないタブに表示できる中身はどこにも無い。
+ * 残したままアクティブにすると、表示は切り替え元のまま、タブの見出し・エディター・保存先だけが移った状態になる。
+ *
+ * `previousId` は切り替え元のタブ。閉じた直後の隣を開こうとした場合だけ `null` になり、そのときは戻る先が無い。
+ */
+async function dropUnopenable(id: number, previousId: number | null): Promise<void> {
+  const index = tabsStore.tabs.findIndex((tab) => tab.id === id);
+  tabsStore.tabs = tabsStore.tabs.filter((tab) => tab.id !== id);
+
+  // 閉じるときと同じ後始末（N-PERF-06）。
+  disposeDocumentText(id);
+  dropHistory(id);
+
+  // 切り替え元が残っていれば、そこへ戻すだけで表示と一致する。
+  if (previousId !== null && tabsStore.tabs.some((tab) => tab.id === previousId)) {
+    restoreActive(previousId);
+    return;
+  }
+
+  // 戻る先が無い。表示は閉じた文書のままなので（`closeTab`）、別の隣を試す。
+  const neighbor = tabsStore.tabs[index] ?? tabsStore.tabs[index - 1];
+  if (neighbor !== undefined) {
+    await activateTab(neighbor.id);
+    return;
+  }
+
+  // 開けるタブが 1 枚も残らなかった。何も開いていない状態（Welcome）へ戻す。
+  restoreActive(null);
+  closeDocument();
+}
+
+/**
+ * 表示中の文書のタブをアクティブに戻す。開く操作が表示を変えずに失敗したときに使う。
+ *
+ * 退避してあった本文は落とす。アクティブなタブは本文を持たない（`Tab.text`）。
+ */
+function restoreActive(id: number | null): void {
+  tabsStore.activeId = id;
+  const active = tabsStore.active;
+  if (active !== null) active.text = null;
 }
 
 /**
