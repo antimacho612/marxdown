@@ -178,6 +178,13 @@ function buildTheme(): monaco.editor.IStandaloneThemeData {
       // 同じ `Ctrl+F` で開く機能が、面ごとに異なる色で表示されないようにする。
       'editor.findMatchBackground': readColor('--mx-color-search-current', '#3b5bdb'),
       'editor.findMatchHighlightBackground': readColor('--mx-color-search-match', '#ffc40073'),
+      // スクロールバー（`options.ts` の `SCROLLBAR_SIZE` と対になる）。
+      // アプリ側は `scrollbar-color: var(--mx-color-border) transparent` の 1 色だけを指定しており、
+      // 状態ごとに色を分けていない。編集面もそれに合わせて 3 状態とも同じ色にする。
+      'scrollbarSlider.background': readColor('--mx-color-border', '#d9dbe0'),
+      'scrollbarSlider.hoverBackground': readColor('--mx-color-border', '#d9dbe0'),
+      'scrollbarSlider.activeBackground': readColor('--mx-color-border', '#d9dbe0'),
+      'scrollbar.shadow': '#00000000',
       'editorBracketMatch.background': readColor('--mx-color-bg-hover', '#e3e6ea'),
       'editorBracketMatch.border': '#00000000',
       'editorIndentGuide.background1': readColor('--mx-color-border-subtle', '#e8eaee'),
