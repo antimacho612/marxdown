@@ -74,6 +74,20 @@ describe('editorOptions', () => {
     expect(editorOptions(withSettings({ 'editor.wordWrap': 'off' })).scrollbar?.horizontal).toBe('auto');
   });
 
+  /**
+   * `updateOptions` は `scrollbar` をオブジェクトごと差し替えるため、
+   * 太さと影がここから漏れると設定を変えた時点で既定値へ戻る。
+   */
+  it('スクロールバーの太さと影は折り返しの設定に関わらず変わらない', () => {
+    for (const wordWrap of ['on', 'off'] as const) {
+      const { scrollbar } = editorOptions(withSettings({ 'editor.wordWrap': wordWrap }));
+
+      expect(scrollbar?.verticalScrollbarSize).toBe(10);
+      expect(scrollbar?.horizontalScrollbarSize).toBe(10);
+      expect(scrollbar?.useShadows).toBe(false);
+    }
+  });
+
   /** F-VIEW-11。CSS の `calc()` に書けないぶん、ここで掛ける。 */
   it('文字サイズに表示倍率が掛かる', () => {
     document.documentElement.style.setProperty('--mx-zoom', '1.5');

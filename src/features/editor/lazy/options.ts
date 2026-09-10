@@ -16,6 +16,15 @@ import { readNumber, readValue } from './theme';
 type EditorOptions = monaco.editor.IEditorOptions & monaco.editor.IGlobalEditorOptions;
 
 /**
+ * スクロールバーの太さ（px）。
+ *
+ * アプリ側の面は `scrollbar-width: thin` の素のスクロールバーで、Chromium ではこれが 10px になる（`styles/reset.css`）。
+ * Monaco は自前の DOM で描くため既定の 14px のままだと編集面だけが太い。
+ * トークンにしないのは、値の出どころがブラウザの `thin` であってアプリの意匠ではないためである。
+ */
+const SCROLLBAR_SIZE = 10;
+
+/**
  * 設定 1 枚から、当てるオプション 1 枚を作る。
  *
  * 副作用を持たない。テストは `settingsStore` を用意せずに写像だけを検証できる。
@@ -54,7 +63,17 @@ export function editorOptions(values: Settings): EditorOptions {
     // 横スクロールバーの表示は折り返しの設定から決まる。
     // 折り返さない設定にしたまま隠すと、右にはみ出した行へ到達する手段が無くなる。
     // 設定項目を 1 つ増やすより、折り返しの設定から導出するほうが説明が少なくて済む。
-    scrollbar: { horizontal: wordWrap === 'off' ? 'auto' : 'hidden' },
+    //
+    // 太さと影は設定にしないと決めたものだが、`editor.ts` ではなくここに置く。
+    // `updateOptions` は `scrollbar` をオブジェクトごと差し替えるため、
+    // 分けて書くと設定変更のたびに既定値へ戻る。
+    scrollbar: {
+      horizontal: wordWrap === 'off' ? 'auto' : 'hidden',
+      verticalScrollbarSize: SCROLLBAR_SIZE,
+      horizontalScrollbarSize: SCROLLBAR_SIZE,
+      // 端に着く前に影を出す挙動はプレビュー側に無い。色だけ揃えても差が残る。
+      useShadows: false,
+    },
   };
 }
 
