@@ -20,6 +20,9 @@ use serde_json::{Map, Value};
 /// 文字列リテラルを直接書かず、読み書きの両側からこの定数を参照する。
 pub const KEY_THEME: &str = "theme";
 
+/// 配色を選んでいない状態。属性を付けず `tokens.css` のトークンをそのまま使う（F-CONF-02）。
+pub const DEFAULT_THEME_ID: &str = "default";
+
 pub const KEY_EDITOR_BRACKET_PAIR_COLORIZATION_ENABLED: &str =
     "editor.bracketPairColorization.enabled";
 pub const KEY_EDITOR_CURSOR_BLINKING: &str = "editor.cursorBlinking";
@@ -192,14 +195,15 @@ pub enum CursorStyle {
     UnderlineThin,
 }
 
-/// 配色（[ADR-0013](../../docs/adr/0013-surface-themes.md)）。
+/// 本文の配色（[ADR-0013](../../docs/adr/0013-surface-themes.md)）。
 ///
 /// 明暗は含まない。
 /// 明暗を決めるのは `theme`（`system` / `light` / `dark`）だけで、各パレットはライトとダークの両方を持つ（CSS 側の `light-dark()`）。
 /// パレット自身に明暗を持たせると、明暗を決める箇所が 3 か所に増える。
 ///
-/// プレビューとエディターで同じカタログを使う。
-/// どちらも同じトークン（`--mx-color-*` / `--mx-color-code-*`）の上書きでしかなく、面ごとにカタログを分ける理由がない。
+/// エディター側とはカタログを分けている（[ADR-0014](../../docs/adr/0014-editor-theme-catalog.md) §3.3）。
+/// 本文は読み続けるための面であり、選択肢を増やすことより既定の完成度のほうが効く。
+/// こちらは `styles/themes.css` にあり、クリティカルパスに載ったままである。
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum Palette {
@@ -276,9 +280,13 @@ pub struct Settings {
     pub editor_rulers: Vec<f64>,
     #[serde(rename = "editor.scrollBeyondLastLine")]
     pub editor_scroll_beyond_last_line: bool,
-    /// エディターの配色。`preview.theme` とは独立に選べる。
+    /// エディターの配色（[ADR-0014](../../docs/adr/0014-editor-theme-catalog.md)）。
+    ///
+    /// 列挙ではなく文字列である。
+    /// 選択肢は組み込みの 50 枚と `themes/` に置かれたファイルの合成であり、Rust 側で数え上げられない。
+    /// 知らない綴りを既定へ落とさないのもそのためで、`themes/` の読み込みが済むまでは選択中の配色が存在するかどうかを判定できない。
     #[serde(rename = "editor.theme")]
-    pub editor_theme: Palette,
+    pub editor_theme: String,
     #[serde(rename = "editor.tabSize")]
     pub editor_tab_size: f64,
     #[serde(rename = "editor.wordWrap")]
@@ -363,7 +371,7 @@ impl Default for Settings {
             editor_render_whitespace: RenderWhitespace::default(),
             editor_rulers: Vec::new(),
             editor_scroll_beyond_last_line: true,
-            editor_theme: Palette::default(),
+            editor_theme: DEFAULT_THEME_ID.to_owned(),
             editor_tab_size: DEFAULT_EDITOR_TAB_SIZE,
             editor_word_wrap: WordWrap::default(),
             editor_word_wrap_column: DEFAULT_EDITOR_WORD_WRAP_COLUMN,
@@ -453,7 +461,7 @@ impl Settings {
             editor_rulers: take_rulers(&mut map).unwrap_or(d.editor_rulers),
             editor_scroll_beyond_last_line: take(&mut map, KEY_EDITOR_SCROLL_BEYOND_LAST_LINE)
                 .unwrap_or(d.editor_scroll_beyond_last_line),
-            editor_theme: take(&mut map, KEY_EDITOR_THEME).unwrap_or(d.editor_theme),
+            editor_theme: take_theme_id(&mut map).unwrap_or(d.editor_theme),
             editor_tab_size: take_int(&mut map, KEY_EDITOR_TAB_SIZE, TAB_SIZE_RANGE)
                 .unwrap_or(d.editor_tab_size),
             editor_word_wrap: take(&mut map, KEY_EDITOR_WORD_WRAP).unwrap_or(d.editor_word_wrap),
@@ -541,6 +549,24 @@ fn take_number(map: &mut Map<String, Value>, key: &str, range: (f64, f64)) -> Op
 /// Monaco 側の `tabSize` などは整数を前提に桁を数えるため、境界で整数に丸めてから渡す。
 fn take_int(map: &mut Map<String, Value>, key: &str, range: (f64, f64)) -> Option<f64> {
     take_number(map, key, range).map(f64::round)
+}
+
+/// エディターの配色の id（`editor.theme`）。
+///
+/// 綴りが選択肢に存在するかは調べない。
+/// 組み込みの一覧はフロント側にあり、`themes/` の中身は読み込むまで分からない（[ADR-0014](../../docs/adr/0014-editor-theme-catalog.md)）。
+/// ここで弾くのは、属性セレクタへ埋め込めない文字を含むものだけである（`themes::valid_id` と同じ判定）。
+///
+/// 存在しない配色を選んだ状態は保持したまま UI へ渡す。
+/// 既定へ落とすと、ファイル名の打ち間違いと未適用をユーザーが区別できない。
+fn take_theme_id(map: &mut Map<String, Value>) -> Option<String> {
+    let value: String = take(map, KEY_EDITOR_THEME)?;
+    let ok = !value.is_empty()
+        && value.len() <= 64
+        && value
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_');
+    ok.then_some(value)
 }
 
 /// 縦罫線。要素ごとに範囲へ丸め、本数も上限で切る。
@@ -672,21 +698,46 @@ mod tests {
         assert_eq!(Settings::from_map(map), s);
     }
 
-    /// ADR-0013。**面ごとに独立して選べること**と、既定が「属性なし」であること。
+    /// ADR-0013 / ADR-0014。**面ごとに独立して選べること**と、既定が「属性なし」であること。
     #[test]
     fn the_two_surfaces_pick_palettes_independently() {
         let d = Settings::default();
         assert_eq!(d.preview_theme, Palette::Default);
-        assert_eq!(d.editor_theme, Palette::Default);
+        assert_eq!(d.editor_theme, DEFAULT_THEME_ID);
 
         let s = Settings::from_map(
-            serde_json::from_str(r#"{"preview.theme":"solarized","editor.theme":"nord"}"#).unwrap(),
+            serde_json::from_str(r#"{"preview.theme":"solarized","editor.theme":"dracula"}"#)
+                .unwrap(),
         );
         assert_eq!(s.preview_theme, Palette::Solarized);
-        assert_eq!(s.editor_theme, Palette::Nord);
+        assert_eq!(s.editor_theme, "dracula");
     }
 
-    /// 知らないパレット名は既定に落ちる。**ファイル全体は壊さない。**
+    /// エディター側は**知らない綴りも保持する**（ADR-0014）。
+    /// 組み込みの一覧はフロント側にあり、`themes/` の中身は読み込むまで分からないため、ここで存在を判定できない。
+    #[test]
+    fn an_unknown_editor_theme_is_kept() {
+        let s =
+            Settings::from_map(serde_json::from_str(r#"{"editor.theme":"my-own-theme"}"#).unwrap());
+        assert_eq!(s.editor_theme, "my-own-theme");
+        assert_eq!(s.to_map()[KEY_EDITOR_THEME], Value::from("my-own-theme"));
+    }
+
+    /// 属性セレクタへ埋め込めない綴りだけは既定へ落とす（`themes::valid_id` と同じ判定）。
+    #[test]
+    fn an_editor_theme_that_could_escape_the_selector_falls_back() {
+        for bad in ["dark';}html{display:none}", "", "a b", "../../etc"] {
+            let mut map = Map::new();
+            map.insert(KEY_EDITOR_THEME.to_owned(), Value::from(bad));
+            assert_eq!(
+                Settings::from_map(map).editor_theme,
+                DEFAULT_THEME_ID,
+                "{bad}"
+            );
+        }
+    }
+
+    /// 知らないパレット名は既定に落ちる（**本文側だけ**。列挙で数え上げられるため）。**ファイル全体は壊さない。**
     #[test]
     fn an_unknown_palette_falls_back_to_default() {
         let s = Settings::from_map(

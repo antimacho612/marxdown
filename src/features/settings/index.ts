@@ -14,4 +14,3 @@ export { applyCustomCss } from './custom-css';
 export { openSettingsLazily } from './open-settings';
 export { initSettings, installSettingsWatch, reportSettingsProblem, settingsStore } from './store.svelte';
 export { enabledSyntax } from './syntax';
-export { styleEpoch } from './style-epoch.svelte';

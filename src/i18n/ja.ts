@@ -343,7 +343,7 @@ export const ja = {
     themeHint: 'ライトとダークの切り替え。配色はプレビューとエディターで別々に選べる',
 
     /**
-     * 配色（F-CONF-08 / ADR-0013）。プレビューとエディターで同じカタログ。
+     * 本文の配色（F-CONF-08 / ADR-0013）。
      *
      * 名前は元の配色の綴りをそのまま使う。
      * 「GitHub 風」のような言い換えをすると、選択前にどの配色になるか判断できなくなる。
@@ -358,6 +358,24 @@ export const ja = {
       gruvbox: 'Gruvbox',
     },
     paletteHint: 'ライト / ダークは上の「テーマ」に従う',
+
+    /**
+     * エディターの配色（ADR-0014）。ラベルは本文側と同じ `palette` を使う。
+     * 選択肢の名前は組み込みの定義側（`features/theme/lazy/presets.ts`）が持つ。
+     *
+     * ユーザーが追加したものが混ざるため、ここに名前の表を置けない。
+     * 一覧はライト / ダークの別で束ねる。50 枚を明暗の区別なく 1 列に並べると、ライトのテーマを探している人が全部を読むことになる。
+     */
+    editorPaletteHint: '組み込みの 50 種類と、themes フォルダーに置いた CSS から選ぶ',
+    editorPaletteGroups: {
+      user: '追加したもの',
+      both: 'ライト / ダーク両対応',
+      light: 'ライト',
+      dark: 'ダーク',
+    },
+    /** 設定ファイルに書かれているが、組み込みにも `themes/` にも無い綴り。既定へ落とさず、選択肢として残す。 */
+    editorPaletteMissing: (id: string) => `${id}（見つかりません）`,
+    openThemes: 'themes フォルダーを開く',
 
     fontFamily: '本文のフォント',
     codeFontFamily: 'コードのフォント',
@@ -540,12 +558,17 @@ export const ja = {
    */
   customCss: {
     open: 'preview.css を開く',
-    openEditor: 'editor.css を開く',
     hint: '本文にだけ当たる CSS。ファイルが無ければ雛形を作って開く',
-    hintEditor: 'エディターにだけ当たる CSS。配色は変数（--mx-color-*）で上書きする',
     tooLarge: 'カスタム CSS が大きすぎるため適用していません（1MB まで）',
     unreadable: 'カスタム CSS を読み込めなかったため適用していません',
     rejected: 'カスタム CSS を面の中に収められないため適用していません。} の対応を確認してください',
+  },
+  /** エディターの配色（ADR-0014）。通知バーに出す文言。 */
+  themes: {
+    open: 'themes フォルダーを開く',
+    /** 選ばれている綴りがカタログに無い。既定へ落とさないため、これが唯一の手がかりになる。 */
+    unknown: '選ばれている配色が見つからないため適用していません',
+    rejected: '配色を面の中に収められないため適用していません。} の対応を確認してください',
   },
   /** ステータスバー（03.ux-spec/07-status-and-notifications.md §3）。 */
   status: {

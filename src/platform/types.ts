@@ -165,6 +165,22 @@ export interface CustomCssProblem {
   message: string;
 }
 
+/**
+ * ユーザーが `themes/` に置いた配色（`src-tauri/src/themes.rs` の `UserTheme` / ADR-0014）。
+ *
+ * 組み込みの配色と同じ形でカタログに載る。
+ * 同じ id が組み込みにもある場合はこちらが優先される。
+ */
+export interface UserTheme {
+  /** 拡張子を除いたファイル名。そのまま `editor.theme` の値になる。 */
+  id: string;
+  /**
+   * ファイルの中身。宣言の並びであることは前提にしない。
+   * 包んだ結果が面の外へ出ていないかは `features/theme/lazy/catalog.ts` がブラウザの CSS パーサで検査する。
+   */
+  declarations: string;
+}
+
 /** `custom.css` の読み込み結果（`src-tauri/src/custom_css.rs` の `CustomCss`）。 */
 export interface CustomCss {
   /** 読み込んだ CSS。`null` は「無い」か「読まなかった」。 */
@@ -291,11 +307,6 @@ export interface Bootstrap {
    * 超えている場合は `deferred` が立ち、`readCustomCss` で取得する。
    */
   customCss: CustomCss;
-  /**
-   * エディター用のカスタム CSS（`editor.css` / ADR-0013）。本文用と同じ扱いである。
-   * 別のフィールドにしているのは、適用先（`@scope` の起点）が違うためである。
-   */
-  editorCss: CustomCss;
 }
 
 /** 別インスタンスから転送された起動要求（ウォーム起動）。 */
@@ -479,8 +490,6 @@ export interface Platform {
    */
   readCustomCss(): Promise<CustomCss>;
 
-  /** `editor.css` を読み直す。`readCustomCss` と対になる。 */
-  readEditorCss(): Promise<CustomCss>;
   /**
    * `custom.css` を OS の既定アプリで開く（F-CONF-07）。
    *
@@ -489,8 +498,6 @@ export interface Platform {
    */
   openCustomCssFile(): Promise<void>;
 
-  /** `editor.css` を既定のアプリで開く。無ければ雛形を作ってから開く。 */
-  openEditorCssFile(): Promise<void>;
   /**
    * `custom.css` の外部変更を購読する（02.architecture/10-theming.md §3）。
    *
@@ -499,8 +506,29 @@ export interface Platform {
    */
   onCustomCssChanged(handler: () => void): () => void;
 
-  /** `editor.css` の外部変更。本文用とは別のイベントで、片方だけを読み直す。 */
-  onEditorCssChanged(handler: () => void): () => void;
+  /**
+   * `themes/` に置かれた配色をすべて読む（ADR-0014）。
+   *
+   * 組み込みの 50 枚はフロント側の遅延チャンクにあり、これで返るのはユーザーが追加したものだけである。
+   * 1 枚ずつ取りに行く形にしていないのは、呼び出し側（選択肢の一覧と適用）がどちらも全件を必要とするためである。
+   */
+  listUserThemes(): Promise<UserTheme[]>;
+
+  /**
+   * `themes/` をファイルマネージャで開く（ADR-0014）。
+   *
+   * 無ければ作り、書き方を説明する `README.css` を置いてから開く。
+   * `openCustomCssFile` と同じ理由で、どこに何を書けばよいかを知る手段がこのボタンしかない。
+   */
+  openThemesDir(): Promise<void>;
+
+  /**
+   * `themes/` の中身の変更を購読する（ADR-0014）。
+   *
+   * `onCustomCssChanged` と同じく中身は渡さない。受け取ったら `listUserThemes` で読み直して当て直すのが唯一の使い方である。
+   * どの 1 枚が変わったかも渡さない。選択中の配色が変わったかどうかは、読み直した結果と突き合わせないと判断できない。
+   */
+  onUserThemesChanged(handler: () => void): () => void;
   /**
    * 開いているファイルの監視を始める（F-EDIT-16 / 02.architecture/04-rust-responsibilities.md §4）。
    *

@@ -16,7 +16,7 @@ use crate::settings::{Settings, SettingsLoad};
 use crate::store::{RecentEntry, StoreData};
 use crate::trace::Trace;
 
-/// アプリデータ領域（`%APPDATA%\com.antimacho612.marxdown\`）に置く 3 ファイル（`state.json`: アプリが自動的に書く、`settings.json` / `custom.css`: 人が書く（F-CONF-07））の場所（02.architecture/04-rust-responsibilities.md §5 / 02.architecture/10-theming.md §3）。
+/// アプリデータ領域（`%APPDATA%\com.antimacho612.marxdown\`）に置くもの（`state.json`: アプリが自動的に書く、`settings.json` / `preview.css` / `themes/`: 人が書く（F-CONF-07 / ADR-0014））の場所（02.architecture/04-rust-responsibilities.md §5 / 02.architecture/10-theming.md §3）。
 ///
 /// 1 つの構造体にまとめてある。
 /// どれも `identifier` から同じ規則で決まり、`AppState::new` に個別の `Option<PathBuf>` を並べると引数が際限なく増える。
@@ -26,7 +26,8 @@ pub struct ConfigPaths {
     pub store: Option<PathBuf>,
     pub settings: Option<PathBuf>,
     pub custom_css: Option<PathBuf>,
-    pub editor_css: Option<PathBuf>,
+    /// ユーザーが追加した配色の置き場所（`themes/`。ADR-0014）。
+    pub themes: Option<PathBuf>,
 }
 
 /// `manage` で 1 つだけ持つ共有状態。コマンドとウィンドウイベントの両方から参照する。
@@ -217,9 +218,9 @@ impl AppState {
         self.paths.custom_css.as_deref()
     }
 
-    /// エディター用カスタム CSS（`editor.css`）。本文用と同じ扱い。
-    pub fn editor_css_path(&self) -> Option<&std::path::Path> {
-        self.paths.editor_css.as_deref()
+    /// ユーザーが追加した配色の置き場所（ADR-0014）。
+    pub fn themes_dir(&self) -> Option<&std::path::Path> {
+        self.paths.themes.as_deref()
     }
 
     /// argv 転送を受けた瞬間に呼ぶ。返した ID をフロントへ渡す。
@@ -316,7 +317,6 @@ mod tests {
             &trace,
             &StoreData::default(),
             &loaded,
-            crate::custom_css::CustomCss::default(),
             crate::custom_css::CustomCss::default(),
         );
         AppState::new(

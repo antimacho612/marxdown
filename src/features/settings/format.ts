@@ -5,14 +5,14 @@
  * `@/platform` から値を取らないのは、見本のチャンクからこのモジュールを参照するためである。
  * 実行時の依存を持たせると `platform` の共有チャンクが分割し直され、クリティカルパスが太る（OQ-38）。
  */
-import type { Palette } from '@/platform';
 
 /**
- * 見本に着せる配色（`data-mx-theme` の値）。
+ * 見本に着せる配色（`data-mx-theme` / `data-mx-editor-theme` の値）。
  *
  * `default` のときは `undefined` を返し、属性を付けない（`appearance.ts` の `applyPalette` と同じ判断）。
+ * エディター側は組み込みの列挙ではなく任意の文字列を取るため（ADR-0014）、引数を `string` にしてある。
  */
-export function paletteAttr(palette: Palette): string | undefined {
+export function paletteAttr(palette: string): string | undefined {
   return palette === 'default' ? undefined : palette;
 }
 

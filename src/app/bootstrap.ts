@@ -75,7 +75,7 @@ export async function startup(renderShell: () => void): Promise<void> {
   adoptT4();
   mark('T5', bootstrap?.document ? `${bootstrap.document.size} bytes` : 'no document');
 
-  // ここから customCss/editorCss の取得までは、すべて本文を描くより前に適用する。
+  // ここから customCss の取得までは、すべて本文を描くより前に適用する。
   // 後から適用すると、本文が描画された直後に見た目が変化する瞬間が生じる
   // （F-VIEW-11 / F-NAV-04 / 03.ux-spec/06-panes.md §3 / 02.architecture/04-rust-responsibilities.md §5）。
   applyZoom(bootstrap?.zoom ?? 1, false);
@@ -103,11 +103,6 @@ export async function startup(renderShell: () => void): Promise<void> {
   // 包めなかった場合は当てずに結果だけ返す（通知は `ready()` の後）。
   const customCss = bootstrap?.customCss ?? null;
   const customCssResult = applyCustomCss(customCss?.css ?? null);
-  // エディター用も同じ扱いである（ADR-0013）。
-  // エディターが未マウントでも適用しておく（適用されるのはトークンであり、Monaco はマウント時にそれを読み出す）。
-  // 適用を遅らせると、Edit で開いた最初の 1 フレームだけ既定の配色で表示される。
-  const editorCss = bootstrap?.editorCss ?? null;
-  const editorCssResult = applyCustomCss(editorCss?.css ?? null, 'editor');
 
   // 開けた結果を受け取る側も渡す（`features/workspace/opened.ts`）。
   // タブと最近開いたファイルはどちらも workspace の持ち物であり、依存を workspace → document の 1 方向に保つために注入で繋ぐ。
@@ -231,8 +226,7 @@ export async function startup(renderShell: () => void): Promise<void> {
   // `main` に残っているのは適用そのものだけである。
   // ここで待たないのは、いずれも本文の表示に関与しないためである。
   void import('@/features/settings/lazy/install-custom-css').then(({ installCustomCss }) => {
-    installCustomCss('preview', customCss, customCssResult);
-    installCustomCss('editor', editorCss, editorCssResult);
+    installCustomCss(customCss, customCssResult);
     return null;
   });
 

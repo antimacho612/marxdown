@@ -7,7 +7,7 @@
  * 適用先はすべてトークン層で、ユーザーのカスタム CSS からも同じ変数として見える。
  * CSS へ渡す値の整形は `format.ts` にある。見本（`lazy/samples/`）が同じ整形を使うためで、そちらから DOM 操作を引き込まないよう分けてある。
  */
-import { clampSetting, DEFAULT_SETTINGS, type NumericKey, type Palette, type Settings } from '@/platform';
+import { clampSetting, DEFAULT_SETTINGS, type NumericKey, type Settings } from '@/platform';
 
 import { formatFontFamily } from './format';
 
@@ -21,9 +21,9 @@ export function applyAppearance(values: Settings): void {
   const root = document.documentElement;
 
   applyTheme(root, values.theme);
-  // 配色（F-CONF-08 / ADR-0013）。面ごとに、面そのものへ属性を付与する。
-  applyPalette(document.querySelector(PREVIEW_ROOT), values['preview.theme']);
-  applyPalette(document.querySelector(EDITOR_ROOT), values['editor.theme']);
+  // 配色（F-CONF-08 / ADR-0013 / ADR-0014）。面ごとに、面そのものへ属性を付与する。
+  applyPalette(document.querySelector(PREVIEW_ROOT), 'mxTheme', values['preview.theme']);
+  applyPalette(document.querySelector(EDITOR_ROOT), 'mxEditorTheme', values['editor.theme']);
 
   // フォント名は既定のスタックの前に追加する（F-CONF-04）。
   // 置き換えると、そのフォントに含まれない文字（日本語 / 記号）のフォールバック先が失われる。
@@ -47,18 +47,24 @@ const PREVIEW_ROOT = '#mx-preview';
 const EDITOR_ROOT = '#mx-editor';
 
 /**
- * 配色を当てる（F-CONF-08 / ADR-0013 / `styles/themes.css`）。
+ * 配色を当てる（F-CONF-08 / ADR-0013 / ADR-0014）。
  *
  * `:root` には付けない。クロームの配色はテーマの選択では変えない。
  * 付与先は面そのもの（`#mx-preview` / `#mx-editor`）であり、カスタムプロパティの継承で配下へ伝わる。
  *
+ * 属性名が面ごとに違うのは、カタログを分けたことで id が重複するためである（ADR-0014 §3.3）。
+ * 同じ属性名にすると、エディター側の `github` を選んだときに注入した規則が `#mx-preview` にも一致する。
+ *
+ * 属性を付けるだけで、意味を与える規則の用意はここでは行わない。
+ * 本文側は `styles/themes.css` が起動時からあり、エディター側は `features/theme/lazy/catalog.ts` が読み込まれた時点で注入する。
+ *
  * `default` のときは属性ごと削除する。
  * `applyTheme` が `system` で属性を削除するのと同じ理由で、設定を変更していない状態の DOM を M2 と同一に保つ（F-CONF-02）。
  */
-function applyPalette(element: HTMLElement | null, palette: Palette): void {
+function applyPalette(element: HTMLElement | null, attribute: 'mxTheme' | 'mxEditorTheme', palette: string): void {
   if (!element) return;
-  if (palette === 'default') delete element.dataset['mxTheme'];
-  else element.dataset['mxTheme'] = palette;
+  if (palette === 'default') delete element.dataset[attribute];
+  else element.dataset[attribute] = palette;
 }
 
 /**

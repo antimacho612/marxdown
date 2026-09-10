@@ -1,6 +1,6 @@
 //! ファイル監視（02.architecture/04-rust-responsibilities.md §4 / §5 / F-EDIT-16）。
 //!
-//! 監視対象は開いているファイルと、設定ファイル（`settings.json` / `custom.css`）だけである。
+//! 監視対象は開いているファイルと、設定ファイル（`settings.json` / `preview.css`）と、配色のディレクトリ（`themes/`）だけである。
 //! ディレクトリ全体は監視しない（N-PERF-05）。
 //! 中心ユースケースは「LLM が書き換えたファイルを開いたまま閲覧する」ことであり、周辺のファイルが変わったかどうかは不要な情報でしかない。
 //! ファイルツリー（M3）が入ったら、開いているディレクトリの追加監視がここに載る。
@@ -34,9 +34,9 @@ pub const EVENT_FILE_CHANGED: &str = "marxdown://file-changed";
 pub const EVENT_SETTINGS_CHANGED: &str = "marxdown://settings-changed";
 /// `preview.css` の外部変更（02.architecture/10-theming.md §3）。フロントは `read_custom_css` で読み直して当て直す。
 pub const EVENT_CUSTOM_CSS_CHANGED: &str = "marxdown://custom-css-changed";
-/// `editor.css` の外部変更（同上）。本文用と別のイベントにする。
-/// 片方を書き換えたときに、もう片方まで読み直す理由がない。
-pub const EVENT_EDITOR_CSS_CHANGED: &str = "marxdown://editor-css-changed";
+/// `themes/` の中身の変更（ADR-0014）。フロントは `list_user_themes` で読み直して当て直す。
+/// 本文用のカスタム CSS と別のイベントにする。片方を書き換えたときに、もう片方まで読み直す理由がない。
+pub const EVENT_THEMES_CHANGED: &str = "marxdown://themes-changed";
 
 /// 変更が落ち着いたと見なすまでの時間（02.architecture/04-rust-responsibilities.md §4）。
 ///
@@ -64,8 +64,11 @@ pub enum Role {
     /// `preview.css`（02.architecture/10-theming.md §3）。
     /// `settings.json` と同じディレクトリにあるため、どちらもまだ存在しないときは同じ親ディレクトリを共有して監視する（`Registry::roots` がその対応を保持する）。
     CustomCss,
-    /// `editor.css`（同上）。3 つ目の共有者になるが、仕組みは増えない。
-    EditorCss,
+    /// ユーザーが追加した配色（`themes/`。ADR-0014）。
+    ///
+    /// **ここだけ対象がディレクトリである。**
+    /// 1 枚ごとに登録すると、後から置かれたファイルを拾えない。
+    Themes,
 }
 
 impl Role {
@@ -74,7 +77,7 @@ impl Role {
             Self::Document => EVENT_FILE_CHANGED,
             Self::Settings => EVENT_SETTINGS_CHANGED,
             Self::CustomCss => EVENT_CUSTOM_CSS_CHANGED,
-            Self::EditorCss => EVENT_EDITOR_CSS_CHANGED,
+            Self::Themes => EVENT_THEMES_CHANGED,
         }
     }
 }
@@ -122,8 +125,10 @@ struct Target {
     role: Role,
     /// notify に渡した監視元。対象そのものか、まだ存在しない場合はその親ディレクトリ。
     root: PathBuf,
-    /// `None` はファイルが存在しないことを表す。
+    /// `None` はファイルが存在しないことを表す。ディレクトリの監視では使わない。
     seen: Option<Stamp>,
+    /// 対象がディレクトリか（`Role::Themes`）。中身のパスが届く。
+    directory: bool,
 }
 
 /// 監視対象の台帳。Tauri に依存しない。
@@ -149,6 +154,25 @@ impl Registry {
     fn decide(&mut self, path: &Path) -> Option<(Role, FileChange)> {
         let key = self.resolve(path)?;
         let target = self.targets.get_mut(&key)?;
+
+        // ディレクトリの監視は 1 枚ごとの姿を覚えない。
+        // 中身の増減も編集も、受け取る側にとっては「全部読み直せ」でしかなく、どの枚が変わったかで処理が分かれない。
+        // 覚えないぶん自分が書いた直後のイベントも通るが、通った先で読み直して同じ結果になるだけである。
+        if target.directory {
+            let stamp = stamp_of(path);
+            return Some((
+                target.role,
+                FileChange {
+                    path: path.display().to_string(),
+                    mtime_ms: stamp.map(|s| s.mtime_ms).unwrap_or(0),
+                    kind: if stamp.is_some() {
+                        ChangeKind::Modified
+                    } else {
+                        ChangeKind::Removed
+                    },
+                },
+            ));
+        }
 
         let current = stamp_of(&key);
         if current == target.seen {
@@ -179,8 +203,26 @@ impl Registry {
         if self.targets.contains_key(path) {
             return Some(path.to_path_buf());
         }
-        let canonical = document::canonicalize(path).ok()?;
-        self.targets.contains_key(&canonical).then_some(canonical)
+        if let Ok(canonical) = document::canonicalize(path) {
+            if self.targets.contains_key(&canonical) {
+                return Some(canonical);
+            }
+        }
+        // ディレクトリを対象にしている場合、届くのは中身のパスである。
+        self.directory_of(path)
+    }
+
+    /// 親がディレクトリの対象として登録されていれば、そのキーを返す。
+    fn directory_of(&self, path: &Path) -> Option<PathBuf> {
+        let parent = path.parent()?;
+        let is_dir_target = |key: &PathBuf| self.targets.get(key).is_some_and(|t| t.directory);
+
+        let direct = parent.to_path_buf();
+        if is_dir_target(&direct) {
+            return Some(direct);
+        }
+        let canonical = document::canonicalize(parent).ok()?;
+        is_dir_target(&canonical).then_some(canonical)
     }
 }
 
@@ -248,7 +290,10 @@ impl FileWatcher {
             return false;
         };
 
-        let root = if key.is_file() {
+        // ディレクトリはそれ自身を監視元にする（中身のイベントが届く）。
+        // ファイルは、まだ存在しないうちは親を見る（後から作られたときに拾うため）。
+        let directory = key.is_dir();
+        let root = if directory || key.is_file() {
             key.clone()
         } else {
             let Some(parent) = key.parent() else {
@@ -288,6 +333,7 @@ impl FileWatcher {
                 role,
                 root: root.clone(),
                 seen,
+                directory,
             },
         );
         registry.roots.entry(root).or_default().insert(key);
@@ -395,6 +441,7 @@ mod tests {
                 role,
                 root: key.clone(),
                 seen: stamp_of(&key),
+                directory: key.is_dir(),
             },
         );
         registry.roots.entry(key.clone()).or_default().insert(key);
@@ -488,7 +535,7 @@ mod tests {
         assert_eq!(Role::Document.event(), EVENT_FILE_CHANGED);
         assert_eq!(Role::Settings.event(), EVENT_SETTINGS_CHANGED);
         assert_eq!(Role::CustomCss.event(), EVENT_CUSTOM_CSS_CHANGED);
-        assert_eq!(Role::EditorCss.event(), EVENT_EDITOR_CSS_CHANGED);
+        assert_eq!(Role::Themes.event(), EVENT_THEMES_CHANGED);
     }
 
     /// 02.architecture/10-theming.md §3 と 02.architecture/04-rust-responsibilities.md §5 が**同じディレクトリ**にあることの帰結。
@@ -510,6 +557,7 @@ mod tests {
                     role,
                     root: d.clone(),
                     seen: stamp_of(path),
+                    directory: false,
                 },
             );
             registry

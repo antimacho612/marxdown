@@ -123,24 +123,44 @@ describe('clampSetting (src-tauri/src/settings/schema.rs と揃える)', () => {
 });
 
 /**
- * 配色（F-CONF-08 / ADR-0013）。
+ * 配色（F-CONF-08 / ADR-0013 / ADR-0014）。
  *
- * 見張るのは 3 つ。**面ごとに独立していること**、**既定では属性が付かないこと**、
- * **`:root` には決して付かないこと**（クロームの配色をテーマで動かさない）。
+ * 見張るのは 4 つ。**面ごとに独立していること**、**属性名が面ごとに違うこと**、
+ * **既定では属性が付かないこと**、**`:root` には決して付かないこと**（クロームの配色をテーマで動かさない）。
  */
-describe('applyPalette (ADR-0013)', () => {
+describe('applyPalette (ADR-0013 / ADR-0014)', () => {
   it('既定では属性を付けない', () => {
     applyAppearance(DEFAULT_SETTINGS);
 
     expect(surface('mx-preview').dataset['mxTheme']).toBeUndefined();
-    expect(surface('mx-editor').dataset['mxTheme']).toBeUndefined();
+    expect(surface('mx-editor').dataset['mxEditorTheme']).toBeUndefined();
   });
 
   it('面ごとに独立して当たる', () => {
-    applyAppearance(withSettings({ 'preview.theme': 'solarized', 'editor.theme': 'nord' }));
+    applyAppearance(withSettings({ 'preview.theme': 'solarized', 'editor.theme': 'dracula' }));
 
     expect(surface('mx-preview').dataset['mxTheme']).toBe('solarized');
-    expect(surface('mx-editor').dataset['mxTheme']).toBe('nord');
+    expect(surface('mx-editor').dataset['mxEditorTheme']).toBe('dracula');
+  });
+
+  /**
+   * **属性名を分けてあること**（ADR-0014 §3.3）。
+   *
+   * カタログが別なのに id は重なる。同じ属性名だと、エディター用に注入した規則が
+   * `#mx-preview` にも一致し、本文の配色が選択と食い違う。
+   */
+  it('エディター側は本文と違う属性を使う', () => {
+    applyAppearance(withSettings({ 'preview.theme': 'github', 'editor.theme': 'github' }));
+
+    expect(surface('mx-editor').dataset['mxTheme'], '本文用の属性は付けない').toBeUndefined();
+    expect(surface('mx-preview').dataset['mxEditorTheme'], 'その逆も').toBeUndefined();
+  });
+
+  /** 組み込みに無い綴りも既定へ落とさず属性に載せる（ADR-0014）。 */
+  it('知らない綴りもそのまま属性になる', () => {
+    applyAppearance(withSettings({ 'editor.theme': 'my-own-theme' }));
+
+    expect(surface('mx-editor').dataset['mxEditorTheme']).toBe('my-own-theme');
   });
 
   it('既定に戻すと属性ごと外れる', () => {
@@ -158,6 +178,7 @@ describe('applyPalette (ADR-0013)', () => {
     applyAppearance(withSettings({ 'preview.theme': 'github', 'editor.theme': 'github' }));
 
     expect(root().dataset['mxTheme']).toBeUndefined();
+    expect(root().dataset['mxEditorTheme']).toBeUndefined();
   });
 
   /** 面がまだ無い経路（テストの一部）で落ちないこと。 */

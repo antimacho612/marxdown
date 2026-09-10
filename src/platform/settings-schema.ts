@@ -72,10 +72,13 @@ function defineSettingsSchema<const T extends Record<string, SettingSchemaEntry>
 }
 
 /**
- * 配色のカタログ（ADR-0013 / `src/styles/themes.css`）。
+ * 本文の配色のカタログ（ADR-0013 / `src/styles/themes.css`）。
  *
  * 明暗は含まない。明暗を決めるのは `theme` だけで、各パレットはライトとダークの両方を持つ。
- * プレビューとエディターは同じカタログから独立に選ぶため、値の並びをここで 1 本にしておく。
+ *
+ * エディター側とはカタログを分けてある（ADR-0014 §3.3）。
+ * 本文は読み続けるための面で、選択肢の数より既定の完成度のほうが効く。
+ * こちらは `themes.css` に残り、クリティカルパスに載ったままである。
  */
 const PALETTES = ['default', 'github', 'solarized', 'nord', 'gruvbox'] as const;
 
@@ -125,8 +128,15 @@ export const SETTINGS_SCHEMA = defineSettingsSchema({
    */
   'editor.rulers': { kind: 'number[]', default: [], min: 1, max: 500, maxLength: 8 },
   'editor.scrollBeyondLastLine': { kind: 'boolean', default: true },
-  /** エディターの配色。`preview.theme` とは独立に選べる。 */
-  'editor.theme': { kind: 'enum', values: PALETTES, default: 'default' },
+  /**
+   * エディターの配色（ADR-0014）。列挙ではなく文字列である。
+   *
+   * 選択肢は組み込みの 50 枚（`features/theme/lazy/presets.ts`）と `themes/` に置かれたファイルの合成であり、ここで数え上げられない。
+   * 数え上げようとすると 50 個の綴りがクリティカルパスに載る。それは配色そのものを遅延チャンクへ追い出した意味を失わせる。
+   *
+   * 知らない綴りは既定へ落とさず保持する（Rust 側も同じ）。落とすと、名前の打ち間違いと未適用をユーザーが区別できない。
+   */
+  'editor.theme': { kind: 'string', default: 'default' },
   'editor.tabSize': { kind: 'number', default: 2, min: 1, max: 8 },
   'editor.wordWrap': {
     kind: 'enum',

@@ -25,6 +25,7 @@ import {
   type RecentEntry,
   type SaveResult,
   type SettingsProblem,
+  type UserTheme,
   type WriteRequest,
 } from './types';
 
@@ -68,8 +69,8 @@ interface WebState {
   settings: Settings;
   /** `preview.css` の中身（02.architecture/10-theming.md §3）。空文字はファイルが無いことを表す。 */
   customCss: string;
-  /** `editor.css` の中身（ADR-0013）。空文字はファイルが無いことを表す。 */
-  editorCss: string;
+  /** `themes/` に置いた配色（ADR-0014）。実装ではディレクトリ 1 つ、ここでは配列 1 本。 */
+  userThemes: UserTheme[];
 }
 
 function loadState(): WebState {
@@ -84,7 +85,7 @@ function loadState(): WebState {
       // 欠けたキーは既定値。実装（Rust）と同じく、読んだ時点で埋める
       settings: { ...DEFAULT_SETTINGS, ...raw.settings },
       customCss: raw.customCss ?? '',
-      editorCss: raw.editorCss ?? '',
+      userThemes: raw.userThemes ?? [],
     };
   } catch {
     return {
@@ -94,7 +95,7 @@ function loadState(): WebState {
       split: SPLIT_DEFAULT,
       settings: DEFAULT_SETTINGS,
       customCss: '',
-      editorCss: '',
+      userThemes: [],
     };
   }
 }
@@ -280,7 +281,6 @@ function initialBootstrap(): Bootstrap {
     // 実装と同じく bootstrap に同梱して届く（02.architecture/10-theming.md §3）。
     // 後から適用する形にすると、dev:web でだけ FOUC が再現しなくなる。
     customCss: customCssNow(),
-    editorCss: editorCssNow(),
   };
 }
 
@@ -307,18 +307,6 @@ function customCssNow(): CustomCss {
   return { ...NO_CUSTOM_CSS, css: css === '' ? null : css };
 }
 
-/**
- * dev:web のエディター用カスタム CSS（ADR-0013）。
- *
- * `?editorCss` を付けると見本が入る。
- * エディターの配色はトークン経由でしか変更できないことを見本自身が示すため、色ではなく変数を上書きしてある。
- */
-function editorCssNow(): CustomCss {
-  const params = new URLSearchParams(globalThis.location?.search ?? '');
-  const css = params.has('editorCss') ? SAMPLE_EDITOR_CSS : loadState().editorCss;
-  return { ...NO_CUSTOM_CSS, css: css === '' ? null : css };
-}
-
 /** 見本。本文にしか適用されないことが分かるよう、見出しと本文幅の両方を変更する。 */
 const SAMPLE_CUSTOM_CSS = `:scope {
   --mx-content-width: 70ch;
@@ -334,14 +322,15 @@ blockquote {
 }
 `;
 
-/** エディター用の見本。変数の上書きだけで配色が変わることを示す。 */
-const SAMPLE_EDITOR_CSS = `:scope {
-  --mx-color-bg: #1a1b26;
-  --mx-color-fg: #c0caf5;
-  --mx-color-code-string: #9ece6a;
-  --mx-color-code-keyword: #bb9af7;
-}
-`;
+/**
+ * ユーザーが追加した配色の見本（ADR-0014）。
+ *
+ * 組み込みと同じ id にして、置き換えが効くことをブラウザだけで確認できるようにしてある。
+ */
+const SAMPLE_USER_THEME: UserTheme = {
+  id: 'dracula',
+  declarations: 'color-scheme: dark; --mx-color-bg: #12121a; --mx-color-code-string: #f1fa8c;',
+};
 
 /**
  * クロームを非表示にしようとする CSS（`}` でブロックを閉じてスコープの外へ出る）。
@@ -512,10 +501,6 @@ export const webPlatform: Platform = {
     return customCssNow();
   },
 
-  async readEditorCss() {
-    return editorCssNow();
-  },
-
   async openCustomCssFile() {
     // 実装では「無ければ雛形を作ってから開く」。ブラウザには開く先が無いので、
     // 見本を仮想の `preview.css` に置いて、次の読み直しから効くようにする。
@@ -527,21 +512,31 @@ export const webPlatform: Platform = {
     console.info('[marxdown] openCustomCssFile');
   },
 
-  async openEditorCssFile() {
-    const state = loadState();
-    if (state.editorCss === '') {
-      state.editorCss = SAMPLE_EDITOR_CSS;
-      saveState(state);
-    }
-    console.info('[marxdown] openEditorCssFile');
-  },
-
   onCustomCssChanged() {
     // 仮想の `preview.css` を外から書き換える経路が無い（`onSettingsChanged` と同じ）
     return () => {};
   },
 
-  onEditorCssChanged() {
+  async listUserThemes() {
+    // `?userTheme` を付けると、組み込みと同じ id の配色が 1 枚置かれた状態を再現する。
+    const params = new URLSearchParams(globalThis.location?.search ?? '');
+    if (params.has('userTheme')) return [SAMPLE_USER_THEME];
+    return loadState().userThemes;
+  },
+
+  async openThemesDir() {
+    // 実装では「無ければ作って雛形を置いてから開く」。ブラウザには開く先が無いので、
+    // 見本を仮想の `themes/` に置いて、次の読み直しから効くようにする。
+    const state = loadState();
+    if (state.userThemes.length === 0) {
+      state.userThemes = [SAMPLE_USER_THEME];
+      saveState(state);
+    }
+    console.info('[marxdown] openThemesDir');
+  },
+
+  onUserThemesChanged() {
+    // 仮想の `themes/` を外から書き換える経路が無い（`onSettingsChanged` と同じ）
     return () => {};
   },
 

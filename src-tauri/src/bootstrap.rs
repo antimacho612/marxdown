@@ -81,9 +81,6 @@ pub struct Bootstrap {
     /// 小さいうちにここへ載せるのは、暗い背景を指定しているときに白い初期画面が一瞬表示されるのを防ぐためである。
     /// 超える場合は `deferred` が立ち、フロントが `read_custom_css` で取得する。
     pub custom_css: CustomCss,
-    /// エディター用のカスタム CSS（`editor.css`）。本文用と同じ扱いである。
-    /// 別のフィールドにしているのは、適用先（`@scope` の起点）が違うためである。
-    pub editor_css: CustomCss,
 }
 
 /// 起動時に開く 1 枚目のドキュメント。
@@ -124,7 +121,6 @@ pub fn build(
     store: &StoreData,
     settings: &SettingsLoad,
     custom_css: CustomCss,
-    editor_css: CustomCss,
 ) -> Bootstrap {
     let mut document = None;
     let mut document_error = None;
@@ -201,7 +197,6 @@ pub fn build(
         settings: settings.values.clone(),
         settings_error: settings.broken.clone(),
         custom_css,
-        editor_css,
     }
 }
 
@@ -269,7 +264,6 @@ mod tests {
             &StoreData::default(),
             &SettingsLoad::default(),
             CustomCss::default(),
-            CustomCss::default(),
         );
         let doc = b.document.expect("document");
         assert_eq!(doc.content.as_deref(), Some("# hello\n"));
@@ -288,7 +282,6 @@ mod tests {
             &StoreData::default(),
             &SettingsLoad::default(),
             CustomCss::default(),
-            CustomCss::default(),
         );
         let doc = b.document.expect("document");
         assert!(doc.content.is_none(), "256KB 超は埋め込まない");
@@ -305,7 +298,6 @@ mod tests {
             &trace,
             &StoreData::default(),
             &SettingsLoad::default(),
-            CustomCss::default(),
             CustomCss::default(),
         );
         assert!(b.document.is_none());
@@ -332,7 +324,6 @@ mod tests {
             &StoreData::default(),
             &SettingsLoad::default(),
             CustomCss::default(),
-            CustomCss::default(),
         );
         assert_eq!(b.pending_paths.len(), 2);
         std::fs::remove_dir_all(&dir).ok();
@@ -354,7 +345,6 @@ mod tests {
             &trace,
             &StoreData::default(),
             &SettingsLoad::default(),
-            CustomCss::default(),
             CustomCss::default(),
         );
 
@@ -382,7 +372,6 @@ mod tests {
             &StoreData::default(),
             &settings,
             CustomCss::default(),
-            CustomCss::default(),
         );
 
         let script = to_init_script(&b);
@@ -408,7 +397,6 @@ mod tests {
             &StoreData::default(),
             &crate::settings::load(Some(&p)),
             CustomCss::default(),
-            CustomCss::default(),
         );
 
         assert!(b.settings_error.is_some());
@@ -430,10 +418,6 @@ mod tests {
             &SettingsLoad::default(),
             CustomCss {
                 css: Some(":scope { --mx-content-width: 90ch }".into()),
-                ..CustomCss::default()
-            },
-            CustomCss {
-                css: Some(":scope { --mx-color-bg: #1a1b26 }".into()),
                 ..CustomCss::default()
             },
         );
@@ -466,7 +450,6 @@ mod tests {
             &store,
             &SettingsLoad::default(),
             CustomCss::default(),
-            CustomCss::default(),
         );
 
         let script = to_init_script(&b);
@@ -485,7 +468,6 @@ mod tests {
             &trace,
             &StoreData::default(),
             &SettingsLoad::default(),
-            CustomCss::default(),
             CustomCss::default(),
         );
         let script = to_init_script(&b);
@@ -526,7 +508,6 @@ mod tests {
                 &trace,
                 store,
                 &SettingsLoad::default(),
-                CustomCss::default(),
                 CustomCss::default(),
             )
         }

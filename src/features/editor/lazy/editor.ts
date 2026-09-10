@@ -19,6 +19,7 @@ import { runEdit } from './edits';
 import { installEditorKeymap } from './keymap';
 import { MARKDOWN_LANGUAGE_ID, monaco } from './monaco';
 import { applyEditorOptions, editorOptions } from './options';
+import { applyEditorPalette, installEditorPalette } from './palette';
 import { installPaste } from './paste';
 import { createScrollPort } from './scroll-port';
 import { formatTable } from './table';
@@ -175,11 +176,18 @@ export function mountEditor(host: HTMLElement): monaco.editor.IStandaloneCodeEdi
   // 1 つのインスタンスなので、入口も 1 つにしておく。
   const instance = editor;
   const refreshAppearance = (): void => {
+    // 配色を先に当てる（ADR-0014）。
+    // `applyEditorTheme` は面に効いているトークンを読み出すため、後にすると既定の色を写すことになる。
+    applyEditorPalette();
     applyEditorTheme();
     applyEditorOptions(instance);
   };
 
   refreshAppearance();
+
+  // 組み込みの配色は遅延チャンクにある（ADR-0014）。
+  // 待たないのは、`#mx-editor` がまだ空だからである。読み込めた時点で当て直される。
+  void installEditorPalette(refreshAppearance);
   // 見張るものが 2 つあるのは、変化が 2 系統あるため。
   // トークン（テーマ / プレビューの設定 / 表示倍率）は CSS に現れ、
   // エディターの設定（折り返し・タブ幅など）は現れない。

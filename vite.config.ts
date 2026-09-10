@@ -157,6 +157,24 @@ export default defineConfig(({ mode }) => ({
           if (isSettingsSample) return 'assets/sample-[hash].js';
 
           /*
+           * エディターの配色 50 枚（ADR-0014）。**入口を持つが、判定は palette と同じ形にしてある。**
+           *
+           * `features/editor/lazy/palette.ts` と設定 UI の `ThemeField.svelte` の 2 か所から
+           * 動的 import されるため、Rollup は共有チャンクとして切り出す。そのチャンクが
+           * `facadeModuleId` を持つとは限らない。名前が付かないと下の `shared-*` に落ち、
+           * **起動時に読み込まれないのに critical path が数えてしまう**（palette で実測済みの事故と同じ形）。
+           *
+           * `isEditor` / `isSettings` より前に置くこと。どちらの判定も `facadeModuleId` の
+           * パスを見るだけなので、配色のチャンクが先にどちらかへ吸われることはないが、
+           * **`features/theme/` を `features/editor/lazy/` の下へ移すと editor チャンク
+           * （予算の対象外 / 850KB）に紛れて、50 枚ぶんの実サイズが見えなくなる。**
+           */
+          const modules = chunk.moduleIds ?? [];
+          const isThemeOnly =
+            modules.length > 0 && modules.every((id) => /[\\/]src[\\/]features[\\/]theme[\\/]lazy[\\/]/.test(id));
+          if (isThemeOnly) return 'assets/theme-[hash].js';
+
+          /*
            * 設定 UI（M1.5 Phase 4）。menu と同じく**名前付けだけ**。
            *
            * `src/features/settings/` には `main` 側のモジュール
@@ -189,7 +207,6 @@ export default defineConfig(({ mode }) => ({
            * そこで、含まれるモジュールが全部 `features/palette/lazy/` のものであるときだけ名前を付ける。
            * `manualChunks` で寄せるのとは違い、**分割そのものには手を出していない**（menu と同じ方針）。
            */
-          const modules = chunk.moduleIds ?? [];
           const isPaletteOnly =
             modules.length > 0 && modules.every((id) => /[\\/]src[\\/]features[\\/]palette[\\/]lazy[\\/]/.test(id));
           if (isPaletteOnly) return 'assets/palette-[hash].js';

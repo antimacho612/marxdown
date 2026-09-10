@@ -20,6 +20,9 @@ type Labels<K extends SettingKey> = Readonly<Record<Settings[K] & string, string
  * キーに当てられる部品。スキーマの `kind` から決まる。
  *
  * `number[]`（縦罫線）だけは入力欄の文字列と値が 1:1 でないため `custom` に落ち、ダイアログ側が個別に描く。
+ *
+ * 文字列だけ 2 択にしてある。
+ * エディターの配色（ADR-0014）は値としては文字列だが、選択肢は組み込みと `themes/` の合成であり、`values` を持たないぶん `select` には載らない（`theme`）。
  */
 type WidgetFor<K extends SettingKey> =
   SettingKind<K> extends 'enum'
@@ -29,7 +32,7 @@ type WidgetFor<K extends SettingKey> =
       : SettingKind<K> extends 'boolean'
         ? { widget: 'toggle' }
         : SettingKind<K> extends 'string'
-          ? { widget: 'text'; placeholder?: string }
+          ? { widget: 'text'; placeholder?: string } | { widget: 'theme' }
           : { widget: 'custom' };
 
 type FieldOf<K extends SettingKey> = {
@@ -181,10 +184,9 @@ export const LAYOUT = [
       {
         kind: 'field',
         key: 'editor.theme',
-        widget: 'select',
+        widget: 'theme',
         label: ja.settings.palette,
-        description: ja.settings.paletteHint,
-        labels: ja.settings.paletteOptions,
+        description: ja.settings.editorPaletteHint,
       },
       { kind: 'sample', sample: 'editor' },
 

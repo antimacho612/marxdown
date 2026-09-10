@@ -28,6 +28,7 @@ Rust 側も拒否するが、UI が「保存できたように見せる」のを
 <script lang="ts">
   import { onMount } from 'svelte';
 
+  import type ThemeFieldComponent from '@/features/theme/lazy/ThemeField.svelte';
   import { ja } from '@/i18n/ja';
   import { DEFAULT_SETTINGS, getPlatform, type SettingKey, type SettingsProblem } from '@/platform';
 
@@ -185,9 +186,22 @@ Rust 側も拒否するが、UI が「保存できたように見せる」のを
    */
   let Sample = $state<typeof SampleComponent | null>(null);
 
+  /**
+   * 配色の選択（ADR-0014）。見本と同じ理由で遅延させる。
+   *
+   * こちらは選択肢を作るのに 50 枚ぶんの色を引くため、`settings` の予算ではなく `theme` の予算に載る。
+   * 静的に import すると、設定を開いただけで配色の実体まで読み込まれる。
+   */
+  let ThemeField = $state<typeof ThemeFieldComponent | null>(null);
+
+  // 2 つを 1 つの効果でまとめて見る。どちらも「今のカテゴリに出番があれば読む」でしかない。
   $effect(() => {
-    if (Sample !== null || entries.every((entry) => entry.kind !== 'sample')) return;
-    void import('./samples/Sample.svelte').then((module) => (Sample = module.default));
+    if (Sample === null && entries.some((entry) => entry.kind === 'sample')) {
+      void import('./samples/Sample.svelte').then((module) => (Sample = module.default));
+    }
+    if (ThemeField === null && entries.some((entry) => entry.kind === 'field' && entry.widget === 'theme')) {
+      void import('@/features/theme/lazy/ThemeField.svelte').then((module) => (ThemeField = module.default));
+    }
   });
 
   function onRulersInput(raw: string): void {
@@ -247,16 +261,11 @@ Rust 側も拒否するが、UI が「保存できたように見せる」のを
     </fieldset>
   </div>
 
-  <!-- TODO: 削除。preview.css は「プレビュー」カテゴリの中、editor.css は「エディター」カテゴリの中に置く。 -->
+  <!-- TODO: 削除。preview.css は「プレビュー」カテゴリの中に置く（themes フォルダーは `ThemeField` へ移した）。 -->
   <footer class="mx-settings__footer">
-    <div class="mx-settings__files">
-      <button type="button" class="mx-settings__file" onclick={() => void getPlatform().openCustomCssFile()}>
-        {ja.customCss.open}
-      </button>
-      <button type="button" class="mx-settings__file" onclick={() => void getPlatform().openEditorCssFile()}>
-        {ja.customCss.openEditor}
-      </button>
-    </div>
+    <button type="button" class="mx-settings__file" onclick={() => void getPlatform().openCustomCssFile()}>
+      {ja.customCss.open}
+    </button>
   </footer>
 </dialog>
 
@@ -294,6 +303,16 @@ Rust 側も拒否するが、UI が「保存できたように見せる」のを
       onChange={(value) => changeSetting(entry.key, value)}
       onReset={resetOf(entry.key)}
     />
+  {:else if entry.widget === 'theme'}
+    {#if ThemeField}
+      <ThemeField
+        label={entry.label}
+        {description}
+        value={values[entry.key]}
+        onChange={(value) => changeSetting(entry.key, value)}
+        onReset={resetOf(entry.key)}
+      />
+    {/if}
   {:else if entry.widget === 'toggle'}
     <ToggleField
       settingKey={entry.key}
@@ -456,13 +475,6 @@ Rust 側も拒否するが、UI が「保存できたように見せる」のを
     gap: var(--mx-space-1);
     padding: var(--mx-space-3) var(--mx-space-4);
     border-top: 1px solid var(--mx-color-border-subtle);
-  }
-
-  .mx-settings__files {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--mx-space-2);
-    margin-bottom: var(--mx-space-1);
   }
 
   .mx-settings__file {
