@@ -83,6 +83,7 @@ export interface CoreError {
     | 'permission-denied'
     | 'out-of-scope'
     | 'too-large'
+    | 'binary'
     | 'conflict'
     | 'invalid-argument'
     | 'settings-broken'

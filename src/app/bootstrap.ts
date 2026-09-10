@@ -7,6 +7,7 @@
 import {
   configureOpener,
   documentStore,
+  externalOpenActions,
   installFileWatch,
   openDocument,
   openPath,
@@ -350,7 +351,12 @@ function reportStartupProblems(bootstrap: Bootstrap | null): void {
 
   if (bootstrap?.documentError) {
     const e = bootstrap.documentError;
-    documentStore.notice = { level: 'error', message: describeError(e.kind, e.path, e.message) };
+    documentStore.notice = {
+      level: 'error',
+      message: describeError(e.kind, e.path, e.message),
+      // `marxdown foo.png` も逃げ道は同じにする（`openPath` の失敗時と揃える）。
+      ...(e.kind === 'binary' && { actions: externalOpenActions(e.path) }),
+    };
   }
   if (bootstrap && bootstrap.unknownArgs.length > 0) {
     documentStore.notice = {
