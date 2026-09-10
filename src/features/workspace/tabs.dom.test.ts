@@ -419,3 +419,64 @@ describe('並べ替え (F-NAV-02)', () => {
     expect(moveTab(first, 2)).toBe(false);
   });
 });
+
+describe('外部で削除・リネームされたタブ (#106)', () => {
+  it('切り替えようとしたら畳んで、表示中の文書はそのままにする', async () => {
+    await openPath('C:/work/a.md');
+    const first = tabsStore.activeId ?? 0;
+    await openPathInNewTab('C:/work/b.md');
+    const second = tabsStore.activeId ?? 0;
+
+    disk.delete('C:/work/a.md');
+
+    expect(await activateTab(first)).toBe(false);
+    // 表示は b.md のまま。タブ・エディター・保存先だけが a.md へ移ることがあってはならない。
+    expect(tabsStore.activeId).toBe(second);
+    expect(documentStore.meta?.path).toBe('C:/work/b.md');
+    expect(tabsStore.tabs.map((tab) => tab.meta.path)).toEqual(['C:/work/b.md']);
+    expect(tabsStore.active?.text).toBeNull();
+    expect(documentStore.notice?.level).toBe('error');
+  });
+
+  it('未保存のタブは読み直さないので、消えていても切り替えられる', async () => {
+    await openPath('C:/work/a.md');
+    const first = tabsStore.activeId ?? 0;
+    setDirty(true);
+    await openPathInNewTab('C:/work/b.md');
+
+    disk.delete('C:/work/a.md');
+
+    expect(await activateTab(first)).toBe(true);
+    expect(documentStore.meta?.path).toBe('C:/work/a.md');
+    expect(documentStore.isDirty).toBe(true);
+  });
+
+  it('閉じた隣が開けなければ、さらに隣を試す', async () => {
+    disk.set('C:/work/c.md', '# c\n');
+    await openPath('C:/work/a.md');
+    await openPathInNewTab('C:/work/b.md');
+    await openPathInNewTab('C:/work/c.md');
+
+    disk.delete('C:/work/b.md');
+
+    await closeTab(tabsStore.activeId ?? 0);
+
+    expect(tabsStore.tabs.map((tab) => tab.meta.path)).toEqual(['C:/work/a.md']);
+    expect(tabsStore.activeId).toBe(tabsStore.tabs[0]?.id);
+    expect(documentStore.meta?.path).toBe('C:/work/a.md');
+  });
+
+  it('どれも開けなければ Welcome へ戻す', async () => {
+    await openPath('C:/work/a.md');
+    await openPathInNewTab('C:/work/b.md');
+
+    disk.delete('C:/work/a.md');
+
+    await closeTab(tabsStore.activeId ?? 0);
+
+    expect(tabsStore.tabs).toHaveLength(0);
+    expect(tabsStore.activeId).toBeNull();
+    // 何も開いていない状態の判定はこれ 1 つ（`app/App.svelte`）
+    expect(documentStore.meta).toBeNull();
+  });
+});
