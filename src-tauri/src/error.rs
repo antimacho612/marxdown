@@ -21,6 +21,13 @@ pub enum CoreError {
     #[error("ファイルが大きすぎる: {path} ({size} bytes)")]
     TooLarge { path: String, size: u64 },
 
+    /// テキストとして解釈できないファイル（N-REL-03）。
+    ///
+    /// 大きすぎるわけではないので [`Self::TooLarge`] とは分ける。
+    /// 前者は開くのを諦めてもらう他ないが、こちらは OS の既定アプリへ渡せば用が足りる（F-VIEW-06）。
+    #[error("テキストとして読めない: {0}")]
+    Binary(String),
+
     #[error("外部で変更されている（保存の衝突）")]
     Conflict,
 
@@ -58,6 +65,7 @@ impl CoreError {
             Self::PermissionDenied(_) => "permission-denied",
             Self::OutOfScope(_) => "out-of-scope",
             Self::TooLarge { .. } => "too-large",
+            Self::Binary(_) => "binary",
             Self::Conflict => "conflict",
             Self::InvalidArgument(_) => "invalid-argument",
             Self::SettingsBroken(_) => "settings-broken",

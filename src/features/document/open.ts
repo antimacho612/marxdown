@@ -16,7 +16,14 @@ import { getPlatform, type DocumentPayload, type Encoding } from '@/platform';
 
 import { markClean } from './dirty';
 import { confirmDiscard } from './discard';
-import { documentStore, notifyInfo, toMeta, type StoredMeta, type StoredPayload } from './store.svelte';
+import {
+  documentStore,
+  notifyInfo,
+  toMeta,
+  type NoticeAction,
+  type StoredMeta,
+  type StoredPayload,
+} from './store.svelte';
 import { setDocumentText } from './text';
 
 const PREVIEW_SELECTOR = '#mx-preview';
@@ -292,12 +299,48 @@ export async function openPath(path: string, options: OpenOptions = {}): Promise
   try {
     payload = await getPlatform().readDocument(path, options.encoding);
   } catch (e) {
-    documentStore.notice = { level: 'error', message: describeOpenError(e, path) };
-    if (kindOf(e) === 'not-found') config?.onMissing(path);
+    const kind = kindOf(e);
+    documentStore.notice = {
+      level: 'error',
+      message: describeOpenError(e, path),
+      // Marxdown では読めないが、OS の既定アプリでなら開ける（F-VIEW-06）。
+      // ファイルツリーは Markdown 以外も並べる以上、画像や書庫を選ぶこと自体は避けられない。
+      ...(kind === 'binary' && { actions: externalOpenActions(path) }),
+    };
+    if (kind === 'not-found') config?.onMissing(path);
     return null;
   }
 
   return openDocument(payload, { resetScroll: true, ...options, startedAt });
+}
+
+/**
+ * Marxdown では開けないファイルの逃げ道（F-VIEW-06）。
+ *
+ * 本文中の非 Markdown リンクと同じ選択肢を出す（`preview/links.ts` の `confirmOpenExternally`）。
+ * ファイルツリーは Markdown 以外も並べるため、画像や書庫を選ぶ操作自体は起こりうる。
+ * 開けないと伝えるだけで終えると、そこから先へ進む手段が画面上に無くなる。
+ */
+export function externalOpenActions(path: string): NoticeAction[] {
+  return [
+    {
+      label: ja.link.open,
+      run: () => {
+        void getPlatform()
+          .openLocalFile(path)
+          .catch(() => {
+            // 許可ディレクトリの外であれば Rust 側が拒否する。
+            documentStore.notice = { level: 'error', message: ja.link.outOfScope(path) };
+          });
+      },
+    },
+    {
+      label: ja.link.reveal,
+      run: () => {
+        void getPlatform().revealInFileManager(path);
+      },
+    },
+  ];
 }
 
 /** ダイアログから開く（F-OPEN-07）。取り消されたら何もしない。 */

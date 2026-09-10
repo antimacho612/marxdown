@@ -91,6 +91,25 @@ pub fn detect(bytes: &[u8]) -> Detected {
     }
 }
 
+/// バイナリ判定のために先頭を見る長さ。
+///
+/// 全体を走査しない。判定の材料は先頭に出そろっており、64MB のファイルを最後まで見る理由が無い。
+pub const SNIFF_BYTES: u64 = 8 * 1024;
+
+/// テキストとして扱えないバイト列か（N-REL-03）。
+///
+/// 判定は NUL バイトの有無だけで行う。画像・書庫・実行ファイルはいずれも先頭付近に NUL を含み、テキストは含まない。
+/// 制御文字の割合などは見ない。ここで要るのは「Markdown として解釈してよいか」の可否だけであり、種別を当てる必要はない。
+///
+/// BOM 付きの UTF-16 は本文に NUL を含むため対象から外す。
+/// BOM の無い UTF-16 はバイナリとして扱われるが、[`detect`] も UTF-16 とは推定しないため、元から読めない。
+pub fn looks_binary(head: &[u8]) -> bool {
+    if head.starts_with(BOM_UTF16LE) || head.starts_with(BOM_UTF16BE) {
+        return false;
+    }
+    head.contains(&0)
+}
+
 /// エンコーディングを指定して読み直す（03.ux-spec/07-status-and-notifications.md §3「クリックでエンコーディング再解釈」）。
 ///
 /// `detect` を経由しないのは、再解釈を選ぶのが推定の外れたファイルを人が見て指定し直す場面だからである。
@@ -249,6 +268,35 @@ mod tests {
         let d = force(&bytes, Encoding::ShiftJis);
 
         assert!(!d.bom);
+    }
+
+    #[test]
+    fn nul_bytes_mark_a_buffer_as_binary() {
+        assert!(looks_binary(&[0x89, 0x50, 0x4E, 0x47, 0x00]));
+        assert!(!looks_binary(
+            "# 見出し
+本文
+"
+            .as_bytes()
+        ));
+        // タブ・改行・CR はテキストに現れる。
+        assert!(!looks_binary(
+            b"a	b
+c"
+        ));
+    }
+
+    /// BOM 付き UTF-16 は本文に NUL を含む。ここで弾くと読めていたファイルが読めなくなる。
+    #[test]
+    fn utf16_with_a_bom_is_not_binary() {
+        let mut le = BOM_UTF16LE.to_vec();
+        let mut be = BOM_UTF16BE.to_vec();
+        for u in "abc".encode_utf16() {
+            le.extend_from_slice(&u.to_le_bytes());
+            be.extend_from_slice(&u.to_be_bytes());
+        }
+        assert!(!looks_binary(&le));
+        assert!(!looks_binary(&be));
     }
 
     #[test]

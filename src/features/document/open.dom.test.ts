@@ -147,6 +147,24 @@ describe('install', () => {
     expect(spies.removeRecent).toHaveBeenCalledWith('C:/work/gone.md');
   });
 
+  it('バイナリは既定のアプリで開く逃げ道を出す（ツリーは Markdown 以外も並べる）', async () => {
+    const openLocalFile = vi.fn(() => Promise.resolve());
+    install({
+      readDocument: vi.fn(() => Promise.reject({ kind: 'binary', message: 'x' })),
+      openLocalFile,
+    });
+
+    await openPath('C:/work/photo.png');
+
+    expect(documentStore.notice?.level).toBe('error');
+    expect(documentStore.notice?.message).toBe(ja.error.binary('C:/work/photo.png'));
+
+    const actions = documentStore.notice?.actions ?? [];
+    expect(actions.map((a) => a.label)).toEqual([ja.link.open, ja.link.reveal]);
+    actions[0]?.run();
+    expect(openLocalFile).toHaveBeenCalledWith('C:/work/photo.png');
+  });
+
   it('読めなかっただけのファイルは履歴に残す', async () => {
     const spies = install({
       readDocument: vi.fn(() => Promise.reject({ kind: 'permission-denied', message: 'x' })),

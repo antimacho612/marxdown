@@ -28,6 +28,7 @@ export { untitledPayload } from './new';
 export {
   configureOpener,
   describeOpenError,
+  externalOpenActions,
   getParser,
   openDocument,
   openPath,

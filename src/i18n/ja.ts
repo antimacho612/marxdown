@@ -605,6 +605,7 @@ export const ja = {
     'permission-denied': (path: string) => `アクセスが拒否されました: ${path}`,
     'out-of-scope': (path: string) => `許可されていない場所を参照しています: ${path}`,
     'too-large': (path: string) => `ファイルが大きすぎます: ${path}`,
+    binary: (path: string) => `テキストではないため開けません: ${path}`,
     conflict: 'ファイルが外部で変更されています',
     'invalid-argument': (detail: string) => `引数が不正です: ${detail}`,
     'settings-broken': 'settings.json を読めないため、設定を保存できません',

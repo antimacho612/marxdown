@@ -7,6 +7,7 @@ pub mod atomic;
 pub mod encoding;
 pub mod eol;
 
+use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::time::UNIX_EPOCH;
 
@@ -145,7 +146,22 @@ pub fn read(path: &Path, forced: Option<Encoding>) -> CoreResult<DocumentPayload
         });
     }
 
-    let bytes = std::fs::read(&path)?;
+    // 先頭だけ先に読んでバイナリを弾く（N-REL-03）。
+    //
+    // 全体を読んでから判定すると、書庫や画像でも一度は 64MB を確保することになる。
+    // さらに UTF-8 として不正なバイト列は `encoding::detect` の推定が全バイトを走査し、その結果を U+FFFD だらけの巨大な文字列へ展開したうえでフロントの Markdown パーサへ渡ることになる。
+    // 判定はデコードより前になければ意味がない。
+    let mut file = std::fs::File::open(&path)?;
+    let mut bytes = Vec::with_capacity(size.min(encoding::SNIFF_BYTES) as usize);
+    (&mut file)
+        .take(encoding::SNIFF_BYTES)
+        .read_to_end(&mut bytes)?;
+    if encoding::looks_binary(&bytes) {
+        return Err(CoreError::Binary(path.display().to_string()));
+    }
+    bytes.reserve(size.saturating_sub(bytes.len() as u64) as usize);
+    file.read_to_end(&mut bytes)?;
+
     let detected = match forced {
         Some(encoding) => encoding::force(&bytes, encoding),
         None => encoding::detect(&bytes),
@@ -369,6 +385,46 @@ mod tests {
             "changed by someone else\n",
             "衝突時にディスクの内容を壊してはいけない"
         );
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    /// N-REL-03。**バイナリはデコードの前に弾く。**
+    ///
+    /// 通していた頃は、推定・デコード・Markdown のパースが順に全バイトへ走り、数十 MB のファイルで UI が数秒止まっていた。
+    #[test]
+    fn reading_a_binary_file_is_rejected() {
+        let dir = temp_dir("binary");
+        let p = dir.join("a.png");
+        // PNG の署名と IHDR。実際のバイナリと同じく先頭に NUL を含む。
+        std::fs::write(
+            &p,
+            [
+                0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00, 0x00, 0x0D,
+            ],
+        )
+        .unwrap();
+
+        let err = read(&p, None).unwrap_err();
+
+        assert_eq!(err.kind(), "binary");
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    /// BOM 付き UTF-16 は本文に NUL を含む。バイナリ判定に巻き込まれると、読めていたファイルが読めなくなる。
+    #[test]
+    fn utf16_with_a_bom_is_still_readable() {
+        let dir = temp_dir("utf16");
+        let p = dir.join("a.md");
+        let mut bytes = vec![0xFF, 0xFE];
+        for u in "# 見出し".encode_utf16() {
+            bytes.extend_from_slice(&u.to_le_bytes());
+        }
+        std::fs::write(&p, &bytes).unwrap();
+
+        let doc = read(&p, None).unwrap();
+
+        assert_eq!(doc.content, "# 見出し");
+        assert_eq!(doc.meta.encoding, Encoding::Utf16Le);
         std::fs::remove_dir_all(&dir).ok();
     }
 
