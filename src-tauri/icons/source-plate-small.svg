@@ -1,0 +1,69 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256" role="img" aria-label="Marxdown">
+  <!--
+    Marxdown アプリアイコンのマスター（台座版 / 64px 以下で使う）。
+    128px 以上は `source-plate.svg`、台座を敷かない版は `source.svg`。
+    形を直すときは 3 ファイルとも直す。骨格の座標・線幅・玉の径は全ファイルで同一。
+    骨格そのものの導出は `source.svg` のコメントを見ること。
+
+    Windows は 16px から 256px まで同じ `icon.ico` を引き、タスクバー・エクスプローラ・
+    Alt+Tab・トレイが全部そこから出る。トレイは `default_window_icon()` を使い回しており、
+    Windows ではその実体が `icon.ico`（tauri-codegen が .ico を優先する）。
+    このファイルはその小さい側を埋めるためにある。
+
+    大サイズ版をそのまま縮小しないのは 2 点:
+
+      余白: 大サイズ版はマークの最遠点を台座の半径から 128 / φ^4 = 18.67 内側に置く。
+            この比のまま 16px にすると台座が勝ってマークが読めない。
+            小サイズ版は半段階詰めて 128 / φ^4.5 = 14.68 にしてある（倍率 0.958）。
+            φ^5 まで詰める案は 24px 以上でマークが縁に触れて窮屈だったので採らなかった。
+      効果: 落ち影・接地影・継ぎ目の重なり影・玉の縁の光は、64px 以下では
+            ぼかしが 1px 未満になり、階調が濁るだけで形に寄与しない。全部落としてある。
+
+    藍と薔薇は大サイズ版より 1 段明るい。実効面積が小さいぶん、暗い台座に沈むのを防ぐ。
+    台座の縁の光（`rim`）だけは残す。暗いタスクバー上で円の輪郭が消えるのを防ぐ唯一の手段で、
+    ここが無いと 16px では地と一体化して四角い塊に見える。
+  -->
+  <defs>
+    <clipPath id="cw"><rect x="-64" y="-64" width="192" height="384" /></clipPath>
+    <clipPath id="ce"><rect x="128" y="-64" width="192" height="384" /></clipPath>
+    <linearGradient id="bg" gradientUnits="userSpaceOnUse" x1="26" y1="8" x2="230" y2="248">
+      <stop offset="0" stop-color="#29304f" />
+      <stop offset="0.5" stop-color="#141930" />
+      <stop offset="1" stop-color="#070910" />
+    </linearGradient>
+    <linearGradient id="rim" gradientUnits="userSpaceOnUse" x1="128" y1="0" x2="128" y2="256">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.36" />
+      <stop offset="0.35" stop-color="#ffffff" stop-opacity="0.06" />
+      <stop offset="0.72" stop-color="#ffffff" stop-opacity="0" />
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0.16" />
+    </linearGradient>
+    <linearGradient id="b" gradientUnits="userSpaceOnUse" x1="48" y1="54" x2="112" y2="206">
+      <stop offset="0" stop-color="#a6b2ff" />
+      <stop offset="0.45" stop-color="#6b7bf8" />
+      <stop offset="1" stop-color="#4250cf" />
+    </linearGradient>
+    <linearGradient id="r" gradientUnits="userSpaceOnUse" x1="146" y1="62" x2="212" y2="208">
+      <stop offset="0" stop-color="#ffa6ba" />
+      <stop offset="0.45" stop-color="#fa6a80" />
+      <stop offset="1" stop-color="#d42f5c" />
+    </linearGradient>
+    <linearGradient id="y" x1="0.14" y1="0.02" x2="0.86" y2="0.98">
+      <stop offset="0" stop-color="#ffeaa8" />
+      <stop offset="0.5" stop-color="#ffc750" />
+      <stop offset="1" stop-color="#e89512" />
+    </linearGradient>
+  </defs>
+
+  <circle cx="128" cy="128" r="128" fill="url(#bg)" />
+  <circle cx="128" cy="128" r="126" fill="none" stroke="url(#rim)" stroke-width="4" />
+
+  <g transform="translate(128 125) scale(0.958) translate(-128 -125)">
+    <g fill="none" stroke-width="42.8" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M58.75 184.55 L58.75 68.89 L158 214.33" stroke="url(#b)" clip-path="url(#cw)" />
+      <path d="M197.25 184.55 L197.25 68.89 L98 214.33" stroke="url(#r)" clip-path="url(#ce)" />
+    </g>
+
+    <circle cx="58.75" cy="68.89" r="27.22" fill="url(#y)" />
+    <circle cx="197.25" cy="68.89" r="21.4" fill="url(#y)" />
+  </g>
+</svg>
