@@ -59,7 +59,7 @@ function install(): void {
 
 function dispatch(event: KeyboardEvent): void {
   // IME 変換中のキーはアプリのバインドとして扱わない。日本語入力では必ずこの経路を通る。
-  if (event.isComposing || event.keyCode === 229) return;
+  if (event.isComposing) return;
 
   const list = registry.get(comboOf(event));
   if (!list) return;
