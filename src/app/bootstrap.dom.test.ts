@@ -2,6 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { documentStore } from '@/features/document';
+import type * as editor from '@/features/editor';
 import { settingsStore } from '@/features/settings';
 import { resetTabs, tabsStore } from '@/features/workspace';
 import { ja } from '@/i18n/ja';
@@ -10,6 +11,20 @@ import { resetShortcuts } from '@/lib/shortcuts';
 import { DEFAULT_PANES, DEFAULT_SETTINGS, getPlatform, setPlatform, type Bootstrap, type Platform } from '@/platform';
 
 import { startup } from './bootstrap';
+
+/**
+ * エディターのアイドルプリロードを止める（`installInitialEditor`）。
+ *
+ * `preloadEditor()` は Monaco（792KB）の動的 import であり、`requestIdle` 越しに `startup()` の解決より後で走る。
+ * テストが終わった後に読み込みが始まると、環境が破棄された後のモジュール解決になって失敗する。
+ * ここで見たいのは起動の順序であって、エディターのチャンクが実際に取得できることではない。
+ *
+ * 他の入口（`mountEditorLazily` など）はそのままにする。差し替えるのは、このテストが呼ばない経路まで含めないためである。
+ */
+vi.mock('@/features/editor', async (importOriginal) => ({
+  ...(await importOriginal<typeof editor>()),
+  preloadEditor: () => Promise.resolve(),
+}));
 
 /** Worker を立てない。パイプラインの中身はこのテストの関心ではない。 */
 vi.mock('@/markdown/parser', () => ({
