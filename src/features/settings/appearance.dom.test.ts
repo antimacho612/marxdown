@@ -72,9 +72,10 @@ describe('applyAppearance', () => {
   });
 
   it('本文幅の単位は ch（02.architecture/10-theming.md §2）', () => {
-    applyAppearance(withSettings({ 'preview.maxWidth': 72 }));
+    // 既定（72）以外を渡す。既定と同じ値は書かずに消す仕様であり、単位を確かめられない。
+    applyAppearance(withSettings({ 'preview.maxWidth': 90 }));
 
-    expect(root().style.getPropertyValue('--mx-content-width')).toBe('72ch');
+    expect(root().style.getPropertyValue('--mx-content-width')).toBe('90ch');
   });
 
   it('文字サイズは px、行間は無次元', () => {

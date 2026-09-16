@@ -72,7 +72,7 @@ pub const KEY_WINDOW_CLOSE_BEHAVIOR: &str = "window.closeBehavior";
 /// プレビューの既定。`src/styles/tokens.css` と揃える。
 pub const DEFAULT_FONT_SIZE: f64 = 16.0;
 pub const DEFAULT_LINE_HEIGHT: f64 = 1.75;
-pub const DEFAULT_MAX_WIDTH: f64 = 100.0;
+pub const DEFAULT_MAX_WIDTH: f64 = 72.0;
 
 /// エディターの既定（ADR-0012）。プレビューとは別の値を使う。
 ///
