@@ -86,6 +86,24 @@ body {
 }
 
 /*
+ * 本文の面に重ねるもの（通知バー・Welcome）の置き場所。
+ *
+ * `grid-area: main` では Split に割り当て先が無い。
+ * Split の `grid-template-areas` に `main` という名前は存在せず、解決できない要素は自動配置に落ちる。
+ * そのとき暗黙の行と列が作られ、エディターとプレビューの列が 121px まで潰れ、重ねたはずの要素は
+ * ステータスバーの外へ出る（実測: 列 `240px 121px 1px 121px 0px 0px 316px` / 行 `34px 463px 24px 0px 38px`）。
+ *
+ * ペインの列は、どのモードでも必ず両端にある。
+ * 両端を除いた範囲を指せば、モードによらず本文の面の上に載る。
+ * 番号で指す規則をここ 1 か所に閉じてあるのは、列が増えたときに直す場所を 1 つに保つためである
+ * （grid の定義を名前で書いてあるのと同じ理由）。
+ */
+.mx-over-main {
+  grid-row: 2;
+  grid-column: 2 / -2;
+}
+
+/*
  * 分割線
  * 線そのものは 1px に見せて、掴める幅はその外側に広げる。
  * 見た目のために掴みにくくしない（ライトペインの `__resizer` と同じ考え方）。
@@ -132,7 +150,8 @@ body {
   gap: var(--mx-space-1);
   padding: var(--mx-space-1) var(--mx-space-2);
   border: 1px solid var(--mx-color-border);
-  border-radius: var(--mx-radius);
+  /* 内側の入力欄は 4px、その外に 4px の余白があるため、外側は 8px にする（同心の角丸）。 */
+  border-radius: calc(var(--mx-radius-sm) + var(--mx-space-1));
   background: var(--mx-color-bg-subtle);
   box-shadow: var(--mx-shadow-1);
   font-size: var(--mx-font-size-ui);
@@ -162,7 +181,7 @@ body {
   min-width: 7ch;
   text-align: center;
   color: var(--mx-color-fg-subtle);
-  font-size: 11px;
+  font-size: var(--mx-font-size-ui-sm);
   font-variant-numeric: tabular-nums;
 }
 
@@ -179,6 +198,11 @@ body {
 
   &:hover {
     background: var(--mx-color-bg-hover);
+    color: var(--mx-color-fg);
+  }
+
+  &:active {
+    background: var(--mx-color-bg-inset);
   }
 
   &:focus-visible {

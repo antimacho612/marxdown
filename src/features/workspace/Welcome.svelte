@@ -22,7 +22,7 @@
   const shown = $derived(recentStore.entries.slice(0, RECENT_SHOWN));
 </script>
 
-<div class="mx-welcome">
+<div class="mx-welcome mx-over-main">
   <div class="mx-welcome__panel">
     <h1 class="mx-welcome__title">
       <Mark size={30} />
@@ -65,7 +65,15 @@
                 title={entry.path}
               >
                 <span class="mx-welcome__item-name">{split.name}</span>
-                <span class="mx-welcome__item-dir">{split.dir}</span>
+                <!--
+                  `<bdi dir="ltr">` が要る。
+                  容器が `direction: rtl`（頭を削るため）なので、パスの両端にある中立文字が bidi で並べ替わる。
+                  実測では `/virtual` が `virtual/`、`~/notes` が `notes/~`、`C:` が `:C` として表示されていた。
+
+                  容器と `<bdi>` は分ける。同じ要素に置くと、著者スタイルの `direction: rtl` が
+                  属性由来の `ltr` に勝ち、分離が RTL 方向で解決されて元の症状に戻る。
+                -->
+                <span class="mx-welcome__item-dir"><bdi dir="ltr">{split.dir}</bdi></span>
               </button>
             </li>
           {/each}
@@ -82,9 +90,11 @@
   /*
    * 中央揃えではなく、左揃えのブロックを中央に配置する。
    * 項目とショートカットが縦に揃わないと、一覧として読み取りにくい。
+   *
+   * 置き場所は `shell.css` の `.mx-over-main` が持つ。
+   * `grid-area: main` で指すと Split に割り当て先が無く、右下の暗黙セルへ落ちる。
    */
   .mx-welcome {
-    grid-area: main;
     z-index: 5;
     display: grid;
     place-content: center;
@@ -105,7 +115,7 @@
     align-items: center;
     gap: var(--mx-space-3);
     margin: 0 0 var(--mx-space-2);
-    font-size: 22px;
+    font-size: var(--mx-font-size-title);
     font-weight: 650;
     letter-spacing: -0.01em;
     color: var(--mx-color-fg);
@@ -113,7 +123,7 @@
 
   .mx-welcome__heading {
     margin: var(--mx-space-4) 0 var(--mx-space-1);
-    font-size: 11px;
+    font-size: var(--mx-font-size-ui-sm);
     font-weight: 600;
     letter-spacing: 0.06em;
     text-transform: uppercase;
@@ -170,7 +180,7 @@
     flex: 1;
     min-width: 0;
     color: var(--mx-color-fg-subtle);
-    font-size: 11px;
+    font-size: var(--mx-font-size-ui-sm);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -181,6 +191,20 @@
   .mx-welcome__action:hover,
   .mx-welcome__item:hover {
     background: var(--mx-color-bg-hover);
+  }
+
+  /*
+   * ホバー中の面は `bg-hover` で、そこでは subtle が 4.5:1 に届かない。
+   * 文字色を 1 段上げる（`tokens.css` の文字色のコメント）。
+   */
+  .mx-welcome__item:hover .mx-welcome__item-dir {
+    color: var(--mx-color-fg-muted);
+  }
+
+  /* 押し込み。Windows は「ホバーより淡い面」で押下を表す（`app/CaptionButton.svelte` と同じ）。 */
+  .mx-welcome__action:active,
+  .mx-welcome__item:active {
+    background: var(--mx-color-bg-inset);
   }
 
   .mx-welcome__action:focus-visible,
