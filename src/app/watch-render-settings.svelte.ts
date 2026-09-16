@@ -8,21 +8,37 @@
  */
 import { renderNow } from '@/features/document';
 import { enabledSyntax, settingsStore } from '@/features/settings';
+import type { Settings } from '@/platform';
+
+/**
+ * パース結果に影響する値だけを 1 本の文字列にする。
+ *
+ * 購読しているだけでは足りない。
+ * `settingsStore.values` は 1 項目の変更でもオブジェクトごと差し替わるため、
+ * フォントサイズや配色のように CSS だけで反映できる項目を変えても効果が発火する。
+ * さらに保存の完了時（`features/settings/lazy/change.ts` の `persist`）と
+ * 外部エディターでの編集の検知（`refreshSettings`）でも同じ差し替えが起きるため、
+ * 1 回の変更で `renderNow()` が複数回走ることになる。
+ * `renderNow()` はプレビューの DOM を作り直すので、そのたびに本文が消えてから描き直される。
+ */
+function renderSignature(values: Settings): string {
+  return `${String(values['preview.softBreak'])}\n${enabledSyntax(values).join(',')}`;
+}
 
 /** `startup()` から 1 回だけ呼ぶ。解除はしない（アプリの寿命いっぱい購読し続ける）。 */
 export function installSoftBreakRerender(): void {
-  let first = true;
+  let previous: string | null = null;
 
   $effect.root(() => {
     $effect(() => {
-      void settingsStore.values['preview.softBreak'];
-      // 記法の一覧を読むことで、`markdown.*` のどれが変わっても再パースが走る。
-      void enabledSyntax(settingsStore.values).join(',');
+      const signature = renderSignature(settingsStore.values);
+      if (signature === previous) return;
+
       // マウント直後に 1 回走る（`watchEditorSettings` と同じ）。開いている本文は開いた時点の値で既に描画済みなので、ここでは何もしない。
-      if (first) {
-        first = false;
-        return;
-      }
+      const isFirstRun = previous === null;
+      previous = signature;
+      if (isFirstRun) return;
+
       void renderNow();
     });
   });
