@@ -21,6 +21,7 @@
   import { toggleDir, treeStore } from '../tree.svelte';
   // 自分自身を再帰的に使う（`<svelte:self>` は非推奨）。
   import FileTree from './FileTree.svelte';
+  import TreeContextMenu from './TreeContextMenu.svelte';
 
   interface Props {
     /** 表示するディレクトリ。省略すると基点から描く。 */
@@ -49,12 +50,38 @@
     return () => registerExplorerFocus(null);
   });
 
+  /**
+   * 開いているコンテキストメニュー。
+   *
+   * 入れ子の `FileTree` もそれぞれ自分の分を持つ。
+   * 位置は `position: fixed` で決まるため、どの階層が描いても見え方は変わらない。
+   * 別の行を押した時点で `pointerdown` が先に届き、前のメニューは閉じる。
+   */
+  let menu: { path: string; x: number; y: number } | null = $state(null);
+
   function open(entry: DirEntry): void {
     if (entry.dir) {
       void toggleDir(entry.path);
       return;
     }
     void openPathInNewTab(entry.path);
+  }
+
+  /** ディレクトリだけが対象。ファイルには並べる項目が無い。 */
+  function openMenu(event: MouseEvent, entry: DirEntry): void {
+    if (!entry.dir) return;
+    event.preventDefault();
+    menu = { path: entry.path, x: event.clientX, y: event.clientY };
+  }
+
+  /** キーボードから開く（`Shift+F10` / コンテキストメニューキー）。行の左下に出す。 */
+  function onItemKeydown(event: KeyboardEvent, entry: DirEntry): void {
+    if (!entry.dir) return;
+    if (event.key !== 'ContextMenu' && !(event.key === 'F10' && event.shiftKey)) return;
+
+    event.preventDefault();
+    const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
+    menu = { path: entry.path, x: rect.left, y: rect.bottom };
   }
 </script>
 
@@ -74,6 +101,8 @@
           style:padding-inline-start="calc(var(--mx-space-2) + {depth * 12}px)"
           title={entry.path}
           onclick={() => open(entry)}
+          oncontextmenu={(event) => openMenu(event, entry)}
+          onkeydown={(event) => onItemKeydown(event, entry)}
         >
           <span class="mx-tree__mark" aria-hidden="true">{entry.dir ? (expanded ? '▾' : '▸') : ''}</span>
           <span class="mx-tree__name">{entry.name}</span>
@@ -86,6 +115,10 @@
       </li>
     {/each}
   </ul>
+{/if}
+
+{#if menu}
+  <TreeContextMenu path={menu.path} x={menu.x} y={menu.y} onclose={() => (menu = null)} />
 {/if}
 
 <style>

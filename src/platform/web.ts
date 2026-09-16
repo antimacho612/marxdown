@@ -422,6 +422,11 @@ export const webPlatform: Platform = {
     return { files: [], truncated: false };
   },
 
+  /** 同じ理由でツリーも空になる。コピーしても中身の無い 1 行が得られるだけである。 */
+  async listTree() {
+    return { name: '', nodes: [], truncated: false };
+  },
+
   /** `dev:web` では復元しない。起動のたびに同じ状態から始まるほうが確かめやすい。 */
   async setSession() {},
 

@@ -26,6 +26,7 @@ export type CommandId =
   | 'document.toggleEol'
   | 'editor.gotoLine'
   | 'editor.formatTable'
+  | 'explorer.copyTree'
   | 'explorer.show'
   | 'find.open'
   | 'folder.open'

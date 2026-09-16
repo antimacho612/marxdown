@@ -64,6 +64,7 @@ export const COMMAND_CATALOG: CommandEntry[] = [
     shortcut: 'Ctrl+Alt+B',
   },
   { id: 'explorer.show', label: ja.menu.showExplorer, shortcut: 'Ctrl+Shift+E' },
+  { id: 'explorer.copyTree', label: ja.tree.copyTree },
   { id: 'outline.show', label: ja.menu.showOutline, shortcut: 'Ctrl+Shift+U' },
   { id: 'outline.jump', label: ja.outline.jump, shortcut: 'Ctrl+Shift+O' },
 

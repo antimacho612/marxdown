@@ -44,6 +44,27 @@ export interface DirEntry {
   dir: boolean;
 }
 
+/**
+ * ツリーの 1 件（`src-tauri/src/dir.rs` の `TreeNode`）。
+ *
+ * 入れ子のまま受け取る。罫線を組むには木の形が要る。
+ */
+export interface TreeNode {
+  name: string;
+  dir: boolean;
+  /** ディレクトリ以外では常に空。 */
+  children: TreeNode[];
+}
+
+/** 基点とその配下（`src-tauri/src/dir.rs` の `DirTree`）。 */
+export interface DirTree {
+  /** 基点の表示名。パスではない。 */
+  name: string;
+  nodes: TreeNode[];
+  /** 上限で打ち切ったか。true なら木は全体の一部である。 */
+  truncated: boolean;
+}
+
 /** クイックオープンの候補（F-NAV-05）。 */
 export interface FileList {
   /** 正規化済み絶対パス。パス順に並んでいる。 */
@@ -374,6 +395,13 @@ export interface Platform {
    * 超えたときは `truncated` が立つ（`src-tauri/src/dir.rs`）。
    */
   listFiles(root: string): Promise<FileList>;
+  /**
+   * 基点の配下を木の形で返す（Explorer のツリーをアスキーアート化する）。
+   *
+   * 除外は `listDir` と同じで、深さと件数には上限がある（`src-tauri/src/dir.rs`）。
+   * 1 階層ずつではなく 1 回で全体を返すのは、往復の回数が枝の数だけ増えるのを避けるためである。
+   */
+  listTree(path: string): Promise<DirTree>;
   /**
    * 開いているタブを覚える（OQ-04）。**引数なしで起動したときだけ復元される。**
    *

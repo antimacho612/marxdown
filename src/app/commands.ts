@@ -28,6 +28,7 @@ import { openSettingsLazily } from '@/features/settings';
 import { viewStore } from '@/features/view';
 import {
   closeTab,
+  copyTreeLazily,
   cycleTab,
   openFolderViaDialog,
   openUntitledTab,
@@ -35,6 +36,7 @@ import {
   selectTabAt,
   showExplorer,
   tabsStore,
+  treeStore,
 } from '@/features/workspace';
 import { registerCommands, runCommand, type Command, type CommandId } from '@/lib/commands';
 import { toMessage } from '@/lib/error';
@@ -115,6 +117,15 @@ const COMMANDS: Command[] = [
   { id: 'outline.show', run: () => void showOutline() },
   // Explorer を出してフォーカスする（`Ctrl+Shift+E`）。`outline.show` と対になるビュー側のキーである。
   { id: 'explorer.show', run: () => void showExplorer() },
+  // ディレクトリ構造をアスキーアートにしてクリップボードへコピーする。
+  // 対象を省略すると基点を使う。Explorer の右クリックからは、そのディレクトリを渡す。
+  //
+  // キーは割り当てない（`document.toggleEol` と同じく、覚えるキーを増やすほどの頻度ではない）。
+  {
+    id: 'explorer.copyTree',
+    run: (target) => void copyTreeLazily(target),
+    isListed: () => treeStore.root !== null,
+  },
 
   // 見出しへジャンプ（03.ux-spec/04-keybindings.md §3「移動」）。実体は遅延チャンクにある。
   // コマンドパレット（`Ctrl+Shift+P` / M3）ではなく、見出し専用である。
