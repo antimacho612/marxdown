@@ -73,15 +73,18 @@
   .mx-settings__label {
     display: flex;
     flex-direction: column;
-    gap: var(--mx-space-2);
+    /* ラベルと説明は 1 つの項目なので、項目どうしの間隔（20px）よりはっきり近づける。 */
+    gap: var(--mx-space-1);
     color: var(--mx-color-fg);
     font-weight: 600;
   }
 
+  /* 11px で 1.35 は詰まりすぎる。2 行に折り返す説明が多い。 */
   .mx-settings__description {
     margin: 0;
     color: var(--mx-color-fg-subtle);
     font-size: var(--mx-font-size-ui-sm);
+    line-height: 1.5;
   }
 
   .mx-settings__control {

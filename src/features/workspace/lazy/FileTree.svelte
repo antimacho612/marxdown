@@ -18,6 +18,7 @@
   import { documentStore } from '@/features/document';
   import { ja } from '@/i18n/ja';
   import ChevronIcon from '@/lib/ChevronIcon.svelte';
+  import Icon from '@/lib/Icon.svelte';
   import { isMarkdownPath } from '@/lib/path';
   import type { DirEntry } from '@/platform';
 
@@ -181,6 +182,12 @@
           {:else}
             <span class="mx-tree__mark" aria-hidden="true"></span>
           {/if}
+          <!--
+            種別の図記号。
+            名前だけが縦に並ぶと、行の頭がすべて文字になって走査できない。
+            Markdown とそれ以外を分けるのは、淡さ（`--dim`）と同じ「Markdown First」の表れである。
+          -->
+          <Icon name={entry.dir ? 'folder' : isMarkdownPath(entry.name) ? 'document-text' : 'document'} size={14} />
           <span class="mx-tree__name">{entry.name}</span>
         </button>
 
