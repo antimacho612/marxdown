@@ -1,5 +1,5 @@
 /**
- * 設定値を CSS へ渡す形に整える（F-CONF-04 / F-CONF-08 / ADR-0013）。
+ * 設定値を CSS へ渡す形に整える（F-CONF-04 / F-CONF-08 / ADR-0014）。
  *
  * DOM には触らない。適用するのは `appearance.ts` と見本（`lazy/samples/`）である。
  * `@/platform` から値を取らないのは、見本のチャンクからこのモジュールを参照するためである。
@@ -10,7 +10,7 @@
  * 見本に着せる配色（`data-mx-theme` / `data-mx-editor-theme` の値）。
  *
  * `default` のときは `undefined` を返し、属性を付けない（`appearance.ts` の `applyPalette` と同じ判断）。
- * エディター側は組み込みの列挙ではなく任意の文字列を取るため（ADR-0014）、引数を `string` にしてある。
+ * 組み込みの列挙ではなく任意の文字列を取る（ADR-0014）。選択肢は `themes/` との合成であり、数え上げられない。
  */
 export function paletteAttr(palette: string): string | undefined {
   return palette === 'default' ? undefined : palette;

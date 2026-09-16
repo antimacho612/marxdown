@@ -11,12 +11,12 @@
 
 <script lang="ts">
   import { ja } from '@/i18n/ja';
-  import type { Palette } from '@/platform';
 
   import { paletteAttr } from '../../format';
 
   interface Props {
-    palette: Palette;
+    /** `preview.theme` の値そのまま。組み込みの id か `themes/` のファイル名（ADR-0014）。 */
+    palette: string;
   }
 
   let { palette }: Props = $props();
@@ -37,7 +37,7 @@
     border: 1px solid var(--mx-color-border-subtle);
     border-radius: var(--mx-radius-sm);
     /*
-     * 配色は見本の要素自身に適用する（`data-mx-theme` / ADR-0013）。
+     * 配色は見本の要素自身に適用する（`data-mx-theme` / ADR-0014）。
      * 背景色と文字色をここで明示しないと、上書きしたトークンが参照されず、ダイアログ（クロームの配色）のままになる。
      */
     background: var(--mx-color-bg);

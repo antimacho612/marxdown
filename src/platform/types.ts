@@ -154,47 +154,20 @@ export interface SettingsLoad {
 }
 
 /**
- * カスタム CSS を適用できなかった理由（`src-tauri/src/custom_css.rs`）。
- *
- * ファイルが無い状態はここに現れない。
- * ファイルが無いのは正常な状態であり（設定項目を置かない以上、初回起動が常にこれにあたる）、通知の対象にしない。
- */
-export interface CustomCssProblem {
-  kind: 'too-large' | 'unreadable';
-  path: string;
-  message: string;
-}
-
-/**
  * ユーザーが `themes/` に置いた配色（`src-tauri/src/themes.rs` の `UserTheme` / ADR-0014）。
  *
- * 組み込みの配色と同じ形でカタログに載る。
+ * 組み込みの配色と同じ形でカタログに載り、プレビューとエディターのどちらからも選べる。
  * 同じ id が組み込みにもある場合はこちらが優先される。
  */
 export interface UserTheme {
-  /** 拡張子を除いたファイル名。そのまま `editor.theme` の値になる。 */
+  /** 拡張子を除いたファイル名。そのまま `preview.theme` / `editor.theme` の値になる。 */
   id: string;
   /**
    * ファイルの中身。宣言の並びであることは前提にしない。
-   * 包んだ結果が面の外へ出ていないかは `features/theme/lazy/catalog.ts` がブラウザの CSS パーサで検査する。
+   * 包んだ結果が面の外へ出ていないかは `features/theme/inject.ts` がブラウザの CSS パーサで検査する。
    */
   declarations: string;
 }
-
-/** `custom.css` の読み込み結果（`src-tauri/src/custom_css.rs` の `CustomCss`）。 */
-export interface CustomCss {
-  /** 読み込んだ CSS。`null` は「無い」か「読まなかった」。 */
-  css: string | null;
-  /**
-   * 64KB を超えたため bootstrap に載らなかった。
-   * `ready()` の後に `readCustomCss` で取りに行く（02.architecture/10-theming.md §3）。
-   */
-  deferred: boolean;
-  problem: CustomCssProblem | null;
-}
-
-/** カスタム CSS が無い状態。bootstrap を持たない経路（テスト / dev:web）の既定値。 */
-export const NO_CUSTOM_CSS: CustomCss = { css: null, deferred: false, problem: null };
 
 /**
  * 外部で何が起きたか。
@@ -300,13 +273,15 @@ export interface Bootstrap {
   /** `settings.json` を読めなかった事実。通知バーに出す（03.ux-spec/07-status-and-notifications.md §2）。 */
   settingsError: SettingsProblem | null;
   /**
-   * カスタム CSS（F-CONF-07 / 02.architecture/10-theming.md §3）。
+   * プレビューで選ばれている `themes/` の 1 枚（ADR-0014）。
    *
-   * 64KB 以下のときだけ `css` が入る。
-   * ここに載せるのは、暗い背景を指定しているときに白い初期画面が一瞬表示されるのを防ぐためである。
-   * 超えている場合は `deferred` が立ち、`readCustomCss` で取得する。
+   * 選択中の id に一致するファイルがあるときだけ入る。
+   * 組み込みの配色を選んでいる場合と、存在しない綴りの場合は `null` で届く。
+   *
+   * ここに載せるのは、暗い配色を選んでいるときに既定の配色で初回フレームが描かれるのを防ぐためである。
+   * 組み込みの 50 枚はフロント側の遅延チャンクにあり、そちらは `theme` チャンクの取得を待って当たる。
    */
-  customCss: CustomCss;
+  previewTheme: UserTheme | null;
 }
 
 /** 別インスタンスから転送された起動要求（ウォーム起動）。 */
@@ -483,30 +458,6 @@ export interface Platform {
    */
   openSettingsFile(): Promise<void>;
   /**
-   * カスタム CSS を読み直す（F-CONF-07 / 02.architecture/10-theming.md §3）。
-   *
-   * 起動時の 64KB 以下はこれを呼ばない。bootstrap に同梱されている。
-   * このメソッドが必要になるのは、64KB を超えて同梱されなかった場合と、外部エディターで編集された後の読み直しだけである。
-   */
-  readCustomCss(): Promise<CustomCss>;
-
-  /**
-   * `custom.css` を OS の既定アプリで開く（F-CONF-07）。
-   *
-   * 無ければ雛形を作ってから開く。
-   * 設定項目もパスの設定も置かない以上、どこに書けばよいかを知る手段がこのボタンしかない。
-   */
-  openCustomCssFile(): Promise<void>;
-
-  /**
-   * `custom.css` の外部変更を購読する（02.architecture/10-theming.md §3）。
-   *
-   * `onSettingsChanged` と同じく中身は渡さない。受け取ったら
-   * `readCustomCss` で読み直して当て直すのが唯一の使い方。
-   */
-  onCustomCssChanged(handler: () => void): () => void;
-
-  /**
    * `themes/` に置かれた配色をすべて読む（ADR-0014）。
    *
    * 組み込みの 50 枚はフロント側の遅延チャンクにあり、これで返るのはユーザーが追加したものだけである。
@@ -518,14 +469,14 @@ export interface Platform {
    * `themes/` をファイルマネージャで開く（ADR-0014）。
    *
    * 無ければ作り、書き方を説明する `README.css` を置いてから開く。
-   * `openCustomCssFile` と同じ理由で、どこに何を書けばよいかを知る手段がこのボタンしかない。
+   * 設定項目もパスの設定も置かない以上、どこに何を書けばよいかを知る手段がこのボタンしかない。
    */
   openThemesDir(): Promise<void>;
 
   /**
    * `themes/` の中身の変更を購読する（ADR-0014）。
    *
-   * `onCustomCssChanged` と同じく中身は渡さない。受け取ったら `listUserThemes` で読み直して当て直すのが唯一の使い方である。
+   * `onSettingsChanged` と同じく中身は渡さない。受け取ったら `listUserThemes` で読み直して当て直すのが唯一の使い方である。
    * どの 1 枚が変わったかも渡さない。選択中の配色が変わったかどうかは、読み直した結果と突き合わせないと判断できない。
    */
   onUserThemesChanged(handler: () => void): () => void;

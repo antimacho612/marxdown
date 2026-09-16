@@ -1,6 +1,6 @@
 <!--
 @component
-エディターの配色を選ぶ（ADR-0014）。
+面ごとの配色を選ぶ（ADR-0014）。
 
 設定 UI の部品でありながら `theme` チャンク側に置いてある。
 `SelectField` と分けたのは選択肢がスキーマの `values` から来ないためで、置き場所を分けたのは
@@ -11,6 +11,7 @@
 エディター側の適用は Monaco がマウントされているときにしか走らず、Preview のまま設定を開いた場合は誰も注入しない。
 `applyTheme` は何度呼んでも同じ結果になるため、両方から呼んで差し支えない。
 
+@prop surface
 @prop label
 @prop description
 @prop value
@@ -23,20 +24,23 @@
   import { ja } from '@/i18n/ja';
   import { getPlatform } from '@/platform';
 
+  import type { Surface } from '../inject';
   import { applyTheme, listThemes, refreshUserThemes } from './catalog';
   import type { ThemeSummary } from './preset';
 
   interface Props {
+    /** 当てる面。カタログは共通で、選択だけが面ごとに独立している。 */
+    surface: Surface;
     label: string;
     description: string;
-    /** `editor.theme` の値。組み込みの id か `themes/` のファイル名、または `default`。 */
+    /** `preview.theme` / `editor.theme` の値。組み込みの id か `themes/` のファイル名、または `default`。 */
     value: string;
     onChange: (value: string) => void;
     /** リセット時のコールバック。未指定時は「既定に戻す」ボタン自体表示されない。 */
     onReset?: (() => void) | undefined;
   }
 
-  let { label, description, value, onChange, onReset }: Props = $props();
+  let { surface, label, description, value, onChange, onReset }: Props = $props();
 
   const id = $props.id();
 
@@ -59,7 +63,7 @@
   });
 
   $effect(() => {
-    applyTheme(value);
+    applyTheme(surface, value);
   });
 
   /**
@@ -68,13 +72,13 @@
    */
   const groups = $derived(
     [
-      { label: ja.settings.editorPaletteGroups.user, items: pick((theme) => theme.user) },
+      { label: ja.settings.paletteGroups.user, items: pick((theme) => theme.user) },
       {
-        label: ja.settings.editorPaletteGroups.both,
+        label: ja.settings.paletteGroups.both,
         items: pick((theme) => !theme.user && theme.scheme === undefined),
       },
-      { label: ja.settings.editorPaletteGroups.light, items: pick((theme) => !theme.user && theme.scheme === 'light') },
-      { label: ja.settings.editorPaletteGroups.dark, items: pick((theme) => !theme.user && theme.scheme === 'dark') },
+      { label: ja.settings.paletteGroups.light, items: pick((theme) => !theme.user && theme.scheme === 'light') },
+      { label: ja.settings.paletteGroups.dark, items: pick((theme) => !theme.user && theme.scheme === 'dark') },
     ].filter((group) => group.items.length > 0),
   );
 
@@ -95,11 +99,11 @@
   }
 </script>
 
-<Field {label} labelFor={id} tooltip="editor.theme" {description} {onReset}>
+<Field {label} labelFor={id} tooltip={`${surface}.theme`} {description} {onReset}>
   <select {id} class="mx-settings__select" {value} onchange={(e) => onChange(e.currentTarget.value)}>
-    <option value="default">{ja.settings.paletteOptions.default}</option>
+    <option value="default">{ja.settings.paletteDefault}</option>
     {#if missing !== null}
-      <option value={missing}>{ja.settings.editorPaletteMissing(missing)}</option>
+      <option value={missing}>{ja.settings.paletteMissing(missing)}</option>
     {/if}
     {#each groups as group (group.label)}
       <optgroup label={group.label}>

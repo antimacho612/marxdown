@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { getPlatform, setPlatform, type Platform, type UserTheme } from '@/platform';
 
+import type { Surface } from '../inject';
 import { applyTheme, listThemes, refreshUserThemes } from './catalog';
 import { PRESETS } from './presets';
 
@@ -13,12 +14,12 @@ function stub(themes: UserTheme[]): void {
   setPlatform({ ...original, listUserThemes: () => Promise.resolve(themes) } as Platform);
 }
 
-function injected(): HTMLStyleElement | null {
-  return document.querySelector<HTMLStyleElement>('style#mx-editor-theme');
+function injected(surface: Surface = 'editor'): HTMLStyleElement | null {
+  return document.querySelector<HTMLStyleElement>(`style#mx-${surface}-theme`);
 }
 
-function rules(): CSSRule[] {
-  return [...(injected()?.sheet?.cssRules ?? [])];
+function rules(surface: Surface = 'editor'): CSSRule[] {
+  return [...(injected(surface)?.sheet?.cssRules ?? [])];
 }
 
 beforeEach(async () => {
@@ -59,12 +60,12 @@ describe('組み込みの配色 (ADR-0014)', () => {
 
 describe('配色の適用 (ADR-0014)', () => {
   it('default は何も注入しない', () => {
-    expect(applyTheme('default')).toBe('default');
+    expect(applyTheme('editor', 'default')).toBe('default');
     expect(injected()?.textContent).toBe('');
   });
 
   it('組み込みの配色は、その id の属性セレクタ 1 つに収まる', () => {
-    expect(applyTheme('dracula')).toBe('applied');
+    expect(applyTheme('editor', 'dracula')).toBe('applied');
 
     expect(rules()).toHaveLength(1);
     const rule = rules()[0] as CSSStyleRule;
@@ -77,26 +78,45 @@ describe('配色の適用 (ADR-0014)', () => {
    * `theme` 設定がライトでもダークで表示されるのは、この宣言が面に効くためである。
    */
   it('ダーク専用の配色は color-scheme を固定する', () => {
-    applyTheme('dracula');
+    applyTheme('editor', 'dracula');
     expect((rules()[0] as CSSStyleRule).style.getPropertyValue('color-scheme')).toBe('dark');
 
-    applyTheme('github');
+    applyTheme('editor', 'github');
     expect((rules()[0] as CSSStyleRule).style.getPropertyValue('color-scheme'), 'ペアは固定しない').toBe('');
   });
 
   /** 知らない綴りは既定へ落とさない。落とすと、打ち間違いと未適用を区別できない。 */
   it('カタログに無い id は何も注入せず unknown を返す', () => {
-    expect(applyTheme('no-such-theme')).toBe('unknown');
+    expect(applyTheme('editor', 'no-such-theme')).toBe('unknown');
     expect(injected()?.textContent).toBe('');
   });
 
-  /** 選び直したら前のものは残らない。`<style>` は 1 枚を持ち回る。 */
+  /** 選び直したら前のものは残らない。`<style>` は面ごとに 1 枚を持ち回る。 */
   it('切り替えると前の配色は残らない', () => {
-    applyTheme('dracula');
-    applyTheme('monokai');
+    applyTheme('editor', 'dracula');
+    applyTheme('editor', 'monokai');
 
     expect(rules()).toHaveLength(1);
     expect((rules()[0] as CSSStyleRule).selectorText.replaceAll('"', "'")).toBe("[data-mx-editor-theme='monokai']");
+  });
+
+  /**
+   * カタログは共通でも、注入先と属性は面ごとに別である（ADR-0014 §3.3）。
+   * 属性名を共有すると、エディターで選んだ `github` が `#mx-preview` にも一致する。
+   */
+  it('プレビューとエディターは互いの配色を上書きしない', () => {
+    applyTheme('preview', 'github');
+    applyTheme('editor', 'dracula');
+
+    expect((rules('preview')[0] as CSSStyleRule).selectorText.replaceAll('"', "'")).toBe("[data-mx-theme='github']");
+    expect((rules('editor')[0] as CSSStyleRule).selectorText.replaceAll('"', "'")).toBe(
+      "[data-mx-editor-theme='dracula']",
+    );
+
+    // 片方を既定へ戻しても、もう片方は残る。
+    applyTheme('preview', 'default');
+    expect(injected('preview')?.textContent).toBe('');
+    expect(rules('editor')).toHaveLength(1);
   });
 });
 
@@ -106,7 +126,7 @@ describe('ユーザーが追加した配色 (ADR-0014)', () => {
     await refreshUserThemes();
 
     expect(listThemes().some((theme) => theme.id === 'mine' && theme.user)).toBe(true);
-    expect(applyTheme('mine')).toBe('applied');
+    expect(applyTheme('editor', 'mine')).toBe('applied');
     expect((rules()[0] as CSSStyleRule).style.getPropertyValue('--mx-color-bg')).toBe('#010203');
   });
 
@@ -115,7 +135,7 @@ describe('ユーザーが追加した配色 (ADR-0014)', () => {
     stub([{ id: 'dracula', declarations: '--mx-color-bg: #010203;' }]);
     await refreshUserThemes();
 
-    applyTheme('dracula');
+    applyTheme('editor', 'dracula');
     expect((rules()[0] as CSSStyleRule).style.getPropertyValue('--mx-color-bg')).toBe('#010203');
 
     const listed = listThemes().filter((theme) => theme.id === 'dracula');
@@ -131,7 +151,7 @@ describe('ユーザーが追加した配色 (ADR-0014)', () => {
     stub([{ id: 'escaping', declarations: '--mx-color-bg: #000000; } .mx-titlebar { display: none; ' }]);
     await refreshUserThemes();
 
-    expect(applyTheme('escaping')).toBe('rejected');
+    expect(applyTheme('editor', 'escaping')).toBe('rejected');
     expect(injected()?.textContent).toBe('');
   });
 
@@ -146,6 +166,6 @@ describe('ユーザーが追加した配色 (ADR-0014)', () => {
   /** ファイルが 1 枚も無いのは正常な状態である（初回起動が常にこれ）。 */
   it('1 枚も無くても組み込みは選べる', () => {
     expect(listThemes()).toHaveLength(50);
-    expect(applyTheme('nord')).toBe('applied');
+    expect(applyTheme('editor', 'nord')).toBe('applied');
   });
 });

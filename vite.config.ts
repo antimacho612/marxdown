@@ -178,8 +178,8 @@ export default defineConfig(({ mode }) => ({
            * 設定 UI（M1.5 Phase 4）。menu と同じく**名前付けだけ**。
            *
            * `src/features/settings/` には `main` 側のモジュール
-           * （`store.svelte.ts` / `appearance.ts` / `custom-css.ts` / `open-settings.ts`）も同居している。
-           * ここで名前が付くのは動的 import の入口（`lazy/panel.ts` と `lazy/install-custom-css.ts`）から
+           * （`store.svelte.ts` / `appearance.ts` / `format.ts` / `open-settings.ts`）も同居している。
+           * ここで名前が付くのは動的 import の入口（`lazy/panel.ts`）から
            * 始まるチャンクだけで、`main` が静的に import しているものは `main` に残る。
            * `manualChunks` で寄せると、その境界が壊れる（menu で実測済み）。
            */

@@ -3,15 +3,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { documentStore } from '@/features/document';
-import {
-  DEFAULT_PANES,
-  DEFAULT_SETTINGS,
-  getPlatform,
-  NO_CUSTOM_CSS,
-  setPlatform,
-  type Bootstrap,
-  type Platform,
-} from '@/platform';
+import { DEFAULT_PANES, DEFAULT_SETTINGS, getPlatform, setPlatform, type Bootstrap, type Platform } from '@/platform';
 
 import { initSettings, refreshSettings, reportSettingsProblem, settingsStore } from './store.svelte';
 
@@ -48,7 +40,7 @@ function bootstrapWith(settings: Partial<Bootstrap>): Bootstrap {
     panes: DEFAULT_PANES,
     settings: DEFAULT_SETTINGS,
     settingsError: null,
-    customCss: NO_CUSTOM_CSS,
+    previewTheme: null,
     ...settings,
   };
 }

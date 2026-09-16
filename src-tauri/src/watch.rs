@@ -1,6 +1,6 @@
 //! ファイル監視（02.architecture/04-rust-responsibilities.md §4 / §5 / F-EDIT-16）。
 //!
-//! 監視対象は開いているファイルと、設定ファイル（`settings.json` / `preview.css`）と、配色のディレクトリ（`themes/`）だけである。
+//! 監視対象は開いているファイルと、`settings.json` と、配色のディレクトリ（`themes/`）だけである。
 //! ディレクトリ全体は監視しない（N-PERF-05）。
 //! 中心ユースケースは「LLM が書き換えたファイルを開いたまま閲覧する」ことであり、周辺のファイルが変わったかどうかは不要な情報でしかない。
 //! ファイルツリー（M3）が入ったら、開いているディレクトリの追加監視がここに載る。
@@ -32,10 +32,7 @@ use crate::document;
 pub const EVENT_FILE_CHANGED: &str = "marxdown://file-changed";
 /// `settings.json` の外部変更（02.architecture/04-rust-responsibilities.md §5）。フロントは受け取ったら `read_settings` で読み直す。
 pub const EVENT_SETTINGS_CHANGED: &str = "marxdown://settings-changed";
-/// `preview.css` の外部変更（02.architecture/10-theming.md §3）。フロントは `read_custom_css` で読み直して当て直す。
-pub const EVENT_CUSTOM_CSS_CHANGED: &str = "marxdown://custom-css-changed";
 /// `themes/` の中身の変更（ADR-0014）。フロントは `list_user_themes` で読み直して当て直す。
-/// 本文用のカスタム CSS と別のイベントにする。片方を書き換えたときに、もう片方まで読み直す理由がない。
 pub const EVENT_THEMES_CHANGED: &str = "marxdown://themes-changed";
 
 /// 変更が落ち着いたと見なすまでの時間（02.architecture/04-rust-responsibilities.md §4）。
@@ -53,17 +50,13 @@ const TICK: Duration = Duration::from_millis(150);
 
 /// 監視対象の役割。パスではなく役割でイベントの宛先が決まる。
 ///
-/// カスタム CSS（02.architecture/10-theming.md §3）は変種を 1 つ追加するだけで同じ仕組みに載せられた。
-/// 監視・デバウンス・自己イベントの排除は共通である。
+/// 監視・デバウンス・自己イベントの排除は役割によらず共通で、変わるのはイベント名と対象がディレクトリかどうかだけである。
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Role {
     /// 開いているドキュメント（F-EDIT-16 / N-REL-02）。
     Document,
     /// `settings.json`（02.architecture/04-rust-responsibilities.md §5）。
     Settings,
-    /// `preview.css`（02.architecture/10-theming.md §3）。
-    /// `settings.json` と同じディレクトリにあるため、どちらもまだ存在しないときは同じ親ディレクトリを共有して監視する（`Registry::roots` がその対応を保持する）。
-    CustomCss,
     /// ユーザーが追加した配色（`themes/`。ADR-0014）。
     ///
     /// **ここだけ対象がディレクトリである。**
@@ -76,7 +69,6 @@ impl Role {
         match self {
             Self::Document => EVENT_FILE_CHANGED,
             Self::Settings => EVENT_SETTINGS_CHANGED,
-            Self::CustomCss => EVENT_CUSTOM_CSS_CHANGED,
             Self::Themes => EVENT_THEMES_CHANGED,
         }
     }
@@ -140,7 +132,7 @@ struct Registry {
     targets: HashMap<PathBuf, Target>,
     /// notify に渡した監視元 → ぶら下がっている対象。
     ///
-    /// まだ存在しないファイルは親ディレクトリを監視するため、1 つの監視元に複数の対象が対応しうる（`settings.json` と `custom.css` は同じディレクトリ）。
+    /// まだ存在しないファイルは親ディレクトリを監視するため、1 つの監視元に複数の対象が対応しうる（同じフォルダーの 2 枚を開いた場合がこれにあたる）。
     /// 片方を解除したときにもう片方の監視まで解除しないよう、対応を保持しておく。
     roots: HashMap<PathBuf, HashSet<PathBuf>>,
 }
@@ -534,27 +526,25 @@ mod tests {
     fn the_role_decides_the_event() {
         assert_eq!(Role::Document.event(), EVENT_FILE_CHANGED);
         assert_eq!(Role::Settings.event(), EVENT_SETTINGS_CHANGED);
-        assert_eq!(Role::CustomCss.event(), EVENT_CUSTOM_CSS_CHANGED);
         assert_eq!(Role::Themes.event(), EVENT_THEMES_CHANGED);
     }
 
-    /// 02.architecture/10-theming.md §3 と 02.architecture/04-rust-responsibilities.md §5 が**同じディレクトリ**にあることの帰結。
+    /// 同じフォルダーの 2 枚を開いたときの帰結。
     ///
-    /// `settings.json` も `custom.css` も、まだ無いうちは親ディレクトリを見る。
-    /// 監視元を共有しているので、**片方を外したときにもう片方まで落ちない**ことを
-    /// 台帳の側で担保する必要がある。
+    /// まだ無いファイルは親ディレクトリを見るため、監視元を共有することがある。
+    /// 共有しているので、**片方を外したときにもう片方まで落ちない**ことを台帳の側で担保する必要がある。
     #[test]
     fn two_targets_can_share_one_root() {
         let d = temp_dir("shared-root");
-        let settings = d.join("settings.json");
-        let css = d.join("custom.css");
+        let first = d.join("first.md");
+        let second = d.join("second.md");
 
         let mut registry = Registry::default();
-        for (path, role) in [(&settings, Role::Settings), (&css, Role::CustomCss)] {
+        for path in [&first, &second] {
             registry.targets.insert(
                 path.clone(),
                 Target {
-                    role,
+                    role: Role::Document,
                     root: d.clone(),
                     seen: stamp_of(path),
                     directory: false,
@@ -568,10 +558,10 @@ mod tests {
         }
 
         // 後から作られたファイルも拾える（親ディレクトリを見ているため）。
-        std::fs::write(&css, ":scope { --mx-content-width: 90ch }").unwrap();
+        std::fs::write(&second, "# 後から作られた").unwrap();
 
-        let (role, change) = registry.decide(&css).expect("後から作られても拾う");
-        assert_eq!(role, Role::CustomCss);
+        let (role, change) = registry.decide(&second).expect("後から作られても拾う");
+        assert_eq!(role, Role::Document);
         assert_eq!(change.kind, ChangeKind::Modified);
         assert_eq!(registry.roots[&d].len(), 2, "監視元は 1 つ、対象は 2 つ");
         std::fs::remove_dir_all(&d).ok();

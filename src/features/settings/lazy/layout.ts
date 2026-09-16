@@ -22,7 +22,7 @@ type Labels<K extends SettingKey> = Readonly<Record<Settings[K] & string, string
  * `number[]`（縦罫線）だけは入力欄の文字列と値が 1:1 でないため `custom` に落ち、ダイアログ側が個別に描く。
  *
  * 文字列だけ 2 択にしてある。
- * エディターの配色（ADR-0014）は値としては文字列だが、選択肢は組み込みと `themes/` の合成であり、`values` を持たないぶん `select` には載らない（`theme`）。
+ * 配色（ADR-0014）は値としては文字列だが、選択肢は組み込みと `themes/` の合成であり、`values` を持たないぶん `select` には載らない（`theme`）。
  */
 type WidgetFor<K extends SettingKey> =
   SettingKind<K> extends 'enum'
@@ -122,10 +122,9 @@ export const LAYOUT = [
       {
         kind: 'field',
         key: 'preview.theme',
-        widget: 'select',
+        widget: 'theme',
         label: ja.settings.palette,
         description: ja.settings.paletteHint,
-        labels: ja.settings.paletteOptions,
       },
       {
         kind: 'field',
@@ -186,7 +185,7 @@ export const LAYOUT = [
         key: 'editor.theme',
         widget: 'theme',
         label: ja.settings.palette,
-        description: ja.settings.editorPaletteHint,
+        description: ja.settings.paletteHint,
       },
       { kind: 'sample', sample: 'editor' },
 

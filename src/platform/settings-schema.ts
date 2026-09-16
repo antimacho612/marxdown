@@ -72,17 +72,6 @@ function defineSettingsSchema<const T extends Record<string, SettingSchemaEntry>
 }
 
 /**
- * 本文の配色のカタログ（ADR-0013 / `src/styles/themes.css`）。
- *
- * 明暗は含まない。明暗を決めるのは `theme` だけで、各パレットはライトとダークの両方を持つ。
- *
- * エディター側とはカタログを分けてある（ADR-0014 §3.3）。
- * 本文は読み続けるための面で、選択肢の数より既定の完成度のほうが効く。
- * こちらは `themes.css` に残り、クリティカルパスに載ったままである。
- */
-const PALETTES = ['default', 'github', 'solarized', 'nord', 'gruvbox'] as const;
-
-/**
  * `settings.json` の中身。
  *
  * 並びは `src-tauri/src/settings/schema.rs` の `Settings` と同じで、`theme` を先頭に置き以降はドット区切りのグループごとに辞書順とする。
@@ -176,8 +165,15 @@ export const SETTINGS_SCHEMA = defineSettingsSchema({
   'preview.maxWidth': { kind: 'number', default: 100, min: 20, max: 200 },
   /** 段落内の単独の改行を `<br>` として描画するか（`markdown-it` の `breaks` / #45）。既定は CommonMark 準拠で false。 */
   'preview.softBreak': { kind: 'boolean', default: false },
-  /** 本文の配色。 */
-  'preview.theme': { kind: 'enum', values: PALETTES, default: 'default' },
+  /**
+   * 本文の配色（ADR-0014）。`editor.theme` と同じくカタログを共有する文字列である。
+   *
+   * 選択肢は組み込みの 50 枚（`features/theme/lazy/presets.ts`）と `themes/` に置かれたファイルの合成であり、ここで数え上げられない。
+   * 数え上げようとすると 50 個の綴りがクリティカルパスに載る。それは配色そのものを遅延チャンクへ追い出した意味を失わせる。
+   *
+   * 知らない綴りは既定へ落とさず保持する（Rust 側も同じ）。落とすと、名前の打ち間違いと未適用をユーザーが区別できない。
+   */
+  'preview.theme': { kind: 'string', default: 'default' },
 
   /** ウィンドウを閉じたときの挙動（ADR-0007）。 */
   'window.closeBehavior': { kind: 'enum', values: ['tray', 'exit'], default: 'tray' },
@@ -231,7 +227,6 @@ export type RenderWhitespace = Settings['editor.renderWhitespace'];
 export type RenderLineHighlight = Settings['editor.renderLineHighlight'];
 export type CursorStyle = Settings['editor.cursorStyle'];
 export type CursorBlinking = Settings['editor.cursorBlinking'];
-export type Palette = Settings['preview.theme'];
 
 /**
  * 既定値。`src-tauri/src/settings/schema.rs` の `Settings::default()` と 1:1 で対応する。

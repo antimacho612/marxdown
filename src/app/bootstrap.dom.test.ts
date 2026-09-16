@@ -2,22 +2,29 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { documentStore } from '@/features/document';
+import type * as editor from '@/features/editor';
 import { settingsStore } from '@/features/settings';
 import { resetTabs, tabsStore } from '@/features/workspace';
 import { ja } from '@/i18n/ja';
 import { resetCommands } from '@/lib/commands';
 import { resetShortcuts } from '@/lib/shortcuts';
-import {
-  DEFAULT_PANES,
-  DEFAULT_SETTINGS,
-  getPlatform,
-  NO_CUSTOM_CSS,
-  setPlatform,
-  type Bootstrap,
-  type Platform,
-} from '@/platform';
+import { DEFAULT_PANES, DEFAULT_SETTINGS, getPlatform, setPlatform, type Bootstrap, type Platform } from '@/platform';
 
 import { startup } from './bootstrap';
+
+/**
+ * エディターのアイドルプリロードを止める（`installInitialEditor`）。
+ *
+ * `preloadEditor()` は Monaco（792KB）の動的 import であり、`requestIdle` 越しに `startup()` の解決より後で走る。
+ * テストが終わった後に読み込みが始まると、環境が破棄された後のモジュール解決になって失敗する。
+ * ここで見たいのは起動の順序であって、エディターのチャンクが実際に取得できることではない。
+ *
+ * 他の入口（`mountEditorLazily` など）はそのままにする。差し替えるのは、このテストが呼ばない経路まで含めないためである。
+ */
+vi.mock('@/features/editor', async (importOriginal) => ({
+  ...(await importOriginal<typeof editor>()),
+  preloadEditor: () => Promise.resolve(),
+}));
 
 /** Worker を立てない。パイプラインの中身はこのテストの関心ではない。 */
 vi.mock('@/markdown/parser', () => ({
@@ -58,7 +65,7 @@ function bootstrapWith(patch: Partial<Bootstrap>): Bootstrap {
     panes: DEFAULT_PANES,
     settings: DEFAULT_SETTINGS,
     settingsError: null,
-    customCss: NO_CUSTOM_CSS,
+    previewTheme: null,
     ...patch,
   };
 }
@@ -191,15 +198,24 @@ describe('startup', () => {
     expect(seen).toEqual(['dark', '80ch']);
   });
 
-  it('本文を描くより前に、bootstrap のカスタム CSS が当たっている', async () => {
+  /**
+   * ADR-0014。`themes/` から選ばれている 1 枚は bootstrap に同梱されて届き、カタログを待たずに当たる。
+   * 待つ形にすると、暗い配色を選んでいる人の初回フレームが既定の配色で描かれる。
+   */
+  it('本文を描くより前に、bootstrap の配色が当たっている', async () => {
     const seen: string[] = [];
-    stubPlatform(bootstrapWith({ customCss: { ...NO_CUSTOM_CSS, css: 'h1 { color: red }' } }));
+    stubPlatform(
+      bootstrapWith({
+        settings: { ...DEFAULT_SETTINGS, 'preview.theme': 'mine' },
+        previewTheme: { id: 'mine', declarations: '--mx-color-bg: #101010;' },
+      }),
+    );
 
     await startup(() => {
-      seen.push(document.querySelector<HTMLStyleElement>('style#mx-custom-css')?.textContent ?? '');
+      seen.push(document.querySelector<HTMLStyleElement>('style#mx-preview-theme')?.textContent ?? '');
     });
 
-    expect(seen[0]).toContain('@scope (#mx-preview)');
-    expect(seen[0]).toContain('color: red');
+    expect(seen[0]).toContain("[data-mx-theme='mine']");
+    expect(seen[0]).toContain('--mx-color-bg: #101010;');
   });
 });

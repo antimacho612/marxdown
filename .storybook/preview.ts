@@ -6,17 +6,13 @@ import type { Preview } from '@storybook/svelte-vite';
  * Storybook 用にトークンを書き写すと、そこが二重管理になって必ずずれる。
  * `shell.css` まで読んでいるのは、クロームの grid（`grid-area`）が
  * そこにあるコンテナ側の定義に依存しているため。
- * `preview.css` は「カスタム CSS」の story（F-CONF-07 / 02.architecture.md §10.3）が
- * **既定の本文スタイルとの勝ち負け**を見せるために要る。セレクタは
- * `.mx-preview` 配下に閉じているので、他の story には及ばない。
- * `themes.css` は配色（ADR-0013）の story のために要る。中身は
- * `[data-mx-theme]` 付きの要素へのトークン上書きしかないので、
- * 属性を打っていない story には及ばない。
+ * `preview.css` は本文の既定スタイルであり、本文を含む story がこれを必要とする。
+ * セレクタは `.mx-preview` 配下に閉じているので、他の story には及ばない。
+ * 配色（ADR-0014）は CSS ではなく `theme` チャンクが注入するため、ここでは読まない。
  */
 import '../src/styles/tokens.css';
 import '../src/styles/reset.css';
 import '../src/styles/shell.css';
-import '../src/styles/themes.css';
 import '../src/styles/preview/preview.css';
 
 import { registerAppCommands } from '../src/app/commands';

@@ -13,10 +13,8 @@ import { splitPath } from '@/lib/path';
 import { DEFAULT_SETTINGS, type Settings } from './settings-schema';
 import {
   DEFAULT_PANES,
-  NO_CUSTOM_CSS,
   SPLIT_DEFAULT,
   type Bootstrap,
-  type CustomCss,
   type DiscardChoice,
   type DocumentPayload,
   type OpenRequest,
@@ -67,8 +65,6 @@ interface WebState {
   /** Split の分割比（03.ux-spec/03-split-mode.md §1）。 */
   split: number;
   settings: Settings;
-  /** `preview.css` の中身（02.architecture/10-theming.md §3）。空文字はファイルが無いことを表す。 */
-  customCss: string;
   /** `themes/` に置いた配色（ADR-0014）。実装ではディレクトリ 1 つ、ここでは配列 1 本。 */
   userThemes: UserTheme[];
 }
@@ -84,7 +80,6 @@ function loadState(): WebState {
       split: raw.split ?? SPLIT_DEFAULT,
       // 欠けたキーは既定値。実装（Rust）と同じく、読んだ時点で埋める
       settings: { ...DEFAULT_SETTINGS, ...raw.settings },
-      customCss: raw.customCss ?? '',
       userThemes: raw.userThemes ?? [],
     };
   } catch {
@@ -94,7 +89,6 @@ function loadState(): WebState {
       panes: DEFAULT_PANES,
       split: SPLIT_DEFAULT,
       settings: DEFAULT_SETTINGS,
-      customCss: '',
       userThemes: [],
     };
   }
@@ -278,69 +272,68 @@ function initialBootstrap(): Bootstrap {
     // 通知バー（03.ux-spec/07-status-and-notifications.md §2）と設定 UI の読み取り専用状態を
     // ブラウザだけで確認できるようにするため。
     settingsError: brokenSettings(),
-    // 実装と同じく bootstrap に同梱して届く（02.architecture/10-theming.md §3）。
-    // 後から適用する形にすると、dev:web でだけ FOUC が再現しなくなる。
-    customCss: customCssNow(),
+    // 実装と同じく bootstrap に同梱して届く（ADR-0014）。
+    // 後から適用する形にすると、dev:web でだけ既定の配色で 1 フレーム描かれる経路が再現しなくなる。
+    previewTheme: previewThemeNow(state),
   };
 }
 
 /**
- * dev:web のカスタム CSS（02.architecture/10-theming.md §3）。
+ * bootstrap に載せるプレビューの配色（ADR-0014）。
+ *
+ * 実装（Rust）と同じく、選択中の id に一致する `themes/` のファイルがあるときだけ載せる。
+ * 組み込みの配色を選んでいる場合は `null` で、フロントが `theme` チャンクの取得を待つ経路に入る。
+ *
+ * `?userTheme=escape` はブロックを余分に閉じた宣言で、適用を拒否する経路を再現する。
+ */
+function previewThemeNow(state: WebState): UserTheme | null {
+  const id = state.settings['preview.theme'];
+  if (id === 'default') return null;
+
+  return userThemesNow().find((theme) => theme.id === id) ?? null;
+}
+
+/**
+ * dev:web の `themes/`（ADR-0014）。
  *
  * ブラウザに `%APPDATA%` は無いため、中身は `localStorage` に置く。
- * `?customCss` を付けると見本が入り、`@scope` の適用範囲（本文には適用され、クロームには適用されない）をブラウザだけで確認できる。
- * `?customCss=escape` はブロックを余分に閉じた CSS で、適用を拒否する経路を再現する。
+ * `?userTheme` を付けると、組み込みと同じ id の配色が 1 枚置かれた状態を再現する。
+ * `?userTheme=escape` は面の外へ出ようとする 1 枚で、拒否される経路を確認できる。
  */
-function customCssNow(): CustomCss {
+function userThemesNow(): UserTheme[] {
   const params = new URLSearchParams(globalThis.location?.search ?? '');
-  const variant = params.get('customCss');
-
-  if (variant === 'escape') return { ...NO_CUSTOM_CSS, css: ESCAPING_CUSTOM_CSS };
-  if (variant === 'too-large') {
-    return {
-      ...NO_CUSTOM_CSS,
-      problem: { kind: 'too-large', path: '/virtual/custom.css', message: '2097152 bytes > 1048576 bytes' },
-    };
-  }
-
-  const css = params.has('customCss') ? SAMPLE_CUSTOM_CSS : loadState().customCss;
-  return { ...NO_CUSTOM_CSS, css: css === '' ? null : css };
+  if (params.get('userTheme') === 'escape') return [ESCAPING_USER_THEME];
+  if (params.has('userTheme')) return [SAMPLE_USER_THEME];
+  return loadState().userThemes;
 }
-
-/** 見本。本文にしか適用されないことが分かるよう、見出しと本文幅の両方を変更する。 */
-const SAMPLE_CUSTOM_CSS = `:scope {
-  --mx-content-width: 70ch;
-}
-
-h1 {
-  color: rebeccapurple;
-  border-bottom: 2px dashed currentColor;
-}
-
-blockquote {
-  border-inline-start-width: 6px;
-}
-`;
 
 /**
  * ユーザーが追加した配色の見本（ADR-0014）。
  *
  * 組み込みと同じ id にして、置き換えが効くことをブラウザだけで確認できるようにしてある。
+ * 宣言だけでなくセレクタを含めてあるのは、包まれた後に CSS のネスト規則として効くことを見せるためである。
  */
 const SAMPLE_USER_THEME: UserTheme = {
   id: 'dracula',
-  declarations: 'color-scheme: dark; --mx-color-bg: #12121a; --mx-color-code-string: #f1fa8c;',
+  declarations: `color-scheme: dark;
+--mx-color-bg: #12121a;
+--mx-color-code-string: #f1fa8c;
+h1 { border-bottom: 2px dashed currentColor }
+`,
 };
 
 /**
- * クロームを非表示にしようとする CSS（`}` でブロックを閉じてスコープの外へ出る）。
+ * クロームを非表示にしようとする配色（`}` でブロックを閉じてセレクタの外へ出る）。
  *
- * `applyCustomCss` がこれを拒否することがカスタム CSS の要点であり、実アプリでも同じ内容を `custom.css` に書けば同じ結果になる。
+ * `injectTheme` がこれを拒否することが封じ込めの要点であり、実アプリでも同じ内容を `themes/` に置けば同じ結果になる。
  */
-const ESCAPING_CUSTOM_CSS = `h1 { color: red }
+const ESCAPING_USER_THEME: UserTheme = {
+  id: 'escaping',
+  declarations: `--mx-color-bg: #101010;
 }
 .mx-titlebar { display: none }
-`;
+`,
+};
 
 const BROKEN_SETTINGS_SAMPLE: SettingsProblem = {
   path: '/virtual/settings.json',
@@ -497,31 +490,8 @@ export const webPlatform: Platform = {
     console.info('[marxdown] openSettingsFile');
   },
 
-  async readCustomCss() {
-    return customCssNow();
-  },
-
-  async openCustomCssFile() {
-    // 実装では「無ければ雛形を作ってから開く」。ブラウザには開く先が無いので、
-    // 見本を仮想の `preview.css` に置いて、次の読み直しから効くようにする。
-    const state = loadState();
-    if (state.customCss === '') {
-      state.customCss = SAMPLE_CUSTOM_CSS;
-      saveState(state);
-    }
-    console.info('[marxdown] openCustomCssFile');
-  },
-
-  onCustomCssChanged() {
-    // 仮想の `preview.css` を外から書き換える経路が無い（`onSettingsChanged` と同じ）
-    return () => {};
-  },
-
   async listUserThemes() {
-    // `?userTheme` を付けると、組み込みと同じ id の配色が 1 枚置かれた状態を再現する。
-    const params = new URLSearchParams(globalThis.location?.search ?? '');
-    if (params.has('userTheme')) return [SAMPLE_USER_THEME];
-    return loadState().userThemes;
+    return userThemesNow();
   },
 
   async openThemesDir() {
