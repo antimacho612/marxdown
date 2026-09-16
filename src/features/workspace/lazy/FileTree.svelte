@@ -7,6 +7,9 @@
   Markdown を通常の色で、それ以外を淡く表示する（Markdown First）。
   隠しファイルと `node_modules` は Rust 側で落ちてくるので、ここには来ない。
 
+  ツールバーの絞り込み（`filter.svelte.ts`）はここで当てる。
+  ディレクトリは対象外なので、絞り込んでいても枝を辿れる。
+
   **単一クリックで開く。** VS Code の「プレビュー的に開く（イタリックのタブ）」は採らない。
   タブの状態が 2 種類に増え、タブのモデル（M3 Phase 1）に例外を作ることになる割に、
   得られるのは「開きすぎたタブが自動で置き換わる」ことだけである。
@@ -27,6 +30,7 @@
   import { toggleDir, treeStore } from '../tree.svelte';
   // 自分自身を再帰的に使う（`<svelte:self>` は非推奨）。
   import FileTree from './FileTree.svelte';
+  import { visibleEntries } from './filter.svelte';
   import TreeContextMenu from './TreeContextMenu.svelte';
 
   interface Props {
@@ -39,7 +43,8 @@
   const { dir, depth = 0 }: Props = $props();
 
   const path = $derived(dir ?? treeStore.root ?? '');
-  const entries = $derived(treeStore.entries[path] ?? []);
+  const loaded = $derived(treeStore.entries[path] ?? []);
+  const entries = $derived(visibleEntries(loaded));
   const loading = $derived(treeStore.loading.includes(path));
 
   /** 表示中のファイル。エクスプローラーを開いていても、どれを見ているのか分からない状態にしない。 */
@@ -173,7 +178,8 @@
 {#if loading && entries.length === 0}
   <p class="mx-tree__note">{ja.tree.loading}</p>
 {:else if entries.length === 0}
-  <p class="mx-tree__note">{ja.tree.empty}</p>
+  <!-- 空のフォルダと、絞り込んだ結果 0 件になった状態を書き分ける。前者では条件を緩めても何も増えない。 -->
+  <p class="mx-tree__note">{loaded.length === 0 ? ja.tree.empty : ja.tree.noMatch}</p>
 {:else}
   <!--
     `role` と状態は `<button>` 側に置く。

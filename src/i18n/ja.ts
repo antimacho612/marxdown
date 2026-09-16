@@ -60,6 +60,27 @@ export const ja = {
     /** 深さ・件数の上限で打ち切った場合（`src-tauri/src/dir.rs`）。 */
     copiedPartial: 'ディレクトリ構造をコピーしました（大きいため一部だけです）',
     copyFailed: 'ディレクトリ構造をコピーできませんでした',
+    /** 絞り込みの結果として表示するものが無いとき。空のフォルダ（`empty`）と区別する。 */
+    noMatch: '条件に一致するファイルがありません',
+    /** ツールバー（03.ux-spec/06-panes.md §1.1）。読み上げ時にボタンの集まりだと分かるようにする。 */
+    toolbar: 'エクスプローラーの操作',
+    /**
+     * 文字ラベルを持たないトグルのツールチップ。
+     *
+     * アイコンだけでは、いま有効なのか押すと有効になるのかを判別できない（`app/StatusBar.svelte` の `⇄` と同じ理由）。
+     * 読み上げ側は `aria-pressed` が伝えるため、状態を添えるのはツールチップだけにする。
+     */
+    toggleState: (label: string, on: boolean) => `${label}: ${on ? 'オン' : 'オフ'}`,
+    /** Markdown だけを表示する切り替え。 */
+    markdownOnly: 'Markdown だけ表示',
+    /** 拡張子フィルターが優先されるため、有効な間は押しても表示が変わらないことを伝える。 */
+    markdownOnlyOverridden: 'Markdown だけ表示: 拡張子フィルターが有効な間は適用されません',
+    /** 拡張子の入力欄の開閉。 */
+    extensions: '拡張子で絞り込む',
+    /** 入力欄そのものの読み上げ名。ボタンとは別に必要になる。 */
+    extensionsInput: '表示する拡張子',
+    /** 区切り文字を説明する代わりに、区切って並べた例をそのまま置く。 */
+    extensionsPlaceholder: 'md, txt, png',
   },
   /**
    * コマンドパレット（`Ctrl+Shift+P` / F-NAV-06）。

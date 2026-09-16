@@ -35,8 +35,11 @@
 </div>
 
 <!--
-  スクロール領域（03.ux-spec/06-panes.md §1）。ペイン自身（`LeftPane.svelte`）は枠と幅だけを持つため、
-  中身が縦に溢れたときの scroll はここが持つ（`Outline.svelte` の `mx-outline__list` と同じ分担）。
+  中身を縦に積む器（03.ux-spec/06-panes.md §1）。ペイン自身（`LeftPane.svelte`）は枠と幅だけを持つ。
+
+  スクロールはここではなく中身の側が持つ。
+  ツールバー（`lazy/ExplorerToolbar.svelte`）をスクロールさせないための分担であり、
+  空状態とツリーがそれぞれ自分のスクロール領域を持つ。
 -->
 <div class="mx-explorer">
   {#if treeStore.root === null}
@@ -67,7 +70,7 @@
       {/if}
     </div>
   {:else}
-    {#await import('./lazy/FileTree.svelte')}
+    {#await import('./lazy/ExplorerBody.svelte')}
       <p class="mx-explorer__note">{ja.tree.loading}</p>
     {:then module}
       <module.default />
@@ -108,8 +111,9 @@
 
   .mx-explorer {
     flex: 1;
+    display: flex;
+    flex-direction: column;
     min-height: 0;
-    overflow-y: auto;
   }
 
   .mx-explorer__note {
@@ -122,7 +126,9 @@
     display: flex;
     flex-direction: column;
     gap: var(--mx-space-2);
+    min-height: 0;
     padding-bottom: var(--mx-space-3);
+    overflow-y: auto;
   }
 
   .mx-explorer__empty .mx-explorer__note {

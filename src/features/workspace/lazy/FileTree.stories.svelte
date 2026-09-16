@@ -11,6 +11,7 @@
 
   import { treeStore } from '../tree.svelte';
   import FileTree from './FileTree.svelte';
+  import { resetFilter } from './filter.svelte';
 
   const { Story } = defineMeta({
     title: '画面/ファイルツリー',
@@ -36,6 +37,8 @@
       treeStore.loading = [];
       // 順路に載せる項目も戻す。残すと、前の story で触った項目が次の story の Tab の着地点になる。
       treeStore.focusPath = null;
+      // 絞り込みも singleton なので、ツールバー側の story から持ち越さない。
+      resetFilter();
     };
   }
 
