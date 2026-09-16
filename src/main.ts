@@ -4,7 +4,6 @@
  * Svelte を動的 import しないのは、外すと size-limit の `main-*.js` 予算計測が実態を反映しなくなるためである。
  */
 import '@/styles/tokens.css';
-import '@/styles/themes.css';
 import '@/styles/reset.css';
 import '@/styles/shell.css';
 import '@/styles/preview/preview.css';

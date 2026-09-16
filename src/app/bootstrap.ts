@@ -21,13 +21,13 @@ import { decideInitialMode, initMode } from '@/features/mode';
 import { initPanes } from '@/features/panes';
 import { applyZoom, installLinkHandler, installTaskHandler } from '@/features/preview';
 import {
-  applyCustomCss,
   enabledSyntax,
   initSettings,
   installSettingsWatch,
   reportSettingsProblem,
   settingsStore,
 } from '@/features/settings';
+import { awaitPreviewTheme, enableThemeNotices, installPreviewThemeWatch, primePreviewTheme } from '@/features/theme';
 import { initSplit, viewStore } from '@/features/view';
 import {
   openPathsInTabs,
@@ -75,7 +75,7 @@ export async function startup(renderShell: () => void): Promise<void> {
   adoptT4();
   mark('T5', bootstrap?.document ? `${bootstrap.document.size} bytes` : 'no document');
 
-  // ここから customCss の取得までは、すべて本文を描くより前に適用する。
+  // ここから配色の適用までは、すべて本文を描くより前に適用する。
   // 後から適用すると、本文が描画された直後に見た目が変化する瞬間が生じる
   // （F-VIEW-11 / F-NAV-04 / 03.ux-spec/06-panes.md §3 / 02.architecture/04-rust-responsibilities.md §5）。
   applyZoom(bootstrap?.zoom ?? 1, false);
@@ -93,16 +93,14 @@ export async function startup(renderShell: () => void): Promise<void> {
   // 後から適用すると、`--mode split` で開いたときに 50:50 の状態が一度描画された後に分割比が変化して見える（03.ux-spec/03-split-mode.md §1）。
   initSplit(bootstrap);
 
+  // `themes/` から選ばれている 1 枚は bootstrap に同梱されて届く（ADR-0014）。
+  // 設定を当てるより前に渡しておくと、`initSettings` の中の配色の適用がそのまま同期的に完了する。
+  primePreviewTheme(bootstrap?.previewTheme ?? null);
+
   // bootstrap に丸ごと含まれているため IPC 往復は発生しない（02.architecture/05-startup-sequence.md §1）。
-  // テーマ・フォント・本文幅は `initSettings` の中で同期的に CSS 変数へ反映される。
+  // テーマ・フォント・本文幅・配色は `initSettings` の中で同期的に反映される。
   // 後から適用すると、一度描画された内容が別の見た目に再描画される。
   initSettings(bootstrap);
-
-  // 64KB 以下なら bootstrap に同梱されて届く（F-CONF-07 / 02.architecture/10-theming.md §3）。
-  // ここで当てないと、ダークな背景を指定している人の画面で白い初期画面が一瞬見える。
-  // 包めなかった場合は当てずに結果だけ返す（通知は `ready()` の後）。
-  const customCss = bootstrap?.customCss ?? null;
-  const customCssResult = applyCustomCss(customCss?.css ?? null);
 
   // 開けた結果を受け取る側も渡す（`features/workspace/opened.ts`）。
   // タブと最近開いたファイルはどちらも workspace の持ち物であり、依存を workspace → document の 1 方向に保つために注入で繋ぐ。
@@ -152,6 +150,11 @@ export async function startup(renderShell: () => void): Promise<void> {
 
   const initial = await resolveInitialDocument(bootstrap);
 
+  // 組み込みの配色を選んでいる場合だけ、ここで `theme` チャンクの取得を待つ（ADR-0014）。
+  // 取得は上の bootstrap の処理と重なっており、既定の配色（`default`）で起動した場合は解決済みの `Promise` が返る。
+  // 待たずに描くと、暗い配色を選んでいる人の初回フレームが既定の配色で描かれる。
+  await awaitPreviewTheme();
+
   // 表示モードも本文を描くより前に適用する（F-MODE-07 / 倍率・ペインと同じ理由）。
   // 後から適用すると、Preview の面が 1 フレーム描画されてからエディターへ差し替わる。
   //
@@ -172,6 +175,10 @@ export async function startup(renderShell: () => void): Promise<void> {
   //
   // 本文の描画とは独立した情報であるため、1 フレーム遅れて表示して差し支えない。
   reportStartupProblems(bootstrap);
+
+  // 配色を当てられなかった事実も同じ理由で本文の後に出す（`enableThemeNotices`）。
+  // 以降の変更（設定 UI / `themes/` の外部編集）は、その場で通知される。
+  enableThemeNotices();
 
   // 04.tech-stack/09-tauri-config.md §1: 最初に表示されるフレームが既に本文である状態を作る。
   if (isTracing()) await platform.reportTrace(drain());
@@ -222,13 +229,10 @@ export async function startup(renderShell: () => void): Promise<void> {
   // （02.architecture/05-startup-sequence.md §1 の判断基準）。
   installInitialEditor();
 
-  // カスタム CSS の残り（遅延取得・監視・通知）は遅延チャンクに置いてある（06.roadmap/m1.5-shell-and-settings.md §3）。
-  // `main` に残っているのは適用そのものだけである。
-  // ここで待たないのは、いずれも本文の表示に関与しないためである。
-  void import('@/features/settings/lazy/install-custom-css').then(({ installCustomCss }) => {
-    installCustomCss(customCss, customCssResult);
-    return null;
-  });
+  // `themes/` の外部編集への追従（ADR-0014 §3.4）。
+  // 既定の配色で起動した場合は `theme` チャンクを読まずに終わる。
+  // 起動後に配色を選んだ場合は、その適用が同じ購読を張る。
+  void installPreviewThemeWatch();
 
   // 入力レスポンスの計測（`--bench-input` / 計測専用 / `features/bench/input.ts`）。
   //

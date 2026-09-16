@@ -13,7 +13,6 @@ mod bootstrap;
 pub mod cli;
 pub mod close;
 pub mod commands;
-pub mod custom_css;
 pub mod dir;
 mod document;
 pub mod error;
@@ -148,50 +147,49 @@ pub fn run() {
     let restore_window = store_data.window;
 
     // 設定も同じ理由でここで読む。
-    // 表示に影響する値（テーマ / 本文幅 / フォント）は本文を描画するより前に適用されている必要があり、後から適用すると FOUC になる（02.architecture/05-startup-sequence.md §1 の判断基準）。
+    // 表示に影響する値（テーマ / 本文幅 / フォント / 配色）は本文を描画するより前に適用されている必要があり、後から適用すると FOUC になる（02.architecture/05-startup-sequence.md §1 の判断基準）。
     // 読むのは 1KB 未満のファイル 1 枚である。
-    // `editor.css` から `themes/` への移行（ADR-0014 §3.5）。設定を読むより前に行う。
+    //
+    // 廃止したカスタム CSS（`preview.css` / `editor.css`）から `themes/` への移行（ADR-0014 §3.5）は設定を読むより前に行う。
     // 常時適用だった 1 枚が選択制になるため、移行しただけでは配色が外れる。
     // 既定のままであれば移行先を選んだ状態にして、見た目を変えずに引き継ぐ。
-    let migrated_editor_css = themes::migrate_editor_css(&context.config().identifier);
+    let migrated = themes::migrate_legacy_css(&context.config().identifier);
 
     let settings_path = settings::settings_path(&context.config().identifier);
     let mut settings_data = settings::load(settings_path.as_deref());
 
-    if migrated_editor_css
-        && settings_data.broken.is_none()
-        && settings_data.values.editor_theme == settings::DEFAULT_THEME_ID
-    {
-        settings_data.values.editor_theme = themes::MIGRATED_ID.to_owned();
+    if settings_data.broken.is_none() {
+        let mut changed = false;
+        if migrated.preview && settings_data.values.preview_theme == settings::DEFAULT_THEME_ID {
+            settings_data.values.preview_theme = themes::MIGRATED_PREVIEW_ID.to_owned();
+            changed = true;
+        }
+        if migrated.editor && settings_data.values.editor_theme == settings::DEFAULT_THEME_ID {
+            settings_data.values.editor_theme = themes::MIGRATED_EDITOR_ID.to_owned();
+            changed = true;
+        }
         // 書けなくても続ける。この起動のあいだは移行先が当たり、次の起動で既定に戻るだけである。
-        if let Some(path) = settings_path.as_deref() {
+        if let (true, Some(path)) = (changed, settings_path.as_deref()) {
             let _ = settings::save(path, &settings_data.values);
         }
     }
 
-    // カスタム CSS も同じ理由でここで読む（02.architecture/10-theming.md §3）。
-    // 64KB 以下なら bootstrap に同梱する。
-    // 後から適用すると、暗い背景を指定している場合に白い初期画面が一瞬表示される。
-    // 読み取りは WebView 初期化と並行するため、クリティカルパスの時間は実質増えない（02.architecture/05-startup-sequence.md §1）。
-    //
-    // `custom.css` から `preview.css` への改名（ADR-0013）は読む前に 1 回だけ行う。
-    // 面が 2 つになり「custom」が何を指すか名前から判別できなくなったための移行で、済んでいれば何もしない。
-    // 失敗しても起動は止めない。
-    custom_css::migrate_legacy(&context.config().identifier);
-
-    let custom_css_path = custom_css::css_path(&context.config().identifier);
-    let custom_css_data = custom_css::load(custom_css_path.as_deref(), custom_css::INLINE_LIMIT);
-
-    // 配色は bootstrap に載せない（ADR-0014 §3.4）。
-    // 既定の表示モードは Preview で、`#mx-editor` は Monaco がマウントされるまで空であるため、遅れて適用しても未適用の配色が見えることがない。
-    // ここで作るのは置き場所だけである。ディレクトリが存在しないと、後から置かれたファイルを監視で拾えない。
+    // 配色の置き場所。ディレクトリが存在しないと、後から置かれたファイルを監視で拾えない。
     let themes_dir = themes::themes_dir(&context.config().identifier);
     if let Some(dir) = themes_dir.as_deref() {
         let _ = std::fs::create_dir_all(dir);
     }
 
+    // プレビューで選ばれている 1 枚だけを bootstrap へ載せる（ADR-0014）。
+    // プレビューは起動直後から見えている面であり、後から当てると既定の配色で初回フレームが描かれる。
+    // 読み取りは WebView 初期化と並行するため、クリティカルパスの時間は実質増えない（02.architecture/05-startup-sequence.md §1）。
+    //
+    // エディター側は載せない。
+    // 既定の表示モードは Preview で、`#mx-editor` は Monaco がマウントされるまで空であるため、遅れて適用しても未適用の配色が見えることがない。
+    let preview_theme = themes::find(themes_dir.as_deref(), &settings_data.values.preview_theme);
+
     // T2: ファイル読み込み。ウィンドウ生成の前に行い、WebView 初期化と重ねる。
-    let payload = bootstrap::build(&args, &trace, &store_data, &settings_data, custom_css_data);
+    let payload = bootstrap::build(&args, &trace, &store_data, &settings_data, preview_theme);
     trace.mark(
         "T2",
         payload
@@ -209,7 +207,6 @@ pub fn run() {
         state::ConfigPaths {
             store: store_path,
             settings: settings_path,
-            custom_css: custom_css_path,
             themes: themes_dir,
         },
     );
@@ -274,8 +271,6 @@ pub fn run() {
             commands::read_settings,
             commands::write_settings,
             commands::open_settings_file,
-            commands::read_custom_css,
-            commands::open_custom_css_file,
             commands::list_user_themes,
             commands::open_themes_dir,
             commands::watch_path,
@@ -338,15 +333,8 @@ pub fn run() {
                 app.state::<watch::FileWatcher>()
                     .watch(path, watch::Role::Settings);
             }
-            // `custom.css` も同じ扱い（02.architecture/10-theming.md §3「外部エディターで編集されたら即反映」）。
-            // まだ存在しなくても登録する。
-            // 親ディレクトリを監視する形になるため、後から作成された時点で検出できる（`settings.json` と監視元を共有する）。
-            if let Some(path) = state.custom_css_path() {
-                app.state::<watch::FileWatcher>()
-                    .watch(path, watch::Role::CustomCss);
-            }
-            // 配色のディレクトリも同じ（ADR-0014）。中身が増減しても編集されても読み直す。
-            // 3 つ目の共有者になるが、監視元は親ディレクトリ 1 つのままで、仕組みは増えない。
+            // 配色のディレクトリも同じ扱い（ADR-0014「外部エディターで編集されたら即反映」）。
+            // 中身が増減しても編集されても読み直す。
             if let Some(path) = state.themes_dir() {
                 app.state::<watch::FileWatcher>()
                     .watch(path, watch::Role::Themes);

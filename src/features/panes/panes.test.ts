@@ -5,7 +5,6 @@ import {
   DEFAULT_PANES,
   DEFAULT_SETTINGS,
   getPlatform,
-  NO_CUSTOM_CSS,
   setPlatform,
   type Bootstrap,
   type Panes,
@@ -48,7 +47,7 @@ function bootstrapWith(panes: Panes): Bootstrap {
     panes,
     settings: DEFAULT_SETTINGS,
     settingsError: null,
-    customCss: NO_CUSTOM_CSS,
+    previewTheme: null,
   };
 }
 

@@ -12,11 +12,11 @@ use std::path::Path;
 use serde::Serialize;
 
 use crate::cli::{CliArgs, ViewMode};
-use crate::custom_css::CustomCss;
 use crate::document::{self, DocumentMeta, INLINE_CONTENT_LIMIT};
 use crate::error::CoreResult;
 use crate::settings::{Settings, SettingsLoad, SettingsProblem};
 use crate::store::{Panes, RecentEntry, StoreData};
+use crate::themes::UserTheme;
 
 /// フロントエンドが `window.__MARXDOWN_BOOTSTRAP__` として同期的に読む値。
 /// 対応するフロント側の型は `src/platform/types.ts` の `Bootstrap`。
@@ -75,12 +75,14 @@ pub struct Bootstrap {
     /// `settings.json` を読めなかった事実。UI が通知バーに出す（03.ux-spec/07-status-and-notifications.md §2）。
     /// これが `Some` の間、`write_settings` は書き戻しを拒否する。
     pub settings_error: Option<SettingsProblem>,
-    /// カスタム CSS（F-CONF-07 / 02.architecture/10-theming.md §3）。
+    /// プレビューで選ばれている `themes/` の 1 枚（ADR-0014）。
     ///
-    /// 64KB 以下のときだけ中身が入る。
-    /// 小さいうちにここへ載せるのは、暗い背景を指定しているときに白い初期画面が一瞬表示されるのを防ぐためである。
-    /// 超える場合は `deferred` が立ち、フロントが `read_custom_css` で取得する。
-    pub custom_css: CustomCss,
+    /// 選択中の id に一致するファイルがあるときだけ入る。
+    /// 組み込みの配色を選んでいる場合と、存在しない綴りの場合は `None` になり、フロントが `theme` チャンクの取得を待って当てる。
+    ///
+    /// ここに載せるのは、暗い配色を選んでいるときに既定の配色で初回フレームが描かれるのを防ぐためである。
+    /// 載せるのは 1 枚だけである。全件を載せると、起動のたびに 100 枚ぶんの CSS を初期化スクリプトへ書き出すことになる。
+    pub preview_theme: Option<UserTheme>,
 }
 
 /// 起動時に開く 1 枚目のドキュメント。
@@ -120,7 +122,7 @@ pub fn build(
     trace: &crate::trace::Trace,
     store: &StoreData,
     settings: &SettingsLoad,
-    custom_css: CustomCss,
+    preview_theme: Option<UserTheme>,
 ) -> Bootstrap {
     let mut document = None;
     let mut document_error = None;
@@ -196,7 +198,7 @@ pub fn build(
         split: store.split,
         settings: settings.values.clone(),
         settings_error: settings.broken.clone(),
-        custom_css,
+        preview_theme,
     }
 }
 
@@ -263,7 +265,7 @@ mod tests {
             &trace,
             &StoreData::default(),
             &SettingsLoad::default(),
-            CustomCss::default(),
+            None,
         );
         let doc = b.document.expect("document");
         assert_eq!(doc.content.as_deref(), Some("# hello\n"));
@@ -281,7 +283,7 @@ mod tests {
             &trace,
             &StoreData::default(),
             &SettingsLoad::default(),
-            CustomCss::default(),
+            None,
         );
         let doc = b.document.expect("document");
         assert!(doc.content.is_none(), "256KB 超は埋め込まない");
@@ -298,7 +300,7 @@ mod tests {
             &trace,
             &StoreData::default(),
             &SettingsLoad::default(),
-            CustomCss::default(),
+            None,
         );
         assert!(b.document.is_none());
         assert_eq!(
@@ -323,7 +325,7 @@ mod tests {
             &trace,
             &StoreData::default(),
             &SettingsLoad::default(),
-            CustomCss::default(),
+            None,
         );
         assert_eq!(b.pending_paths.len(), 2);
         std::fs::remove_dir_all(&dir).ok();
@@ -345,7 +347,7 @@ mod tests {
             &trace,
             &StoreData::default(),
             &SettingsLoad::default(),
-            CustomCss::default(),
+            None,
         );
 
         // 本文は初期化スクリプトに載る。ここが IPC 往復を 1 回省いている（02.architecture/05-startup-sequence.md §1）
@@ -371,7 +373,7 @@ mod tests {
             &trace,
             &StoreData::default(),
             &settings,
-            CustomCss::default(),
+            None,
         );
 
         let script = to_init_script(&b);
@@ -396,7 +398,7 @@ mod tests {
             &trace,
             &StoreData::default(),
             &crate::settings::load(Some(&p)),
-            CustomCss::default(),
+            None,
         );
 
         assert!(b.settings_error.is_some());
@@ -404,26 +406,25 @@ mod tests {
         std::fs::remove_dir_all(&dir).ok();
     }
 
-    /// 02.architecture/10-theming.md §3「64KB 以下は bootstrap に同梱する」。
+    /// ADR-0014「選ばれている 1 枚は bootstrap に同梱する」。
     ///
-    /// **ここが空だと FOUC になる。** ダークな背景を当てているカスタム CSS を
-    /// `ready()` の後に適用すると、白い初期画面が一瞬見える。
+    /// **ここが空だと、暗い配色を選んでいる人の初回フレームが既定の配色で描かれる。**
     #[test]
-    fn the_script_carries_the_custom_css() {
+    fn the_script_carries_the_selected_preview_theme() {
         let trace = crate::trace::Trace::start(Instant::now());
         let b = build(
             &CliArgs::default(),
             &trace,
             &StoreData::default(),
             &SettingsLoad::default(),
-            CustomCss {
-                css: Some(":scope { --mx-content-width: 90ch }".into()),
-                ..CustomCss::default()
-            },
+            Some(UserTheme {
+                id: "mine".into(),
+                declarations: "--mx-color-bg: #101010;".into(),
+            }),
         );
 
         let script = to_init_script(&b);
-        assert!(script.contains("--mx-content-width: 90ch"), "{script}");
+        assert!(script.contains("--mx-color-bg: #101010;"), "{script}");
     }
 
     /// 03.ux-spec/06-panes.md §3 /02.architecture/04-rust-responsibilities.md §5「`panes` と `zoom` は bootstrap に載せる」。
@@ -449,7 +450,7 @@ mod tests {
             &trace,
             &store,
             &SettingsLoad::default(),
-            CustomCss::default(),
+            None,
         );
 
         let script = to_init_script(&b);
@@ -468,7 +469,7 @@ mod tests {
             &trace,
             &StoreData::default(),
             &SettingsLoad::default(),
-            CustomCss::default(),
+            None,
         );
         let script = to_init_script(&b);
         assert!(script.starts_with("globalThis.__MARXDOWN_BOOTSTRAP__ = Object.freeze({"));
@@ -503,13 +504,7 @@ mod tests {
 
         fn build_with(args: CliArgs, store: &StoreData) -> Bootstrap {
             let trace = crate::trace::Trace::start(Instant::now());
-            build(
-                &args,
-                &trace,
-                store,
-                &SettingsLoad::default(),
-                CustomCss::default(),
-            )
+            build(&args, &trace, store, &SettingsLoad::default(), None)
         }
 
         #[test]

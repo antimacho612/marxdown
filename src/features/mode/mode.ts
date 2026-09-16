@@ -149,7 +149,7 @@ export async function togglePreview(): Promise<void> {
 /**
  * `<html>` に属性を設定する。この値を参照するのは CSS だけである。
  *
- * `data-theme` と同じ形にしてあるため、カスタム CSS からモードごとの指定も書ける（F-CONF-07 の範囲外だが、制限する理由もない）。
+ * `data-theme` と同じ形にしてあるため、`themes/` に置いた配色からモードごとの指定も書ける（ADR-0014 の範囲外だが、制限する理由もない）。
  */
 function applyModeAttribute(mode: ViewMode): void {
   document.documentElement.dataset['mxMode'] = mode;

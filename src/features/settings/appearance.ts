@@ -4,9 +4,10 @@
  * 設定 UI は遅延チャンクだが、`main` にはこのファイルとストアだけが残り、`:root` のカスタムプロパティを書き換えるだけの仕事をする。
  * `bootstrap.ts` の `initSettings` から本文描画より前に同期的に呼ぶ（後から適用すると、一度描画された内容が別の見た目に再描画される）。
  * 既定値と同じなら `removeProperty` して `tokens.css` と二重管理にせず、未設定時の見た目を保つ（F-CONF-02）。
- * 適用先はすべてトークン層で、ユーザーのカスタム CSS からも同じ変数として見える。
+ * 適用先はすべてトークン層で、`themes/` に置いた配色からも同じ変数として見える。
  * CSS へ渡す値の整形は `format.ts` にある。見本（`lazy/samples/`）が同じ整形を使うためで、そちらから DOM 操作を引き込まないよう分けてある。
  */
+import { applyPreviewTheme } from '@/features/theme';
 import { clampSetting, DEFAULT_SETTINGS, type NumericKey, type Settings } from '@/platform';
 
 import { formatFontFamily } from './format';
@@ -24,6 +25,11 @@ export function applyAppearance(values: Settings): void {
   // 配色（F-CONF-08 / ADR-0013 / ADR-0014）。面ごとに、面そのものへ属性を付与する。
   applyPalette(document.querySelector(PREVIEW_ROOT), 'mxTheme', values['preview.theme']);
   applyPalette(document.querySelector(EDITOR_ROOT), 'mxEditorTheme', values['editor.theme']);
+
+  // 属性に意味を与える規則を用意する。
+  // プレビューは起動直後から見えている面であり、規則の用意までを設定の適用に含めないと、既定の配色で 1 フレーム描かれる。
+  // エディター側は Monaco がマウントされたときに `features/editor/lazy/palette.ts` が行う。
+  applyPreviewTheme(values['preview.theme']);
 
   // フォント名は既定のスタックの前に追加する（F-CONF-04）。
   // 置き換えると、そのフォントに含まれない文字（日本語 / 記号）のフォールバック先が失われる。
@@ -55,8 +61,8 @@ const EDITOR_ROOT = '#mx-editor';
  * 属性名が面ごとに違うのは、カタログを分けたことで id が重複するためである（ADR-0014 §3.3）。
  * 同じ属性名にすると、エディター側の `github` を選んだときに注入した規則が `#mx-preview` にも一致する。
  *
- * 属性を付けるだけで、意味を与える規則の用意はここでは行わない。
- * 本文側は `styles/themes.css` が起動時からあり、エディター側は `features/theme/lazy/catalog.ts` が読み込まれた時点で注入する。
+ * ここで行うのは属性の付与だけである。
+ * 規則の用意は面ごとに経路が違うため、呼び出し側が続けて行う。
  *
  * `default` のときは属性ごと削除する。
  * `applyTheme` が `system` で属性を削除するのと同じ理由で、設定を変更していない状態の DOM を M2 と同一に保つ（F-CONF-02）。

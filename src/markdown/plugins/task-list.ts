@@ -69,7 +69,7 @@ function parentIndex(tokens: Token[], index: number): number {
  * タスクリストを描く（F-VIEW-01）。
  *
  * クラス名は GitHub と同じ `task-list-item` / `contains-task-list` にしてある。
- * 本文の見た目に関わる名前であり、ユーザーのカスタム CSS からも同じ名前で指せるほうがよい（Familiar）。
+ * 本文の見た目に関わる名前であり、`themes/` に置いた配色からも同じ名前で指せるほうがよい（Familiar）。
  */
 export function taskListPlugin(md: MarkdownIt): void {
   md.core.ruler.after('inline', 'mx_task_list', (state: StateCore) => {

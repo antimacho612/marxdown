@@ -6,12 +6,10 @@
  *
  * 属性（`data-mx-editor-theme`）を付けるのは `main` 側（`features/settings/appearance.ts`）で、起動直後から付いている。
  * 属性に意味を与える規則だけが遅れて届く形になっているが、`#mx-editor` は Monaco がマウントされるまで空であるため、その間に見えるものは無い。
+ * プレビュー側は起動直後から見えているため経路が違う（`features/theme/index.ts`）。
  */
-import { documentStore } from '@/features/document';
 import { settingsStore } from '@/features/settings';
-import { loadThemeCatalog, type ApplyResult } from '@/features/theme';
-import { ja } from '@/i18n/ja';
-import { getPlatform } from '@/platform';
+import { loadThemeCatalog, reportThemeResult } from '@/features/theme';
 
 type Catalog = Awaited<ReturnType<typeof loadThemeCatalog>>;
 
@@ -37,8 +35,10 @@ export async function installEditorPalette(reapply: () => void): Promise<void> {
   applied = null;
   reapply();
 
-  getPlatform().onUserThemesChanged(() => {
-    void reload(reapply);
+  catalog.installThemesWatch(() => {
+    // id が同じままでも中身は変わっている。
+    applied = null;
+    reapply();
   });
 }
 
@@ -52,49 +52,5 @@ export function applyEditorPalette(): void {
   if (!catalog || id === applied) return;
 
   applied = id;
-  report(catalog.applyTheme(id));
-}
-
-/** `themes/` が書き換えられたときの読み直し。 */
-async function reload(reapply: () => void): Promise<void> {
-  const loaded = catalog;
-  if (!loaded) return;
-
-  await loaded.refreshUserThemes();
-  // id が同じままでも中身は変わっている。
-  applied = null;
-  reapply();
-}
-
-/**
- * 適用できなかったことを通知バーに出す（03.ux-spec/07-status-and-notifications.md §2）。
- *
- * 知らない id を既定へ落とさないため、通知が無いと画面上の手がかりが何も残らない。
- * 選択中の綴りがカタログに無いことと、ファイルの中身が面の外へ出ていたことを区別して伝える。
- *
- * level は warning にする。本文は読めており、失敗したのは配色の適用だけである。
- * 既に別の通知が表示されているときは出さない（`install-custom-css.ts` の `report` と同じ理由）。
- */
-function report(result: ApplyResult): void {
-  const message = result === 'unknown' ? ja.themes.unknown : result === 'rejected' ? ja.themes.rejected : null;
-
-  if (message === null) {
-    // 解消していれば、自分が出した通知をここで閉じる。
-    if (isOwnNotice(documentStore.notice?.message)) documentStore.notice = null;
-    return;
-  }
-  if (documentStore.notice !== null) return;
-
-  documentStore.notice = {
-    level: 'warning',
-    message,
-    actions: [{ label: ja.themes.open, run: () => void getPlatform().openThemesDir() }],
-  };
-}
-
-/** 自分が出した通知だけを閉じる。他の通知（本文の読み込み失敗など）を消さないためである。 */
-const OWN_NOTICES = new Set<string>([ja.themes.unknown, ja.themes.rejected]);
-
-function isOwnNotice(message: string | undefined): boolean {
-  return message !== undefined && OWN_NOTICES.has(message);
+  reportThemeResult(catalog.applyTheme('editor', id));
 }

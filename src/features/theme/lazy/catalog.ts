@@ -1,30 +1,20 @@
 /**
- * エディターの配色の一覧と適用（ADR-0014 / `theme` チャンク）。
+ * 配色の一覧と適用（ADR-0014 / `theme` チャンク）。
  *
- * 組み込みの 50 枚（`presets.ts`）とユーザーが `themes/` に置いたファイルを 1 つのカタログとして扱い、選ばれている 1 枚だけを `<style>` に注入する。
+ * 組み込みの 50 枚（`presets.ts`）とユーザーが `themes/` に置いたファイルを 1 つのカタログとして扱い、面ごとに選ばれている 1 枚だけを注入する。
  * 50 枚ぶんの CSS を常に流し込んでいるわけではない。
  *
- * このチャンクを読み込むのはエディターを開いたときと設定ダイアログを開いたときだけである。
- * 既定の表示モードは Preview で、`#mx-editor` は Monaco がマウントされるまで空であるため、ここが遅れて読み込まれても未適用の配色が一瞬見えることはない。
- * 組み込み配色をクリティカルパスから外せる根拠がこれで、プレビュー側（`styles/themes.css`）とは事情が違う。
+ * カタログはプレビューとエディターで共通である。
+ * どちらも `--mx-color-*` の上書きでしかなく、面を分けているのは属性だけである（`../inject.ts`）。
  *
- * 注入の封じ込めは `features/settings/custom-css.ts` と同じ考え方で、波かっこを自前で数えずブラウザの CSS パーサへ渡し、生成された規則が想定した 1 つだけかで判定する。
- * ユーザーが置いたファイルの中身は検証しない（ADR-0006）。保証するのは適用範囲だけである。
+ * このチャンクを読み込むのは、既定以外の配色が選ばれているか、エディターか設定ダイアログを開いたときだけである。
+ * プレビューで `themes/` の 1 枚を選んでいる場合は bootstrap に宣言が載って届くため、ここを待たずに当たる（`../index.ts`）。
  */
 import { getPlatform, type UserTheme } from '@/platform';
 
+import { clearTheme, injectTheme, type ApplyResult, type Surface } from '../inject';
 import { declarations, type Preset, type ThemeSummary } from './preset';
 import { PRESETS } from './presets';
-
-/**
- * 配色を選ぶための属性。プレビューの `data-mx-theme` とは分けてある。
- *
- * カタログが別なのに id は重なる（`github` / `solarized` など）。
- * 同じ属性名を使うと、ここで注入した規則が `#mx-preview` にも一致してしまう。
- */
-const ATTRIBUTE = 'data-mx-editor-theme';
-
-const STYLE_ID = 'mx-editor-theme';
 
 /** 配色を選んでいない状態。属性を付けず、`tokens.css` のトークンをそのまま使う（F-CONF-02）。 */
 const DEFAULT_ID = 'default';
@@ -37,8 +27,7 @@ const DEFAULT_ID = 'default';
  */
 const userThemes = new Map<string, UserTheme>();
 
-/** 配色の適用結果。通知が必要になるのは `rejected` だけである。 */
-export type ApplyResult = 'applied' | 'default' | 'unknown' | 'rejected';
+export type { ApplyResult } from '../inject';
 
 /**
  * `themes/` を読み直す。ファイルが 1 枚も無い状態は正常であり、失敗として扱わない。
@@ -98,27 +87,44 @@ function summary(id: string, label: string, scheme: 'light' | 'dark' | undefined
  * 知らない id は既定へ落とさず、何も注入せずに `unknown` を返す。
  * 落としてしまうと、テーマファイルの名前を打ち間違えたのか、そもそも適用されていないのかをユーザーが区別できない。
  */
-export function applyTheme(id: string): ApplyResult {
-  const style = styleElement();
-
+export function applyTheme(surface: Surface, id: string): ApplyResult {
   if (id === DEFAULT_ID) {
-    style.textContent = '';
+    clearTheme(surface);
     return 'default';
   }
 
   const body = bodyOf(id);
   if (body === null) {
-    style.textContent = '';
+    clearTheme(surface);
     return 'unknown';
   }
 
-  style.textContent = `[${ATTRIBUTE}='${id}'] {\n${body}\n}\n`;
+  return injectTheme(surface, id, body);
+}
 
-  if (contained(style.sheet, id)) return 'applied';
+/**
+ * `themes/` の外部変更に追従する。購読は 1 つだけ張る。
+ *
+ * 面ごとに呼ばれるが、読み直しはカタログに 1 つしかない。
+ * 面ごとに購読すると、1 回の保存で `list_user_themes` が面の数だけ往復する。
+ *
+ * どの 1 枚が変わったかは届かない。
+ * 選択中の配色が変わったかどうかは読み直した結果と突き合わせないと判断できず、突き合わせるより当て直すほうが短い。
+ */
+const reappliers = new Set<() => void>();
+let watching = false;
 
-  // 適用範囲を保証できなかったものは残さない（`applyCustomCss` と同じ判断）。
-  style.textContent = '';
-  return 'rejected';
+export function installThemesWatch(reapply: () => void): void {
+  reappliers.add(reapply);
+  if (watching) return;
+
+  watching = true;
+  getPlatform().onUserThemesChanged(() => {
+    void refreshUserThemes().then(() => {
+      for (const fn of reappliers) fn();
+      return null;
+    });
+  });
 }
 
 /** 宣言の並び。ユーザーのファイルを組み込みより先に見る。 */
@@ -139,48 +145,4 @@ function bodyOf(id: string): string | null {
 function schemeOf(text: string): 'light' | 'dark' | undefined {
   const found = /color-scheme\s*:\s*(light|dark)\b/iu.exec(text);
   return found ? (found[1]?.toLowerCase() as 'light' | 'dark') : undefined;
-}
-
-/**
- * `<style>` を 1 枚だけ持ち回る。
- *
- * `<head>` の末尾に置く。
- * ユーザーのカスタム CSS（`preview.css`）は `@scope` で書かれており、スコープ近接（CSS Cascade 6）によってここより優先される。
- * 配色を選んだうえで一部だけ上書きする、という重ね順が `!important` 無しで成立する（ADR-0013 §3.6）。
- */
-function styleElement(): HTMLStyleElement {
-  const existing = document.querySelector<HTMLStyleElement>(`style#${STYLE_ID}`);
-  if (existing) return existing;
-
-  const style = document.createElement('style');
-  style.id = STYLE_ID;
-  document.head.append(style);
-  return style;
-}
-
-/**
- * 注入した内容が、意図した 1 つの規則に収まっているか。
- *
- * ユーザーのファイルが波かっこを余分に閉じていれば、後ろに書いたものが面の外へ出る。
- * それを字句解析で見つけようとすると CSS のパーサを再実装することになるため、ブラウザに解釈させた結果だけを見る。
- * 規則が 1 つで、そのセレクタが組み立てたものと一致していれば、どのような記述であっても外へは出ていない。
- *
- * セレクタの引用符はブラウザが `"` へ正規化するため、比較の前に揃える。
- */
-function contained(sheet: CSSStyleSheet | null, id: string): boolean {
-  if (!sheet) return false;
-
-  let rules: CSSRuleList;
-  try {
-    rules = sheet.cssRules;
-  } catch {
-    return false;
-  }
-
-  if (rules.length !== 1) return false;
-
-  const rule = rules[0];
-  if (!(rule instanceof CSSStyleRule)) return false;
-
-  return rule.selectorText.replaceAll('"', "'") === `[${ATTRIBUTE}='${id}']`;
 }

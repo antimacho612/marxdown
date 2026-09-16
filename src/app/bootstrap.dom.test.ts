@@ -7,15 +7,7 @@ import { resetTabs, tabsStore } from '@/features/workspace';
 import { ja } from '@/i18n/ja';
 import { resetCommands } from '@/lib/commands';
 import { resetShortcuts } from '@/lib/shortcuts';
-import {
-  DEFAULT_PANES,
-  DEFAULT_SETTINGS,
-  getPlatform,
-  NO_CUSTOM_CSS,
-  setPlatform,
-  type Bootstrap,
-  type Platform,
-} from '@/platform';
+import { DEFAULT_PANES, DEFAULT_SETTINGS, getPlatform, setPlatform, type Bootstrap, type Platform } from '@/platform';
 
 import { startup } from './bootstrap';
 
@@ -58,7 +50,7 @@ function bootstrapWith(patch: Partial<Bootstrap>): Bootstrap {
     panes: DEFAULT_PANES,
     settings: DEFAULT_SETTINGS,
     settingsError: null,
-    customCss: NO_CUSTOM_CSS,
+    previewTheme: null,
     ...patch,
   };
 }
@@ -191,15 +183,24 @@ describe('startup', () => {
     expect(seen).toEqual(['dark', '80ch']);
   });
 
-  it('本文を描くより前に、bootstrap のカスタム CSS が当たっている', async () => {
+  /**
+   * ADR-0014。`themes/` から選ばれている 1 枚は bootstrap に同梱されて届き、カタログを待たずに当たる。
+   * 待つ形にすると、暗い配色を選んでいる人の初回フレームが既定の配色で描かれる。
+   */
+  it('本文を描くより前に、bootstrap の配色が当たっている', async () => {
     const seen: string[] = [];
-    stubPlatform(bootstrapWith({ customCss: { ...NO_CUSTOM_CSS, css: 'h1 { color: red }' } }));
+    stubPlatform(
+      bootstrapWith({
+        settings: { ...DEFAULT_SETTINGS, 'preview.theme': 'mine' },
+        previewTheme: { id: 'mine', declarations: '--mx-color-bg: #101010;' },
+      }),
+    );
 
     await startup(() => {
-      seen.push(document.querySelector<HTMLStyleElement>('style#mx-custom-css')?.textContent ?? '');
+      seen.push(document.querySelector<HTMLStyleElement>('style#mx-preview-theme')?.textContent ?? '');
     });
 
-    expect(seen[0]).toContain('@scope (#mx-preview)');
-    expect(seen[0]).toContain('color: red');
+    expect(seen[0]).toContain("[data-mx-theme='mine']");
+    expect(seen[0]).toContain('--mx-color-bg: #101010;');
   });
 });

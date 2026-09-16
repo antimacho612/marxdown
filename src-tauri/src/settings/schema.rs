@@ -111,7 +111,7 @@ const OUTLINE_MAX_DEPTH_RANGE: (f64, f64) = (1.0, 6.0);
 /// 上限を置かないと、手で書いた `[1,2,3,...]` がそのまま描画コストになる。
 const RULERS_MAX: usize = 8;
 
-/// 明暗の指定（F-CONF-01）。配色そのものは [`Palette`] が持つ。
+/// 明暗の指定（F-CONF-01）。配色そのものは `preview.theme` / `editor.theme` が持つ。
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum Theme {
@@ -193,27 +193,6 @@ pub enum CursorStyle {
     LineThin,
     BlockOutline,
     UnderlineThin,
-}
-
-/// 本文の配色（[ADR-0013](../../docs/adr/0013-surface-themes.md)）。
-///
-/// 明暗は含まない。
-/// 明暗を決めるのは `theme`（`system` / `light` / `dark`）だけで、各パレットはライトとダークの両方を持つ（CSS 側の `light-dark()`）。
-/// パレット自身に明暗を持たせると、明暗を決める箇所が 3 か所に増える。
-///
-/// エディター側とはカタログを分けている（[ADR-0014](../../docs/adr/0014-editor-theme-catalog.md) §3.3）。
-/// 本文は読み続けるための面であり、選択肢を増やすことより既定の完成度のほうが効く。
-/// こちらは `styles/themes.css` にあり、クリティカルパスに載ったままである。
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
-#[serde(rename_all = "lowercase")]
-pub enum Palette {
-    /// `tokens.css` のトークンをそのまま使う。`data-mx-theme` を付けない状態にあたる。
-    #[default]
-    Default,
-    Github,
-    Solarized,
-    Nord,
-    Gruvbox,
 }
 
 /// カーソルの点滅（VS Code `editor.cursorBlinking`）。
@@ -331,9 +310,13 @@ pub struct Settings {
     /// 段落内の単独の改行を `<br>` として描画するか（`markdown-it` の `breaks` / #45）。
     #[serde(rename = "preview.softBreak")]
     pub preview_soft_break: bool,
-    /// 本文の配色。
+    /// 本文の配色（[ADR-0014](../../docs/adr/0014-editor-theme-catalog.md)）。
+    ///
+    /// `editor.theme` と同じくカタログを共有する文字列である。
+    /// 選択肢は組み込みの 50 枚と `themes/` に置かれたファイルの合成であり、Rust 側で数え上げられない。
+    /// 知らない綴りを既定へ落とさないのもそのためで、`themes/` の読み込みが済むまでは選択中の配色が存在するかどうかを判定できない。
     #[serde(rename = "preview.theme")]
-    pub preview_theme: Palette,
+    pub preview_theme: String,
 
     #[serde(rename = "window.closeBehavior")]
     pub window_close_behavior: CloseBehavior,
@@ -394,7 +377,7 @@ impl Default for Settings {
             preview_max_width: DEFAULT_MAX_WIDTH,
             // CommonMark 準拠。改行を <br> にしない（#45）。
             preview_soft_break: false,
-            preview_theme: Palette::default(),
+            preview_theme: DEFAULT_THEME_ID.to_owned(),
 
             window_close_behavior: CloseBehavior::default(),
 
@@ -461,7 +444,7 @@ impl Settings {
             editor_rulers: take_rulers(&mut map).unwrap_or(d.editor_rulers),
             editor_scroll_beyond_last_line: take(&mut map, KEY_EDITOR_SCROLL_BEYOND_LAST_LINE)
                 .unwrap_or(d.editor_scroll_beyond_last_line),
-            editor_theme: take_theme_id(&mut map).unwrap_or(d.editor_theme),
+            editor_theme: take_theme_id(&mut map, KEY_EDITOR_THEME).unwrap_or(d.editor_theme),
             editor_tab_size: take_int(&mut map, KEY_EDITOR_TAB_SIZE, TAB_SIZE_RANGE)
                 .unwrap_or(d.editor_tab_size),
             editor_word_wrap: take(&mut map, KEY_EDITOR_WORD_WRAP).unwrap_or(d.editor_word_wrap),
@@ -501,7 +484,7 @@ impl Settings {
                 .unwrap_or(d.preview_max_width),
             preview_soft_break: take(&mut map, KEY_PREVIEW_SOFT_BREAK)
                 .unwrap_or(d.preview_soft_break),
-            preview_theme: take(&mut map, KEY_PREVIEW_THEME).unwrap_or(d.preview_theme),
+            preview_theme: take_theme_id(&mut map, KEY_PREVIEW_THEME).unwrap_or(d.preview_theme),
 
             window_close_behavior: take(&mut map, KEY_WINDOW_CLOSE_BEHAVIOR)
                 .unwrap_or(d.window_close_behavior),
@@ -551,7 +534,7 @@ fn take_int(map: &mut Map<String, Value>, key: &str, range: (f64, f64)) -> Optio
     take_number(map, key, range).map(f64::round)
 }
 
-/// エディターの配色の id（`editor.theme`）。
+/// 配色の id（`preview.theme` / `editor.theme`）。
 ///
 /// 綴りが選択肢に存在するかは調べない。
 /// 組み込みの一覧はフロント側にあり、`themes/` の中身は読み込むまで分からない（[ADR-0014](../../docs/adr/0014-editor-theme-catalog.md)）。
@@ -559,8 +542,8 @@ fn take_int(map: &mut Map<String, Value>, key: &str, range: (f64, f64)) -> Optio
 ///
 /// 存在しない配色を選んだ状態は保持したまま UI へ渡す。
 /// 既定へ落とすと、ファイル名の打ち間違いと未適用をユーザーが区別できない。
-fn take_theme_id(map: &mut Map<String, Value>) -> Option<String> {
-    let value: String = take(map, KEY_EDITOR_THEME)?;
+fn take_theme_id(map: &mut Map<String, Value>, key: &str) -> Option<String> {
+    let value: String = take(map, key)?;
     let ok = !value.is_empty()
         && value.len() <= 64
         && value
@@ -698,53 +681,52 @@ mod tests {
         assert_eq!(Settings::from_map(map), s);
     }
 
-    /// ADR-0013 / ADR-0014。**面ごとに独立して選べること**と、既定が「属性なし」であること。
+    /// ADR-0014。**面ごとに独立して選べること**と、既定が「属性なし」であること。
+    /// カタログは共通だが、選択は面ごとに別の値である。
     #[test]
     fn the_two_surfaces_pick_palettes_independently() {
         let d = Settings::default();
-        assert_eq!(d.preview_theme, Palette::Default);
+        assert_eq!(d.preview_theme, DEFAULT_THEME_ID);
         assert_eq!(d.editor_theme, DEFAULT_THEME_ID);
 
         let s = Settings::from_map(
             serde_json::from_str(r#"{"preview.theme":"solarized","editor.theme":"dracula"}"#)
                 .unwrap(),
         );
-        assert_eq!(s.preview_theme, Palette::Solarized);
+        assert_eq!(s.preview_theme, "solarized");
         assert_eq!(s.editor_theme, "dracula");
     }
 
-    /// エディター側は**知らない綴りも保持する**（ADR-0014）。
+    /// **知らない綴りも保持する**（ADR-0014）。両面とも同じ扱いである。
     /// 組み込みの一覧はフロント側にあり、`themes/` の中身は読み込むまで分からないため、ここで存在を判定できない。
     #[test]
-    fn an_unknown_editor_theme_is_kept() {
-        let s =
-            Settings::from_map(serde_json::from_str(r#"{"editor.theme":"my-own-theme"}"#).unwrap());
-        assert_eq!(s.editor_theme, "my-own-theme");
-        assert_eq!(s.to_map()[KEY_EDITOR_THEME], Value::from("my-own-theme"));
+    fn an_unknown_theme_is_kept() {
+        let s = Settings::from_map(
+            serde_json::from_str(r#"{"preview.theme":"my-own-theme","editor.theme":"another"}"#)
+                .unwrap(),
+        );
+        assert_eq!(s.preview_theme, "my-own-theme");
+        assert_eq!(s.to_map()[KEY_PREVIEW_THEME], Value::from("my-own-theme"));
+        assert_eq!(s.editor_theme, "another");
+        assert_eq!(s.to_map()[KEY_EDITOR_THEME], Value::from("another"));
     }
 
     /// 属性セレクタへ埋め込めない綴りだけは既定へ落とす（`themes::valid_id` と同じ判定）。
+    /// **ファイル全体は壊さない。**
     #[test]
-    fn an_editor_theme_that_could_escape_the_selector_falls_back() {
+    fn a_theme_that_could_escape_the_selector_falls_back() {
         for bad in ["dark';}html{display:none}", "", "a b", "../../etc"] {
-            let mut map = Map::new();
-            map.insert(KEY_EDITOR_THEME.to_owned(), Value::from(bad));
-            assert_eq!(
-                Settings::from_map(map).editor_theme,
-                DEFAULT_THEME_ID,
-                "{bad}"
-            );
-        }
-    }
+            for key in [KEY_PREVIEW_THEME, KEY_EDITOR_THEME] {
+                let mut map = Map::new();
+                map.insert(key.to_owned(), Value::from(bad));
+                map.insert(KEY_THEME.to_owned(), Value::from("dark"));
 
-    /// 知らないパレット名は既定に落ちる（**本文側だけ**。列挙で数え上げられるため）。**ファイル全体は壊さない。**
-    #[test]
-    fn an_unknown_palette_falls_back_to_default() {
-        let s = Settings::from_map(
-            serde_json::from_str(r#"{"preview.theme":"dracula","theme":"dark"}"#).unwrap(),
-        );
-        assert_eq!(s.preview_theme, Palette::Default);
-        assert_eq!(s.theme, Theme::Dark);
+                let s = Settings::from_map(map);
+                assert_eq!(s.preview_theme, DEFAULT_THEME_ID, "{key} {bad}");
+                assert_eq!(s.editor_theme, DEFAULT_THEME_ID, "{key} {bad}");
+                assert_eq!(s.theme, Theme::Dark, "{key} {bad}");
+            }
+        }
     }
 
     #[test]

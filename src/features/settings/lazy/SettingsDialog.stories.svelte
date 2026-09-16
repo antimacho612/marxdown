@@ -50,7 +50,6 @@
           return Promise.resolve(settingsStore.values);
         },
         openSettingsFile: () => Promise.resolve(),
-        openCustomCssFile: () => Promise.resolve(),
         openThemesDir: () => Promise.resolve(),
         // 組み込みの 50 枚だけを見せる。Storybook にアプリデータ領域は無い。
         listUserThemes: () => Promise.resolve([]),

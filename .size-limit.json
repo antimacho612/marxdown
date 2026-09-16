@@ -30,7 +30,7 @@
     "gzip": true
   },
   {
-    "name": "editor themes (配色 50 枚。エディターか設定を開くまでロードしない — ADR-0014)",
+    "name": "themes (配色 50 枚。既定以外の配色を選んでいるか、エディターか設定を開くまでロードしない — ADR-0014)",
     "path": ["dist/assets/theme-*.js"],
     "limit": "14 KB",
     "gzip": true

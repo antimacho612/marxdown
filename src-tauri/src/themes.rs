@@ -1,12 +1,17 @@
-//! ユーザーが追加したエディターの配色（[ADR-0014](../../docs/adr/0014-editor-theme-catalog.md)）。
+//! ユーザーが追加した配色（[ADR-0014](../../docs/adr/0014-editor-theme-catalog.md)）。
 //!
 //! `%APPDATA%\com.antimacho612.marxdown\themes\<id>.css` を列挙して読む。
 //! 組み込みの 50 枚はフロント側の遅延チャンクにあり、ここには一切現れない。
 //! Rust が担当するのはディスク上のファイルだけである。
 //!
-//! ファイルの中身は宣言の並び（`--mx-color-bg: #101010;` など）であり、セレクタを含まない。
-//! セレクタで包むのも、包んだ結果が面の外へ出ていないことを検査するのもフロント側の担当で、CSS のパーサを持っているのはあちらしかない（`src/features/theme/lazy/catalog.ts`）。
-//! `custom_css.rs` と同じ理由で、ここでも中身は検証しない。見るのは名前とサイズだけである。
+//! カタログはプレビューとエディターで共通であり、面ごとに独立して選べる。
+//! 選択中の 1 枚をプレビュー用に取り出す経路（[`find`]）があるのは、プレビューが起動直後から見えている面だからである。
+//! 本文を描くより前に当てる必要があるため、bootstrap に宣言を同梱する。
+//!
+//! ファイルの中身は宣言の並び（`--mx-color-bg: #101010;` など）で始まり、セレクタを含む規則を続けて書くこともできる。
+//! 包まれた後は CSS のネスト規則として解釈され、面の中にだけ効く。
+//! セレクタで包むのも、包んだ結果が面の外へ出ていないことを検査するのもフロント側の担当で、CSS のパーサを持っているのはあちらしかない（`src/features/theme/inject.ts`）。
+//! ここでは中身を検証しない（[ADR-0006](../../docs/adr/0006-security-model.md)）。見るのは名前とサイズだけである。
 //!
 //! 設定項目は無い。ファイルを置けば選択肢に現れる。
 //! したがって「ディレクトリが無い」は正常な状態であり、初回起動が常にそれにあたる。
@@ -22,10 +27,11 @@ const DIR_NAME: &str = "themes";
 
 /// 1 枚の上限。
 ///
-/// 配色は 18 個の宣言であり、実寸は 1KB に満たない。
-/// `custom_css.rs` の 64KB より小さくしてあるのは、こちらが任意の CSS ではなく宣言の並びだけを受け取る場所だからである。
+/// 色の上書きだけなら 18 個の宣言で済み、実寸は 1KB に満たない。
+/// 廃止した `preview.css` と同じ 64KB にしてあるのは、プレビュー用の配色が本文のセレクタを含みうるためである（ADR-0014 §3.5）。
+/// 移行したファイルがこの上限で読めなくなると、書いた内容が黙って効かなくなる。
 /// これを超えるファイルは配色ではない。
-pub const MAX_THEME_BYTES: u64 = 16 * 1024;
+pub const MAX_THEME_BYTES: u64 = 64 * 1024;
 
 /// 読み込む枚数の上限。
 ///
@@ -37,13 +43,20 @@ pub const MAX_THEMES: usize = 100;
 ///
 /// `editor.css` は常時適用される 1 枚だったため、移行しただけでは見た目が変わってしまう。
 /// 呼び出し側は、移行が起きてなお `editor.theme` が既定のままであれば、この id を選んだ状態にする。
-pub const MIGRATED_ID: &str = "editor-custom";
+pub const MIGRATED_EDITOR_ID: &str = "editor-custom";
+
+/// `preview.css` を移行した先の id。
+///
+/// `editor.css` と同じ理由で常時適用の 1 枚だったため、扱いも同じにする。
+/// 廃止の経緯は `editor.css` と違い、実用形が 1 つしか無かったからではない。
+/// 配色ファイルが `[data-mx-theme='<id>'] { … }` に包まれる以上、`preview.css` に書けた内容はそのまま配色として書けるためである。
+pub const MIGRATED_PREVIEW_ID: &str = "preview-custom";
 
 /// ユーザーが置いた配色 1 枚。
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct UserTheme {
-    /// 拡張子を除いたファイル名。そのまま `editor.theme` に保存される。
+    /// 拡張子を除いたファイル名。そのまま `preview.theme` / `editor.theme` に保存される。
     pub id: String,
     /// ファイルの中身。宣言の並びであることは前提にしない（検証はフロント側が行う）。
     pub declarations: String,
@@ -56,7 +69,7 @@ pub fn themes_dir(identifier: &str) -> Option<PathBuf> {
 
 /// id として許す綴り。
 ///
-/// 属性セレクタ（`[data-mx-editor-theme='<id>']`）へそのまま埋め込まれるため、引用符やバックスラッシュを含む名前を通すと文字列を抜け出せる。
+/// 属性セレクタ（`[data-mx-theme='<id>']` / `[data-mx-editor-theme='<id>']`）へそのまま埋め込まれるため、引用符やバックスラッシュを含む名前を通すと文字列を抜け出せる。
 /// フロント側もブラウザのパーサで封じ込めを検査しているが、ここで弾いておけばその判定に頼らずに済む。
 ///
 /// 大文字を許すのは、`Tokyo Night.css` のような名前を付けたときに選択肢から消える理由が分からないためである。
@@ -131,30 +144,70 @@ pub fn ensure_dir(dir: &Path) -> CoreResult<()> {
     Ok(())
 }
 
-/// `editor.css` を `themes/<MIGRATED_ID>.css` へ移す。移したときだけ `true` を返す。
+/// 選択中の 1 枚だけを読む。無ければ `None` を返す。
 ///
-/// `editor.css`（ADR-0013 §3.5）は配色のカタログに置き換わって廃止された。
-/// 中身は `:scope { --mx-color-*: … }` の形だが、配色として `[data-mx-editor-theme='…'] { … }` に包むと CSS のネスト規則として解釈され、`:scope` は外側のセレクタに一致する。
-/// つまりファイルを移すだけで、書かれていた内容はそのまま効く。
+/// プレビューは起動直後から見えている面であり、選ばれている配色を本文の描画より前に当てる必要がある。
+/// bootstrap に載せるのはこの 1 枚だけで、全件を載せると起動のたびに 100 枚ぶんの CSS を初期化スクリプトへ書き出すことになる。
 ///
-/// コピーではなく `rename` なのは `custom_css::migrate_legacy` と同じ理由で、2 枚残るとどちらを編集すべきかユーザーが判断できなくなるためである。
-/// 失敗しても起動は止めない。`editor.css` が残って適用されないだけで、書いた内容は失われない。
-pub fn migrate_editor_css(identifier: &str) -> bool {
-    let Some(config) = crate::store::config_dir(identifier) else {
-        return false;
-    };
-    migrate_editor_css_in(&config)
+/// 組み込みの配色を選んでいる場合もここは `None` を返す。
+/// 組み込みの一覧を持っているのはフロント側だけであり、Rust から区別できるのは `themes/` にあるかどうかだけである。
+pub fn find(dir: Option<&Path>, id: &str) -> Option<UserTheme> {
+    if id == crate::settings::DEFAULT_THEME_ID || !valid_id(id) {
+        return None;
+    }
+    let path = dir?.join(format!("{id}.css"));
+
+    match std::fs::metadata(&path) {
+        Ok(meta) if meta.len() <= MAX_THEME_BYTES => {}
+        _ => return None,
+    }
+    let declarations = std::fs::read_to_string(&path).ok()?;
+
+    Some(UserTheme {
+        id: id.to_owned(),
+        declarations,
+    })
 }
 
-/// [`migrate_editor_css`] の本体。置き場所を引数に取り、テストから temp ディレクトリを渡せるようにしてある。
-fn migrate_editor_css_in(config: &Path) -> bool {
-    let legacy = config.join("editor.css");
+/// 移行が起きた面。どちらも、起きてなお設定が既定のままであれば移行先を選んだ状態にする。
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct Migrated {
+    pub preview: bool,
+    pub editor: bool,
+}
+
+/// 廃止したカスタム CSS を `themes/` へ移す。起動時に 1 回だけ呼ぶ。
+///
+/// `editor.css`（ADR-0013 §3.5）と `preview.css` はどちらも配色のカタログに置き換わって廃止された。
+/// 中身は `:scope { … }` や `h1 { … }` の形だが、配色として `[data-mx-theme='…'] { … }` に包むと CSS のネスト規則として解釈され、`:scope` は外側のセレクタに一致する。
+/// つまりファイルを移すだけで、書かれていた内容はそのまま効く。
+///
+/// コピーではなく `rename` なのは、2 枚残るとどちらを編集すべきかユーザーが判断できなくなるためである。
+/// 失敗しても起動は止めない。旧ファイルが残って適用されないだけで、書いた内容は失われない。
+pub fn migrate_legacy_css(identifier: &str) -> Migrated {
+    let Some(config) = crate::store::config_dir(identifier) else {
+        return Migrated::default();
+    };
+    migrate_legacy_css_in(&config)
+}
+
+/// [`migrate_legacy_css`] の本体。置き場所を引数に取り、テストから temp ディレクトリを渡せるようにしてある。
+fn migrate_legacy_css_in(config: &Path) -> Migrated {
+    Migrated {
+        preview: move_into_themes(config, "preview.css", MIGRATED_PREVIEW_ID),
+        editor: move_into_themes(config, "editor.css", MIGRATED_EDITOR_ID),
+    }
+}
+
+/// 旧ファイル 1 枚を `themes/<id>.css` へ移す。移したときだけ `true` を返す。
+fn move_into_themes(config: &Path, legacy_name: &str, id: &str) -> bool {
+    let legacy = config.join(legacy_name);
     if !legacy.exists() {
         return false;
     }
 
     let dir = config.join(DIR_NAME);
-    let target = dir.join(format!("{MIGRATED_ID}.css"));
+    let target = dir.join(format!("{id}.css"));
     if target.exists() {
         return false;
     }
@@ -168,11 +221,11 @@ fn migrate_editor_css_in(config: &Path) -> bool {
 ///
 /// 有効な形で例を書くと、`README` という名前の配色が選択肢に現れてしまう。
 /// 全体が 1 つのコメントであれば、読み込まれても宣言は 0 個であり、選んでも何も起きない。
-const TEMPLATE: &str = "\
-/*
- * Marxdown のエディター配色。
+const TEMPLATE: &str = "/*
+ * Marxdown の配色。
  *
  * このフォルダーに置いた .css が 1 枚 1 配色になり、設定の「配色」に現れます。
+ * プレビューとエディターのどちらからも選べます。
  * 選択肢に出る名前は拡張子を除いたファイル名です（英数字と - _ だけが使えます）。
  *
  * 中身はセレクタを書かず、宣言だけを並べます。
@@ -189,6 +242,11 @@ const TEMPLATE: &str = "\
  *
  *   color-scheme: dark;
  *
+ * 宣言のあとにセレクタを書くこともできます。選んだ面の中にだけ当たります。
+ * エディターは Monaco が描画しているため、効くのは実質プレビューだけです。
+ *
+ *   h1 { border-bottom: 1px solid }
+ *
  * 組み込みと同じ名前を付けると、そちらを置き換えます。
  * 保存すると、アプリを再起動しなくてもすぐ反映されます。
  */
@@ -197,6 +255,7 @@ const TEMPLATE: &str = "\
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::settings::DEFAULT_THEME_ID;
 
     fn temp_dir(tag: &str) -> PathBuf {
         let d =
@@ -279,35 +338,65 @@ mod tests {
         std::fs::remove_dir_all(&d).ok();
     }
 
-    /// ADR-0014 §3.5。`editor.css` は移すだけでよい。
-    /// 中身の `:scope { … }` は配色として包まれると CSS のネスト規則になり、`:scope` は外側のセレクタに一致する。
+    /// 選択中の 1 枚だけを取り出す経路（bootstrap 用）。
     #[test]
-    fn the_legacy_editor_css_moves_into_the_themes_directory() {
-        let d = temp_dir("migrate");
-        let legacy = d.join("editor.css");
-        std::fs::write(&legacy, ":scope { --mx-color-bg: #1a1b26 }").unwrap();
+    fn the_selected_theme_can_be_read_alone() {
+        let d = temp_dir("find");
+        std::fs::write(d.join("vesper.css"), "--mx-color-bg: #101010;").unwrap();
 
-        assert!(migrate_editor_css_in(&d));
-
-        assert!(!legacy.exists(), "2 枚残さない");
-        let moved = d.join(DIR_NAME).join(format!("{MIGRATED_ID}.css"));
         assert_eq!(
-            std::fs::read_to_string(&moved).unwrap(),
-            ":scope { --mx-color-bg: #1a1b26 }"
+            find(Some(&d), "vesper").map(|t| t.declarations),
+            Some("--mx-color-bg: #101010;".to_owned())
         );
-        // 移った先は配色として読める。
-        assert_eq!(load_all(Some(&d.join(DIR_NAME)))[0].id, MIGRATED_ID);
-
-        // 2 回目は何もしない。
-        assert!(!migrate_editor_css_in(&d));
+        // 組み込みの配色も、存在しない綴りも、ここでは区別できない。どちらも `None` になる。
+        assert_eq!(find(Some(&d), "dracula"), None);
+        assert_eq!(find(Some(&d), DEFAULT_THEME_ID), None);
+        // 属性セレクタへ埋め込めない綴りは、ファイルを探しに行く前に弾く。
+        assert_eq!(find(Some(&d), "../../etc/passwd"), None);
+        assert_eq!(find(None, "vesper"), None);
         std::fs::remove_dir_all(&d).ok();
     }
 
-    /// `editor.css` が無いのは正常な状態である（M4 以降に始めた人が常にこれ）。
+    /// ADR-0014 §3.5。廃止したカスタム CSS は移すだけでよい。
+    /// 中身の `:scope { … }` は配色として包まれると CSS のネスト規則になり、`:scope` は外側のセレクタに一致する。
+    #[test]
+    fn the_legacy_css_files_move_into_the_themes_directory() {
+        let d = temp_dir("migrate");
+        std::fs::write(d.join("editor.css"), ":scope { --mx-color-bg: #1a1b26 }").unwrap();
+        std::fs::write(d.join("preview.css"), "h1 { color: rebeccapurple }").unwrap();
+
+        assert_eq!(
+            migrate_legacy_css_in(&d),
+            Migrated {
+                preview: true,
+                editor: true
+            }
+        );
+
+        assert!(!d.join("editor.css").exists(), "2 枚残さない");
+        assert!(!d.join("preview.css").exists(), "2 枚残さない");
+        assert_eq!(
+            std::fs::read_to_string(d.join(DIR_NAME).join(format!("{MIGRATED_PREVIEW_ID}.css")))
+                .unwrap(),
+            "h1 { color: rebeccapurple }"
+        );
+        // 移った先は配色として読める。
+        let ids: Vec<_> = load_all(Some(&d.join(DIR_NAME)))
+            .into_iter()
+            .map(|t| t.id)
+            .collect();
+        assert_eq!(ids, vec![MIGRATED_EDITOR_ID, MIGRATED_PREVIEW_ID]);
+
+        // 2 回目は何もしない。
+        assert_eq!(migrate_legacy_css_in(&d), Migrated::default());
+        std::fs::remove_dir_all(&d).ok();
+    }
+
+    /// 旧ファイルが無いのは正常な状態である（この版から始めた人が常にこれ）。
     #[test]
     fn nothing_happens_without_a_legacy_file() {
         let d = temp_dir("migrate-none");
-        assert!(!migrate_editor_css_in(&d));
+        assert_eq!(migrate_legacy_css_in(&d), Migrated::default());
         assert!(!d.join(DIR_NAME).exists(), "空のディレクトリも作らない");
         std::fs::remove_dir_all(&d).ok();
     }

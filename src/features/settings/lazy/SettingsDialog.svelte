@@ -260,13 +260,6 @@ Rust 側も拒否するが、UI が「保存できたように見せる」のを
       {/each}
     </fieldset>
   </div>
-
-  <!-- TODO: 削除。preview.css は「プレビュー」カテゴリの中に置く（themes フォルダーは `ThemeField` へ移した）。 -->
-  <footer class="mx-settings__footer">
-    <button type="button" class="mx-settings__file" onclick={() => void getPlatform().openCustomCssFile()}>
-      {ja.customCss.open}
-    </button>
-  </footer>
 </dialog>
 
 <!-- MARK: Snippets -->
@@ -306,6 +299,7 @@ Rust 側も拒否するが、UI が「保存できたように見せる」のを
   {:else if entry.widget === 'theme'}
     {#if ThemeField}
       <ThemeField
+        surface={entry.key === 'preview.theme' ? 'preview' : 'editor'}
         label={entry.label}
         {description}
         value={values[entry.key]}
@@ -466,29 +460,6 @@ Rust 側も拒否するが、UI が「保存できたように見せる」のを
    */
   .mx-settings__pane > :global(*) {
     flex: none;
-  }
-
-  .mx-settings__footer {
-    flex: none;
-    display: flex;
-    flex-direction: column;
-    gap: var(--mx-space-1);
-    padding: var(--mx-space-3) var(--mx-space-4);
-    border-top: 1px solid var(--mx-color-border-subtle);
-  }
-
-  .mx-settings__file {
-    padding: var(--mx-space-1) var(--mx-space-3);
-    border: 1px solid var(--mx-color-border);
-    border-radius: var(--mx-radius-sm);
-    background: var(--mx-color-bg);
-    color: var(--mx-color-fg);
-    font: inherit;
-    cursor: default;
-
-    &:hover {
-      background: var(--mx-color-bg-hover);
-    }
   }
 
   /* 残っているのはクロームのボタンだけ（入力欄は部品の側が自分で持つ）。 */

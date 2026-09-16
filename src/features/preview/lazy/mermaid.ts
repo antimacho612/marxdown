@@ -242,7 +242,7 @@ function readToken(name: string): string {
  * 明暗の判定。
  *
  * テーマ名ではなく解決後の背景色の明度で見る（`features/editor/lazy/theme.ts` と同じ理由）。
- * `theme` が `system` のときやカスタム CSS でトークンを上書きしたとき、名前を見る分岐は外れる。
+ * `theme` が `system` のときや配色でトークンを上書きしたとき、名前を見る分岐は外れる。
  */
 function isDarkSurface(): boolean {
   const root = previewRoot();

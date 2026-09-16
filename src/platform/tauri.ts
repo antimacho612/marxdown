@@ -13,7 +13,6 @@ import { MARKDOWN_EXTENSIONS } from '@/lib/path';
 import type { Settings } from './settings-schema';
 import type {
   Bootstrap,
-  CustomCss,
   DirEntry,
   DiscardChoice,
   DocumentPayload,
@@ -35,7 +34,6 @@ const EVENT_SETTINGS_CHANGED = 'marxdown://settings-changed';
 const EVENT_TRAY_OPEN = 'marxdown://tray-open';
 const EVENT_TRAY_RESUME = 'marxdown://tray-resume';
 const EVENT_SAVE_AND_QUIT = 'marxdown://save-and-quit';
-const EVENT_CUSTOM_CSS_CHANGED = 'marxdown://custom-css-changed';
 const EVENT_THEMES_CHANGED = 'marxdown://themes-changed';
 const EVENT_WINDOW_MAXIMIZED = 'marxdown://window-maximized';
 const EVENT_MAXIMIZE_HOVER = 'marxdown://maximize-hover';
@@ -164,18 +162,6 @@ export const tauriPlatform: Platform = {
 
   openSettingsFile() {
     return invoke<void>('open_settings_file');
-  },
-
-  readCustomCss() {
-    return invoke<CustomCss>('read_custom_css');
-  },
-
-  openCustomCssFile() {
-    return invoke<void>('open_custom_css_file');
-  },
-
-  onCustomCssChanged(handler) {
-    return subscribe(() => listen(EVENT_CUSTOM_CSS_CHANGED, () => handler()));
   },
 
   listUserThemes() {

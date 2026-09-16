@@ -16,7 +16,7 @@ use crate::settings::{Settings, SettingsLoad};
 use crate::store::{RecentEntry, StoreData};
 use crate::trace::Trace;
 
-/// アプリデータ領域（`%APPDATA%\com.antimacho612.marxdown\`）に置くもの（`state.json`: アプリが自動的に書く、`settings.json` / `preview.css` / `themes/`: 人が書く（F-CONF-07 / ADR-0014））の場所（02.architecture/04-rust-responsibilities.md §5 / 02.architecture/10-theming.md §3）。
+/// アプリデータ領域（`%APPDATA%\com.antimacho612.marxdown\`）に置くもの（`state.json`: アプリが自動的に書く、`settings.json` / `themes/`: 人が書く（F-CONF-08 / ADR-0014））の場所（02.architecture/04-rust-responsibilities.md §5 / 02.architecture/10-theming.md §3）。
 ///
 /// 1 つの構造体にまとめてある。
 /// どれも `identifier` から同じ規則で決まり、`AppState::new` に個別の `Option<PathBuf>` を並べると引数が際限なく増える。
@@ -25,7 +25,6 @@ use crate::trace::Trace;
 pub struct ConfigPaths {
     pub store: Option<PathBuf>,
     pub settings: Option<PathBuf>,
-    pub custom_css: Option<PathBuf>,
     /// ユーザーが追加した配色の置き場所（`themes/`。ADR-0014）。
     pub themes: Option<PathBuf>,
 }
@@ -210,15 +209,10 @@ impl AppState {
         self.paths.settings.as_deref()
     }
 
-    /// カスタム CSS の場所（02.architecture/10-theming.md §3）。
+    /// ユーザーが追加した配色の置き場所（ADR-0014）。
     ///
     /// パスをフロントには渡さない。
     /// 開くのも読むのも Rust 側の 1 か所に閉じており、`open_settings_file` と同じ理由で、任意のパスを受け取る経路を作らずに済む。
-    pub fn custom_css_path(&self) -> Option<&std::path::Path> {
-        self.paths.custom_css.as_deref()
-    }
-
-    /// ユーザーが追加した配色の置き場所（ADR-0014）。
     pub fn themes_dir(&self) -> Option<&std::path::Path> {
         self.paths.themes.as_deref()
     }
@@ -317,7 +311,7 @@ mod tests {
             &trace,
             &StoreData::default(),
             &loaded,
-            crate::custom_css::CustomCss::default(),
+            None,
         );
         AppState::new(
             CliArgs::default(),
