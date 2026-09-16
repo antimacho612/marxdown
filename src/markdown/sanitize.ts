@@ -38,6 +38,50 @@ function isAllowedUri(value: string): boolean {
   return ALLOWED_SCHEMES.has(scheme);
 }
 
+/**
+ * `srcset` の候補（WHATWG の srcset 構文）を 1 つずつ `isAllowedUri` で検証する。
+ *
+ * `<picture><source srcset>` はダークモード用画像の出し分けなどで使われる普通の記法だが、
+ * 値が URL 1 個ではなく `URL 記述子, URL 記述子, ...` のリストであるため、
+ * href/src と同じ 1 属性 1 URL の検証には乗らない。候補単位でパースしてから検証する。
+ */
+function filterSrcset(value: string): string {
+  const candidates: string[] = [];
+  const len = value.length;
+  let pos = 0;
+
+  while (pos < len) {
+    while (pos < len && /[\s,]/.test(value[pos] ?? '')) pos++;
+    if (pos >= len) break;
+
+    const urlStart = pos;
+    while (pos < len && !/\s/.test(value[pos] ?? '')) pos++;
+    let url = value.slice(urlStart, pos);
+
+    // 記述子なしの候補は URL の直後がカンマになる（末尾のカンマは区切りであって URL の一部ではない）
+    let noDescriptor = false;
+    while (url.endsWith(',')) {
+      url = url.slice(0, -1);
+      noDescriptor = true;
+    }
+
+    let descriptor = '';
+    if (!noDescriptor) {
+      while (pos < len && /\s/.test(value[pos] ?? '')) pos++;
+      const descStart = pos;
+      while (pos < len && value[pos] !== ',') pos++;
+      descriptor = value.slice(descStart, pos).trim();
+      if (pos < len) pos++; // カンマを読み飛ばす
+    }
+
+    if (url !== '' && isAllowedUri(url)) {
+      candidates.push(descriptor ? `${url} ${descriptor}` : url);
+    }
+  }
+
+  return candidates.join(', ');
+}
+
 let configured = false;
 
 function configure(): void {
@@ -57,6 +101,18 @@ function configure(): void {
       if (!isAllowedUri(value)) {
         node.removeAttribute(attr);
         node.setAttribute('data-mx-blocked', attr);
+      }
+    }
+
+    // srcset は候補単位で検証する。1 つも残らなければ href/src と同じく除去して痕跡を残す。
+    const srcset = node.getAttribute('srcset');
+    if (srcset !== null) {
+      const filtered = filterSrcset(srcset);
+      if (filtered === '') {
+        node.removeAttribute('srcset');
+        node.setAttribute('data-mx-blocked', 'srcset');
+      } else if (filtered !== srcset) {
+        node.setAttribute('srcset', filtered);
       }
     }
 
@@ -91,7 +147,8 @@ const CONFIG: Config = {
     'meta',
     'link',
   ],
-  FORBID_ATTR: ['style', 'srcset', 'formaction', 'ping'],
+  // srcset は一律禁止ではなく、フック側で候補単位に検証する。
+  FORBID_ATTR: ['style', 'formaction', 'ping'],
   // on* 属性は DOMPurify が既定で除去するが、意図を明示するために記載する
   ALLOW_DATA_ATTR: true, // data-line が必要（02.architecture/06-markdown-rendering-pipeline.md §3）
   ALLOW_ARIA_ATTR: true,
@@ -124,7 +181,7 @@ export function sanitizeSvg(svg: string): string {
   return DOMPurify.sanitize(svg, {
     ...CONFIG,
     USE_PROFILES: { svg: true, svgFilters: true },
-    FORBID_ATTR: ['srcset', 'formaction', 'ping'],
+    FORBID_ATTR: ['formaction', 'ping'],
   });
 }
 
@@ -145,6 +202,6 @@ export function sanitizeMath(html: string): string {
   return DOMPurify.sanitize(html, {
     ...CONFIG,
     USE_PROFILES: { html: true, mathMl: true, svg: true, svgFilters: true },
-    FORBID_ATTR: ['srcset', 'formaction', 'ping'],
+    FORBID_ATTR: ['formaction', 'ping'],
   });
 }

@@ -123,6 +123,19 @@ describe('正当な内容は壊さない', () => {
     expect(pipeline('<img src="C:/work/a.png">')).not.toContain('data-mx-blocked');
   });
 
+  it('picture/source の srcset を残す（ダークモード用画像の出し分け）', () => {
+    const out = pipeline(
+      '<picture><source media="(prefers-color-scheme: dark)" srcset="assets/logo-dark.svg" /><img src="assets/logo-light.svg" alt="x" /></picture>',
+    );
+    expect(out).toContain('srcset="assets/logo-dark.svg"');
+    expect(out).not.toContain('data-mx-blocked');
+  });
+
+  it('srcset の複数候補（記述子付き）を残す', () => {
+    const out = pipeline('<img src="a.png" srcset="a.png 1x, b.png 2x">');
+    expect(out).toContain('srcset="a.png 1x, b.png 2x"');
+  });
+
   it('data:image を残す', () => {
     const uri = 'data:image/png;base64,iVBORw0KGgo=';
     expect(pipeline(`![alt](${uri})`)).toContain('data:image/png');
@@ -151,6 +164,20 @@ describe('リンクの後処理', () => {
   it('落とした参照に痕跡を残す', () => {
     // 黙って消すと「なぜ表示されないのか」が分からなくなる
     expect(pipeline('<img src="ftp://example.com/a.png">')).toContain('data-mx-blocked');
+  });
+
+  it('srcset は候補単位で許可リストを検証する', () => {
+    const out = pipeline('<img src="a.png" srcset="a.png 1x, javascript:alert(1) 2x">');
+    expect(out).toContain('srcset="a.png 1x"');
+    expect(out).not.toContain('javascript:');
+  });
+
+  it('srcset の候補が全滅したら属性ごと落として痕跡を残す', () => {
+    // ftp: は DOMPurify 自身は落とさない（こちらの許可リストのほうが狭い）ため、
+    // フックまで値が届くことを確認できる
+    const out = pipeline('<img src="a.png" srcset="ftp://example.com/a.png 1x, ftp://example.com/b.png 2x">');
+    expect(out).not.toContain('srcset=');
+    expect(out).toContain('data-mx-blocked');
   });
 });
 
