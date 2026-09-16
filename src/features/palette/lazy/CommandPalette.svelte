@@ -33,7 +33,7 @@
     .map((entry) =>
       entry.shortcut === undefined
         ? { id: entry.id, label: entry.label }
-        : { id: entry.id, label: entry.label, detail: entry.shortcut },
+        : { id: entry.id, label: entry.label, shortcut: entry.shortcut },
     );
 
   function run(id: string): void {
