@@ -161,8 +161,14 @@ export const SETTINGS_SCHEMA = defineSettingsSchema({
    */
   'preview.fontSize': { kind: 'number', default: 16, min: 8, max: 72 },
   'preview.lineHeight': { kind: 'number', default: 1.75, min: 1, max: 3 },
-  /** 本文幅。単位は `ch`（02.architecture/10-theming.md §2）。 */
-  'preview.maxWidth': { kind: 'number', default: 100, min: 20, max: 200 },
+  /**
+   * 本文幅。単位は `ch`（02.architecture/10-theming.md §2）。
+   *
+   * 既定の 72ch は、実測で 1 行あたり欧文 78 字・全角 39 字にあたる（Segoe UI Variable Text 16px で 1ch = 8.63px）。
+   * 長文の推奨測度は 60〜75 字で、100ch では欧文 108 字に達し、次の行頭を追いにくくなる。
+   * 既定値は `styles/tokens.css` の `--mx-content-width` と一致させる（設定を書いていない利用者はそちらを見る）。
+   */
+  'preview.maxWidth': { kind: 'number', default: 72, min: 20, max: 200 },
   /** 段落内の単独の改行を `<br>` として描画するか（`markdown-it` の `breaks` / #45）。既定は CommonMark 準拠で false。 */
   'preview.softBreak': { kind: 'boolean', default: false },
   /**

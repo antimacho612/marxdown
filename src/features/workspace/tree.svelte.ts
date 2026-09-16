@@ -20,6 +20,16 @@ class TreeStore {
   entries = $state<Record<string, DirEntry[]>>({});
   /** 読み込み中のディレクトリ。件数の多い場所で「押しても何も起きない」ように見せない。 */
   loading = $state<string[]>([]);
+  /**
+   * Tab の順路に載せる 1 項目のパス（roving tabindex / WAI-ARIA の tree）。
+   *
+   * 全項目を順路に置くと、ファイルが数百ある基点でペインから抜けられなくなる
+   * （`features/outline/Outline.svelte` が見出しについて書いているのと同じ問題）。
+   * `null` の間は先頭の項目を使う。
+   *
+   * 木が再帰コンポーネントであり、どの枝からも同じ 1 つを指す必要があるため、ここに置いてある。
+   */
+  focusPath = $state<string | null>(null);
 }
 
 /** ファイルツリーの状態。モジュールの singleton として共有する。 */
@@ -37,6 +47,7 @@ export async function setTreeRoot(root: string | null): Promise<void> {
   treeStore.root = root;
   treeStore.expanded = [];
   treeStore.entries = {};
+  treeStore.focusPath = null;
   if (root !== null) await loadDir(root);
 }
 
@@ -101,4 +112,5 @@ export function resetTree(): void {
   treeStore.expanded = [];
   treeStore.entries = {};
   treeStore.loading = [];
+  treeStore.focusPath = null;
 }

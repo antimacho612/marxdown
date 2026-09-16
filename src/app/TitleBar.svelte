@@ -113,7 +113,7 @@
    */
   .mx-titlebar__dirty {
     color: var(--mx-color-fg-muted);
-    font-size: 10px;
+    font-size: var(--mx-font-size-ui-xs);
     line-height: 1;
   }
 

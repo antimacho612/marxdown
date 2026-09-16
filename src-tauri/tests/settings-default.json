@@ -35,7 +35,7 @@
   "preview.fontFamily": "",
   "preview.fontSize": 16.0,
   "preview.lineHeight": 1.75,
-  "preview.maxWidth": 100.0,
+  "preview.maxWidth": 72.0,
   "preview.softBreak": false,
   "preview.theme": "default",
   "window.closeBehavior": "tray"

@@ -120,6 +120,10 @@
     color: var(--mx-color-fg);
   }
 
+  .mx-menubutton__button:active {
+    background: var(--mx-color-bg-inset);
+  }
+
   .mx-menubutton__button:focus-visible {
     outline: 2px solid var(--mx-color-accent);
     outline-offset: -2px;

@@ -4,9 +4,25 @@
 
 <script lang="ts">
   import { ja } from '@/i18n/ja';
+  import Icon, { type IconName } from '@/lib/Icon.svelte';
   import { getPlatform } from '@/platform';
 
   import type { CategoryId } from '../layout';
+
+  /**
+   * カテゴリごとの図記号。
+   *
+   * 6 個しか無い一覧に図記号を足すのは、数を数えるためではなく**位置で覚えられるようにする**ためである。
+   * 語の長さが揃っていない縦並びでは、左端の形が目印になる。
+   */
+  const ICONS: Record<CategoryId, IconName> = {
+    appearance: 'appearance',
+    preview: 'preview',
+    editor: 'editor',
+    markdown: 'markdown',
+    outline: 'outline',
+    window: 'window',
+  };
 
   interface Props {
     items: readonly { id: CategoryId; label: string }[];
@@ -23,7 +39,8 @@
 素のボタンなら `Tab` だけで全部に届き、実装は 0 行で済む（03.ux-spec/10-accessibility.md「すべての操作がキーボードで到達可能」）。
 -->
 <nav class="mx-settings__nav" aria-label={ja.settings.title}>
-  <main>
+  <!-- `<main>` にしない。文書に 1 つだけ置くランドマークであり、ナビゲーションの内側に来るものではない。 -->
+  <div class="mx-settings__categories">
     {#each items as item (item.id)}
       <button
         type="button"
@@ -32,10 +49,11 @@
         aria-current={selected === item.id ? 'true' : undefined}
         onclick={() => onSelectionChange?.(item.id)}
       >
-        {item.label}
+        <Icon name={ICONS[item.id]} />
+        <span>{item.label}</span>
       </button>
     {/each}
-  </main>
+  </div>
 
   <footer>
     <button type="button" class="mx-settings__openjson" onclick={() => void getPlatform().openSettingsFile()}>
@@ -52,7 +70,7 @@
     overflow: hidden;
     border-inline-end: 1px solid var(--mx-color-border-subtle);
 
-    main {
+    .mx-settings__categories {
       flex: 1 1 auto;
       display: flex;
       overflow-y: auto;
@@ -71,6 +89,9 @@
   }
 
   .mx-settings__category {
+    display: flex;
+    align-items: center;
+    gap: var(--mx-space-2);
     padding: var(--mx-space-2) var(--mx-space-3);
     border: none;
     border-radius: var(--mx-radius-sm);
@@ -84,16 +105,31 @@
       background: var(--mx-color-bg-hover);
       color: var(--mx-color-fg);
     }
+
+    &:active {
+      background: var(--mx-color-bg-inset);
+    }
   }
 
-  .mx-settings__category--current {
-    background: var(--mx-color-bg-hover);
+  /*
+   * 選択中。
+   * 以前はホバーと同じ面だけで表していたため、ポインタを乗せている項目と区別が付かなかった。
+   * 一覧の現在位置の印（`--mx-current-marker`）を使う。
+   */
+  .mx-settings__category--current,
+  .mx-settings__category--current:hover {
+    background: var(--mx-color-bg-inset);
+    box-shadow: var(--mx-current-marker);
     color: var(--mx-color-fg);
     font-weight: 600;
   }
 
+  .mx-settings__category--current :global(.mx-icon) {
+    color: var(--mx-color-accent);
+  }
+
   .mx-settings__openjson {
-    padding: var(--mx-space-1) var(--mx-space-2);
+    padding: var(--mx-space-2) var(--mx-space-3);
     border: none;
     border-radius: var(--mx-radius-sm);
     background: none;
@@ -105,6 +141,10 @@
     &:hover {
       background: var(--mx-color-bg-hover);
       color: var(--mx-color-fg);
+    }
+
+    &:active {
+      background: var(--mx-color-bg-inset);
     }
   }
 </style>

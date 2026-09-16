@@ -34,6 +34,8 @@ export const ja = {
    */
   /** ファイルツリー（F-NAV-03 / レフトペイン）。 */
   tree: {
+    /** レフトペインの見出し行（03.ux-spec/01-screen-layout.md §2）。 */
+    title: 'エクスプローラー',
     loading: '読み込み中…',
     empty: 'このフォルダには何もありません',
     /**
@@ -610,18 +612,31 @@ export const ja = {
     parsedIn: (ms: number) => `パース ${ms.toFixed(1)}ms`,
     paintedIn: (ms: number) => `描画 ${ms.toFixed(1)}ms`,
   },
+  /**
+   * エラーの文面。
+   *
+   * 状態だけでなく、次に何をすればよいかを併せて書く。
+   * 「見つかりません」で止めると、履歴から消えたことも、開き直す手段があることも伝わらない。
+   */
   error: {
     'not-found': (path: string) => `ファイルが見つかりません: ${path}`,
+    /**
+     * 履歴から外したときだけ後ろに足す（`features/document/open.ts`）。
+     *
+     * 文言に混ぜないのは、`not-found` が保存の失敗（`save.ts`）からも通るためである。
+     * 保存先が見つからない場面で「履歴から外した」と言うと、起きていないことを伝えることになる。
+     */
+    removedFromRecent: '（最近開いたファイルの一覧から外しました）',
     'permission-denied': (path: string) => `アクセスが拒否されました: ${path}`,
     'out-of-scope': (path: string) => `許可されていない場所を参照しています: ${path}`,
     'too-large': (path: string) => `ファイルが大きすぎます: ${path}`,
     binary: (path: string) => `テキストではないため開けません: ${path}`,
     conflict: 'ファイルが外部で変更されています',
-    'invalid-argument': (detail: string) => `引数が不正です: ${detail}`,
+    'invalid-argument': (detail: string) => `引数を解釈できません: ${detail}`,
     'settings-broken': 'settings.json を読めないため、設定を保存できません',
     io: (detail: string) => `入出力エラー: ${detail}`,
     unknownArgs: (args: string[]) => `解釈できない引数: ${args.join(', ')}`,
-    renderFailed: 'このファイルの表示に失敗しました',
+    renderFailed: 'このファイルの表示に失敗しました。F5 で読み直せます',
   },
 } as const;
 

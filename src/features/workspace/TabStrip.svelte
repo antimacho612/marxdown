@@ -14,6 +14,7 @@
 -->
 <script lang="ts">
   import { ja } from '@/i18n/ja';
+  import CloseIcon from '@/lib/CloseIcon.svelte';
   import { splitPath } from '@/lib/path';
 
   import { activateTab, closeTab, isTabDirty, moveTab, tabMeta, tabsStore, type Tab } from './tabs.svelte';
@@ -101,6 +102,52 @@
   }
 
   /**
+   * 隠れている側。`''` は溢れていない。
+   *
+   * スクロールバーは出さない（タイトルバーの高さに収まらない）。
+   * 代わりに隠れている側の端をぼかす。手がかりが無いと、溢れたタブは存在しないのと同じになる。
+   */
+  let overflow = $state<'' | 'start' | 'end' | 'both'>('');
+
+  /** 端 1px の差は、ブラウザ側の丸めで溢れていなくても残る。判定から外す。 */
+  const OVERFLOW_EPSILON = 1;
+
+  function measureOverflow(): void {
+    if (!strip) return;
+    const start = strip.scrollLeft > OVERFLOW_EPSILON;
+    const end = strip.scrollLeft + strip.clientWidth < strip.scrollWidth - OVERFLOW_EPSILON;
+    overflow = start && end ? 'both' : start ? 'start' : end ? 'end' : '';
+  }
+
+  /**
+   * 幅が変わったときの再判定。
+   *
+   * `scroll` はテンプレート側で拾う。ポーリングはしない（アイドル時 CPU ≒ 0）。
+   */
+  $effect(() => {
+    if (!strip) return;
+    const observer = new ResizeObserver(() => measureOverflow());
+    observer.observe(strip);
+    return () => observer.disconnect();
+  });
+
+  /**
+   * タブが増減したときと、表示するタブが変わったときの追従。
+   *
+   * `Ctrl+Tab` や `Ctrl+N` で溢れた先へ移ると、強調されたタブが画面外に残る。
+   * 実測では 21 枚のとき `scrollWidth 1205` に対して表示幅 604 で、アクティブなタブは x=1200 にあった。
+   * どれを編集しているのかが分からなくなるため、見える位置へ寄せる。
+   */
+  $effect(() => {
+    const count = tabsStore.tabs.length;
+    const active = tabsStore.activeId;
+    if (count === 0 || active === null) return;
+    // `block: 'nearest'` を外さないこと。縦に動かす余地は無く、外すと本文側がスクロールする。
+    strip?.querySelector('.mx-tab--active')?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    measureOverflow();
+  });
+
+  /**
    * 表示する名前。無題の文書（`Ctrl+N`）にはパスが無い。
    *
    * ディレクトリは出さない。
@@ -112,7 +159,14 @@
   }
 </script>
 
-<div class="mx-tabs" role="tablist" aria-label={ja.tab.list} bind:this={strip}>
+<div
+  class="mx-tabs"
+  role="tablist"
+  aria-label={ja.tab.list}
+  data-mx-overflow={overflow || undefined}
+  bind:this={strip}
+  onscroll={measureOverflow}
+>
   {#each tabsStore.tabs as tab (tab.id)}
     {@const name = nameOf(tab)}
     {@const active = tab.id === tabsStore.activeId}
@@ -141,7 +195,7 @@
         aria-label={ja.tab.close(name)}
         onclick={() => void closeTab(tab.id)}
       >
-        ✕
+        <CloseIcon size={10} />
       </button>
     </div>
   {/each}
@@ -164,6 +218,22 @@
     display: none;
   }
 
+  /*
+   * 溢れの手がかり。隠れている側の端をぼかす。
+   * スクロールバーを出さない以上、手がかりが無ければ溢れたタブは存在しないのと同じになる。
+   */
+  .mx-tabs[data-mx-overflow='end'] {
+    mask-image: linear-gradient(to right, #000 calc(100% - 24px), transparent);
+  }
+
+  .mx-tabs[data-mx-overflow='start'] {
+    mask-image: linear-gradient(to left, #000 calc(100% - 24px), transparent);
+  }
+
+  .mx-tabs[data-mx-overflow='both'] {
+    mask-image: linear-gradient(to right, transparent, #000 24px, #000 calc(100% - 24px), transparent);
+  }
+
   .mx-tab {
     display: flex;
     align-items: center;
@@ -172,12 +242,23 @@
     color: var(--mx-color-fg-muted);
   }
 
+  .mx-tab:hover {
+    background: var(--mx-color-bg-hover);
+    color: var(--mx-color-fg);
+  }
+
   /*
    * 選択中のタブは本文と地続きに見せる。
-   * 下線ではなく背景で表すのは、タイトルバーの下端が本文との境界線になっているためである。
+   *
+   * 背景だけでは足りない。`bg` と `bg-subtle` の差は 1.07:1 しかなく、
+   * 21 枚並べるとどれが開いているのか判別できなかった。
+   * 一覧の現在位置と同じ印（`--mx-current-marker-block`）を上端に足す。
+   * 下端ではなく上端なのは、タイトルバーの下端が本文との境界線として既に使われているため。
    */
-  .mx-tab--active {
+  .mx-tab--active,
+  .mx-tab--active:hover {
     background: var(--mx-color-bg);
+    box-shadow: var(--mx-current-marker-block);
     color: var(--mx-color-fg);
   }
 
@@ -214,7 +295,7 @@
   /* 未保存の印。タイトルバーの `●` と同じ扱い（気づく程度の強さがあればよい）。 */
   .mx-tab__dirty {
     color: var(--mx-color-fg-muted);
-    font-size: 10px;
+    font-size: var(--mx-font-size-ui-xs);
     line-height: 1;
   }
 
@@ -225,17 +306,33 @@
   .mx-tab__close {
     display: flex;
     align-items: center;
+    /* タイトルバーの高さいっぱいを取る。押せる高さを字面ぶんに狭めない。 */
+    align-self: stretch;
     padding-inline: var(--mx-space-1);
     border: 0;
+    border-radius: var(--mx-radius-sm);
     background: none;
     color: var(--mx-color-fg-subtle);
     font: inherit;
-    font-size: 10px;
-    line-height: var(--mx-titlebar-height);
     cursor: pointer;
   }
 
   .mx-tab__close:hover {
+    background: var(--mx-color-bg-hover);
     color: var(--mx-color-fg);
+  }
+
+  .mx-tab__close:active {
+    background: var(--mx-color-bg-inset);
+  }
+
+  /*
+   * フォーカスリングを明示する。
+   * 既定のリングのままだと、ここだけ他の部品（2px の実線・内側寄せ）と違う描かれ方になる。
+   */
+  .mx-tab__label:focus-visible,
+  .mx-tab__close:focus-visible {
+    outline: 2px solid var(--mx-color-accent);
+    outline-offset: -2px;
   }
 </style>
