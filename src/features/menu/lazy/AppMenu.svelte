@@ -10,6 +10,8 @@
 <script lang="ts">
   import { onMount } from 'svelte';
 
+  import { splitShortcutKeys } from '@/lib/shortcuts';
+
   import type { AppMenuProps } from '../props';
   import { buildMenu, type MenuAction } from './items';
 
@@ -129,7 +131,11 @@
         >
           <span class="mx-menu__label">{item.label}</span>
           {#if item.detail}<span class="mx-menu__detail">{item.detail}</span>{/if}
-          {#if item.shortcut}<kbd>{item.shortcut}</kbd>{/if}
+          {#if item.shortcut}
+            <span class="mx-menu__shortcut">
+              {#each splitShortcutKeys(item.shortcut) as key (key)}<kbd>{key}</kbd>{/each}
+            </span>
+          {/if}
         </button>
       {/each}
 
@@ -230,7 +236,9 @@
   }
 
   /* 補足が無い項目でも、キーは右端に揃える。 */
-  .mx-menu__item > kbd {
+  .mx-menu__shortcut {
+    display: inline-flex;
+    gap: var(--mx-space-1);
     margin-inline-start: auto;
     flex: none;
     color: var(--mx-color-fg-subtle);

@@ -113,3 +113,12 @@ function canonicalKey(key: string): string {
 export function resetShortcuts(): void {
   registry.clear();
 }
+
+/**
+ * 表示用に `Ctrl+Shift+P` をキーごとに分ける。
+ *
+ * メニューとコマンドパレットで表示を揃えるため、両方がここを通る（`+` の実キーは `=` に正規化済みなので安全に分割できる）。
+ */
+export function splitShortcutKeys(shortcut: string): string[] {
+  return shortcut.split('+');
+}

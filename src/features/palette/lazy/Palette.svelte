@@ -9,6 +9,8 @@
   あいまい検索は `fuzzy.ts`（同じ遅延チャンクの中）。fzf 系のライブラリは入れない（04.tech-stack/05-frontend.md）。
 -->
 <script lang="ts">
+  import { splitShortcutKeys } from '@/lib/shortcuts';
+
   import { fuzzyFilter } from './fuzzy';
 
   /** 並べる 1 行。 */
@@ -17,8 +19,10 @@
     id: string;
     /** 表示と照合に使う文字列。 */
     label: string;
-    /** 右端に薄く出す補足（キーの割り当てや見出しレベル）。 */
+    /** 右端に薄く出す補足（ディレクトリや見出しレベルなど）。 */
     detail?: string;
+    /** 右端に出すキー。メニューと表示形式を揃えるため、`detail` とは別に持つ。 */
+    shortcut?: string;
     /** 字下げの段数。見出しの階層に使う。 */
     depth?: number;
   }
@@ -163,6 +167,11 @@
           {#if item.detail}
             <span class="mx-palette__detail">{item.detail}</span>
           {/if}
+          {#if item.shortcut}
+            <span class="mx-palette__shortcut">
+              {#each splitShortcutKeys(item.shortcut) as key (key)}<kbd>{key}</kbd>{/each}
+            </span>
+          {/if}
         </button>
       {/each}
     </div>
@@ -277,5 +286,13 @@
     margin-inline-start: var(--mx-space-2);
     color: var(--mx-color-fg-subtle);
     font-size: 11px;
+  }
+
+  .mx-palette__shortcut {
+    display: inline-flex;
+    flex: none;
+    gap: var(--mx-space-1);
+    margin-inline-start: var(--mx-space-2);
+    color: var(--mx-color-fg-subtle);
   }
 </style>
