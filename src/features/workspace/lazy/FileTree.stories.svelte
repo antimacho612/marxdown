@@ -11,6 +11,7 @@
 
   import { treeStore } from '../tree.svelte';
   import FileTree from './FileTree.svelte';
+  import { resetFilter } from './filter.svelte';
 
   const { Story } = defineMeta({
     title: '画面/ファイルツリー',
@@ -34,6 +35,8 @@
       treeStore.entries = entries;
       treeStore.expanded = expanded;
       treeStore.loading = [];
+      // 絞り込みも singleton なので、ツールバー側の story から持ち越さない。
+      resetFilter();
     };
   }
 
