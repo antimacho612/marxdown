@@ -184,7 +184,7 @@
   background: var(--mx-color-bg);
   color: var(--mx-color-fg-muted);
   font-family: var(--mx-font-ui);
-  font-size: 11px;
+  font-size: var(--mx-font-size-ui-sm);
   line-height: 1.6;
   cursor: pointer;
 

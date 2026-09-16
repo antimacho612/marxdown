@@ -45,19 +45,24 @@
     <p class="mx-settings__description">{description}</p>
   </div>
 
-  <div class="mx-settings__choices">
-    {#each options as option (option.value)}
-      <label class="mx-settings__choice">
-        <input
-          type="radio"
-          {name}
-          value={option.value}
-          checked={value === option.value}
-          onchange={() => onChange(option.value)}
-        />
-        <span>{option.label}</span>
-      </label>
-    {/each}
+  <div class="mx-settings__control">
+    <!-- 「既定に戻す」の場所。ここには無いが、他の項目とコントロールの左辺を揃えるために空けておく（`Field.svelte`）。 -->
+    <span class="mx-settings__reset-slot" aria-hidden="true"></span>
+
+    <div class="mx-settings__choices">
+      {#each options as option (option.value)}
+        <label class="mx-settings__choice">
+          <input
+            type="radio"
+            {name}
+            value={option.value}
+            checked={value === option.value}
+            onchange={() => onChange(option.value)}
+          />
+          <span>{option.label}</span>
+        </label>
+      {/each}
+    </div>
   </div>
 </fieldset>
 
@@ -69,7 +74,8 @@
     padding: 0;
     border: none;
     display: grid;
-    grid-template-columns: 1fr auto;
+    /* 列幅は `Field.svelte` と同じ。設定を上から下へ読むときの揃える辺を 1 本に保つ。 */
+    grid-template-columns: 1fr var(--mx-control-column);
     align-items: start;
     gap: var(--mx-space-1) var(--mx-space-3);
 
@@ -89,25 +95,45 @@
   .mx-settings__description {
     margin: 0;
     color: var(--mx-color-fg-subtle);
-    font-size: 11px;
+    font-size: var(--mx-font-size-ui-sm);
+  }
+
+  /* `Field.svelte` と同じ構造。scoped `<style>` の都合で CSS は共有できず、値はトークンで揃える。 */
+  .mx-settings__control {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: var(--mx-space-2);
+    min-inline-size: 0;
+  }
+
+  .mx-settings__reset-slot {
+    flex: none;
+    inline-size: var(--mx-control-height);
   }
 
   .mx-settings__choices {
     position: relative;
-    /* padding: var(--mx-space-1); */
+    flex: 1;
+    min-inline-size: 0;
+    block-size: var(--mx-control-height);
+    /* 内側に 2px。選んだ側の面が溝の縁に触れると、入れ物と中身の境目が消える。 */
+    padding: 2px;
     display: flex;
     background: var(--mx-color-bg-inset);
     border-radius: var(--mx-radius);
   }
 
+  /* 角丸は外側から padding を引いた値にする（外 6px = 内 4px + 余白 2px）。 */
   .mx-settings__choice {
     position: relative;
+    flex: 1;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    padding: var(--mx-space-1) var(--mx-space-3);
+    padding-inline: var(--mx-space-2);
     border: 1px solid transparent;
-    border-radius: var(--mx-radius);
+    border-radius: var(--mx-radius-sm);
     color: var(--mx-color-fg-muted);
     font-weight: 500;
     user-select: none;

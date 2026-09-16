@@ -30,6 +30,7 @@ Rust 側も拒否するが、UI が「保存できたように見せる」のを
 
   import type ThemeFieldComponent from '@/features/theme/lazy/ThemeField.svelte';
   import { ja } from '@/i18n/ja';
+  import CloseIcon from '@/lib/CloseIcon.svelte';
   import { DEFAULT_SETTINGS, getPlatform, type SettingKey, type SettingsProblem } from '@/platform';
 
   import { settingsStore } from '../store.svelte';
@@ -235,7 +236,9 @@ Rust 側も拒否するが、UI が「保存できたように見せる」のを
 >
   <header class="mx-settings__header">
     <h2 class="mx-settings__title">{ja.settings.title}</h2>
-    <button type="button" class="mx-settings__close" aria-label={ja.settings.close} onclick={close}>✕</button>
+    <button type="button" class="mx-settings__close" aria-label={ja.settings.close} onclick={close}>
+      <CloseIcon />
+    </button>
   </header>
 
   {#if broken}
@@ -411,8 +414,10 @@ Rust 側も拒否するが、UI が「保存できたように見せる」のを
 
   .mx-settings__close {
     flex: none;
-    width: 28px;
-    height: 28px;
+    display: grid;
+    place-items: center;
+    inline-size: var(--mx-control-height);
+    block-size: var(--mx-control-height);
     border: none;
     border-radius: var(--mx-radius-sm);
     background: none;
@@ -423,6 +428,10 @@ Rust 側も拒否するが、UI が「保存できたように見せる」のを
     &:hover {
       background: var(--mx-color-bg-hover);
       color: var(--mx-color-fg);
+    }
+
+    &:active {
+      background: var(--mx-color-bg-inset);
     }
   }
 
