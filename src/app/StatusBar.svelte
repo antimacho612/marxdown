@@ -57,10 +57,12 @@
       §3.1 の表で操作先が決まっているのは倍率・EOL・エンコーディング・文字数・モードで、ここは表示だけである。
       行ジャンプ（`Ctrl+G`）はコマンドパレットに載せる（M3）。
     -->
-    {#if cursor}<span class="mx-statusbar__cursor">{ja.status.cursor(cursor.line, cursor.column)}</span>{/if}
+    {#if cursor}
+      <span class="mx-statusbar__cursor mx-statusbar__optional">{ja.status.cursor(cursor.line, cursor.column)}</span>
+    {/if}
     {#if textStats}
-      <span>{ja.status.chars(textStats.chars)}</span>
-      <span>{ja.status.readingTime(textStats.readingMinutes)}</span>
+      <span class="mx-statusbar__optional">{ja.status.chars(textStats.chars)}</span>
+      <span class="mx-statusbar__optional">{ja.status.readingTime(textStats.readingMinutes)}</span>
     {/if}
   {/if}
 
@@ -113,10 +115,27 @@
     border-top: 1px solid var(--mx-color-border-subtle);
     background: var(--mx-color-bg-subtle);
     color: var(--mx-color-fg-muted);
-    font-size: 11px;
+    font-size: var(--mx-font-size-ui-sm);
     white-space: nowrap;
     min-width: 0;
     overflow: hidden;
+  }
+
+  /*
+   * 幅が足りないときに落とす項目。**表示だけの項目に限る**（§3.1 の表で「押せない」とされているもの）。
+   *
+   * `overflow: hidden` は右端から切り落とすため、何もしないと一番右にある倍率から消える。
+   * 実測では Split で 475.5px、カーソル位置が出ると約 562px 必要で、ウィンドウの最小値
+   * （`src-tauri/src/window.rs` の `min_inner_size(480.0, 360.0)`）では倍率が押せなくなっていた。
+   *
+   * ステータスバーは常にウィンドウの全幅であるため、ビューポート幅で判定する。
+   * `container-type` を付けると `contain: layout` が効き、`position: fixed` で開くメニュー
+   * （`app/StatusMenuButton.svelte`）の位置の基準がビューポートからこの要素に変わってしまう。
+   */
+  @media (width < 580px) {
+    .mx-statusbar__optional {
+      display: none;
+    }
   }
 
   .mx-statusbar__spacer {

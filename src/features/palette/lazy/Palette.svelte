@@ -196,7 +196,8 @@
     max-height: 60vh;
     padding: var(--mx-space-2);
     border: 1px solid var(--mx-color-border);
-    border-radius: var(--mx-radius);
+    /* 内側の入力欄は 4px、その外に 8px の余白があるため、外側は 12px にする（同心の角丸）。 */
+    border-radius: calc(var(--mx-radius-sm) + var(--mx-space-2));
     background: var(--mx-color-bg-subtle);
     box-shadow: var(--mx-shadow-1);
     font-size: var(--mx-font-size-ui);
@@ -234,7 +235,7 @@
   .mx-palette__note {
     margin: var(--mx-space-2) 0 0;
     color: var(--mx-color-fg-subtle);
-    font-size: 11px;
+    font-size: var(--mx-font-size-ui-sm);
   }
 
   .mx-palette__empty {
@@ -269,8 +270,22 @@
     background: var(--mx-color-bg-hover);
   }
 
+  .mx-palette__list button:active {
+    background: var(--mx-color-bg-inset);
+  }
+
+  /* ホバー中の面（`bg-hover`）では subtle が 4.5:1 に届かない。1 段上げる。 */
+  .mx-palette__list button:hover :is(.mx-palette__detail, .mx-palette__shortcut) {
+    color: var(--mx-color-fg-muted);
+  }
+
+  /*
+   * 現在の候補。印はアウトライン・メニュー・タブと同じものを使う（`--mx-current-marker`）。
+   * 以前はここだけ淡い塗り（`--mx-color-selection`）で、同じ意味が一覧ごとに違う見た目になっていた。
+   */
   .mx-palette__item--selected {
-    background: var(--mx-color-selection);
+    box-shadow: var(--mx-current-marker);
+    background: var(--mx-color-bg-inset);
     color: var(--mx-color-fg);
   }
 
@@ -285,7 +300,7 @@
     flex: none;
     margin-inline-start: var(--mx-space-2);
     color: var(--mx-color-fg-subtle);
-    font-size: 11px;
+    font-size: var(--mx-font-size-ui-sm);
   }
 
   .mx-palette__shortcut {

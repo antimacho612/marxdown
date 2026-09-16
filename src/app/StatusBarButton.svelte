@@ -31,10 +31,19 @@
 </button>
 
 <style>
+  /*
+   * バーの高さいっぱいを取る（`align-self: stretch`）。
+   *
+   * 字面ぶんの高さ（実測 14.8px）しか無いと、最大化したときに画面の下端が当たり判定にならない。
+   * 端まで動かすだけで到達できることは、`app/CaptionButton.svelte` が右上で成立させているのと同じ話である。
+   * 角丸を付けないのも同じ理由で、上下の端まで押せる面にする。
+   */
   .mx-statusbar__button {
+    align-self: stretch;
+    display: inline-flex;
+    align-items: center;
     padding: 0 var(--mx-space-2);
     border: none;
-    border-radius: var(--mx-radius-sm);
     background: none;
     color: inherit;
     font: inherit;
@@ -48,6 +57,11 @@
   .mx-statusbar__button[aria-expanded='true'] {
     background: var(--mx-color-bg-hover);
     color: var(--mx-color-fg);
+  }
+
+  /* 押し込み。Windows はホバーより淡い面で押下を表す（`app/CaptionButton.svelte` と同じ）。 */
+  .mx-statusbar__button:active {
+    background: var(--mx-color-bg-inset);
   }
 
   .mx-statusbar__button:focus-visible {

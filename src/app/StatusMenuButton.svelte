@@ -85,6 +85,8 @@
   .mx-statusmenubutton {
     position: relative;
     display: inline-flex;
+    /* 中のボタンにバーの高さを渡す（`app/StatusBarButton.svelte`）。 */
+    align-self: stretch;
     flex: none;
   }
 </style>

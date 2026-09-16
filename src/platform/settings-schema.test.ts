@@ -20,11 +20,27 @@ function rustDefaults(): Record<string, unknown> {
 describe('設定スキーマ (02.architecture/04-rust-responsibilities.md §5)', () => {
   /**
    * 既定値は 3 か所で一致させる必要がある（`src-tauri/src/settings/schema.rs` の冒頭）。
-   * そのうち TypeScript と Rust の 2 か所を、ここで機械的に固定する。
-   * 残る 1 か所（`src/styles/tokens.css`）は CSS なので、突き合わせはプレビューの 3 項目についてだけ人が見る。
+   * TypeScript・Rust・`src/styles/tokens.css` の 3 つを、ここで機械的に固定する。
    */
   it('既定値が Rust 側の Settings::default() と一致する', () => {
     expect(DEFAULT_SETTINGS).toEqual(rustDefaults());
+  });
+
+  /**
+   * `tokens.css` 側の既定。
+   *
+   * 設定を書いていない利用者が見るのはこちらである（`applyAppearance` は既定値と同じなら書かずに消す）。
+   * ずれると「設定を既定に戻したのに見た目が変わる」状態になる。
+   */
+  it.each([
+    ['--mx-content-width', 'preview.maxWidth', 'ch'],
+    ['--mx-font-size-content', 'preview.fontSize', 'px'],
+    ['--mx-line-height', 'preview.lineHeight', ''],
+  ] as const)('%s が %s の既定値と一致する', (property, key, unit) => {
+    const tokens = readFileSync(fileURLToPath(new URL('../styles/tokens.css', import.meta.url)), 'utf8');
+    const declared = new RegExp(`${property}:\\s*([^;]+);`).exec(tokens)?.[1]?.trim();
+
+    expect(declared).toBe(`${DEFAULT_SETTINGS[key]}${unit}`);
   });
 
   it('キーの集合が Rust 側と一致する', () => {

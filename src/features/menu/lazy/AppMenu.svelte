@@ -130,7 +130,12 @@
           onclick={() => activate(item)}
         >
           <span class="mx-menu__label">{item.label}</span>
-          {#if item.detail}<span class="mx-menu__detail">{item.detail}</span>{/if}
+          <!--
+            容器と `<bdi>` を分ける。
+            `direction: rtl`（頭を削るため）と `dir="ltr"` を同じ要素に置くと、著者スタイルの `direction` が勝って
+            `<bdi>` の分離が RTL 方向で解決され、結局パスが並べ替わる（`workspace/Welcome.svelte` と同じ形）。
+          -->
+          {#if item.detail}<span class="mx-menu__detail"><bdi dir="ltr">{item.detail}</bdi></span>{/if}
           {#if item.shortcut}
             <span class="mx-menu__shortcut">
               {#each splitShortcutKeys(item.shortcut) as key (key)}<kbd>{key}</kbd>{/each}
@@ -187,7 +192,7 @@
   .mx-menu__heading {
     margin: var(--mx-space-1) 0;
     padding-inline: var(--mx-space-3);
-    font-size: 11px;
+    font-size: var(--mx-font-size-ui-sm);
     font-weight: 600;
     letter-spacing: 0.06em;
     text-transform: uppercase;
@@ -227,7 +232,7 @@
     flex: 1;
     min-width: 0;
     color: var(--mx-color-fg-subtle);
-    font-size: 11px;
+    font-size: var(--mx-font-size-ui-sm);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -248,6 +253,15 @@
     background: var(--mx-color-bg-hover);
   }
 
+  .mx-menu__item:active {
+    background: var(--mx-color-bg-inset);
+  }
+
+  /* ホバー中の面（`bg-hover`）では subtle が 4.5:1 に届かない。1 段上げる。 */
+  .mx-menu__item:hover :is(.mx-menu__detail, .mx-menu__shortcut) {
+    color: var(--mx-color-fg-muted);
+  }
+
   /*
    * `:focus` であって `:focus-visible` ではない。
    *
@@ -258,7 +272,7 @@
   .mx-menu__item:focus {
     outline: none;
     background: var(--mx-color-bg-hover);
-    box-shadow: inset 2px 0 0 var(--mx-color-accent);
+    box-shadow: var(--mx-current-marker);
   }
 
   .mx-menu__empty {

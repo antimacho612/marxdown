@@ -150,8 +150,11 @@
     }
   }
 
+  /* 寸法は `settings/lazy/components/SelectField.svelte` と揃える。列の左辺がここだけずれる。 */
   .mx-settings__select {
-    min-width: 14rem;
+    flex: 1;
+    min-inline-size: 0;
+    block-size: var(--mx-control-height);
     padding: var(--mx-space-1) var(--mx-space-2);
     border: 1px solid var(--mx-color-border);
     border-radius: var(--mx-radius-sm);

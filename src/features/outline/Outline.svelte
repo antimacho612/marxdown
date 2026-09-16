@@ -12,6 +12,7 @@
   import { settingsStore } from '@/features/settings';
   import { viewStore } from '@/features/view';
   import { ja } from '@/i18n/ja';
+  import ChevronIcon from '@/lib/ChevronIcon.svelte';
   import { registerOutlineRefresher, setOutlineOnScreen } from '@/lib/refresh';
   import type { OutlineItem } from '@/markdown/plugins/line-map';
 
@@ -83,11 +84,28 @@
   /** 最後に見たファイル。開き直し（`F5`）で手動の開閉を捨てないための目印。 */
   let seenPath: string | null = null;
 
+  /**
+   * Tab の順路に載せる 1 項目（roving tabindex / WAI-ARIA の tree）。
+   *
+   * 全項目を順路に置くと、見出しが数百個ある文書ではペインから抜けられなくなる。
+   * 上下キーで動ける以上、順路に置くのは 1 つでよい。
+   * `null` の間は現在位置（無ければ先頭）を使う。
+   */
+  let tabStop = $state<number | null>(null);
+
+  /** フォーカスが移ったら順路もそこへ移す。次に Tab で戻ったとき、離れた場所に着地しない。 */
+  function onFocusIn(event: FocusEvent): void {
+    const buttons = [...(list?.querySelectorAll<HTMLElement>('button') ?? [])];
+    const index = buttons.indexOf(event.target as HTMLElement);
+    if (index >= 0) tabStop = index;
+  }
+
   $effect(() => {
     const path = documentStore.meta?.path ?? null;
     if (path === seenPath) return;
     seenPath = path;
     manualExpanded = null;
+    tabStop = null;
   });
 
   /**
@@ -168,6 +186,20 @@
    */
   const highlightIndex = $derived(nearestVisibleIndex(rows, activeIndex));
 
+  /** 実際に順路へ載せる位置（`rows` 上の添字）。深さの設定で行が減っても範囲から出ないようにする。 */
+  const stopAt = $derived(
+    rows.length === 0
+      ? 0
+      : Math.min(
+          tabStop ??
+            Math.max(
+              rows.findIndex((row) => row.index === highlightIndex),
+              0,
+            ),
+          rows.length - 1,
+        ),
+  );
+
   function nearestVisibleIndex(list: Row[], active: number): number {
     if (active < 0) return -1;
     let found = -1;
@@ -241,7 +273,7 @@
         title={expanded ? ja.outline.collapse : ja.outline.expand}
         onclick={() => (manualExpanded = !expanded)}
       >
-        <span class="mx-outline__twisty" aria-hidden="true">{expanded ? '▾' : '▸'}</span>
+        <ChevronIcon {expanded} />
         <span class="mx-outline__title">{ja.outline.title}</span>
         <span class="mx-outline__count">{rows.length}</span>
       </button>
@@ -265,11 +297,19 @@
       `tabindex="-1"`: ツリー自身は Tab の順路に入らない。着地するのは
       現在位置の項目（`registerOutlineFocus`）で、そこから上下キーで動く。
     -->
-    <div class="mx-outline__list" bind:this={list} role="tree" tabindex="-1" onkeydown={onKeyDown}>
-      {#each rows as row (`${row.item.line}:${row.item.slug}`)}
+    <div
+      class="mx-outline__list"
+      bind:this={list}
+      role="tree"
+      tabindex="-1"
+      onkeydown={onKeyDown}
+      onfocusin={onFocusIn}
+    >
+      {#each rows as row, position (`${row.item.line}:${row.item.slug}`)}
         <button
           type="button"
           role="treeitem"
+          tabindex={position === stopAt ? 0 : -1}
           aria-level={row.depth + 1}
           aria-selected={row.index === highlightIndex}
           aria-current={row.index === highlightIndex ? 'true' : undefined}
@@ -327,20 +367,24 @@
     background: var(--mx-color-bg-hover);
   }
 
+  .mx-outline__toggle:active {
+    background: var(--mx-color-bg-inset);
+  }
+
+  /* ホバー中の面（`bg-hover`）では subtle が 4.5:1 に届かない。1 段上げる。 */
+  .mx-outline__toggle:hover .mx-outline__count {
+    color: var(--mx-color-fg-muted);
+  }
+
   .mx-outline__toggle:focus-visible {
     outline: 2px solid var(--mx-color-accent);
     outline-offset: -2px;
   }
 
-  .mx-outline__twisty {
-    width: 1em;
-    color: var(--mx-color-fg-subtle);
-  }
-
   .mx-outline__title {
     padding-inline-start: var(--mx-space-2);
     color: var(--mx-color-fg-muted);
-    font-size: 11px;
+    font-size: var(--mx-font-size-ui-sm);
     font-weight: 600;
     letter-spacing: 0.04em;
   }
@@ -352,7 +396,7 @@
   .mx-outline__count {
     margin-inline-start: auto;
     color: var(--mx-color-fg-subtle);
-    font-size: 11px;
+    font-size: var(--mx-font-size-ui-sm);
     font-variant-numeric: tabular-nums;
   }
 
@@ -367,7 +411,7 @@
 
   .mx-outline__hint {
     color: var(--mx-color-fg-subtle);
-    font-size: 11px;
+    font-size: var(--mx-font-size-ui-sm);
   }
 
   .mx-outline__list {
@@ -412,6 +456,10 @@
     color: var(--mx-color-fg);
   }
 
+  .mx-outline__list button:active {
+    background: var(--mx-color-bg-inset);
+  }
+
   .mx-outline__list button:focus-visible {
     outline: 2px solid var(--mx-color-accent);
     outline-offset: -2px;
@@ -422,7 +470,7 @@
    * 本文と同じ背景の上で塗りを使うと、ペイン全体の見た目が煩雑になる（Principle 2 / 情報密度は高く、静かに）。
    */
   .mx-outline__list button[aria-current='true'] {
-    box-shadow: inset 2px 0 0 var(--mx-color-accent);
+    box-shadow: var(--mx-current-marker);
     background: var(--mx-color-bg-inset);
     color: var(--mx-color-fg);
   }
