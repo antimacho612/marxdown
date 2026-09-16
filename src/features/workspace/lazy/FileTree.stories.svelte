@@ -35,6 +35,8 @@
       treeStore.entries = entries;
       treeStore.expanded = expanded;
       treeStore.loading = [];
+      // 順路に載せる項目も戻す。残すと、前の story で触った項目が次の story の Tab の着地点になる。
+      treeStore.focusPath = null;
       // 絞り込みも singleton なので、ツールバー側の story から持ち越さない。
       resetFilter();
     };

@@ -31,9 +31,12 @@
 </button>
 
 <style>
+  /* 正方形にして、コントロール列の左辺を揃える基準にする（`Field.svelte` の `__reset-slot` と同じ幅）。 */
   .mx-settings__reset {
     flex: none;
-    padding: var(--mx-space-1);
+    inline-size: var(--mx-control-height);
+    block-size: var(--mx-control-height);
+    padding: 0;
     display: grid;
     place-items: center;
     border: none;
@@ -41,11 +44,15 @@
     background: none;
     color: var(--mx-color-fg-muted);
     font: inherit;
-    font-size: 11px;
+    font-size: var(--mx-font-size-ui-sm);
 
     &:hover:not(:disabled) {
       color: var(--mx-color-fg);
       background: var(--mx-color-bg-hover);
+    }
+
+    &:active:not(:disabled) {
+      background: var(--mx-color-bg-inset);
     }
 
     /* 親（`SettingsDialog`）のスコープはここまで届かないので、自分で持つ。 */

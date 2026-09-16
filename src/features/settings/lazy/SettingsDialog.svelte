@@ -30,6 +30,7 @@ Rust 側も拒否するが、UI が「保存できたように見せる」のを
 
   import type ThemeFieldComponent from '@/features/theme/lazy/ThemeField.svelte';
   import { ja } from '@/i18n/ja';
+  import CloseIcon from '@/lib/CloseIcon.svelte';
   import { DEFAULT_SETTINGS, getPlatform, type SettingKey, type SettingsProblem } from '@/platform';
 
   import { settingsStore } from '../store.svelte';
@@ -235,7 +236,9 @@ Rust 側も拒否するが、UI が「保存できたように見せる」のを
 >
   <header class="mx-settings__header">
     <h2 class="mx-settings__title">{ja.settings.title}</h2>
-    <button type="button" class="mx-settings__close" aria-label={ja.settings.close} onclick={close}>✕</button>
+    <button type="button" class="mx-settings__close" aria-label={ja.settings.close} onclick={close}>
+      <CloseIcon />
+    </button>
   </header>
 
   {#if broken}
@@ -398,7 +401,7 @@ Rust 側も拒否するが、UI が「保存できたように見せる」のを
     display: flex;
     align-items: center;
     gap: var(--mx-space-2);
-    padding: var(--mx-space-2) var(--mx-space-2) var(--mx-space-2) var(--mx-space-4);
+    padding: var(--mx-space-3) var(--mx-space-3) var(--mx-space-3) var(--mx-space-6);
     border-bottom: 1px solid var(--mx-color-border-subtle);
   }
 
@@ -411,8 +414,10 @@ Rust 側も拒否するが、UI が「保存できたように見せる」のを
 
   .mx-settings__close {
     flex: none;
-    width: 28px;
-    height: 28px;
+    display: grid;
+    place-items: center;
+    inline-size: var(--mx-control-height);
+    block-size: var(--mx-control-height);
     border: none;
     border-radius: var(--mx-radius-sm);
     background: none;
@@ -423,6 +428,10 @@ Rust 側も拒否するが、UI が「保存できたように見せる」のを
     &:hover {
       background: var(--mx-color-bg-hover);
       color: var(--mx-color-fg);
+    }
+
+    &:active {
+      background: var(--mx-color-bg-inset);
     }
   }
 
@@ -442,16 +451,23 @@ Rust 側も拒否するが、UI が「保存できたように見せる」のを
     grid-template-columns: 10rem 1fr;
   }
 
+  /*
+   * 28 項目を 1 列に積むため、行どうしの間隔がそのまま圧迫感になる。
+   *
+   * 項目の中（ラベルと説明）が 8px、項目どうしが 20px、節どうしが 40px。
+   * 隣り合う段の差を 2 倍以上に保つと、読む側は数えずに「まとまり」を見分けられる。
+   * 12px で一律に積んでいた頃は、どこまでが 1 つの節なのかが罫線でしか分からなかった。
+   */
   .mx-settings__pane {
     min-width: 0;
     min-inline-size: 0;
     overflow-y: auto;
     margin: 0;
-    padding: var(--mx-space-4) var(--mx-space-6);
+    padding: var(--mx-space-6) var(--mx-space-8) var(--mx-space-10);
     border: none;
     display: flex;
     flex-direction: column;
-    gap: var(--mx-space-3);
+    gap: var(--mx-space-5);
   }
 
   /*

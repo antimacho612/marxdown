@@ -1,9 +1,9 @@
 <!--
-  Explorer の空状態（F-NAV-03 / #103）。
+  Explorer の空状態と、見出し行からツリーまでの積み方（F-NAV-03 / #103）。
 
   基点が決まるのは `marxdown <dir>` か「フォルダを開く」を通ったときだけなので、
   実アプリでこの状態を出すには起動し直すしかない。ここでは `loaders` でストアに直接入れる。
-  基点が決まった後の見た目は `lazy/FileTree.stories.svelte` にある。
+  ツリーそのものの見た目は `lazy/FileTree.stories.svelte`、絞り込みは `lazy/ExplorerBody.stories.svelte` にある。
 -->
 <script module lang="ts">
   import { defineMeta } from '@storybook/addon-svelte-csf';
@@ -13,6 +13,8 @@
 
   import Explorer from './Explorer.svelte';
   import { treeStore } from './tree.svelte';
+
+  const ROOT = 'C:\\Users\\me\\repos\\marxdown';
 
   const { Story } = defineMeta({
     title: '画面/エクスプローラー',
@@ -36,7 +38,26 @@
       treeStore.entries = {};
       treeStore.expanded = [];
       treeStore.loading = [];
+      treeStore.focusPath = null;
       documentStore.meta = meta;
+    };
+  }
+
+  /** 基点が決まっている状態。見出し行・ツールバー・ツリーの 3 段が縦に並ぶ。 */
+  function withRoot() {
+    return () => {
+      treeStore.root = ROOT;
+      treeStore.entries = {
+        [ROOT]: [
+          { name: 'docs', path: `${ROOT}\\docs`, dir: true },
+          { name: 'README.md', path: `${ROOT}\\README.md`, dir: false },
+          { name: 'package.json', path: `${ROOT}\\package.json`, dir: false },
+        ],
+      };
+      treeStore.expanded = [];
+      treeStore.loading = [];
+      treeStore.focusPath = null;
+      documentStore.meta = META;
     };
   }
 </script>
@@ -49,3 +70,9 @@
   親ディレクトリは分かっているので、ダイアログを開かずに基点にできる導線を足す（VS Code には無い）。
 -->
 <Story name="文書だけ開いている" loaders={[withoutRoot(META)]} />
+
+<!--
+  フォルダを開いた後。ツールバーは遅延チャンク側にあり（`lazy/ExplorerBody.svelte`）、ここで初めて現れる。
+  スクロールするのはツリーだけで、見出し行とツールバーは上に残る。
+-->
+<Story name="フォルダを開いている" loaders={[withRoot()]} />

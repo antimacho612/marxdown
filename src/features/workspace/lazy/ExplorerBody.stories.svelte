@@ -37,6 +37,8 @@
       treeStore.entries = { [ROOT]: filter.entries ?? ENTRIES };
       treeStore.expanded = [];
       treeStore.loading = [];
+      // 順路に載せる項目も戻す（`FileTree.stories.svelte` と同じ理由）。
+      treeStore.focusPath = null;
 
       resetFilter();
       filterStore.markdownOnly = filter.markdownOnly ?? false;

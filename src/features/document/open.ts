@@ -300,14 +300,16 @@ export async function openPath(path: string, options: OpenOptions = {}): Promise
     payload = await getPlatform().readDocument(path, options.encoding);
   } catch (e) {
     const kind = kindOf(e);
+    // 履歴から外したときだけ、そのことを文面に足す。外していないのに書くと、起きていないことを伝える。
+    const missing = kind === 'not-found' && config !== null;
     documentStore.notice = {
       level: 'error',
-      message: describeOpenError(e, path),
+      message: describeOpenError(e, path) + (missing ? ja.error.removedFromRecent : ''),
       // Marxdown では読めないが、OS の既定アプリでなら開ける（F-VIEW-06）。
       // ファイルツリーは Markdown 以外も並べる以上、画像や書庫を選ぶこと自体は避けられない。
       ...(kind === 'binary' && { actions: externalOpenActions(path) }),
     };
-    if (kind === 'not-found') config?.onMissing(path);
+    if (missing) config?.onMissing(path);
     return null;
   }
 
