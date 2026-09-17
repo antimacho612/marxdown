@@ -176,7 +176,8 @@ export function buildMenu(): MenuGroup[] {
  */
 function toAction(entry: MenuEntry): MenuAction {
   const found = commandEntry(entry.command);
-  const shown = found === undefined ? { id: entry.command, label: entry.command } : resolve(found);
+  // メニューが要るのはラベルとキーだけである。英語キーワード（`keywords`）はパレットの照合専用で、ここでは使わない。
+  const shown: { label: string; shortcut?: string } = found === undefined ? { label: entry.command } : resolve(found);
   const action: MenuAction = {
     id: entry.id,
     label: shown.label,
