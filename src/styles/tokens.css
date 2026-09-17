@@ -129,7 +129,11 @@
   --mx-color-accent-fg: #ffffff;
   --mx-color-danger: #bc2020;
   --mx-color-warning: #8a5a00;
-  --mx-color-selection: rgb(59 91 219 / 18%);
+  /*
+   * エディターの選択中は現在行のハイライトが消える（Monaco の仕様）ため、
+   * 選択の可視性はこの色だけで担う必要がある。18% では背景に埋もれて見づらかった（#125）。
+   */
+  --mx-color-selection: rgb(59 91 219 / 32%);
 
   /*
    * GitHub Alerts。
@@ -227,7 +231,7 @@
   --mx-color-accent-fg: #10131a;
   --mx-color-danger: #ff8b8b;
   --mx-color-warning: #e0b341;
-  --mx-color-selection: rgb(141 162 251 / 22%);
+  --mx-color-selection: rgb(141 162 251 / 32%);
 
   --mx-color-alert-tip: #5fd0a0;
   --mx-color-alert-important: #b197fc;
@@ -265,7 +269,7 @@
     --mx-color-accent-fg: #10131a;
     --mx-color-danger: #ff8b8b;
     --mx-color-warning: #e0b341;
-    --mx-color-selection: rgb(141 162 251 / 22%);
+    --mx-color-selection: rgb(141 162 251 / 32%);
 
     --mx-color-alert-tip: #5fd0a0;
     --mx-color-alert-important: #b197fc;
