@@ -66,6 +66,7 @@ pub const KEY_PREVIEW_FONT_SIZE: &str = "preview.fontSize";
 pub const KEY_PREVIEW_LINE_HEIGHT: &str = "preview.lineHeight";
 pub const KEY_PREVIEW_MAX_WIDTH: &str = "preview.maxWidth";
 pub const KEY_PREVIEW_SOFT_BREAK: &str = "preview.softBreak";
+pub const KEY_PREVIEW_TABLE_STYLE: &str = "preview.tableStyle";
 pub const KEY_PREVIEW_THEME: &str = "preview.theme";
 
 pub const KEY_WINDOW_CLOSE_TO_TRAY: &str = "window.closeToTray";
@@ -123,6 +124,17 @@ pub enum Theme {
     System,
     Light,
     Dark,
+}
+
+/// 表の罫線の引き方（F-VIEW-01）。
+/// 既定の `Lines` は横罫線だけを引く。全セルを囲むと、数行の表でも格子が本文の中で最も強い図形になる。
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum TableStyle {
+    #[default]
+    Lines,
+    Grid,
+    Zebra,
 }
 
 /// 折り返し（VS Code `editor.wordWrap`）。
@@ -306,6 +318,9 @@ pub struct Settings {
     /// 段落内の単独の改行を `<br>` として描画するか（`markdown-it` の `breaks` / #45）。
     #[serde(rename = "preview.softBreak")]
     pub preview_soft_break: bool,
+    /// 表の罫線の引き方（F-VIEW-01）。
+    #[serde(rename = "preview.tableStyle")]
+    pub preview_table_style: TableStyle,
     /// 本文の配色（[ADR-0014](../../docs/adr/0014-editor-theme-catalog.md)）。
     ///
     /// `editor.theme` と同じくカタログを共有する文字列である。
@@ -376,6 +391,7 @@ impl Default for Settings {
             preview_max_width: DEFAULT_MAX_WIDTH,
             // CommonMark 準拠。改行を <br> にしない（#45）。
             preview_soft_break: false,
+            preview_table_style: TableStyle::default(),
             preview_theme: DEFAULT_THEME_ID.to_owned(),
 
             window_close_to_tray: true,
@@ -485,6 +501,8 @@ impl Settings {
                 .unwrap_or(d.preview_max_width),
             preview_soft_break: take(&mut map, KEY_PREVIEW_SOFT_BREAK)
                 .unwrap_or(d.preview_soft_break),
+            preview_table_style: take(&mut map, KEY_PREVIEW_TABLE_STYLE)
+                .unwrap_or(d.preview_table_style),
             preview_theme: take_theme_id(&mut map, KEY_PREVIEW_THEME).unwrap_or(d.preview_theme),
 
             window_close_to_tray: take(&mut map, KEY_WINDOW_CLOSE_TO_TRAY)

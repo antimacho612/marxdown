@@ -38,6 +38,7 @@
   "preview.lineHeight": 1.75,
   "preview.maxWidth": 72.0,
   "preview.softBreak": false,
+  "preview.tableStyle": "lines",
   "preview.theme": "default",
   "window.closeToTray": true
 }

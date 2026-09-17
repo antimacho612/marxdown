@@ -403,6 +403,15 @@ export const ja = {
       label: 'ソフトブレーク',
       description: '段落内の単独の改行をそのまま <br> として描画するかどうかを制御します。',
     },
+    tableStyle: {
+      label: '表の罫線',
+      description: '表の区切りの引き方を制御します。列が多い表では、格子や交互の塗りのほうが行を追いやすくなります。',
+      options: {
+        lines: '横罫線のみ',
+        grid: '格子',
+        zebra: '交互に塗る',
+      },
+    },
 
     /**
      * 追加記法（04.tech-stack/04-markdown.md §3）。どれも既定 OFF。
