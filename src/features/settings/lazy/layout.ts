@@ -341,6 +341,13 @@ export const LAYOUT = [
       },
       {
         kind: 'field',
+        key: 'editor.wordSeparators',
+        widget: 'text',
+        label: ja.settings.editor.wordSeparators.label,
+        description: ja.settings.editor.wordSeparators.description,
+      },
+      {
+        kind: 'field',
         key: 'editor.cursorStyle',
         widget: 'select',
         label: ja.settings.editor.cursorStyle,

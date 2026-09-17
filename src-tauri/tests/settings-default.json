@@ -21,6 +21,7 @@
   "editor.scrollBeyondLastLine": true,
   "editor.theme": "default",
   "editor.tabSize": 2.0,
+  "editor.wordSeparators": "`~!@#$%^&*()-=+[{]}\\|;:'\",.<>/?",
   "editor.wordWrap": "on",
   "editor.wordWrapColumn": 80.0,
   "markdown.abbreviations": false,

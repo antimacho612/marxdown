@@ -495,6 +495,10 @@ export const ja = {
         label: 'タブをスペースで挿入',
         description: 'Tab キーを押したときにタブではなくスペースを挿入するかどうかを制御します。',
       },
+      wordSeparators: {
+        label: '単語の区切り文字',
+        description: '「Ctrl+←」「Ctrl+→」などの単語単位のカーソル移動で、区切りとして扱う文字を指定します。',
+      },
       cursorStyle: 'カーソルの形',
       cursorStyleOptions: {
         line: '縦線',

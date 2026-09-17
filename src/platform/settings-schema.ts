@@ -127,6 +127,8 @@ export const SETTINGS_SCHEMA = defineSettingsSchema({
    */
   'editor.theme': { kind: 'string', default: 'default' },
   'editor.tabSize': { kind: 'number', default: 2, min: 1, max: 8 },
+  /** 単語単位のカーソル移動（`ctrl + ←` / `ctrl + →`）で区切りとして扱う文字（#126）。既定値は VS Code と同じ。 */
+  'editor.wordSeparators': { kind: 'string', default: '`~!@#$%^&*()-=+[{]}\\|;:\'",.<>/?' },
   'editor.wordWrap': {
     kind: 'enum',
     values: ['off', 'on', 'wordWrapColumn', 'bounded'],

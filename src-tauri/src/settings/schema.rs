@@ -45,6 +45,7 @@ pub const KEY_EDITOR_RULERS: &str = "editor.rulers";
 pub const KEY_EDITOR_SCROLL_BEYOND_LAST_LINE: &str = "editor.scrollBeyondLastLine";
 pub const KEY_EDITOR_THEME: &str = "editor.theme";
 pub const KEY_EDITOR_TAB_SIZE: &str = "editor.tabSize";
+pub const KEY_EDITOR_WORD_SEPARATORS: &str = "editor.wordSeparators";
 pub const KEY_EDITOR_WORD_WRAP: &str = "editor.wordWrap";
 pub const KEY_EDITOR_WORD_WRAP_COLUMN: &str = "editor.wordWrapColumn";
 
@@ -83,6 +84,8 @@ pub const DEFAULT_EDITOR_LINE_HEIGHT: f64 = 1.6;
 /// 1 行目がウィンドウの縁に貼り付かないだけの余白。
 pub const DEFAULT_EDITOR_PADDING_TOP: f64 = 12.0;
 pub const DEFAULT_EDITOR_TAB_SIZE: f64 = 2.0;
+/// VS Code の `editor.wordSeparators` の既定値と同じ（Monaco も同じ値を使う）。
+pub const DEFAULT_EDITOR_WORD_SEPARATORS: &str = r#"`~!@#$%^&*()-=+[{]}\|;:'",.<>/?"#;
 pub const DEFAULT_EDITOR_WORD_WRAP_COLUMN: f64 = 80.0;
 
 /// アウトラインの既定。6（`h6`）は見出しの最大階層であり、実質「制限なし」を意味する。
@@ -268,6 +271,9 @@ pub struct Settings {
     pub editor_theme: String,
     #[serde(rename = "editor.tabSize")]
     pub editor_tab_size: f64,
+    /// 単語単位のカーソル移動（`Ctrl+←` / `Ctrl+→`）で区切りとして扱う文字（#126）。
+    #[serde(rename = "editor.wordSeparators")]
+    pub editor_word_separators: String,
     #[serde(rename = "editor.wordWrap")]
     pub editor_word_wrap: WordWrap,
     #[serde(rename = "editor.wordWrapColumn")]
@@ -356,6 +362,7 @@ impl Default for Settings {
             editor_scroll_beyond_last_line: true,
             editor_theme: DEFAULT_THEME_ID.to_owned(),
             editor_tab_size: DEFAULT_EDITOR_TAB_SIZE,
+            editor_word_separators: DEFAULT_EDITOR_WORD_SEPARATORS.to_owned(),
             editor_word_wrap: WordWrap::default(),
             editor_word_wrap_column: DEFAULT_EDITOR_WORD_WRAP_COLUMN,
 
@@ -447,6 +454,8 @@ impl Settings {
             editor_theme: take_theme_id(&mut map, KEY_EDITOR_THEME).unwrap_or(d.editor_theme),
             editor_tab_size: take_int(&mut map, KEY_EDITOR_TAB_SIZE, TAB_SIZE_RANGE)
                 .unwrap_or(d.editor_tab_size),
+            editor_word_separators: take(&mut map, KEY_EDITOR_WORD_SEPARATORS)
+                .unwrap_or(d.editor_word_separators),
             editor_word_wrap: take(&mut map, KEY_EDITOR_WORD_WRAP).unwrap_or(d.editor_word_wrap),
             editor_word_wrap_column: take_int(
                 &mut map,

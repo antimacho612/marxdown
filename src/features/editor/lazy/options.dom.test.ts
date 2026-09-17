@@ -34,6 +34,7 @@ describe('editorOptions', () => {
         'editor.cursorBlinking': 'phase',
         'editor.tabSize': 4,
         'editor.insertSpaces': false,
+        'editor.wordSeparators': './\\()"\'',
         'editor.rulers': [80, 100],
       }),
     );
@@ -46,6 +47,7 @@ describe('editorOptions', () => {
     expect(options.cursorBlinking).toBe('phase');
     expect(options.tabSize).toBe(4);
     expect(options.insertSpaces).toBe(false);
+    expect(options.wordSeparators).toBe('./\\()"\'');
     expect(options.rulers).toEqual([80, 100]);
   });
 
