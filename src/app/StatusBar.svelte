@@ -8,7 +8,7 @@
 -->
 <script lang="ts">
   import { documentStore, effectiveEol, nextEol as nextEolOf, toggleEol } from '@/features/document';
-  import { formatZoom, zoomReset } from '@/features/preview';
+  import { formatZoom } from '@/features/preview';
   import { viewStore } from '@/features/view';
   import { ja } from '@/i18n/ja';
 
@@ -104,15 +104,16 @@
   {/if}
 
   <!--
-    表示倍率（F-VIEW-11）。クリックで等倍に戻る（§3）。
+    表示倍率（F-VIEW-11）。クリックで倍率の選択肢を開く。
+
+    以前は押すと等倍に戻していた。
+    等倍へ戻す操作は `Ctrl+0` とコマンドパレットにあり、100% も選択肢の 1 つとして並ぶため、経路は失われない。
 
     倍率が 100% のときも表示する。
     現在が等倍であると分かること、および操作できる場所が常に同じ位置にあることを、項目を 1 つ減らすことより優先する。
   -->
   {#if meta}
-    <StatusBarButton onclick={() => void zoomReset()} title={ja.status.zoomReset}>
-      {formatZoom(viewStore.zoom)}
-    </StatusBarButton>
+    <StatusMenuButton kind="zoom" label={formatZoom(viewStore.zoom)} title={ja.status.zoomSelect} />
   {/if}
 </footer>
 

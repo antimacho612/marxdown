@@ -28,7 +28,7 @@
 
 {#snippet one()}
   <div style={BAR}>
-    <StatusBarButton title={ja.status.zoomReset} onclick={() => {}}>100%</StatusBarButton>
+    <StatusBarButton title={ja.status.zoomSelect} aria-haspopup="menu" onclick={() => {}}>100%</StatusBarButton>
   </div>
 {/snippet}
 
@@ -58,7 +58,7 @@
     <span>BOM</span>
     <span>{ja.status.chars(4210)}</span>
     <span style="flex: 1;"></span>
-    <StatusBarButton title={ja.status.zoomReset} onclick={() => {}}>120%</StatusBarButton>
+    <StatusBarButton title={ja.status.zoomSelect} aria-haspopup="menu" onclick={() => {}}>120%</StatusBarButton>
   </div>
 {/snippet}
 
