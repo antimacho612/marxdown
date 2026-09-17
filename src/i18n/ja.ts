@@ -345,12 +345,11 @@ export const ja = {
 
     /** 左のカテゴリ（ADR-0011）。並びは「触る頻度」ではなく「対象の大きさ」順。*/
     categories: {
-      appearance: '外観',
+      application: 'アプリケーション',
       preview: 'プレビュー',
       editor: 'エディター',
       markdown: '記法',
       outline: 'アウトライン',
-      window: 'ウィンドウ',
     },
     /** エディターの中の節。項目が 22 個あるので、見出し無しでは探せない。 */
     sections: {

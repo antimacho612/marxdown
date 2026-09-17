@@ -22,7 +22,7 @@ Rust 側も拒否するが、UI が「保存できたように見せる」のを
    *
    * 直前に表示していた位置は設定ファイルに残すほどの情報ではなく、同じセッションで開き直したときに復元できれば足りる。
    */
-  let lastCategory: CategoryId = 'appearance';
+  let lastCategory: CategoryId = 'application';
 </script>
 
 <script lang="ts">
