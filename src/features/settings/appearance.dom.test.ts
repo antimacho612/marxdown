@@ -189,3 +189,31 @@ describe('applyPalette (ADR-0013 / ADR-0014)', () => {
     expect(() => applyAppearance(withSettings({ 'preview.theme': 'nord' }))).not.toThrow();
   });
 });
+
+describe('applyTableStyle (preview.tableStyle)', () => {
+  it('既定（横罫線のみ）では属性を付けない', () => {
+    applyAppearance(DEFAULT_SETTINGS);
+
+    expect(surface('mx-preview').dataset['mxTableStyle']).toBeUndefined();
+  });
+
+  it('選んだ引き方が本文の面に付く', () => {
+    applyAppearance(withSettings({ 'preview.tableStyle': 'zebra' }));
+
+    expect(surface('mx-preview').dataset['mxTableStyle']).toBe('zebra');
+  });
+
+  it('既定に戻すと属性ごと外れる', () => {
+    applyAppearance(withSettings({ 'preview.tableStyle': 'grid' }));
+    applyAppearance(DEFAULT_SETTINGS);
+
+    expect(surface('mx-preview').dataset['mxTableStyle']).toBeUndefined();
+  });
+
+  /** 配色と同じく、クロームは巻き込まない（ADR-0013）。 */
+  it(':root には付けない', () => {
+    applyAppearance(withSettings({ 'preview.tableStyle': 'grid' }));
+
+    expect(root().dataset['mxTableStyle']).toBeUndefined();
+  });
+});

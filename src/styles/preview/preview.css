@@ -8,10 +8,13 @@
  */
 
 .mx-preview {
+  /* 固定した見出し行が止まる位置の計算にも使う（`.mx-table[data-mx-fits] thead th`）。 */
+  --mx-preview-padding-block-start: var(--mx-space-10);
+
   height: 100%;
   overflow-y: auto;
   overflow-x: hidden;
-  padding: var(--mx-space-10) var(--mx-space-6) 40vh;
+  padding: var(--mx-preview-padding-block-start) var(--mx-space-6) 40vh;
 
   font-family: var(--mx-font-content);
   font-size: calc(var(--mx-font-size-content) * var(--mx-zoom));
@@ -28,6 +31,12 @@
 
   /* 本文は選択できる */
   user-select: text;
+
+  /*
+   * 表が本文幅の外へ張り出すときの基準（`.mx-table[data-mx-wide]`）。
+   * `cqi` はこの要素の内容領域（padding の内側）を指すため、張り出しても横スクロールバーは出ない。
+   */
+  container-type: inline-size;
 
   /* 日本語と英数字の間隔を整える */
   text-spacing-trim: trim-start;
@@ -379,26 +388,98 @@
 /* ========== 表 ========== */
 
 /*
- * 罫線は横だけにする。
+ * 表は `.mx-table` で包んである（`markdown/plugins/table.ts`）。
+ * 横スクロールと端の処理は包む要素が持ち、表自身は罫線と揃えだけを担当する。
+ *
+ * 属性は描画後に `features/preview/table.ts` が測って付ける。
+ * `data-mx-wide` は本文幅に収まらなかった表、`data-mx-fits` は（張り出した後に）収まった表、
+ * `data-mx-scrolls` は張り出しても収まらなかった表である。
+ * どれも付いていないのは測る前の状態で、そのときは横スクロールだけができる。
+ */
+.mx-table {
+  max-width: 100%;
+  margin: 0 auto var(--mx-space-6);
+  overflow-x: auto;
+}
+
+/*
+ * 本文幅に収まらない表は、プレビューの幅いっぱいまで張り出す。
+ *
+ * 本文の測度（既定 72ch）は文章を読むための幅であり、7 列の表を入れると 1 列あたり 10 文字で折り返す。
+ * 単位が `cqi` なのは、基準がプレビューの内容領域（`.mx-preview` の padding の内側）だからである。
+ * 本文幅の設定にも、ペインの開閉にも、この 1 本で追従する。
+ *
+ * 本文の直下にある表だけを対象にする。
+ * 箇条書きや引用の中にある表は、基準になる幅が本文幅ではないため、張り出させると位置がずれる。
+ */
+.mx-content > .mx-table[data-mx-wide] {
+  width: 100cqi;
+  max-width: 100cqi;
+  margin-inline: calc(50% - 50cqi);
+}
+
+/*
+ * 横に収まった表だけ、スクロール容器であることをやめる。
+ *
+ * 見出し行の `position: sticky` は、スクロール容器の縦方向のスクロール量を基準に位置が決まる。
+ * `overflow-x` を持つ要素は縦にもスクロール容器になるため、包む要素を基準にすると見出しが固定されない。
+ * ここを `visible` にすると、基準が `.mx-preview` になって本文のスクロールに対して固定される。
+ */
+.mx-table[data-mx-fits] {
+  overflow: visible;
+}
+
+.mx-table[data-mx-fits] thead th {
+  position: sticky;
+  /*
+   * 止まる位置は、スクロール容器の padding の内側が基準になる。
+   * `0` にすると本文は padding の帯を通って見え、固定した見出しの上を行が流れていく。
+   * padding のぶんだけ戻して、面の上端で止める。
+   */
+  top: calc(-1 * var(--mx-preview-padding-block-start));
+  z-index: 1;
+  /* 下の行が透けて見えないよう、面を自分で塗る。 */
+  background-color: var(--mx-color-bg);
+  /*
+   * 罫線ではなく影で引く。
+   * `border-collapse: collapse` の罫線はセルの間で共有されるため、固定された見出しと一緒には動かない。
+   */
+  border-bottom: 0;
+  box-shadow: inset 0 -2px 0 var(--mx-color-border);
+}
+
+/*
+ * 列は中身の幅を取る（`max-content`）。
+ *
+ * 既定（`auto`）だと、表は与えられた幅に収まるところまで各セルを折り返す。
+ * 8 列の表が本文幅に押し込まれて、1 列あたり数文字で折り返された状態は「収まっている」と判定され、
+ * 張り出しも横スクロールも起きない。
+ * 1 列あたりの上限はセル側の `max-width` が持つ。
+ */
+.mx-content table {
+  width: max-content;
+  border-collapse: collapse;
+  font-size: 0.925em;
+}
+
+/*
+ * 罫線は横だけにする（既定 / `preview.tableStyle` が `lines`）。
  *
  * 全セルを囲むと、数行の表でも格子が本文の中で最も強い図形になる。
  * 行を追うために要るのは横の区切りであって、縦の区切りは列の間隔が担える。
  */
-.mx-content table {
-  max-width: min(100%, calc(var(--mx-content-width) + 8ch));
-  margin: 0 auto var(--mx-space-6);
-  border-collapse: collapse;
-  font-size: 0.925em;
-  display: block;
-  overflow-x: auto;
-}
-
 .mx-preview :is(th, td) {
   padding: var(--mx-space-2) var(--mx-space-4) var(--mx-space-2) 0;
   border: 0;
   border-bottom: 1px solid var(--mx-color-border-subtle);
   text-align: start;
   vertical-align: top;
+  /*
+   * 1 列が伸び続けるのを止める。
+   * URL や識別子が 1 つ混じるだけで、列幅の配分が崩れて他の列が潰れる。
+   * 折り返し自体は `.mx-preview` の `overflow-wrap: anywhere` が行う。
+   */
+  max-width: 44ch;
 }
 
 .mx-preview :is(th, td):last-child {
@@ -414,6 +495,123 @@
 /* 最終行の罫線は表の下端になる。段落との間に線が 1 本残ると、次の見出しの罫線と紛らわしい。 */
 .mx-preview tbody > tr:last-child > td {
   border-bottom: 0;
+}
+
+/* 行を追う手がかり。横に長い表で、視線が 1 行の中に留まる。 */
+.mx-preview tbody > tr:hover {
+  background-color: var(--mx-color-bg-hover);
+}
+
+/*
+ * 揃え（`markdown/plugins/table.ts`）。
+ *
+ * GFM の `---:` は markdown-it が `style` 属性で出力するが、`markdown/sanitize.ts` がそれを落とす。
+ * 属性へ移し替えたものをここで解釈する。
+ */
+.mx-preview :is(th, td)[data-mx-align='left'] {
+  text-align: left;
+}
+
+.mx-preview :is(th, td)[data-mx-align='center'] {
+  text-align: center;
+}
+
+.mx-preview :is(th, td)[data-mx-align='right'] {
+  text-align: right;
+}
+
+/* 数値だけの列。桁の位置が縦に揃う。 */
+.mx-preview :is(th, td)[data-mx-num] {
+  font-variant-numeric: tabular-nums;
+}
+
+/* 格子（`preview.tableStyle` が `grid`）。列が多い表では、縦の区切りがあるほうがセルの対応を追いやすい。 */
+.mx-preview[data-mx-table-style='grid'] :is(th, td) {
+  padding-inline: var(--mx-space-3);
+  border: 1px solid var(--mx-color-border-subtle);
+}
+
+.mx-preview[data-mx-table-style='grid'] th {
+  border-bottom-color: var(--mx-color-border);
+}
+
+.mx-preview[data-mx-table-style='grid'] tbody > tr:last-child > td {
+  border-bottom: 1px solid var(--mx-color-border-subtle);
+}
+
+/* 交互の塗り（`preview.tableStyle` が `zebra`）。行数が多い表で、横方向に視線が滑らない。 */
+.mx-preview[data-mx-table-style='zebra'] tbody > tr:nth-child(even) {
+  background-color: var(--mx-color-bg-subtle);
+}
+
+/*
+ * 端のフェード。横に切れていることを示す。
+ *
+ * スクロールバーは自動で隠れるため、それだけでは「全部見えている」と読める。
+ * 幅は `features/preview/table.ts` が測るので、実際にはみ出している表にしか付かない。
+ */
+.mx-table[data-mx-scrolls] {
+  --mx-table-fade: 2rem;
+  --mx-table-fade-start: 0px;
+  --mx-table-fade-end: var(--mx-table-fade);
+
+  mask-image: linear-gradient(
+    to right,
+    transparent 0,
+    black var(--mx-table-fade-start),
+    black calc(100% - var(--mx-table-fade-end)),
+    transparent 100%
+  );
+}
+
+/*
+ * スクロール位置に追従させる（progressive enhancement）。
+ *
+ * 端まで送った側のフェードは消す。残したままだと、まだ続きがあるように見える。
+ * `animation-timeline` が無い環境では上の静的な指定が残り、右端だけがフェードした状態になる。
+ */
+@property --mx-table-fade-start {
+  syntax: '<length>';
+  inherits: false;
+  initial-value: 0px;
+}
+
+@property --mx-table-fade-end {
+  syntax: '<length>';
+  inherits: false;
+  initial-value: 0px;
+}
+
+@keyframes mx-table-fade-start {
+  from {
+    --mx-table-fade-start: 0px;
+  }
+
+  to {
+    --mx-table-fade-start: var(--mx-table-fade);
+  }
+}
+
+@keyframes mx-table-fade-end {
+  from {
+    --mx-table-fade-end: var(--mx-table-fade);
+  }
+
+  to {
+    --mx-table-fade-end: 0px;
+  }
+}
+
+@supports (animation-timeline: scroll(self inline)) {
+  .mx-table[data-mx-scrolls] {
+    animation:
+      mx-table-fade-start linear both,
+      mx-table-fade-end linear both;
+    animation-timeline: scroll(self inline), scroll(self inline);
+    animation-range:
+      0 var(--mx-table-fade),
+      calc(100% - var(--mx-table-fade)) 100%;
+  }
 }
 
 /* ========== 画像・リンク ========== */

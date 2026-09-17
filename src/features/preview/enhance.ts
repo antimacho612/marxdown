@@ -12,6 +12,8 @@ import { dirOf } from '@/lib/path';
 import { formatSrcset, parseSrcset } from '@/lib/srcset';
 import { getPlatform, type CoreError } from '@/platform';
 
+import { observeTables, releaseTables } from './table';
+
 /** 処理済みの印。2 回目の `enhance` はこれを見て未処理の要素だけを対象にする。 */
 const DONE = 'mxEnhanced';
 
@@ -28,6 +30,10 @@ export interface EnhanceOptions {
  * 画像 1 枚の解決が遅いためにコピーボタンが表示されない、という依存関係を作らない。
  */
 export function enhance(container: HTMLElement, options: EnhanceOptions): void {
+  // 表だけはアイドルを待たずに測る。
+  // 幅が決まるまで張り出しも見出しの固定も当たらないため、後に回すと読み始めてから表の見た目が変わる。
+  // 実際に測るのは表がある文書だけで、無ければ `querySelectorAll` 1 回で終わる。
+  observeTables(container);
   void enhanceCodeBlocks(container);
   void enhanceImages(container, options.baseDir);
   void enhanceMath(container);
@@ -37,8 +43,8 @@ export function enhance(container: HTMLElement, options: EnhanceOptions): void {
 /**
  * 遅延チャンクが抱えているものを捨てる（N-PERF-06）。
  *
- * 対象はいまのところ Mermaid だけである（`IntersectionObserver` と描画済み SVG のキャッシュ）。
- * ロードされていなければ何もしない。
+ * 対象は Mermaid（`IntersectionObserver` と描画済み SVG のキャッシュ）と、表の幅の監視である。
+ * Mermaid はロードされていなければ何もしない。
  *
  * **`paint` のたびに呼んではいけない。** キャッシュが毎回空になり、Split の編集中に全図が描き直される。
  * 呼ぶのは文書を閉じたときだけである（`features/document/close.ts`）。
@@ -46,6 +52,7 @@ export function enhance(container: HTMLElement, options: EnhanceOptions): void {
 export function releasePreviewResources(): void {
   disposeMermaid?.();
   disposeMermaid = null;
+  releaseTables();
 }
 
 /** ロード済みの Mermaid の解放口。`main` から Mermaid を静的に辿らせないため、関数だけを預かる。 */

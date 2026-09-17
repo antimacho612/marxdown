@@ -174,6 +174,13 @@ export const SETTINGS_SCHEMA = defineSettingsSchema({
   /** 段落内の単独の改行を `<br>` として描画するか（`markdown-it` の `breaks` / #45）。既定は CommonMark 準拠で false。 */
   'preview.softBreak': { kind: 'boolean', default: false },
   /**
+   * 表の罫線の引き方。
+   *
+   * 既定の `lines` は横罫線だけを引く。全セルを囲むと、数行の表でも格子が本文の中で最も強い図形になる。
+   * 列が多い表では行を追いにくくなるため、格子（`grid`）と交互の塗り（`zebra`）を選べるようにしてある。
+   */
+  'preview.tableStyle': { kind: 'enum', values: ['lines', 'grid', 'zebra'], default: 'lines' },
+  /**
    * 本文の配色（ADR-0014）。`editor.theme` と同じくカタログを共有する文字列である。
    *
    * 選択肢は組み込みの 50 枚（`features/theme/lazy/presets.ts`）と `themes/` に置かれたファイルの合成であり、ここで数え上げられない。
@@ -228,6 +235,7 @@ export type BooleanKey = { [K in keyof Schema]: Schema[K] extends { kind: 'boole
 
 /** 個々の設定値の型。UI 側が `Settings` のキーを覚えずに済むよう、別名を切ってある。 */
 export type Theme = Settings['theme'];
+export type TableStyle = Settings['preview.tableStyle'];
 export type WindowCloseBehavior = Settings['window.closeBehavior'];
 export type WordWrap = Settings['editor.wordWrap'];
 export type LineNumbers = Settings['editor.lineNumbers'];

@@ -19,6 +19,7 @@ import { extractOutline, lineMapPlugin, type OutlineItem } from './plugins/line-
 import { mathPlugin } from './plugins/math';
 import { mermaidPlugin } from './plugins/mermaid';
 import { useSyntax } from './plugins/syntax';
+import { tablePlugin } from './plugins/table';
 import { taskListPlugin } from './plugins/task-list';
 
 export { loadSyntax, SYNTAX_NAMES, type SyntaxName } from './plugins/syntax';
@@ -99,6 +100,10 @@ export function createMarkdownIt(config: RenderConfig = {}): MarkdownIt {
   // Mermaid（F-VIEW-12）。`mermaid` フェンスの型を差し替えてプレースホルダにするだけで、描画は遅延チャンクが行う。
   // Mermaid は全依存の中で突出して重い（04.tech-stack/04-markdown.md §4）。
   md.use(mermaidPlugin);
+
+  // 表（F-VIEW-01）。包む要素と揃えの属性を足すだけで、表の解釈そのものは変えない。
+  // `multilineTables`（追加記法）が差し替えるのはブロックルールであり、ここが見るトークンの形は変わらない。
+  md.use(tablePlugin);
 
   // 設定で有効化された追加記法（`markdown.*`）。既定では 1 つも入らない。
   // 標準の記法より後に置く。定義リストや上付き下付きが、既定の記法の解釈を変えないようにするためである。

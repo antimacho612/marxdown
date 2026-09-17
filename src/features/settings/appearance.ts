@@ -31,6 +31,9 @@ export function applyAppearance(values: Settings): void {
   // エディター側は Monaco がマウントされたときに `features/editor/lazy/palette.ts` が行う。
   applyPreviewTheme(values['preview.theme']);
 
+  // 表の罫線（F-VIEW-01）。配色と同じく面そのものへ属性を付け、CSS 側で規則を切り替える。
+  applyTableStyle(document.querySelector(PREVIEW_ROOT), values['preview.tableStyle']);
+
   // フォント名は既定のスタックの前に追加する（F-CONF-04）。
   // 置き換えると、そのフォントに含まれない文字（日本語 / 記号）のフォールバック先が失われる。
   const family = formatFontFamily(values['preview.fontFamily']);
@@ -71,6 +74,18 @@ function applyPalette(element: HTMLElement | null, attribute: 'mxTheme' | 'mxEdi
   if (!element) return;
   if (palette === 'default') delete element.dataset[attribute];
   else element.dataset[attribute] = palette;
+}
+
+/**
+ * 表の罫線（`preview.tableStyle`）。
+ *
+ * 既定（`lines`）のときは属性ごと削除する。
+ * `applyPalette` と同じ理由で、設定を変更していない状態の DOM を変えない（F-CONF-02）。
+ */
+function applyTableStyle(element: HTMLElement | null, style: Settings['preview.tableStyle']): void {
+  if (!element) return;
+  if (style === 'lines') delete element.dataset['mxTableStyle'];
+  else element.dataset['mxTableStyle'] = style;
 }
 
 /**
