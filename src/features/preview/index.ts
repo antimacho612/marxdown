@@ -11,4 +11,4 @@ export { installLinkHandler, type LinkTargets } from './links';
 export { installTaskHandler, type TaskTargets } from './task';
 export { openSearchLazily } from './open-search';
 export { paint } from './paint';
-export { applyZoom, formatZoom, zoomIn, zoomOut, zoomReset } from './zoom';
+export { applyZoom, formatZoom, ZOOM_STEPS, zoomIn, zoomOut, zoomReset } from './zoom';

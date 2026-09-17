@@ -17,8 +17,11 @@ export const ZOOM_DEFAULT = 1;
  * 倍率の刻み。
  * 等比ではなく、使用頻度の高い値（100% / 125% / 150%）に一致するよう並べる。
  * 操作の基準を操作回数ではなく表示される倍率に置くためである。
+ *
+ * ステータスバーの倍率メニュー（`features/status/lazy/items.ts`）が並べる選択肢でもある。
+ * キーボードの拡縮とメニューの選択肢を同じ並びにすることで、どちらで操作しても到達できる値が一致する。
  */
-const STEPS = [0.5, 0.67, 0.75, 0.8, 0.9, 1, 1.1, 1.25, 1.5, 1.75, 2, 2.5, 3] as const;
+export const ZOOM_STEPS = [0.5, 0.67, 0.75, 0.8, 0.9, 1, 1.1, 1.25, 1.5, 1.75, 2, 2.5, 3] as const;
 
 /** 永続化を待つ時間。`Ctrl+=` の連打で毎回ファイルを書かないため。 */
 const PERSIST_DEBOUNCE_MS = 400;
@@ -66,9 +69,9 @@ export function formatZoom(zoom: number): string {
  */
 function nextStep(current: number, direction: 1 | -1): number {
   if (direction === 1) {
-    return STEPS.find((s) => s > current + 1e-6) ?? ZOOM_MAX;
+    return ZOOM_STEPS.find((s) => s > current + 1e-6) ?? ZOOM_MAX;
   }
-  return STEPS.findLast((s) => s < current - 1e-6) ?? ZOOM_MIN;
+  return ZOOM_STEPS.findLast((s) => s < current - 1e-6) ?? ZOOM_MIN;
 }
 
 function clamp(zoom: number): number {

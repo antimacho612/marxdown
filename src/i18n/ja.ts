@@ -623,7 +623,8 @@ export const ja = {
     reinterpreted: (name: string) => `${name} として読み直しました`,
     /** モードの切り替え（§3「クリックでモード切替メニュー」）。 */
     modeSwitch: 'クリックで表示モードを切り替える',
-    zoomReset: 'クリックで等倍に戻す',
+    /** 表示倍率（§3 / `features/preview/zoom.ts`）。選択肢は `Ctrl+=` / `Ctrl+-` の刻みと同じ並びである。 */
+    zoomSelect: 'クリックで表示倍率を変更する',
     parsedIn: (ms: number) => `パース ${ms.toFixed(1)}ms`,
     paintedIn: (ms: number) => `描画 ${ms.toFixed(1)}ms`,
   },

@@ -117,7 +117,7 @@
   class="mx-statusmenu"
   role="menu"
   tabindex="-1"
-  style="left: {anchor.left}px; bottom: {anchor.bottom}px"
+  style="{anchor.side}: {anchor.inset}px; bottom: {anchor.bottom}px"
   bind:this={panel}
   onkeydown={onKeydown}
 >
@@ -142,7 +142,7 @@
    * ステータスバーの項目から上方向に開く（下に領域が無いため）。
    *
    * `fixed` にしているのは、ステータスバーが `overflow: hidden` であるためである（`styles/shell.css`）。
-   * `left` / `bottom` はボタン側が測定して渡す。
+   * 位置はボタン側が測定して渡す。左右どちらの端を基準にするかもそこで決まる（`features/status/props.ts`）。
    */
   .mx-statusmenu {
     position: fixed;
