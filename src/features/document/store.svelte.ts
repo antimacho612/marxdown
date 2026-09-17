@@ -43,23 +43,26 @@ export interface NoticeAction {
  * 通知バー（03.ux-spec/07-status-and-notifications.md §2）。本文の上に薄く重ねる。
  *
  * モーダルダイアログはデータ消失の可能性がある場面だけに限定するという方針の受け皿である。
- * 読み込みの失敗も外部変更もここに表示する。
+ * 読み込みの失敗も、編集中に外部で変更されたこともここに表示する。
+ *
+ * ここに出すのは、選択を求めるものと、失敗を伝えるものだけである。
+ * 済んだことを伝えるだけのメッセージは本文の上に重ねず、ステータスバー（`DocumentStore.statusMessage`）へ回す。
+ * 自動で消える仕組みを持たないのはそのためで、ここに出したものは操作するまで残る。
  */
 export interface Notice {
   level: 'info' | 'warning' | 'error';
   message: string;
-  /** 操作が必要な通知の選択肢。空なら情報通知。 */
+  /** 操作が必要な通知の選択肢。 */
   actions?: NoticeAction[];
-  /**
-   * この ms 後に自動で消える。`undefined` は消えない。
-   * 03.ux-spec/07-status-and-notifications.md §2 が自動消滅を認めているのは情報通知だけなので、
-   * 警告・エラーには付けないこと。
-   */
-  autoDismissMs?: number;
 }
 
-/** 情報通知の既定寿命（03.ux-spec/07-status-and-notifications.md §2「3 秒で自動消滅」）。 */
-export const INFO_NOTICE_MS = 3000;
+/**
+ * ステータスバーの一時メッセージが消えるまでの時間（03.ux-spec/07-status-and-notifications.md §2「3 秒で自動消滅」）。
+ *
+ * NOTE: §2 は情報を通知バーに出す前提で書かれているが、本文の上に重なるのが読書の妨げになるため、
+ * 自動で消える情報だけステータスバーへ移した（issue #60）。消える時間は §2 のままである。
+ */
+export const STATUS_MESSAGE_MS = 3000;
 
 /**
  * カーソル位置（03.ux-spec/07-status-and-notifications.md §3）。行も列も 1 始まりで、Monaco と同じである。
@@ -107,54 +110,59 @@ class DocumentStore {
    */
   eolOverride = $state<Eol | null>(null);
 
-  #notice = $state<Notice | null>(null);
+  /** 通知バーの内容。操作するまで消えない（`Notice`）。 */
+  notice = $state<Notice | null>(null);
+
+  #statusMessage = $state<string | null>(null);
 
   /**
    * 自動消滅タイマー。
    *
-   * 通知を出す側（`open.ts` など）は UI の外にあるため、タイマーはストアが持つ。
+   * メッセージを出す側（`open.ts` など）は UI の外にあるため、タイマーはストアが持つ。
    * 1 回だけの `setTimeout` であり、ポーリングではない（05.performance-budget/04-targets.md §5「アイドル時のタイマーを増やさない」）。
    */
   #dismissTimer: ReturnType<typeof setTimeout> | null = null;
 
-  get notice(): Notice | null {
-    return this.#notice;
+  /**
+   * ステータスバーに一時表示するメッセージ。
+   *
+   * 済んだことを伝えるだけの内容はここに出す（「外部の変更を読み込みました」など）。
+   * 本文の上に重ねると、読んでいる最中に視線を奪ったうえ、本文の先頭を隠す。
+   */
+  get statusMessage(): string | null {
+    return this.#statusMessage;
   }
 
   /**
    * 代入するだけで自動消滅のタイマーが張り替わる。
    *
-   * 個別の setter メソッドを置かずにアクセサにしているのは、通知を設定する経路を 1 本にするためである。
-   * `store.notice = x` 以外の入口を作ると、タイマーの設定が漏れた経路が生まれる。
+   * 個別の setter メソッドを置かずにアクセサにしているのは、メッセージを設定する経路を 1 本にするためである。
+   * `store.statusMessage = x` 以外の入口を作ると、タイマーの設定が漏れた経路が生まれる。
    */
-  set notice(notice: Notice | null) {
-    this.#notice = notice;
-    this.#scheduleDismiss(notice);
+  set statusMessage(message: string | null) {
+    this.#statusMessage = message;
+    this.#scheduleDismiss(message);
   }
 
-  #scheduleDismiss(notice: Notice | null): void {
+  #scheduleDismiss(message: string | null): void {
     if (this.#dismissTimer !== null) {
       clearTimeout(this.#dismissTimer);
       this.#dismissTimer = null;
     }
-    if (notice?.autoDismissMs === undefined) return;
+    if (message === null) return;
 
     this.#dismissTimer = setTimeout(() => {
       this.#dismissTimer = null;
-      // 表示中の通知が差し替わっていたら何もしない
-      if (this.#notice === notice) this.#notice = null;
-    }, notice.autoDismissMs);
+      // 表示中のメッセージが差し替わっていたら何もしない
+      if (this.#statusMessage === message) this.#statusMessage = null;
+    }, STATUS_MESSAGE_MS);
   }
 }
 
 /** ドキュメントの派生状態。モジュールの singleton として共有する。 */
 export const documentStore = new DocumentStore();
 
-/** 情報通知を出す。3 秒で自動的に消える（03.ux-spec/07-status-and-notifications.md §2）。 */
-export function notifyInfo(message: string): void {
-  documentStore.notice = {
-    level: 'info',
-    message,
-    autoDismissMs: INFO_NOTICE_MS,
-  };
+/** ステータスバーに一時メッセージを出す。3 秒で自動的に消える（03.ux-spec/07-status-and-notifications.md §2）。 */
+export function notifyStatus(message: string): void {
+  documentStore.statusMessage = message;
 }

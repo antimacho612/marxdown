@@ -47,6 +47,7 @@ beforeEach(() => {
   document.body.innerHTML = '<div id="mx-preview"></div>';
   documentStore.meta = null;
   documentStore.notice = null;
+  documentStore.statusMessage = null;
   documentStore.eolOverride = null;
   setDirty(false);
   recentStore.entries = [];

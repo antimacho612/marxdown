@@ -28,5 +28,5 @@ export async function reinterpret(encoding: Encoding): Promise<void> {
   const meta = documentStore.meta;
   if (meta === null || meta.encoding === encoding) return;
 
-  await reloadCurrent({ encoding, notice: ja.status.reinterpreted(ja.status.encoding[encoding]) });
+  await reloadCurrent({ encoding, status: ja.status.reinterpreted(ja.status.encoding[encoding]) });
 }

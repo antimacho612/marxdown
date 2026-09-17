@@ -33,9 +33,10 @@
    * ストアはモジュールの singleton なので、story ごとに入れ直す。
    * `loaders` を使う理由は Welcome.stories.svelte と同じ。
    */
-  function seed(meta: DocumentMeta | null, zoom = 1, mode: ViewMode = 'preview') {
+  function seed(meta: DocumentMeta | null, zoom = 1, mode: ViewMode = 'preview', message: string | null = null) {
     return () => {
       documentStore.meta = meta;
+      documentStore.statusMessage = message;
       documentStore.textStats = meta ? { chars: 12_345, words: 2100, readingMinutes: 4 } : null;
       viewStore.zoom = zoom;
       viewStore.mode = mode;
@@ -64,3 +65,9 @@
 
 <!-- 何も開いていないとき。左側が丸ごと消え、倍率も出ない。 -->
 <Story name="ファイル未オープン" loaders={[seed(null)]} />
+
+<!--
+  一時メッセージ（issue #60）。左の項目を押し出さず、右端の倍率も残ることを確かめるのがこの story の目的である。
+  ストア側のタイマーで 3 秒後に消えるため、見るには story を開き直す。
+-->
+<Story name="一時メッセージ" loaders={[seed(BASE, 1, 'preview', '外部の変更を読み込みました')]} />

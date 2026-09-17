@@ -17,7 +17,23 @@
   });
 </script>
 
-<Story name="情報" args={{ notice: { level: 'info', message: '外部の変更を読み込みました' } }} />
+<!--
+  情報（`level: 'info'`）。選択肢を伴うものだけがここに残る（`features/preview/links.ts`）。
+  自動で消える情報はステータスバーへ移した（issue #60）。
+-->
+<Story
+  name="情報"
+  args={{
+    notice: {
+      level: 'info',
+      message: '既定のアプリで開きますか: C:/work/spec.pdf',
+      actions: [
+        { label: '開く', run: () => {} },
+        { label: 'フォルダで表示', run: () => {} },
+      ],
+    },
+  }}
+/>
 
 <Story name="警告" args={{ notice: { level: 'warning', message: '不明な引数: --foo' } }} />
 

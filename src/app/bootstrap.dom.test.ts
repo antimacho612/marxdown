@@ -80,6 +80,7 @@ beforeEach(() => {
   preview.id = 'mx-preview';
   document.body.append(preview);
   documentStore.notice = null;
+  documentStore.statusMessage = null;
   resetTabs();
   settingsStore.values = DEFAULT_SETTINGS;
   document.documentElement.removeAttribute('style');

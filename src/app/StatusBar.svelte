@@ -3,6 +3,7 @@
   押しても何も起きないものはボタンにしない（§3.1）。
   エンコーディングの再解釈は読み直しを伴い、EOL の変換は次の保存で書き戻す（`document/encoding.ts` / `document/eol.ts`）。
   スクロール同期の `⇄` は Split のときだけ表示する（03.ux-spec/03-split-mode.md §2）。
+  自動で消える情報（「外部の変更を読み込みました」など）もここに出す（issue #60）。
   計測値は開発ビルドのみ表示する（06.roadmap/invariants.md）。
 -->
 <script lang="ts">
@@ -15,6 +16,7 @@
   import StatusMenuButton from './StatusMenuButton.svelte';
 
   const meta = $derived(documentStore.meta);
+  const message = $derived(documentStore.statusMessage);
   const textStats = $derived(documentStore.textStats);
   const stats = $derived(documentStore.stats);
 
@@ -84,7 +86,16 @@
     </StatusBarButton>
   {/if}
 
-  <span class="mx-statusbar__spacer"></span>
+  <!--
+    一時メッセージ（03.ux-spec/07-status-and-notifications.md §2 の「情報」/ issue #60）。
+    本文の上に重ねると読書の視線を奪うため、自動で消える情報はここに出す。
+    要素は空でも残す。`aria-live` は後から現れた領域の変化を読み上げないため、入れ替えるのは中身だけにする。
+  -->
+  <span class="mx-statusbar__message" role="status">
+    {#key message}
+      <span class="mx-statusbar__message-text">{message ?? ''}</span>
+    {/key}
+  </span>
 
   {#if import.meta.env.DEV && stats}
     {#if stats.chunks > 1}<span>{stats.chunks} chunks</span>{/if}
@@ -138,8 +149,32 @@
     }
   }
 
-  .mx-statusbar__spacer {
+  /*
+   * 一時メッセージ。空のときは余白として働き、左右の項目の位置を動かさない。
+   * 長い文言でも右端の倍率を押し出さないよう、自分が先に縮んで省略記号になる。
+   */
+  .mx-statusbar__message {
     flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .mx-statusbar__message-text {
+    /* 出現に 150ms（03.ux-spec/09-motion.md） */
+    animation: mx-status-message-in 150ms ease-out;
+  }
+
+  @keyframes mx-status-message-in {
+    from {
+      opacity: 0;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .mx-statusbar__message-text {
+      animation: none;
+    }
   }
 
   /*

@@ -104,7 +104,6 @@ describe('壊れた settings.json の通知', () => {
 
     const notice = documentStore.notice;
     expect(notice?.level).toBe('error');
-    expect(notice?.autoDismissMs).toBeUndefined();
     expect(notice?.actions?.map((a) => a.label)).toEqual(['ファイルを開く']);
   });
 
