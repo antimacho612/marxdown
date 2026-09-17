@@ -111,6 +111,10 @@ pub fn create(
 
     let window = builder.build()?;
 
+    // Chromium 既定のコンテキストメニューを抑止する（`webview.rs`）。
+    // ウィンドウは `visible: false` で生成されるため、ここで当てておけば表示されている間は一度も出ない。
+    crate::webview::disable_default_context_menu(&window);
+
     spawn_show_fallback(app.clone(), label.to_string());
     Ok(window)
 }
