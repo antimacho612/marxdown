@@ -176,6 +176,12 @@
   --mx-color-code-variable: #b91c1c;
   --mx-color-code-builtin: #0e7490;
 
+  /*
+   * インラインコードの文字色。fg と accent の混色にしてあり、`theme/lazy/preset.ts` の TokenKey（18 個で固定）に
+   * 新しいキーを足さずに 50 枚のプリセットへ反映される。fg が主体なので、コントラスト比の保証はプリセットの fg 側にそのまま乗る。
+   */
+  --mx-color-code-inline: color-mix(in srgb, var(--mx-color-fg) 65%, var(--mx-color-accent) 35%);
+
   --mx-shadow-1: 0 1px 2px rgb(0 0 0 / 6%), 0 1px 6px rgb(0 0 0 / 4%);
 
   /* ========== レイアウト ========== */
