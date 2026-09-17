@@ -69,7 +69,7 @@ pub const KEY_PREVIEW_SOFT_BREAK: &str = "preview.softBreak";
 pub const KEY_PREVIEW_TABLE_STYLE: &str = "preview.tableStyle";
 pub const KEY_PREVIEW_THEME: &str = "preview.theme";
 
-pub const KEY_WINDOW_CLOSE_BEHAVIOR: &str = "window.closeBehavior";
+pub const KEY_WINDOW_CLOSE_TO_TRAY: &str = "window.closeToTray";
 
 /// プレビューの既定。`src/styles/tokens.css` と揃える。
 pub const DEFAULT_FONT_SIZE: f64 = 16.0;
@@ -135,16 +135,6 @@ pub enum TableStyle {
     Lines,
     Grid,
     Zebra,
-}
-
-/// ウィンドウを閉じたときの挙動（F-WIN-* / ADR-0007）。
-/// 既定を `Tray` にしているのは、常駐してウォーム起動を利用することがプロダクトの中心価値だからである（ADR-0004）。
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
-#[serde(rename_all = "lowercase")]
-pub enum CloseBehavior {
-    #[default]
-    Tray,
-    Exit,
 }
 
 /// 折り返し（VS Code `editor.wordWrap`）。
@@ -339,8 +329,10 @@ pub struct Settings {
     #[serde(rename = "preview.theme")]
     pub preview_theme: String,
 
-    #[serde(rename = "window.closeBehavior")]
-    pub window_close_behavior: CloseBehavior,
+    /// `✕` で閉じたときにトレイへ格納するか（F-WIN-* / ADR-0007）。
+    /// 既定を `true` にしているのは、常駐してウォーム起動を利用することがプロダクトの中心価値だからである（ADR-0004）。
+    #[serde(rename = "window.closeToTray")]
+    pub window_close_to_tray: bool,
 
     /// Marxdown が解釈しないキー。破棄せず保持することだけが役目である。
     #[serde(flatten)]
@@ -402,7 +394,7 @@ impl Default for Settings {
             preview_table_style: TableStyle::default(),
             preview_theme: DEFAULT_THEME_ID.to_owned(),
 
-            window_close_behavior: CloseBehavior::default(),
+            window_close_to_tray: true,
 
             extra: Map::new(),
         }
@@ -513,8 +505,8 @@ impl Settings {
                 .unwrap_or(d.preview_table_style),
             preview_theme: take_theme_id(&mut map, KEY_PREVIEW_THEME).unwrap_or(d.preview_theme),
 
-            window_close_behavior: take(&mut map, KEY_WINDOW_CLOSE_BEHAVIOR)
-                .unwrap_or(d.window_close_behavior),
+            window_close_to_tray: take(&mut map, KEY_WINDOW_CLOSE_TO_TRAY)
+                .unwrap_or(d.window_close_to_tray),
 
             extra: map,
         }
@@ -630,11 +622,7 @@ mod tests {
         assert_eq!(s.theme, Theme::Dark);
         assert_eq!(s.preview_font_size, DEFAULT_FONT_SIZE);
         assert_eq!(s.editor_font_size, DEFAULT_EDITOR_FONT_SIZE);
-        assert_eq!(
-            s.window_close_behavior,
-            CloseBehavior::Tray,
-            "常駐が既定（ADR-0004）"
-        );
+        assert!(s.window_close_to_tray, "常駐が既定（ADR-0004）");
     }
 
     /// ADR-0012。**読む面と書く面でタイポグラフィが別**であること自体を固定する。

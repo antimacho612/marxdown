@@ -40,5 +40,5 @@
   "preview.softBreak": false,
   "preview.tableStyle": "lines",
   "preview.theme": "default",
-  "window.closeBehavior": "tray"
+  "window.closeToTray": true
 }

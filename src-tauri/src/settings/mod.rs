@@ -224,7 +224,7 @@ mod tests {
             preview_code_font_family: "BIZ UD Gothic".into(),
             preview_font_family: "Noto Sans JP".into(),
             preview_line_height: 1.9,
-            window_close_behavior: CloseBehavior::Exit,
+            window_close_to_tray: false,
             ..Settings::default()
         };
         save(&p, &settings).unwrap();

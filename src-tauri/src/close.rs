@@ -15,7 +15,6 @@
 
 use tauri::{AppHandle, Emitter, Manager, Runtime};
 
-use crate::settings::CloseBehavior;
 use crate::state::AppState;
 use crate::window::MAIN_LABEL;
 
@@ -25,13 +24,13 @@ use crate::window::MAIN_LABEL;
 /// 同じ状態を指す言葉が経路ごとに違うと、同じ危険が別のことのように見える。
 pub const DIRTY_MESSAGE: &str = "保存していない変更があります。";
 
-/// いま `✕` がどちらの意味か（設定 `window.closeBehavior`）。
+/// いま `✕` がどちらの意味か（設定 `window.closeToTray`）。
 ///
 /// ディスクではなくメモリ上の設定を見る。
 /// 外部エディターで `settings.json` を書き換えた場合はファイル監視が読み直しているため、ここで読みに行く必要はない。
 pub fn stashes_on_close<R: Runtime>(app: &AppHandle<R>) -> bool {
     app.try_state::<AppState>()
-        .map(|s| s.close_behavior() == CloseBehavior::Tray)
+        .map(|s| s.closes_to_tray())
         .unwrap_or(false)
 }
 
@@ -216,7 +215,7 @@ fn ask_then_stash<R: Runtime>(app: AppHandle<R>) {
     app.dialog()
         .message(
             "Marxdown はトレイに常駐します。閉じても次に開くときが速くなります。\n\
-             この動作は設定で変更できます（window.closeBehavior）。",
+             この動作は設定で変更できます（window.closeToTray）。",
         )
         .title("Marxdown")
         .kind(MessageDialogKind::Info)

@@ -115,14 +115,10 @@ export const LAYOUT = [
       },
       {
         kind: 'field',
-        key: 'window.closeBehavior',
-        widget: 'radio',
-        label: ja.settings.window.closeBehavior,
-        description: ja.settings.window.closeBehaviorHint,
-        labels: {
-          tray: ja.settings.window.closeBehaviorTray,
-          exit: ja.settings.window.closeBehaviorExit,
-        },
+        key: 'window.closeToTray',
+        widget: 'toggle',
+        label: ja.settings.window.closeToTray.label,
+        description: ja.settings.window.closeToTray.description,
       },
     ],
   },
