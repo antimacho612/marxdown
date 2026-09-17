@@ -534,12 +534,12 @@ export const ja = {
       },
     },
 
-    /** ウィンドウ（ADR-0007）。`✕` の意味が既定と違うので、選べることを見せる。*/
+    /** ウィンドウ（ADR-0007）。`✕` の意味が既定と違うので、切り替えられることを見せる。*/
     window: {
-      closeBehavior: '✕ を押したとき',
-      closeBehaviorTray: 'タスクトレイに格納する',
-      closeBehaviorExit: 'Marxdown を終了する',
-      closeBehaviorHint: '格納しておくと、次に開くときが速い',
+      closeToTray: {
+        label: '✕ で閉じたときにタスクトレイに格納する',
+        description: 'ウィンドウを閉じても終了せず、タスクトレイに常駐します。次に開くときの表示が速くなります。',
+      },
     },
 
     /**

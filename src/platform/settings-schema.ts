@@ -183,8 +183,8 @@ export const SETTINGS_SCHEMA = defineSettingsSchema({
    */
   'preview.theme': { kind: 'string', default: 'default' },
 
-  /** ウィンドウを閉じたときの挙動（ADR-0007）。 */
-  'window.closeBehavior': { kind: 'enum', values: ['tray', 'exit'], default: 'tray' },
+  /** `✕` で閉じたときにトレイへ格納するか（ADR-0007）。false ならプロセスを終了する。 */
+  'window.closeToTray': { kind: 'boolean', default: true },
 });
 
 type Schema = typeof SETTINGS_SCHEMA;
@@ -228,7 +228,6 @@ export type BooleanKey = { [K in keyof Schema]: Schema[K] extends { kind: 'boole
 
 /** 個々の設定値の型。UI 側が `Settings` のキーを覚えずに済むよう、別名を切ってある。 */
 export type Theme = Settings['theme'];
-export type WindowCloseBehavior = Settings['window.closeBehavior'];
 export type WordWrap = Settings['editor.wordWrap'];
 export type LineNumbers = Settings['editor.lineNumbers'];
 export type RenderWhitespace = Settings['editor.renderWhitespace'];
