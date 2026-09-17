@@ -184,11 +184,11 @@ impl AppState {
     ///
     /// ディスクを読み直さないのは、外部エディターでの編集をファイル監視が既に取り込んでいるためである。
     /// `✕` を押すたびにファイル I/O を行うのは、得られる結果に対してコストが高い。
-    pub fn close_behavior(&self) -> crate::settings::CloseBehavior {
+    pub fn closes_to_tray(&self) -> bool {
         self.settings
             .lock()
-            .map(|s| s.values.window_close_behavior)
-            .unwrap_or_default()
+            .map(|s| s.values.window_close_to_tray)
+            .unwrap_or(true)
     }
 
     /// トレイ常駐の説明を出したことがあるか（ADR-0007 論点 4）。

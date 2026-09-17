@@ -514,7 +514,7 @@ export interface Platform {
   /**
    * 閉じる。
    *
-   * 既定ではトレイに格納され、プロセスは終了しない（ADR-0007 論点 2 / 設定 `window.closeBehavior`）。
+   * 既定ではトレイに格納され、プロセスは終了しない（ADR-0007 論点 2 / 設定 `window.closeToTray`）。
    * 判断は Rust 側の `close.rs` が持ち、フロントは閉じる要求だけを送る。
    * ここで分岐を持つと、`Alt+F4` と OS 由来の閉じる要求だけ挙動が変わる。
    */

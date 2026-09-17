@@ -93,7 +93,7 @@ describe('設定ストア (02.architecture/04-rust-responsibilities.md §5)', ()
 
   /** 常駐が既定（ADR-0007）。キーと既定値はここで決まる。 */
   it('ウィンドウを閉じたときの既定はトレイ常駐', () => {
-    expect(DEFAULT_SETTINGS['window.closeBehavior']).toBe('tray');
+    expect(DEFAULT_SETTINGS['window.closeToTray']).toBe(true);
   });
 });
 

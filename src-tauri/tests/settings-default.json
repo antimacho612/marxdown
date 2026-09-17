@@ -39,5 +39,5 @@
   "preview.maxWidth": 72.0,
   "preview.softBreak": false,
   "preview.theme": "default",
-  "window.closeBehavior": "tray"
+  "window.closeToTray": true
 }
