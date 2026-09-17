@@ -178,7 +178,7 @@ export default tseslint.config(
   },
 
   {
-    // 
+    //
     files: [
       // CSS の副作用インポートのため
       'src/main.ts',
