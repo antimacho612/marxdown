@@ -19,7 +19,7 @@ import { mountEditorLazily, preloadEditor, setSplitSyncLazily } from '@/features
 import { configureHistory } from '@/features/history';
 import { decideInitialMode, initMode } from '@/features/mode';
 import { initPanes } from '@/features/panes';
-import { applyZoom, installLinkHandler, installTaskHandler } from '@/features/preview';
+import { applyZoom, installLinkHandler, installTaskHandler, installWheelZoom } from '@/features/preview';
 import {
   enabledSyntax,
   initSettings,
@@ -138,6 +138,10 @@ export async function startup(renderShell: () => void): Promise<void> {
   // メニューより先に済んでいる必要がある（`features/menu` は id しか持たず、実体はこの登録を参照する / `commands.ts`）。
   installLinks();
   installCommands();
+
+  // Ctrl + ホイールの倍率変更（issue #6）。
+  // キーバインドと同じ理由でここに置く。WebView 既定のページズームを塞ぐ側であり、本文を描くより前に登録する。
+  installWheelZoom();
 
   // シェルは、本文があってもなくても同じ場所で描く。
   // 本文がある場合は `openDocument` がパース送信の直後に呼び出す。
