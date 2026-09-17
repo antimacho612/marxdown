@@ -228,6 +228,7 @@ export const ja = {
     /**
      * 外部変更を自動で読み込んだとき（03.ux-spec/07-status-and-notifications.md §2 の 1 行目）。
      * 自分では何もしていないので、何が起きたかを先に言う。
+     * 表示先はステータスバーである（issue #60）。
      */
     reloadedExternal: '外部の変更を読み込みました',
     /**

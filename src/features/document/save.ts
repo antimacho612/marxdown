@@ -13,7 +13,7 @@ import { markClean } from './dirty';
 import { registerSaver } from './discard';
 import { effectiveEol } from './eol';
 import { describeOpenError, openPath } from './open';
-import { documentStore, notifyInfo } from './store.svelte';
+import { documentStore, notifyStatus } from './store.svelte';
 import { getDocumentText } from './text';
 
 // 「保存してから別の文書へ移る」の実体を登録する（`discard.ts`）。
@@ -147,7 +147,7 @@ function offerConflictChoice(path: string, diskMtimeMs: number): void {
 async function discardAndReload(path: string): Promise<void> {
   markClean();
   const outcome = await openPath(path, { resetScroll: false, remember: false, history: false });
-  if (outcome) notifyInfo(ja.open.reloadedExternal);
+  if (outcome) notifyStatus(ja.open.reloadedExternal);
 }
 
 /**

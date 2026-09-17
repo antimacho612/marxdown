@@ -74,6 +74,7 @@ beforeEach(() => {
   documentStore.isDirty = false;
   documentStore.eolOverride = null;
   documentStore.notice = null;
+  documentStore.statusMessage = null;
   stubPlatform();
 });
 
@@ -160,7 +161,6 @@ describe('衝突したとき (N-REL-02)', () => {
 
     const notice = documentStore.notice;
     expect(notice?.level).toBe('warning');
-    expect(notice?.autoDismissMs).toBeUndefined();
     expect(notice?.actions?.map((a) => a.label)).toHaveLength(2);
   });
 

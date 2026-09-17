@@ -2,7 +2,7 @@
  * 開いているファイルの外部変更を画面に反映する（F-EDIT-16 / N-REL-02）。
  *
  * 分岐はダーティかどうかだけである（02.architecture/08-state-management.md §3）。
- * Clean なら黙って読み直して控えめに通知し、Dirty なら何もせず消えないバーで選ばせる（入力を失わないため）。
+ * Clean なら黙って読み直してステータスバーに出し、Dirty なら何もせず消えない通知バーで選ばせる（入力を失わないため）。
  * デバウンスと自己イベントの排除は Rust 側（`src-tauri/src/watch.rs`）が済ませており、ここに届くのは実体が変わったことが確定したイベントだけである。
  */
 import { ja } from '@/i18n/ja';
@@ -82,7 +82,7 @@ function offerReloadChoice(): void {
 /** 編集内容を破棄して読み直す。通知バーで明示的に選ばれたときだけ呼ばれる。 */
 async function discardAndReload(): Promise<void> {
   markClean();
-  await reloadCurrent({ notice: ja.open.reloadedExternal });
+  await reloadCurrent({ status: ja.open.reloadedExternal });
 }
 
 function reloadFromDisk(): void {
@@ -93,7 +93,7 @@ function reloadFromDisk(): void {
   reloading = true;
   missedChange = false;
 
-  void reloadCurrent({ notice: ja.open.reloadedExternal }).finally(() => {
+  void reloadCurrent({ status: ja.open.reloadedExternal }).finally(() => {
     reloading = false;
     // 読み込み中に届いた変更を処理し直す。
     // 新しいイベントが来ない限りここは 1 回で終わる（`missedChange` を立てるのはイベントだけである）。
