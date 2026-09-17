@@ -102,8 +102,8 @@ function wrapsByColumn(values: Settings): boolean {
 /** 左のカテゴリ（ADR-0011）。並び順は使用頻度ではなく、設定が影響する範囲の大きさに従う。 */
 export const LAYOUT = [
   {
-    id: 'appearance',
-    label: ja.settings.categories.appearance,
+    id: 'application',
+    label: ja.settings.categories.application,
     entries: [
       {
         kind: 'field',
@@ -112,6 +112,17 @@ export const LAYOUT = [
         label: ja.settings.theme,
         description: ja.settings.themeHint,
         labels: { system: ja.settings.themeSystem, light: ja.settings.themeLight, dark: ja.settings.themeDark },
+      },
+      {
+        kind: 'field',
+        key: 'window.closeBehavior',
+        widget: 'radio',
+        label: ja.settings.window.closeBehavior,
+        description: ja.settings.window.closeBehaviorHint,
+        labels: {
+          tray: ja.settings.window.closeBehaviorTray,
+          exit: ja.settings.window.closeBehaviorExit,
+        },
       },
     ],
   },
@@ -383,23 +394,6 @@ export const LAYOUT = [
         step: 1,
         label: ja.settings.outline.maxDepth.label,
         description: ja.settings.outline.maxDepth.description,
-      },
-    ],
-  },
-  {
-    id: 'window',
-    label: ja.settings.categories.window,
-    entries: [
-      {
-        kind: 'field',
-        key: 'window.closeBehavior',
-        widget: 'radio',
-        label: ja.settings.window.closeBehavior,
-        description: ja.settings.window.closeBehaviorHint,
-        labels: {
-          tray: ja.settings.window.closeBehaviorTray,
-          exit: ja.settings.window.closeBehaviorExit,
-        },
       },
     ],
   },

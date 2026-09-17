@@ -12,16 +12,15 @@
   /**
    * カテゴリごとの図記号。
    *
-   * 6 個しか無い一覧に図記号を足すのは、数を数えるためではなく**位置で覚えられるようにする**ためである。
+   * 5 個しか無い一覧に図記号を足すのは、数を数えるためではなく**位置で覚えられるようにする**ためである。
    * 語の長さが揃っていない縦並びでは、左端の形が目印になる。
    */
   const ICONS: Record<CategoryId, IconName> = {
-    appearance: 'appearance',
+    application: 'appearance',
     preview: 'preview',
     editor: 'editor',
     markdown: 'markdown',
     outline: 'outline',
-    window: 'window',
   };
 
   interface Props {
