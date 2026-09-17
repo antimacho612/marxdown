@@ -8,7 +8,8 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import { COMMAND_CATALOG } from './catalog';
+import { COMMAND_CATALOG, type CommandEntry } from './catalog';
+import { fuzzyFilter } from './fuzzy';
 
 /**
  * 一覧に出さないコマンドと、その理由。
@@ -41,5 +42,65 @@ describe('コマンドカタログ', () => {
   it('同じコマンドを二重に載せていない', () => {
     const ids = COMMAND_CATALOG.map((entry) => entry.id);
     expect(ids).toHaveLength(new Set(ids).size);
+  });
+});
+
+/**
+ * 英語キーワード（#104）。
+ *
+ * ラベルは日本語しか無いため、書き漏らしたコマンドは `save` や `file` では出てこない。
+ * 載せ忘れと同じく人の目では気づけないので、ここで見張る。
+ */
+describe('英語キーワード', () => {
+  it('すべてのコマンドが持っている', () => {
+    expect(COMMAND_CATALOG.filter((entry) => entry.keywords.trim() === '')).toEqual([]);
+  });
+
+  it('半角小文字と空白だけでできている', () => {
+    // 大文字・全角・日本語が混ざっても `fuzzyScore` の正規化が吸収するが、
+    // 表記が揺れると同じ語を二通りで書いてしまう。書く側の形をここで 1 つに決める。
+    const malformed = COMMAND_CATALOG.filter((entry) => !/^[a-z]+( [a-z]+)*$/.test(entry.keywords));
+    expect(malformed.map((entry) => entry.id)).toEqual([]);
+  });
+
+  it('同じ語を重ねていない', () => {
+    const duplicated = COMMAND_CATALOG.filter((entry) => {
+      const words = entry.keywords.split(' ');
+      return words.length !== new Set(words).size;
+    });
+    expect(duplicated.map((entry) => entry.id)).toEqual([]);
+  });
+});
+
+/**
+ * #104 の例を、実際のカタログで引けることを確かめる。
+ *
+ * `fuzzy.test.ts` は仕組みだけを見ており、語の書き漏らしはそちらでは分からない。
+ * ここはコマンドパレットが渡すのと同じキー（ラベルと英語キーワード）で照合する。
+ */
+describe('パレットからの引き方 (#104)', () => {
+  const keysOf = (entry: CommandEntry): string[] => [
+    typeof entry.label === 'function' ? entry.label() : entry.label,
+    entry.keywords,
+  ];
+
+  it('ひらがなでカタカナのラベルに当たる', () => {
+    expect(fuzzyFilter(COMMAND_CATALOG, 'ふぁいる', keysOf)[0]?.id).toBe('document.open');
+  });
+
+  it('英語でファイル操作のコマンドが並ぶ', () => {
+    const ids = fuzzyFilter(COMMAND_CATALOG, 'file', keysOf).map((entry) => entry.id);
+
+    expect(ids).toContain('document.open');
+    expect(ids).toContain('document.save');
+    expect(ids).not.toContain('preview.zoomIn');
+  });
+
+  it('英語で当たるのは語を書いたコマンドだけである', () => {
+    expect(fuzzyFilter(COMMAND_CATALOG, 'zoom', keysOf).map((entry) => entry.id)).toEqual([
+      'preview.zoomIn',
+      'preview.zoomOut',
+      'preview.zoomReset',
+    ]);
   });
 });

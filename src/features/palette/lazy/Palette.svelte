@@ -19,6 +19,14 @@
     id: string;
     /** 表示と照合に使う文字列。 */
     label: string;
+    /**
+     * 表示しない照合用の別名（コマンドの英語キーワードなど / #104）。
+     *
+     * ラベルで当たったものが常に上に来る（`fuzzyFilter`）。
+     * 一致した語は表示しないので、なぜその行が出ているのかは利用者からは見えない。
+     * 出したところで読むものが増えるだけであり、上位に並ぶのは今もラベルで当たったものである。
+     */
+    keywords?: string;
     /** 右端に薄く出す補足（ディレクトリや見出しレベルなど）。 */
     detail?: string;
     /** 右端に出すキー。メニューと表示形式を揃えるため、`detail` とは別に持つ。 */
@@ -57,7 +65,11 @@
   let input: HTMLInputElement | null = $state(null);
   let list: HTMLElement | null = $state(null);
 
-  const matches = $derived(fuzzyFilter(items, query, (item) => item.label).slice(0, SHOWN));
+  const matches = $derived(
+    fuzzyFilter(items, query, (item) =>
+      item.keywords === undefined ? [item.label] : [item.label, item.keywords],
+    ).slice(0, SHOWN),
+  );
 
   /** 絞り込みが変わると、いま選んでいる行は意味を失う。先頭へ戻す。 */
   let seenQuery = '';
