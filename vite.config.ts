@@ -86,14 +86,9 @@ export default defineConfig(({ mode }) => ({
     },
   },
 
-  /*
-   * **Worker の設定は置いていない。** Markdown のパースを Worker へ追い出す構成は
-   * M2 Phase 6 で畳んだ（ADR-0010）。Worker を足すなら、まず出力名を固定して
-   * size-limit の予算に載せること。
-   */
-
   build: {
-    target: 'esnext', // WebView2 Evergreen / WKWebView のみを対象にするため
+    // WebView2 Evergreen / WKWebView のみを対象にするため
+    target: 'esnext',
     /*
      * フォントは必ずファイルとして出す。
      *

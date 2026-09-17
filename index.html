@@ -7,32 +7,8 @@
   </head>
 
   <body>
-    <!--
-      本文の受け皿。**コンポーネントツリーの外**に置いてある
-      （ADR-0005 / 02.architecture.md §8.1）。
-
-      ここが Svelte の管理下にあると、
-      1) 本文の HTML 文字列がリアクティビティを通過してしまう
-      2) 「読める最初のフレーム」がコンポーネントのマウントを待つ
-      の 2 つが起きる。どちらも Cold Start の予算に直接効く。
-
-      レイアウトは body 側の grid で行い、Svelte のマウント先は display: contents で
-      その grid にクロームだけを差し込む。
-    -->
     <div id="mx-preview" class="mx-preview" role="document"></div>
-
-    <!--
-      エディターの受け皿（F-EDIT-01）。**本文と同じ理由でここに置いてある。**
-
-      CodeMirror の EditorState が本文の真実であり（ADR-0002 / ADR-0005）、
-      それを Svelte のリアクティビティに通すと入力レスポンス 16ms を満たせない。
-
-      既定モードは Preview なので、起動直後は空のまま CSS で隠れている。
-      中身が入るのは初めて Edit へ切り替えたときで、そこで初めて
-      `editor` チャンク（203KB）がロードされる。
-    -->
     <div id="mx-editor" class="mx-editor"></div>
-
     <div id="root"></div>
 
     <script type="module" src="/src/main.ts"></script>
