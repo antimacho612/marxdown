@@ -12,7 +12,7 @@
   /**
    * カテゴリごとの図記号。
    *
-   * 5 個しか無い一覧に図記号を足すのは、数を数えるためではなく**位置で覚えられるようにする**ためである。
+   * 数の少ない一覧に図記号を足すのは、数を数えるためではなく**位置で覚えられるようにする**ためである。
    * 語の長さが揃っていない縦並びでは、左端の形が目印になる。
    */
   const ICONS: Record<CategoryId, IconName> = {
@@ -20,6 +20,7 @@
     preview: 'preview',
     editor: 'editor',
     markdown: 'markdown',
+    explorer: 'folder',
     outline: 'outline',
   };
 

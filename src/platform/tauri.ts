@@ -99,8 +99,8 @@ export const tauriPlatform: Platform = {
     return convertFileSrc(await invoke<string>('allow_image_dir', { href, baseDir }));
   },
 
-  listDir(path) {
-    return invoke<DirEntry[]>('list_dir', { path });
+  listDir(path, root) {
+    return invoke<DirEntry[]>('list_dir', { path, root });
   },
 
   listFiles(root) {

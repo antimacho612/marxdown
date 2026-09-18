@@ -45,8 +45,14 @@
         ...getPlatform(),
         readSettings: () => Promise.resolve({ values: settingsStore.values, broken }),
         // Storybook からファイルを書きに行かせない。押せることだけ確認できればよい。
+        // `null`（既定に戻す）を既定値へ直すのは Rust 側と口を合わせるためである。
+        // そのまま積むと、並びの項目（`editor.rulers` / `explorer.exclude`）が `null` になって描画で落ちる。
         writeSettings: (patch) => {
-          settingsStore.values = { ...settingsStore.values, ...patch } as Settings;
+          const merged = { ...settingsStore.values };
+          for (const [key, value] of Object.entries(patch)) {
+            Object.assign(merged, { [key]: value ?? DEFAULT_SETTINGS[key as keyof Settings] });
+          }
+          settingsStore.values = merged;
           return Promise.resolve(settingsStore.values);
         },
         openSettingsFile: () => Promise.resolve(),

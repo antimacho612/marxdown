@@ -9,12 +9,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { getPlatform, setPlatform, type DirEntry, type Platform } from '@/platform';
 
-import { resetTree, setTreeRoot, setTreeRootFromFile, toggleDir, treeStore } from './tree.svelte';
+import { reloadTree, resetTree, setTreeRoot, setTreeRootFromFile, toggleDir, treeStore } from './tree.svelte';
 
 const original = getPlatform();
 
-/** 仮想のディレクトリ。`listDir` はここから答える。 */
-const disk: Record<string, DirEntry[]> = {
+/** 仮想のディレクトリ。`listDir` はここから答える。書き換えは `beforeEach` が戻す。 */
+let disk: Record<string, DirEntry[]> = {};
+
+const INITIAL: Record<string, DirEntry[]> = {
   'C:/work': [
     { name: 'docs', path: 'C:/work/docs', dir: true },
     { name: 'readme.md', path: 'C:/work/readme.md', dir: false },
@@ -25,6 +27,7 @@ const disk: Record<string, DirEntry[]> = {
 let listDir: ReturnType<typeof vi.fn>;
 
 beforeEach(() => {
+  disk = structuredClone(INITIAL);
   listDir = vi.fn((path: string) => Promise.resolve(disk[path] ?? []));
   setPlatform({ ...original, listDir } as Platform);
   resetTree();
@@ -90,5 +93,51 @@ describe('遅延展開', () => {
     await setTreeRoot('C:/secret');
 
     expect(treeStore.entries['C:/secret']).toEqual([]);
+  });
+});
+
+/**
+ * 除外の glob は Rust 側で当たる（`explorer.exclude` / #146）。
+ * ここで見たいのは、設定が変わったときに木をどう読み直すかである。
+ */
+describe('読み直し', () => {
+  it('基点は Rust 側へ渡す。glob をどこからの相対として解釈するかが決まる', async () => {
+    await setTreeRoot('C:/work');
+    await toggleDir('C:/work/docs');
+
+    expect(listDir).toHaveBeenLastCalledWith('C:/work/docs', 'C:/work');
+  });
+
+  it('開いている枝は開いたまま読み直す', async () => {
+    await setTreeRoot('C:/work');
+    await toggleDir('C:/work/docs');
+    listDir.mockClear();
+
+    await reloadTree();
+
+    expect(listDir.mock.calls.map(([path]) => path)).toEqual(['C:/work', 'C:/work/docs']);
+    expect(treeStore.expanded).toEqual(['C:/work/docs']);
+    expect(treeStore.entries['C:/work/docs']).toHaveLength(1);
+  });
+
+  it('除外されて親から消えた枝は、開いた状態ごと捨てる', async () => {
+    await setTreeRoot('C:/work');
+    await toggleDir('C:/work/docs');
+    treeStore.focusPath = 'C:/work/docs';
+
+    // `docs` を除外した後の一覧に差し替える。
+    disk['C:/work'] = [{ name: 'readme.md', path: 'C:/work/readme.md', dir: false }];
+    await reloadTree();
+
+    expect(treeStore.expanded).toEqual([]);
+    expect(treeStore.entries['C:/work/docs']).toBeUndefined();
+    // 画面のどこにも無い項目を Tab の順路に残さない。
+    expect(treeStore.focusPath).toBeNull();
+  });
+
+  it('基点が無ければ何もしない', async () => {
+    await reloadTree();
+
+    expect(listDir).not.toHaveBeenCalled();
   });
 });

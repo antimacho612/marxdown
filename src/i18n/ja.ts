@@ -350,6 +350,7 @@ export const ja = {
       preview: 'プレビュー',
       editor: 'エディター',
       markdown: '記法',
+      explorer: 'エクスプローラー',
       outline: 'アウトライン',
     },
     /** エディターの中の節。項目が 22 個あるので、見出し無しでは探せない。 */
@@ -536,6 +537,16 @@ export const ja = {
     },
 
     /** アウトライン（#61）。 */
+    /** エクスプローラー（F-NAV-03 / #146）。 */
+    explorer: {
+      exclude: {
+        label: '除外するパス',
+        description:
+          'エクスプローラーとクイックオープンに表示しないパスを glob パターンで指定します。カンマ区切りで複数指定できます。スラッシュを含まないパターンは、どの階層にある同じ名前にも一致します。隠しファイルと node_modules は、この設定に関わらず表示されません。',
+        placeholder: '例: dist, *.tmp, docs/generated',
+      },
+    },
+
     outline: {
       maxDepth: {
         label: '表示する見出しの階層',
