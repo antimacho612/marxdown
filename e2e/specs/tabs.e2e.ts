@@ -32,12 +32,12 @@ const SECOND_DOC = WORK_DOC.replace('doc.md', 'second.md');
  */
 const NESTED_DOC = path.join(WORK_DIR, 'nested', 'buried.md');
 
-/** タブの枚数。1 枚のときはタブバー自体が無いので 0 になる。 */
+/** タブの枚数。1 枚でもタブは出る（issue #145）。 */
 async function tabCount(): Promise<number> {
   return browser.execute(() => document.querySelectorAll('.mx-tab').length);
 }
 
-/** タブの名前。1 枚のときはタブバー自体が無いので空になる。 */
+/** タブの名前。 */
 async function tabNames(): Promise<string[]> {
   return browser.execute(() =>
     [...document.querySelectorAll('.mx-tab__name')].map((element) => element.textContent ?? ''),
@@ -84,9 +84,9 @@ async function statusBarText(): Promise<string> {
   return browser.execute(() => document.querySelector('.mx-statusbar')?.textContent ?? '');
 }
 
-/** タイトルバーに出ているファイル名（タブが 1 枚のときの表示）。 */
-async function titleName(): Promise<string> {
-  return browser.execute(() => document.querySelector('.mx-titlebar__name')?.textContent ?? '');
+/** ステータスバーに出ているフルパス（issue #145）。無題の文書では項目ごと無いので空になる。 */
+async function statusBarPath(): Promise<string> {
+  return browser.execute(() => document.querySelector('.mx-statusbar__path')?.textContent ?? '');
 }
 
 describe('タブ', () => {
@@ -95,10 +95,16 @@ describe('タブ', () => {
     await openViaForward(WORK_DOC, '本文です。');
   });
 
-  it('1 枚のときはタブバーを出さない', async () => {
-    // 03.ux-spec/01-screen-layout.md §1。見た目が M2 から変わっていないことでもある。
-    expect(await tabNames()).toEqual([]);
-    expect(await titleName()).toBe('doc.md');
+  it('1 枚でもタブを出す', async () => {
+    // 03.ux-spec/01-screen-layout.md §1（issue #145）。枚数で表示が切り替わらない。
+    expect(await tabNames()).toEqual(['doc.md']);
+    expect(await activeTabName()).toBe('doc.md');
+  });
+
+  it('フルパスはステータスバーに出る', async () => {
+    // 03.ux-spec/07-status-and-notifications.md §3（issue #145）。
+    // タブが持つのはファイル名だけで、どの場所のファイルかはここにしか無い。
+    expect(await statusBarPath()).toBe(WORK_DOC);
   });
 
   it('argv 転送は 2 枚目のタブとして開く', async () => {
@@ -137,15 +143,15 @@ describe('タブ', () => {
     });
   });
 
-  it('Ctrl+W で閉じると 1 枚に戻り、タブバーが消える', async () => {
+  it('Ctrl+W で閉じると 1 枚に戻る', async () => {
     await browser.keys([Key.Control, 'w']);
 
-    await browser.waitUntil(async () => (await tabCount()) === 0, {
+    await browser.waitUntil(async () => (await tabCount()) === 1, {
       timeout: 10_000,
       timeoutMsg: 'Ctrl+W で閉じられなかった',
     });
     // 窓は生きている（ブラウザ既定の「ウィンドウを閉じる」を止められている）。
-    expect(await titleName()).toBe('second.md');
+    expect(await activeTabName()).toBe('second.md');
   });
 
   it('Ctrl+Shift+T で閉じたタブが戻る', async () => {

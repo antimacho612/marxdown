@@ -40,6 +40,7 @@ export {
 export { saveAsSafely, saveSafely, saveThenQuit } from './save';
 export {
   documentStore,
+  notifyStatus,
   toMeta,
   type Notice,
   type NoticeAction,
