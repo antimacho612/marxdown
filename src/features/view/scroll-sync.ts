@@ -77,6 +77,17 @@ let leader: 'editor' | 'preview' | null = null;
 let leaderUntil = 0;
 
 /**
+ * 主導権をエディター側へ移し、プレビューからの同期を短時間止める。
+ *
+ * プレビューを機械的に動かす側が、その `scroll` で主導権を奪われないために呼ぶ。
+ * 再描画でスクロール位置を当て直す動き（`document/live.ts`）は利用者の操作ではなく、主導しているのは打鍵しているエディターである。
+ */
+export function takeEditorLead(): void {
+  leader = 'editor';
+  leaderUntil = performance.now() + SUPPRESS_MS;
+}
+
+/**
  * 同期を開始する。Split に入ったときに呼ぶ。
  *
  * 2 回目以降は何もしない。終了するときは `stopScrollSync` を呼ぶ。
@@ -256,8 +267,7 @@ function lineAtEvent(event: MouseEvent): number | null {
 export function jumpToEditorLine(line: number, options: { focus?: boolean } = {}): void {
   if (!port) return;
 
-  leader = 'editor';
-  leaderUntil = performance.now() + SUPPRESS_MS;
+  takeEditorLead();
 
   // フォーカスの移動は呼び出し側が決める。
   // プレビューをクリックした場合は移すのが自然だが、アウトラインをクリックしたときにエディターへフォーカスが移ると、続けて次の見出しを選べなくなる。
