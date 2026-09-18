@@ -11,6 +11,10 @@
 
 属性はそのまま渡す。
 メニューを開く側は `aria-haspopup` / `aria-expanded` と `onkeydown` を、押すだけの側は `title` と `onclick` だけを渡す。
+
+`class` だけは上書きではなく連結する。
+`{...rest}` に任せると `mx-statusbar__button` が消え、見た目がこの部品から外れる。
+渡した側のスタイルは Svelte のスコープが付かないため、参照する側は `:global()` で書く必要がある（`app/StatusBar.svelte` のフルパス）。
 -->
 
 <script lang="ts">
@@ -20,13 +24,15 @@
   interface Props extends HTMLButtonAttributes {
     /** ボタンの実体。位置を測定する側とフォーカスを戻す側だけが受け取る。 */
     element?: HTMLButtonElement | undefined;
+    /** 追加のクラス。基本のクラスに足す。 */
+    class?: string | undefined;
     children: Snippet;
   }
 
-  let { element = $bindable(), children, ...rest }: Props = $props();
+  let { element = $bindable(), class: extra, children, ...rest }: Props = $props();
 </script>
 
-<button type="button" class="mx-statusbar__button" bind:this={element} {...rest}>
+<button type="button" class={['mx-statusbar__button', extra]} bind:this={element} {...rest}>
   {@render children()}
 </button>
 

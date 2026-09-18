@@ -643,6 +643,15 @@ export const ja = {
     reinterpreted: (name: string) => `${name} として読み直しました`,
     /** モードの切り替え（§3「クリックでモード切替メニュー」）。 */
     modeSwitch: 'クリックで表示モードを切り替える',
+    /**
+     * 開いているファイルのフルパス（§3 / issue #145）。押すとクリップボードへ写す。
+     *
+     * ファイル名はタブに出ているため、ここが担うのは「どの場所のファイルか」だけである。
+     * 無題の文書にはパスが無く、項目ごと表示しない。
+     */
+    pathCopy: 'クリックでフルパスをコピーする',
+    pathCopied: 'フルパスをコピーしました',
+    pathCopyFailed: 'フルパスをコピーできませんでした',
     /** 表示倍率（§3 / `features/preview/zoom.ts`）。選択肢は `Ctrl+=` / `Ctrl+-` の刻みと同じ並びである。 */
     zoomSelect: 'クリックで表示倍率を変更する',
     parsedIn: (ms: number) => `パース ${ms.toFixed(1)}ms`,
