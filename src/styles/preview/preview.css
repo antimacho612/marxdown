@@ -79,14 +79,14 @@
   font-weight: 700;
   margin: 0 0 var(--mx-space-6);
   padding-bottom: var(--mx-space-3);
-  border-bottom: 1px solid var(--mx-color-border-subtle);
+  border-bottom: 1px solid var(--mx-color-border);
 }
 
 .mx-content h2 {
   font-size: 1.45em;
   margin: var(--mx-space-12) 0 var(--mx-space-4);
   padding-bottom: var(--mx-space-2);
-  border-bottom: 1px solid var(--mx-color-border-subtle);
+  border-bottom: 1px solid var(--mx-color-border);
 }
 
 .mx-content h3 {
@@ -163,14 +163,32 @@
   margin-bottom: 0;
 }
 
-/* 話題の切れ目。段落の間隔（24px）と区別が付く必要があるので、節の入れ替わりと同じ 48px にする。 */
+/*
+ * 話題の切れ目。段落の間隔（24px）と区別が付く必要があるので、節の入れ替わりと同じ 48px にする。
+ *
+ * 面の上に線 1 本だけで立つ罫線は `--mx-color-border` を使う。
+ * `--mx-color-border-subtle` は面（コードブロック・Front Matter）の縁を示すための濃さで、
+ * 地色の上に単独で置くと線があること自体が読み取れない（#142）。
+ */
 .mx-content hr {
   margin: var(--mx-space-12) 0;
   border: 0;
-  border-top: 1px solid var(--mx-color-border-subtle);
+  border-top: 1px solid var(--mx-color-border);
 }
 
 /* ========== コード ========== */
+
+/*
+ * インラインコードの文字色。fg と accent の混色にしてあり、`theme/lazy/preset.ts` の TokenKey（18 個で固定）に
+ * 新しいキーを足さずに 50 枚のプリセットへ反映される。fg が主体なので、コントラスト比の保証はプリセットの fg 側にそのまま乗る。
+ *
+ * 宣言を `:root` ではなく面に置くのは、カスタムプロパティの値に含まれる var() が
+ * 宣言した要素で置換を終えるためである。配色は `#mx-preview` に当たるので、`:root` で宣言すると
+ * 上書きされる前の accent と fg が焼き付き、どの配色でも既定の色のまま描かれる（#142）。
+ */
+.mx-preview {
+  --mx-color-code-inline: color-mix(in srgb, var(--mx-color-fg) 65%, var(--mx-color-accent) 35%);
+}
 
 .mx-preview code {
   font-family: var(--mx-font-code);
@@ -471,7 +489,7 @@
 .mx-preview :is(th, td) {
   padding: var(--mx-space-2) var(--mx-space-4) var(--mx-space-2) 0;
   border: 0;
-  border-bottom: 1px solid var(--mx-color-border-subtle);
+  border-bottom: 1px solid var(--mx-color-border);
   text-align: start;
   vertical-align: top;
   /*
@@ -528,7 +546,7 @@
 /* 格子（`preview.tableStyle` が `grid`）。列が多い表では、縦の区切りがあるほうがセルの対応を追いやすい。 */
 .mx-preview[data-mx-table-style='grid'] :is(th, td) {
   padding-inline: var(--mx-space-3);
-  border: 1px solid var(--mx-color-border-subtle);
+  border: 1px solid var(--mx-color-border);
 }
 
 .mx-preview[data-mx-table-style='grid'] th {
@@ -536,7 +554,7 @@
 }
 
 .mx-preview[data-mx-table-style='grid'] tbody > tr:last-child > td {
-  border-bottom: 1px solid var(--mx-color-border-subtle);
+  border-bottom: 1px solid var(--mx-color-border);
 }
 
 /* 交互の塗り（`preview.tableStyle` が `zebra`）。行数が多い表で、横方向に視線が滑らない。 */
@@ -666,6 +684,23 @@
 }
 
 /* ========== GitHub Alerts ========== */
+
+/*
+ * 5 種の色は配色の accent から導出する（ADR-0015）。
+ *
+ * 明度と彩度を accent から借り、色相だけを種別ごとに固定する。
+ * accent は面に対して読める濃さに選ばれているので、どの配色でもその面に合った濃さの 5 色になる。
+ * プリセット（`theme/lazy/presets.ts`）にキーを足さないため、`theme` チャンクのサイズは変わらない。
+ *
+ * 宣言を面に置く理由はインラインコードの文字色と同じである（`--mx-color-code-inline` のコメント）。
+ */
+.mx-preview {
+  --mx-color-alert-note: var(--mx-color-accent);
+  --mx-color-alert-tip: oklch(from var(--mx-color-accent) l c 150);
+  --mx-color-alert-important: oklch(from var(--mx-color-accent) l c 300);
+  --mx-color-alert-warning: oklch(from var(--mx-color-accent) l c 75);
+  --mx-color-alert-caution: oklch(from var(--mx-color-accent) l c 25);
+}
 
 /*
  * > [!NOTE] の引用を色付きの面にする。
