@@ -300,9 +300,9 @@ export async function typeAtEnd(text: string): Promise<void> {
   await browser.keys(text);
 }
 
-/** 未保存の印（`●` / 03.ux-spec/07-status-and-notifications.md §1）が出ているか。 */
+/** 未保存の印（`●` / 03.ux-spec/07-status-and-notifications.md §1）が出ているか。タブは 1 枚でも出る（issue #145）。 */
 export async function isDirtyShown(): Promise<boolean> {
-  return browser.execute(() => document.querySelector('.mx-titlebar__dirty') !== null);
+  return browser.execute(() => document.querySelector('.mx-tab__dirty') !== null);
 }
 
 /** 保存する。**印が消えるまで待つ**（保存できた唯一の見える合図）。 */

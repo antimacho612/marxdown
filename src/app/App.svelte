@@ -19,15 +19,15 @@
 </script>
 
 <!--
-  タブストリップ（M3 Phase 2）。**2 枚以上のときだけ渡す。**
-  1 枚のときは `center` を渡さないので、タイトルバーは M2 と同じファイル名表示のままになる
-  （03.ux-spec/01-screen-layout.md §1「タブも 1 枚のうちは出さない」）。
+  タブストリップ（M3 Phase 2 / issue #145）。**1 枚でも渡す。**
+  枚数で表示が切り替わると、2 枚目を開いた瞬間にファイル名の位置と押せる場所が入れ替わる。
+  何も開いていないときだけ `center` を渡さず、タイトルバーはアプリ名を表示する。
 -->
 {#snippet tabs()}
   <TabStrip />
 {/snippet}
 
-<TitleBar center={tabsStore.tabs.length > 1 ? tabs : undefined} />
+<TitleBar center={tabsStore.tabs.length > 0 ? tabs : undefined} />
 
 {#if documentStore.notice}
   <NoticeBar notice={documentStore.notice} />
