@@ -7,10 +7,11 @@
   計測値は開発ビルドのみ表示する（06.roadmap/invariants.md）。
 -->
 <script lang="ts">
-  import { documentStore, effectiveEol, nextEol as nextEolOf, toggleEol } from '@/features/document';
+  import { documentStore, effectiveEol, nextEol as nextEolOf, notifyStatus, toggleEol } from '@/features/document';
   import { formatZoom } from '@/features/preview';
   import { viewStore } from '@/features/view';
   import { ja } from '@/i18n/ja';
+  import { splitPath } from '@/lib/path';
 
   import StatusBarButton from './StatusBarButton.svelte';
   import StatusMenuButton from './StatusMenuButton.svelte';
@@ -32,6 +33,37 @@
   /** 表示する改行コードと、押したときの行き先（`features/document/eol.ts`）。 */
   const eol = $derived(effectiveEol());
   const nextEol = $derived(nextEolOf());
+
+  /**
+   * フルパスの表示（issue #145）。まだ一度も保存していない文書にはパスが無く、そのときは `null` になる。
+   *
+   * ディレクトリとファイル名に割るのは、幅が足りないときにディレクトリ側だけを潰すためである。
+   * 区切り文字は `splitPath` が落とすので、元のパスから 1 文字だけ取り出してファイル名に付ける。
+   */
+  const path = $derived.by(() => {
+    const full = meta?.path ?? null;
+    if (full === null) return null;
+    const { dir, name } = splitPath(full);
+    return { dir, name: full.slice(dir.length, dir.length + 1) + name };
+  });
+
+  /**
+   * フルパスをクリップボードへ写す。
+   *
+   * 結果は一時メッセージで伝える（§3.3）。
+   * 成否のどちらも「済んだことを伝えるだけ」であり、利用者に判断を求めるものではない（§2.1）。
+   */
+  async function copyPath(): Promise<void> {
+    const full = documentStore.meta?.path;
+    if (!full) return;
+    try {
+      await navigator.clipboard.writeText(full);
+      notifyStatus(ja.status.pathCopied);
+    } catch {
+      // 権限が無い場合やセキュアコンテキストでない場合に失敗する（`features/preview/enhance.ts` と同じ）。
+      notifyStatus(ja.status.pathCopyFailed);
+    }
+  }
 </script>
 
 <footer class="mx-statusbar">
@@ -83,6 +115,19 @@
       title={ja.split.toggleSync}
     >
       ⇄ {viewStore.scrollSync ? ja.split.syncOn : ja.split.syncOff}
+    </StatusBarButton>
+  {/if}
+
+  <!--
+    開いているファイルのフルパス（§3 / issue #145）。押すとクリップボードへ写す。
+    ファイル名はタブに出ているため、ここが担うのは「どの場所のファイルか」である。
+    無題の文書にはパスが無く、項目ごと出さない。
+  -->
+  {#if path}
+    <StatusBarButton class="mx-statusbar__path" onclick={() => void copyPath()} title={ja.status.pathCopy}>
+      <!-- prettier-ignore -->
+      <!-- 2 つの span の間に空白を入れない。読み上げにも `textContent` にも、パスに無い空白が混ざる。 -->
+      <span class="mx-statusbar__path-dir">{path.dir}</span><span class="mx-statusbar__path-name">{path.name}</span>
     </StatusBarButton>
   {/if}
 
@@ -151,17 +196,59 @@
   }
 
   /*
-   * 一時メッセージ。空のときは余白として働き、左右の項目の位置を動かさない。
-   * 長い文言でも右端の倍率を押し出さないよう、自分が先に縮んで省略記号になる。
+   * フルパス（issue #145）。**伸びない。** 伸ばすと、字面の無い余白までホバーの面になる。
+   * 幅が足りないときは一時メッセージと分け合って縮む。文字数の差の分だけ、長いパス側が多く縮む。
    */
-  .mx-statusbar__message {
-    flex: 1;
+  .mx-statusbar :global(.mx-statusbar__path) {
+    flex: 0 1 auto;
     min-width: 0;
     overflow: hidden;
+  }
+
+  /*
+   * 先に潰れるのはディレクトリ側である。
+   * 末尾から切り落とす省略記号では、ファイル名という最も手がかりになる部分が先に消える。
+   *
+   * 縮み率を大きく取ることで、ディレクトリが尽きるまでファイル名は縮まない。
+   * それでも足りなければファイル名も縮む。ウィンドウの最小幅（480px）に
+   * 長いファイル名を置くと実際に足りなくなり、溢れたぶんが右隣の倍率に重なる。
+   */
+  .mx-statusbar__path-dir {
+    flex: 0 100 auto;
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
     text-overflow: ellipsis;
   }
 
+  .mx-statusbar__path-name {
+    flex: 0 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+
+  /*
+   * 一時メッセージ。空のときは余白として働き、左右の項目の位置を動かさない。
+   * 長い文言でも右端の倍率を押し出さないよう、自分が先に縮んで省略記号になる。
+   *
+   * 文言は領域の右端へ寄せる（倍率の左隣に出す）。
+   * `text-align` ではなく flex で寄せているのは、省略記号を末尾に出すためである。
+   * 右揃えにすると溢れるのが行頭側になり、`text-overflow` が働かない。
+   */
+  .mx-statusbar__message {
+    flex: 1 1 auto;
+    min-width: 0;
+    display: flex;
+    justify-content: flex-end;
+  }
+
   .mx-statusbar__message-text {
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
     /* 出現に 150ms（03.ux-spec/09-motion.md） */
     animation: mx-status-message-in 150ms ease-out;
   }
