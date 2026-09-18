@@ -626,6 +626,11 @@
   text-decoration-thickness: from-font;
 }
 
+/* クリック可能と分かるよう、ホバーで文字色を変える。href を持たない data-mx-blocked は対象外（#143）。 */
+.mx-content a:not([data-mx-blocked]):hover {
+  color: var(--mx-color-accent-hover);
+}
+
 /*
  * 画像は本文幅を超えない。LLM が貼るスクリーンショットは大きいことが多い。
  *
