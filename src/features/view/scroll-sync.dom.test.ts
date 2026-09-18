@@ -21,6 +21,7 @@ import {
   jumpToPreviewLine,
   startScrollSync,
   stopScrollSync,
+  takeEditorLead,
   type EditorScrollPort,
 } from './scroll-sync';
 import { viewStore } from './store.svelte';
@@ -133,6 +134,18 @@ describe('主導権 (§2)', () => {
     // エディターが主導 → その結果として飛ぶプレビューの scroll は無視される。
     topLine = 10;
     notifyEditorScroll?.();
+    preview.dispatchEvent(new Event('scroll'));
+
+    expect(scrollToLine).not.toHaveBeenCalled();
+  });
+
+  it('主導権をエディターへ移すと、その直後のプレビューの scroll では追随しない (#148)', () => {
+    const preview = stubRects();
+    startScrollSync();
+
+    // 再描画でプレビューを機械的に動かす側（`document/live.ts`）が呼ぶ。
+    takeEditorLead();
+    preview.scrollTop = 400;
     preview.dispatchEvent(new Event('scroll'));
 
     expect(scrollToLine).not.toHaveBeenCalled();
