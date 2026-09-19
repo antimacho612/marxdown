@@ -16,6 +16,7 @@ pub mod commands;
 pub mod dir;
 mod document;
 pub mod error;
+pub mod glob;
 pub mod scope;
 pub mod settings;
 /// Windows の Snap Layouts。Windows 以外では空になる（ファイル冒頭の `#![cfg(windows)]`）。

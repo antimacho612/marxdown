@@ -49,6 +49,9 @@ pub const KEY_EDITOR_WORD_SEPARATORS: &str = "editor.wordSeparators";
 pub const KEY_EDITOR_WORD_WRAP: &str = "editor.wordWrap";
 pub const KEY_EDITOR_WORD_WRAP_COLUMN: &str = "editor.wordWrapColumn";
 
+/// エクスプローラーから常に除外するパスの glob（`src/glob.rs` / #146）。
+pub const KEY_EXPLORER_EXCLUDE: &str = "explorer.exclude";
+
 /// 追加記法（`src/markdown/plugins/syntax.ts` の `SYNTAX_NAMES` と 1:1）。どれも既定 OFF。
 pub const KEY_MARKDOWN_ABBREVIATIONS: &str = "markdown.abbreviations";
 pub const KEY_MARKDOWN_DEFINITION_LISTS: &str = "markdown.definitionLists";
@@ -114,6 +117,11 @@ const OUTLINE_MAX_DEPTH_RANGE: (f64, f64) = (1.0, 6.0);
 /// 縦罫線の本数の上限。
 /// 上限を置かないと、手で書いた `[1,2,3,...]` がそのまま描画コストになる。
 const RULERS_MAX: usize = 8;
+
+/// 除外パターンの本数の上限。
+/// 1 エントリごとに全パターンを試すため、本数がそのまま一覧の走査コストになる。
+/// `src/glob.rs` の `MAX_PATTERNS` と揃える。
+const EXCLUDE_MAX: usize = 64;
 
 /// 明暗の指定（F-CONF-01）。配色そのものは `preview.theme` / `editor.theme` が持つ。
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
@@ -281,6 +289,11 @@ pub struct Settings {
     #[serde(rename = "editor.wordWrapColumn")]
     pub editor_word_wrap_column: f64,
 
+    /// エクスプローラーとクイックオープンから常に除外するパスの glob（#146）。
+    /// 空なら追加の除外はしない。隠しファイルと `node_modules` は設定に関わらず除外される（`dir.rs`）。
+    #[serde(rename = "explorer.exclude")]
+    pub explorer_exclude: Vec<String>,
+
     /// 設定で有効化する追加記法（04.tech-stack/04-markdown.md §3）。
     /// **どれも既定 OFF である。** 標準的でない記法が意図せず発火して本文が壊れるほうが、認知負荷が高い。
     #[serde(rename = "markdown.abbreviations")]
@@ -372,6 +385,10 @@ impl Default for Settings {
             editor_word_separators: DEFAULT_EDITOR_WORD_SEPARATORS.to_owned(),
             editor_word_wrap: WordWrap::default(),
             editor_word_wrap_column: DEFAULT_EDITOR_WORD_WRAP_COLUMN,
+
+            // 既定では追加の除外をしない。
+            // 隠しファイルと `node_modules` は設定に関わらず落ちるため（`dir.rs`）、ここに書き出すと同じ判断が 2 か所に分かれる。
+            explorer_exclude: Vec::new(),
 
             markdown_abbreviations: false,
             markdown_definition_lists: false,
@@ -471,6 +488,8 @@ impl Settings {
                 WORD_WRAP_COLUMN_RANGE,
             )
             .unwrap_or(d.editor_word_wrap_column),
+
+            explorer_exclude: take_exclude(&mut map).unwrap_or(d.explorer_exclude),
 
             markdown_abbreviations: take(&mut map, KEY_MARKDOWN_ABBREVIATIONS)
                 .unwrap_or(d.markdown_abbreviations),
@@ -583,6 +602,22 @@ fn take_rulers(map: &mut Map<String, Value>) -> Option<Vec<f64>> {
             .filter(|v| v.is_finite())
             .map(|v| v.clamp(RULER_RANGE.0, RULER_RANGE.1).round())
             .take(RULERS_MAX)
+            .collect(),
+    )
+}
+
+/// 除外パターン。空文字と空白だけのものを落とし、本数を上限で切る。
+///
+/// 型が違う要素が 1 つでもあれば、配列ごと既定（除外しない）に戻す（`take_rulers` と同じ判断）。
+/// 綴りが glob として読めるかはここでは調べない。
+/// 判定は `crate::glob` にあり、読めなかった 1 本だけがそこで落ちる。
+fn take_exclude(map: &mut Map<String, Value>) -> Option<Vec<String>> {
+    let values: Vec<String> = take(map, KEY_EXPLORER_EXCLUDE)?;
+    Some(
+        values
+            .into_iter()
+            .filter(|v| !v.trim().is_empty())
+            .take(EXCLUDE_MAX)
             .collect(),
     )
 }
@@ -786,6 +821,26 @@ mod tests {
             Settings::from_map(serde_json::from_str(r#"{"editor.rulers":[80,"ひゃく"]}"#).unwrap());
 
         assert!(s.editor_rulers.is_empty(), "部分的に拾わない");
+    }
+
+    #[test]
+    fn exclude_patterns_drop_the_blank_ones_and_are_capped() {
+        let mut list: Vec<String> = (0..EXCLUDE_MAX + 4).map(|i| format!("d{i}")).collect();
+        list.insert(0, "  ".into());
+        let json = serde_json::json!({ KEY_EXPLORER_EXCLUDE: list });
+
+        let s = Settings::from_map(json.as_object().unwrap().clone());
+
+        assert_eq!(s.explorer_exclude.len(), EXCLUDE_MAX);
+        assert_eq!(s.explorer_exclude[0], "d0", "空白だけの行は落ちる");
+    }
+
+    #[test]
+    fn an_exclude_list_with_a_bad_element_falls_back_to_none() {
+        let s =
+            Settings::from_map(serde_json::from_str(r#"{"explorer.exclude":["dist",3]}"#).unwrap());
+
+        assert!(s.explorer_exclude.is_empty(), "部分的に拾わない");
     }
 
     #[test]

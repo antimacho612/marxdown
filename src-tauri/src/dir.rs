@@ -8,6 +8,9 @@
 //! 「画面には出ないが IPC には載っている」状態になり、件数の多いディレクトリで
 //! 転送量だけが増える。
 //!
+//! 利用者が足す除外（`explorer.exclude` / #146）も同じ場所で当てる。
+//! こちらは基点からの相対パスに対する glob であり、判定そのものは `crate::glob` にある。
+//!
 //! **遅延展開の単位もここである。** 1 階層ぶんしか返さない。
 //! 再帰的に返すと、リポジトリの直上で開いたときに数万件を 1 回の IPC で運ぶことになる。
 
@@ -16,6 +19,7 @@ use std::path::{Path, PathBuf};
 use serde::Serialize;
 
 use crate::error::{CoreError, CoreResult};
+use crate::glob::PatternSet;
 use crate::scope;
 
 /// 一覧に出さない名前。
@@ -45,6 +49,47 @@ fn is_visible(name: &str) -> bool {
     !name.starts_with('.') && !EXCLUDED.contains(&name)
 }
 
+/// 利用者が設定した除外（`explorer.exclude` / #146）。
+///
+/// [`EXCLUDED`] とは別に持つ。
+/// 常に外すもの（隠しファイル・`node_modules`）は設定を空にしても戻らないという違いがある。
+///
+/// 一致の基準は基点からの相対パスであり、基点はエクスプローラーの木の根（クイックオープンでは検索の基点）である。
+/// 基点を決められなかった場合は名前だけで判定する。
+/// パターンのうち `/` を含まないものは元から名前に対する指定なので、その範囲では同じ結果になる。
+#[derive(Debug, Clone, Default)]
+pub struct Exclude {
+    patterns: PatternSet,
+    /// 基点。正規化済み絶対パス。決められなければ `None`。
+    base: Option<PathBuf>,
+}
+
+impl Exclude {
+    /// 設定のパターンと基点から作る。基点は正規化済みであることを前提とする。
+    pub fn new(patterns: &[String], base: Option<&Path>) -> Self {
+        Self {
+            patterns: PatternSet::new(patterns),
+            base: base.map(Path::to_path_buf),
+        }
+    }
+
+    /// 1 件を隠すか。`dir` はその項目が入っているディレクトリ（正規化済み）。
+    fn hides(&self, dir: &Path, name: &str) -> bool {
+        if self.patterns.is_empty() {
+            return false;
+        }
+        let relative = match self
+            .base
+            .as_deref()
+            .and_then(|base| dir.strip_prefix(base).ok())
+        {
+            Some(prefix) => prefix.join(name),
+            None => PathBuf::from(name),
+        };
+        self.patterns.matches(&relative)
+    }
+}
+
 /// 並び順。ディレクトリが先、その中は名前順（大文字小文字を区別しない）。
 ///
 /// エクスプローラーとしての見え方を揃えるためであり、`read_dir` の順序は OS 依存で安定しない。
@@ -58,9 +103,12 @@ fn sort_entries(entries: &mut [DirEntry]) {
 
 /// `root` の配下であることを検証したうえで、`path` の中身を 1 階層ぶん返す。
 ///
+/// `exclude` は利用者が設定した除外（`explorer.exclude`）。
+/// 隠しファイルと `node_modules` はこれとは別に常に落ちる。
+///
 /// 存在しない・ディレクトリでない場合は [`CoreError::NotFound`]。
 /// スコープ外は [`CoreError::OutOfScope`]（N-SEC-05 / ADR-0006）。
-pub fn list(roots: &[PathBuf], path: &Path) -> CoreResult<Vec<DirEntry>> {
+pub fn list(roots: &[PathBuf], path: &Path, exclude: &Exclude) -> CoreResult<Vec<DirEntry>> {
     let resolved = scope::resolve_within(roots, path)?;
     if !resolved.is_dir() {
         return Err(CoreError::NotFound(resolved.display().to_string()));
@@ -71,7 +119,7 @@ pub fn list(roots: &[PathBuf], path: &Path) -> CoreResult<Vec<DirEntry>> {
     let mut entries = Vec::new();
     for item in read.flatten() {
         let name = item.file_name().to_string_lossy().to_string();
-        if !is_visible(&name) {
+        if !is_visible(&name) || exclude.hides(&resolved, &name) {
             continue;
         }
         // 種別が取れないものは飛ばす（削除された直後など）。一覧の 1 件のために失敗させない。
@@ -112,7 +160,8 @@ pub struct FileList {
 
 /// `root` の配下から、指定された拡張子のファイルを再帰的に集める（F-NAV-05）。
 ///
-/// 除外は [`list`] と同じ（隠しファイル・`node_modules`）。
+/// 除外は [`list`] と同じ（隠しファイル・`node_modules`・`explorer.exclude`）。
+/// 除外されたディレクトリには潜らない。中身が候補に出ないだけでなく、走査そのものを行わない。
 /// シンボリックリンクは辿らない。
 /// 上限は [`MAX_FILES`] 件・深さ [`MAX_DEPTH`] で、超えたら `truncated` を立てて打ち切る。
 ///
@@ -121,7 +170,12 @@ pub struct FileList {
 /// 比較は大文字小文字を区別しない。先頭の `.` は付けても付けなくてもよい。
 ///
 /// スコープ外は [`CoreError::OutOfScope`]（N-SEC-05 / ADR-0006）。
-pub fn list_files(roots: &[PathBuf], root: &Path, extensions: &[String]) -> CoreResult<FileList> {
+pub fn list_files(
+    roots: &[PathBuf],
+    root: &Path,
+    extensions: &[String],
+    exclude: &Exclude,
+) -> CoreResult<FileList> {
     let resolved = scope::resolve_within(roots, root)?;
     if !resolved.is_dir() {
         return Err(CoreError::NotFound(resolved.display().to_string()));
@@ -135,7 +189,7 @@ pub fn list_files(roots: &[PathBuf], root: &Path, extensions: &[String]) -> Core
 
     let mut files = Vec::new();
     let mut truncated = false;
-    collect(&resolved, &wanted, 0, &mut files, &mut truncated);
+    collect(&resolved, &wanted, exclude, 0, &mut files, &mut truncated);
 
     // 並びを決めておく。あいまい検索が同点にしたときの順序がここで決まる。
     files.sort();
@@ -149,6 +203,7 @@ pub fn list_files(roots: &[PathBuf], root: &Path, extensions: &[String]) -> Core
 fn collect(
     dir: &Path,
     extensions: &[String],
+    exclude: &Exclude,
     depth: usize,
     files: &mut Vec<String>,
     truncated: &mut bool,
@@ -165,7 +220,7 @@ fn collect(
     let mut dirs = Vec::new();
     for item in read.flatten() {
         let name = item.file_name().to_string_lossy().to_string();
-        if !is_visible(&name) {
+        if !is_visible(&name) || exclude.hides(dir, &name) {
             continue;
         }
         let Ok(kind) = item.file_type() else {
@@ -192,7 +247,7 @@ fn collect(
             *truncated = true;
             return;
         }
-        collect(&child, extensions, depth + 1, files, truncated);
+        collect(&child, extensions, exclude, depth + 1, files, truncated);
     }
 }
 
@@ -243,7 +298,7 @@ mod tests {
     fn listing_outside_the_roots_is_rejected() {
         let dir = std::env::temp_dir();
         let roots = vec![dir.join("marxdown-scope-test-root")];
-        let error = list(&roots, &dir).unwrap_err();
+        let error = list(&roots, &dir, &Exclude::default()).unwrap_err();
 
         assert!(matches!(error, CoreError::OutOfScope(_)));
     }
@@ -256,7 +311,7 @@ mod tests {
         std::fs::write(base.join("a.md"), "# a").unwrap();
         std::fs::write(nested.join("b.md"), "# b").unwrap();
 
-        let entries = list(std::slice::from_ref(&base), &base).unwrap();
+        let entries = list(std::slice::from_ref(&base), &base, &Exclude::default()).unwrap();
         let names: Vec<&str> = entries.iter().map(|e| e.name.as_str()).collect();
 
         // 1 階層ぶんだけ。`docs/b.md` は入らない。
@@ -289,7 +344,13 @@ mod tests {
         std::fs::write(base.join("node_modules").join("c.md"), "").unwrap();
         std::fs::write(base.join(".git").join("d.md"), "").unwrap();
 
-        let list = list_files(std::slice::from_ref(&base), &base, &["md".to_string()]).unwrap();
+        let list = list_files(
+            std::slice::from_ref(&base),
+            &base,
+            &["md".to_string()],
+            &Exclude::default(),
+        )
+        .unwrap();
         let names: Vec<String> = list
             .files
             .iter()
@@ -308,6 +369,85 @@ mod tests {
         std::fs::remove_dir_all(&base).unwrap();
     }
 
+    /// 設定の除外は基点からの相対パスで効く。
+    /// 深い階層の `dist` も、基点直下の `docs/generated` も 1 つの設定から落とせる。
+    #[test]
+    fn user_patterns_hide_entries_relative_to_the_base() {
+        let base = std::env::temp_dir().join("marxdown-dir-exclude-test");
+        let _ = std::fs::remove_dir_all(&base);
+        std::fs::create_dir_all(base.join("docs").join("generated")).unwrap();
+        std::fs::create_dir_all(base.join("docs").join("dist")).unwrap();
+        std::fs::create_dir_all(base.join("dist")).unwrap();
+        std::fs::write(base.join("a.md"), "").unwrap();
+        std::fs::write(base.join("scratch.tmp"), "").unwrap();
+
+        let root = dunce::canonicalize(&base).unwrap();
+        let exclude = Exclude::new(
+            &["dist".to_string(), "docs/generated".into(), "*.tmp".into()],
+            Some(&root),
+        );
+
+        let top = list(std::slice::from_ref(&base), &base, &exclude).unwrap();
+        let names: Vec<&str> = top.iter().map(|e| e.name.as_str()).collect();
+        assert_eq!(names, vec!["docs", "a.md"]);
+
+        let docs = list(std::slice::from_ref(&base), &base.join("docs"), &exclude).unwrap();
+        let names: Vec<&str> = docs.iter().map(|e| e.name.as_str()).collect();
+        assert!(
+            names.is_empty(),
+            "`dist` はどの階層でも、`docs/generated` は基点からの位置で落ちる: {names:?}"
+        );
+
+        std::fs::remove_dir_all(&base).unwrap();
+    }
+
+    /// 除外したディレクトリにはクイックオープンも潜らない（F-NAV-05）。
+    #[test]
+    fn user_patterns_also_prune_the_recursive_walk() {
+        let base = std::env::temp_dir().join("marxdown-files-exclude-test");
+        let _ = std::fs::remove_dir_all(&base);
+        std::fs::create_dir_all(base.join("dist")).unwrap();
+        std::fs::create_dir_all(base.join("docs")).unwrap();
+        std::fs::write(base.join("a.md"), "").unwrap();
+        std::fs::write(base.join("dist").join("b.md"), "").unwrap();
+        std::fs::write(base.join("docs").join("c.md"), "").unwrap();
+
+        let root = dunce::canonicalize(&base).unwrap();
+        let exclude = Exclude::new(&["dist".to_string()], Some(&root));
+
+        let found = list_files(
+            std::slice::from_ref(&base),
+            &base,
+            &["md".to_string()],
+            &exclude,
+        )
+        .unwrap();
+        let names: Vec<String> = found
+            .files
+            .iter()
+            .map(|path| {
+                Path::new(path)
+                    .file_name()
+                    .unwrap()
+                    .to_string_lossy()
+                    .to_string()
+            })
+            .collect();
+
+        assert_eq!(names, vec!["a.md", "c.md"]);
+
+        std::fs::remove_dir_all(&base).unwrap();
+    }
+
+    /// 基点が無い場合は名前だけで判定する。`/` を含むパターンはその場では効かない。
+    #[test]
+    fn without_a_base_only_the_name_is_matched() {
+        let exclude = Exclude::new(&["dist".to_string(), "docs/generated".into()], None);
+
+        assert!(exclude.hides(Path::new("/anywhere"), "dist"));
+        assert!(!exclude.hides(Path::new("/anywhere/docs"), "generated"));
+    }
+
     #[test]
     fn collecting_stops_at_the_limit() {
         let base = std::env::temp_dir().join("marxdown-files-limit-test");
@@ -320,6 +460,7 @@ mod tests {
         collect(
             &base,
             &["md".to_string()],
+            &Exclude::default(),
             MAX_DEPTH + 1,
             &mut files,
             &mut truncated,
@@ -335,7 +476,7 @@ mod tests {
     fn collecting_outside_the_roots_is_rejected() {
         let dir = std::env::temp_dir();
         let roots = vec![dir.join("marxdown-scope-test-root")];
-        let error = list_files(&roots, &dir, &["md".to_string()]).unwrap_err();
+        let error = list_files(&roots, &dir, &["md".to_string()], &Exclude::default()).unwrap_err();
 
         assert!(matches!(error, CoreError::OutOfScope(_)));
     }

@@ -19,7 +19,8 @@ type Labels<K extends SettingKey> = Readonly<Record<Settings[K] & string, string
 /**
  * キーに当てられる部品。スキーマの `kind` から決まる。
  *
- * `number[]`（縦罫線）だけは入力欄の文字列と値が 1:1 でないため `custom` に落ち、ダイアログ側が個別に描く。
+ * 並び（`number[]` / `string[]`）は入力欄の文字列と値が 1:1 でないため `list` になる。
+ * 打っている途中の文字列を保持するのは `ListField.svelte` で、値としての解釈はダイアログ側が持つ。
  *
  * 文字列だけ 2 択にしてある。
  * 配色（ADR-0014）は値としては文字列だが、選択肢は組み込みと `themes/` の合成であり、`values` を持たないぶん `select` には載らない（`theme`）。
@@ -33,7 +34,7 @@ type WidgetFor<K extends SettingKey> =
         ? { widget: 'toggle' }
         : SettingKind<K> extends 'string'
           ? { widget: 'text'; placeholder?: string } | { widget: 'theme' }
-          : { widget: 'custom' };
+          : { widget: 'list'; placeholder: string };
 
 type FieldOf<K extends SettingKey> = {
   kind: 'field';
@@ -298,7 +299,8 @@ export const LAYOUT = [
       {
         kind: 'field',
         key: 'editor.rulers',
-        widget: 'custom',
+        widget: 'list',
+        placeholder: ja.settings.editor.rulers.placeholder,
         label: ja.settings.editor.rulers.label,
         description: ja.settings.editor.rulers.description,
       },
@@ -393,6 +395,20 @@ export const LAYOUT = [
     label: ja.settings.categories.markdown,
     // 節の見出しは置かない。カテゴリ自体が「記法」であり、7 項目に見出しを足しても分かれ目が増えるだけである。
     entries: SYNTAX_FIELDS,
+  },
+  {
+    id: 'explorer',
+    label: ja.settings.categories.explorer,
+    entries: [
+      {
+        kind: 'field',
+        key: 'explorer.exclude',
+        widget: 'list',
+        placeholder: ja.settings.explorer.exclude.placeholder,
+        label: ja.settings.explorer.exclude.label,
+        description: ja.settings.explorer.exclude.description,
+      },
+    ],
   },
   {
     id: 'outline',

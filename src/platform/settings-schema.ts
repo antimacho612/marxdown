@@ -50,8 +50,17 @@ interface NumberListEntry {
   maxLength: number;
 }
 
+/** 文字列の並び。`maxLength` は本数の上限で、`maxItemLength` は 1 本あたりの長さの上限。 */
+interface StringListEntry {
+  kind: 'string[]';
+  default: readonly string[];
+  maxLength: number;
+  maxItemLength: number;
+}
+
 /** スキーマ 1 項目。種別ごとに持つ情報が違うため判別可能なユニオンにしてある。 */
-export type SettingSchemaEntry = EnumEntry | NumberEntry | BooleanEntry | StringEntry | NumberListEntry;
+export type SettingSchemaEntry =
+  EnumEntry | NumberEntry | BooleanEntry | StringEntry | NumberListEntry | StringListEntry;
 
 /**
  * 既定値が選択肢の中にあることを型で縛る。
@@ -136,6 +145,15 @@ export const SETTINGS_SCHEMA = defineSettingsSchema({
   },
   'editor.wordWrapColumn': { kind: 'number', default: 80, min: 20, max: 500 },
 
+  /**
+   * エクスプローラーとクイックオープンから常に除外するパスの glob（#146）。
+   *
+   * 隠しファイルと `node_modules` は設定に関わらず除外される（`src-tauri/src/dir.rs`）。
+   * 判定は Rust 側にある（`src-tauri/src/glob.rs`）。フロントへ渡してから隠すと、画面に出ないものまで IPC に載る。
+   * 上限は `src-tauri/src/settings/schema.rs` の `EXCLUDE_MAX` と `glob.rs` の `MAX_PATTERN_LEN` に揃える。
+   */
+  'explorer.exclude': { kind: 'string[]', default: [], maxLength: 64, maxItemLength: 256 },
+
   /*
    * 追加記法（04.tech-stack/04-markdown.md §3）。**どれも既定 OFF である。**
    *
@@ -206,7 +224,9 @@ type ValueOf<E> = E extends { kind: 'enum'; values: readonly (infer V)[] }
         ? string
         : E extends { kind: 'number[]' }
           ? number[]
-          : never;
+          : E extends { kind: 'string[]' }
+            ? string[]
+            : never;
 
 /**
  * `settings.json` の値の形。スキーマから導出されるため、ここに手で追記しない。

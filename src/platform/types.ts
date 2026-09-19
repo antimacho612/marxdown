@@ -363,10 +363,13 @@ export interface Platform {
   /**
    * ディレクトリの中身を 1 階層ぶん返す（F-NAV-03 / ファイルツリー）。
    *
-   * 隠しファイル・`node_modules` は Rust 側で落ちてくる（`src-tauri/src/dir.rs`）。
+   * 隠しファイル・`node_modules`・`explorer.exclude` の glob は Rust 側で落ちてくる（`src-tauri/src/dir.rs`）。
    * 再帰しないのは、開いたディレクトリだけを読む遅延展開のためである（03.ux-spec/06-panes.md §1）。
+   *
+   * `root` は木の基点。`explorer.exclude` の glob をどこからの相対として解釈するかだけに使う（#146）。
+   * 読む範囲を決めるのは `path` のほうであり、`root` は許可範囲を広げも狭めもしない。
    */
-  listDir(path: string): Promise<DirEntry[]>;
+  listDir(path: string, root: string): Promise<DirEntry[]>;
   /**
    * 基点の配下の Markdown を再帰的に集める（F-NAV-05 / クイックオープン）。
    *
