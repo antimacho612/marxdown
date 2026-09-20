@@ -16,6 +16,7 @@ import githubAlerts from 'markdown-it-github-alerts';
 
 import { splitFrontMatter } from './plugins/front-matter';
 import { extractOutline, lineMapPlugin, type OutlineItem } from './plugins/line-map';
+import { linkTitlePlugin } from './plugins/link-title';
 import { mathPlugin } from './plugins/math';
 import { mermaidPlugin } from './plugins/mermaid';
 import { useSyntax } from './plugins/syntax';
@@ -104,6 +105,9 @@ export function createMarkdownIt(config: RenderConfig = {}): MarkdownIt {
   // 表（F-VIEW-01）。包む要素と揃えの属性を足すだけで、表の解釈そのものは変えない。
   // `multilineTables`（追加記法）が差し替えるのはブロックルールであり、ここが見るトークンの形は変わらない。
   md.use(tablePlugin);
+
+  // リンクのホバー時に行き先を表示する（#144）。オートリンク・linkify は対象外（`plugins/link-title.ts`）。
+  md.use(linkTitlePlugin);
 
   // 設定で有効化された追加記法（`markdown.*`）。既定では 1 つも入らない。
   // 標準の記法より後に置く。定義リストや上付き下付きが、既定の記法の解釈を変えないようにするためである。
