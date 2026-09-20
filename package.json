@@ -13,8 +13,8 @@
   "scripts": {
     "dev": "tauri dev",
     "dev:web": "vite",
-    "build": "tsc --noEmit && svelte-check && vite build",
-    "build:app": "tauri build",
+    "build": "tauri build",
+    "build:web": "tsc --noEmit && svelte-check && vite build",
     "check": "eslint . && prettier --check . && tsc --noEmit && tsc -p tsconfig.e2e.json && svelte-check",
     "fix": "eslint . --fix && prettier --write .",
     "test": "vitest run",
