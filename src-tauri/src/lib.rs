@@ -131,7 +131,7 @@ pub fn run() {
             "WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS",
             "--js-flags=--expose-gc",
         );
-        eprintln!("[marxdown] --gc-probe: DevTools のコンソールで gc() を呼べます（OQ-18）");
+        eprintln!("[marxdown] --gc-probe: DevTools のコンソールで gc() を呼べます");
     }
 
     let mut trace = trace::Trace::start(t0);

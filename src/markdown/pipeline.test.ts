@@ -30,7 +30,7 @@ describe('CommonMark / GFM', () => {
     expect(render('a\nb').html).not.toContain('<br>');
   });
 
-  it('preview.softBreak が true なら単独の改行を <br> にする (#45)', () => {
+  it('preview.softBreak が true なら単独の改行を <br> にする', () => {
     expect(render('a\nb', { breaks: true }).html).toContain('<br>');
   });
 
@@ -167,7 +167,7 @@ describe('壊れた入力に耐える (N-REL-04)', () => {
   });
 });
 
-describe('OQ-27 で前倒した記法 (06.roadmap/m2-editor.md §1.4)', () => {
+describe('GitHub 由来の拡張記法（Alerts / 脚注 / タスクリスト）', () => {
   it('GitHub Alerts を描画する (F-VIEW-14)', () => {
     const { html } = render('> [!TIP]\n> 役に立つ話。\n');
     expect(html).toContain('class="markdown-alert markdown-alert-tip"');
@@ -202,7 +202,7 @@ describe('OQ-27 で前倒した記法 (06.roadmap/m2-editor.md §1.4)', () => {
     expect(html).toContain('role="checkbox"');
   });
 
-  it('チェックボックスに input を使わない (OQ-05)', () => {
+  it('チェックボックスに input を使わない', () => {
     // 生 HTML を書いたドキュメントが本文へ操作可能なフォーム部品を持ち込む経路を塞いである。
     expect(render('- [x] 完了\n').html).not.toContain('<input');
   });

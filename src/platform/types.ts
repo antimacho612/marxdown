@@ -13,7 +13,7 @@ export type Eol = 'lf' | 'crlf';
 /** 扱えるエンコーディング。`src-tauri/src/document/encoding.rs` の `Encoding` と対応する。 */
 export type Encoding = 'utf8' | 'utf16-le' | 'utf16-be' | 'shift-jis' | 'euc-jp';
 
-/** 表示モード（F-MODE-01〜03）。WYSIWYG（F-MODE-04）は M5 で追加する。 */
+/** 表示モード（F-MODE-01〜03）。WYSIWYG（F-MODE-04）は未実装である。 */
 export type ViewMode = 'preview' | 'edit' | 'split';
 
 /**

@@ -47,7 +47,7 @@ describe('見出しのあいまい検索 (Ctrl+Shift+O)', () => {
   });
 });
 
-describe('照合用の正規化 (#104)', () => {
+describe('照合用の正規化', () => {
   it('ひらがなでカタカナに当たる', () => {
     expect(fuzzyScore('ファイルを開く', 'ふぁいる')).not.toBeNull();
     expect(fuzzyScore('コールド起動', 'こーるど')).not.toBeNull();
@@ -72,7 +72,7 @@ describe('照合用の正規化 (#104)', () => {
   });
 });
 
-describe('複数のキーでの照合 (#104)', () => {
+describe('複数のキーでの照合', () => {
   interface Entry {
     label: string;
     keywords: string;

@@ -139,7 +139,7 @@ describe('主導権 (§2)', () => {
     expect(scrollToLine).not.toHaveBeenCalled();
   });
 
-  it('主導権をエディターへ移すと、その直後のプレビューの scroll では追随しない (#148)', () => {
+  it('主導権をエディターへ移すと、その直後のプレビューの scroll では追随しない', () => {
     const preview = stubRects();
     startScrollSync();
 

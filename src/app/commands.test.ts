@@ -28,7 +28,7 @@ afterEach(() => {
   uninstall();
 });
 
-describe('コマンドレジストリ (06.roadmap/m2-editor.md §1.2)', () => {
+describe('コマンドレジストリ', () => {
   /**
    * 2 つの表がずれていないこと。
    *

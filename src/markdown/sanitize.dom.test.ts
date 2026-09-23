@@ -179,7 +179,7 @@ describe('リンクの後処理', () => {
   });
 });
 
-describe('input は 1 つも通さない (F-VIEW-01 / OQ-05)', () => {
+describe('input は 1 つも通さない (F-VIEW-01)', () => {
   it('タスクリストのチェックボックスは span で出る', () => {
     // タスクリストは `<input>` を出さないため、`<input>` に例外を設ける理由が無い（`markdown/plugins/task-list.ts`）。
     const out = pipeline('- [ ] 未完了\n- [x] 完了\n');
@@ -215,7 +215,7 @@ describe('input は 1 つも通さない (F-VIEW-01 / OQ-05)', () => {
   });
 });
 
-describe('前倒した記法を壊さない (OQ-27 / 06.roadmap/m2-editor.md §1.4)', () => {
+describe('GitHub 由来の拡張記法を壊さない', () => {
   it('GitHub Alerts を残す (F-VIEW-14)', () => {
     const out = pipeline('> [!NOTE]\n> 本文\n');
     expect(out).toContain('markdown-alert-note');

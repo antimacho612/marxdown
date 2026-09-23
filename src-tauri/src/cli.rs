@@ -66,7 +66,7 @@ OPTIONS:
     -V, --version              バージョンを表示する
 
 MEASUREMENT OPTIONS (計測用。開発ビルドでのみ意味を持つ):
-        --gc-probe                              DevTools から gc() を呼べるようにする (OQ-18)
+        --gc-probe                              DevTools から gc() を呼べるようにする
         --bench-input <OUT>                     入力レスポンスを計測し JSON を OUT へ書き出して終了する
 ";
 

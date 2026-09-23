@@ -79,7 +79,7 @@ describe('反転しない行', () => {
 });
 
 describe('ダーティ', () => {
-  it('反転したらダーティにする（自動保存はしない / OQ-05）', () => {
+  it('反転したらダーティにする（自動保存はしない）', () => {
     setDocumentText('- [ ] a\n');
     toggleTaskAtLine(0);
     expect(documentStore.isDirty).toBe(true);

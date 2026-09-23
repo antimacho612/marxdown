@@ -130,7 +130,7 @@ const platform: Platform = import.meta.env.DEV ? webPlatform : tauriPlatform
 
 > Platform 層があることで、この 2 つは同じ Domain 層から使える。
 
-## 前倒した記法（OQ-27）
+## GitHub 由来の拡張記法
 
 > [!NOTE]
 > GitHub Alerts は 5 種類ある。
