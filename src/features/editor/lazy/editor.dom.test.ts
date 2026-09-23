@@ -1,14 +1,12 @@
 // @vitest-environment jsdom
 /**
- * Undo で保存済みの内容まで戻ったら dirty を解除する回帰テスト（#43）。
+ * Undo で保存済みの内容まで戻ったら dirty を解除する回帰テスト。
  *
- * それまでは「内容が変わった」の真偽だけで dirty を立てていたため、Undo で
- * 編集前 / 保存直後の内容まで戻っても dirty が残ったままだった。
+ * 「内容が変わった」かどうかだけで dirty を判定すると、Undo で編集前 / 保存直後の内容まで戻っても dirty が残る。
  *
- * `mountEditor` を実際に通して Monaco を jsdom で載せる。
- * Monaco はレイアウトと OS のテーマを問い合わせるので、jsdom に無いものを最小限だけ立てる（`preview/search.dom.test.ts` と同じ手当て）。
- * 本物の描画は要らない。ここで見たいのは
- * 「モデルの版が基準に戻ったら dirty が外れるか」だけである。
+ * `mountEditor` を実際に通して Monaco を jsdom 上にマウントする。
+ * Monaco はレイアウトと OS のテーマを問い合わせるため、jsdom に無いものを最小限だけ用意する。
+ * 実際の描画は不要である。検証するのは「モデルの版が基準に戻ったら dirty が外れるか」だけである。
  */
 import { beforeEach, describe, expect, it } from 'vitest';
 
@@ -29,14 +27,13 @@ beforeEach(() => {
   documentStore.isDirty = false;
   document.body.innerHTML = '<div id="mx-editor"></div>';
 
-  // Monaco が要求するが jsdom に無いもの（`ResizeObserver` / `matchMedia` /
-  // `queryCommandSupported`）は **`tests/setup.ts`** にある。
+  // Monaco が要求するが jsdom に無いもの（`ResizeObserver` / `matchMedia` / `queryCommandSupported`）は `tests/setup.ts` にある。
   // モジュールの評価時に読まれるので、ここでは間に合わない。
   Range.prototype.getClientRects = () => ({ length: 0, item: () => null, [Symbol.iterator]: [][Symbol.iterator] });
   Range.prototype.getBoundingClientRect = () => new DOMRect(0, 0, 0, 0);
 });
 
-describe('Undo でダーティが戻る (#43)', () => {
+describe('Undo でダーティが戻る', () => {
   it('編集前・保存直後まで戻ると dirty が外れる', () => {
     setDocumentText('# hello\n');
     const host = document.querySelector<HTMLElement>('#mx-editor');
@@ -55,7 +52,7 @@ describe('Undo でダーティが戻る (#43)', () => {
     model.redo();
     expect(documentStore.isDirty).toBe(true);
 
-    // 保存した体にする（save.ts はここで markClean() を呼ぶ）。
+    // 保存した状態にする（save.ts はここで markClean() を呼ぶ）。
     markClean();
     expect(documentStore.isDirty).toBe(false);
 

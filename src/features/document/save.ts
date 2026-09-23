@@ -2,7 +2,7 @@
  * 保存（F-EDIT-02, 03, 14 / N-REL-01, 02）。
  *
  * 原子的書き込み・衝突検知・EOL/BOM の復元は Rust 側（`src-tauri/src/document/`）が済ませてあるため、ここの責務は WriteRequest の組み立て・結果の通知・`expectedMtimeMs` の更新の 3 つだけである。
- * mtime の更新を忘れると、外部の変更が無くても 2 回目の保存が必ず衝突として弾かれる。
+ * mtime の更新を忘れると、外部の変更が無くても 2 回目の保存が必ず衝突として拒否される。
  * ダーティ状態は `dirty.ts` にある（依存の向きが違うため）。
  */
 import { ja } from '@/i18n/ja';

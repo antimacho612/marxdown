@@ -2,11 +2,10 @@
 /**
  * 設定 → Monaco オプションの写像（`options.ts` / ADR-0012）。
  *
- * **Monaco を載せない。** ここで見たいのは写像だけで、`editorOptions` は
- * 副作用を持たない純関数として切ってある（`editor.dom.test.ts` が本物を載せる側）。
+ * Monaco はマウントしない。
+ * 検証するのは写像だけであり、`editorOptions` は副作用を持たない関数として分離してある（実際の Monaco は `editor.dom.test.ts` がマウントする）。
  *
- * トークン（`--mx-zoom` / `--mx-font-code`）は `<html>` の style から読むので、
- * テスト側で立てる。`tokens.css` は jsdom に読み込まれない。
+ * トークン（`--mx-zoom` / `--mx-font-code`）は `<html>` の style から読むため、テスト側で設定する。`tokens.css` は jsdom に読み込まれない。
  */
 import { afterEach, describe, expect, it } from 'vitest';
 
@@ -69,7 +68,7 @@ describe('editorOptions', () => {
 
   /**
    * 折り返しを切ったときに、右へはみ出した行へ到達できること。
-   * **横スクロールバーは設定項目ではなく、折り返しの従属物**として決まる。
+   * 横スクロールバーは設定項目ではなく、折り返しの従属物として決まる。
    */
   it('折り返しを切ると横スクロールバーが出る', () => {
     expect(editorOptions(withSettings({ 'editor.wordWrap': 'on' })).scrollbar?.horizontal).toBe('hidden');
@@ -77,8 +76,7 @@ describe('editorOptions', () => {
   });
 
   /**
-   * `updateOptions` は `scrollbar` をオブジェクトごと差し替えるため、
-   * 太さと影がここから漏れると設定を変えた時点で既定値へ戻る。
+   * `updateOptions` は `scrollbar` をオブジェクトごと差し替えるため、太さと影がここから漏れると設定を変えた時点で既定値へ戻る。
    */
   it('スクロールバーの太さと影は折り返しの設定に関わらず変わらない', () => {
     for (const wordWrap of ['on', 'off'] as const) {
@@ -90,7 +88,7 @@ describe('editorOptions', () => {
     }
   });
 
-  /** F-VIEW-11。CSS の `calc()` に書けないぶん、ここで掛ける。 */
+  /** F-VIEW-11。Monaco の `fontSize` は数値であり CSS の `calc()` を使えないため、ここで掛ける。 */
   it('文字サイズに表示倍率が掛かる', () => {
     document.documentElement.style.setProperty('--mx-zoom', '1.5');
 
@@ -108,8 +106,8 @@ describe('editorOptions', () => {
   });
 
   /**
-   * 指定があるときは**既定スタックを後ろへ足す**（F-CONF-04）。
-   * 置き換えてしまうと、そのフォントに無い字（日本語 / 記号）の落とし先が消える。
+   * 指定があるときは既定スタックを後ろへ追加する（F-CONF-04）。
+   * 置き換えてしまうと、そのフォントに無い文字（日本語 / 記号）のフォールバック先が無くなる。
    */
   it('フォント名を指定すると既定スタックの前に足す', () => {
     document.documentElement.style.setProperty('--mx-font-code-stack', 'Consolas, monospace');
@@ -119,7 +117,7 @@ describe('editorOptions', () => {
     );
   });
 
-  /** 既定値は「M2 の見た目」ではなく「書くための値」（ADR-0012）。 */
+  /** 既定値はプレビューの見た目ではなく、書くための値である（ADR-0012）。 */
   it('既定でプレビューのタイポグラフィを着ない', () => {
     const options = editorOptions(DEFAULT_SETTINGS);
 

@@ -25,7 +25,7 @@ type EditorOptions = monaco.editor.IEditorOptions & monaco.editor.IGlobalEditorO
 const SCROLLBAR_SIZE = 10;
 
 /**
- * 設定 1 枚から、当てるオプション 1 枚を作る。
+ * 設定から、適用する Monaco のオプションを作る。
  *
  * 副作用を持たない。テストは `settingsStore` を用意せずに写像だけを検証できる。
  */
@@ -66,8 +66,7 @@ export function editorOptions(values: Settings): EditorOptions {
     // 設定項目を 1 つ増やすより、折り返しの設定から導出するほうが説明が少なくて済む。
     //
     // 太さと影は設定にしないと決めたものだが、`editor.ts` ではなくここに置く。
-    // `updateOptions` は `scrollbar` をオブジェクトごと差し替えるため、
-    // 分けて書くと設定変更のたびに既定値へ戻る。
+    // `updateOptions` は `scrollbar` をオブジェクトごと差し替えるため、分けて書くと設定変更のたびに既定値へ戻る。
     scrollbar: {
       horizontal: wordWrap === 'off' ? 'auto' : 'hidden',
       verticalScrollbarSize: SCROLLBAR_SIZE,
@@ -81,7 +80,7 @@ export function editorOptions(values: Settings): EditorOptions {
 /**
  * フォント名。空欄のときはトークン層のコードフォントを使う。
  *
- * `--mx-font-code` は `preview.codeFontFamily` を先頭に追加した後の値であるため、エディター側を指定していない場合は M2 までと同じフォントになる。
+ * `--mx-font-code` は `preview.codeFontFamily` を先頭に追加した後の値であるため、エディター側を指定していない場合はプレビューのコードブロックと同じフォントになる。
  *
  * 指定があるときに既定のスタックを後ろへ追加するのは `applyAppearance` と同じ理由で、そのフォントに含まれない文字（日本語 / 記号）のフォールバック先を残すためである（F-CONF-04）。
  */

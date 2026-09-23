@@ -1,10 +1,10 @@
 // @vitest-environment jsdom
 /**
- * Split の再描画でスクロール位置を保つこと（F-MODE-03 / #148）。
+ * Split の再描画でスクロール位置を保つこと（F-MODE-03）。
  *
  * 段階的描画（02.architecture/06-markdown-rendering-pipeline.md §4）では、最初のチャンクだけが同期的に入る。
  * その時点では scrollHeight が足りず、保持しておいた位置を代入しても上限で切り詰められる。
- * 長い文書ほど差が大きく、打鍵のたびにプレビューが先頭付近へ戻っていた。
+ * 何もしないと、長い文書ほど打鍵のたびにプレビューが先頭付近へ戻る。
  *
  * jsdom はレイアウトを持たないため、切り詰めは自前で再現する（`installScrollClamp`）。
  */
@@ -66,14 +66,14 @@ function installScrollClamp(container: HTMLElement): void {
 }
 
 /**
- * 残りのチャンクを投入する idle を回す。
+ * 残りのチャンクを投入する idle を実行する。
  *
  * jsdom に `requestIdleCallback` は無く、`lib/idle.ts` は `setTimeout` で代替する。
  * その締切は `didTimeout` が真であるため、残りは 1 回で全部入る。
  */
 async function flushIdle(): Promise<void> {
   await new Promise((resolve) => setTimeout(resolve, 0));
-  // 投入し終わってから走る当て直しの分。
+  // 投入し終わってから実行される位置の再設定の分。
   await new Promise((resolve) => setTimeout(resolve, 0));
 }
 
@@ -95,7 +95,7 @@ beforeEach(async () => {
   await flushIdle();
 });
 
-describe('再描画とスクロール位置 (#148)', () => {
+describe('再描画とスクロール位置', () => {
   it('段階的描画で切り詰められた位置を、全チャンクが入った後に当て直す', async () => {
     container.scrollTop = 700;
     expect(container.scrollTop).toBe(700);

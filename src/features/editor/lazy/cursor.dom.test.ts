@@ -2,11 +2,11 @@
 /**
  * カーソル位置の間引き（03.ux-spec/07-status-and-notifications.md §3 / ADR-0005）。
  *
- * `installCursorReport` が触るのは `getPosition()` と `onDidChangeCursorPosition` の 2 つだけで、本物のエディターが要る性質はどこにも無いため Monaco は載せない。
- * 偽物にすると「1 フレームに何度も動かす」を正確に作れるので、ここで見たいこと（間引き）がそのまま試験になる。
+ * `installCursorReport` が使うのは `getPosition()` と `onDidChangeCursorPosition` の 2 つだけであり、本物のエディターを必要としないため Monaco はマウントしない。
+ * 偽のエディターなら「1 フレームに何度も動かす」状況を正確に作れるため、間引きをそのまま検証できる。
  *
- * rAF も自前で持つ。jsdom のものは実時間で走るので、
- * 「まだ描いていない」状態を確かめられない。
+ * rAF も自前で持つ。
+ * jsdom の rAF は実時間で実行されるため、「まだ描画していない」状態を確認できない。
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -34,7 +34,7 @@ function fakeEditor(initial: monaco.IPosition | null) {
   };
 }
 
-/** 予約された rAF のコールバック。`flush()` を呼ぶまで走らない。 */
+/** 予約された rAF のコールバック。`flush()` を呼ぶまで実行されない。 */
 let frames: (() => void)[] = [];
 let cancelled = 0;
 
@@ -68,7 +68,7 @@ describe('カーソル位置の報告', () => {
     const { editor } = fakeEditor({ lineNumber: 3, column: 5 });
     installCursorReport(editor);
 
-    // フレームを回していないのに、もう出ている。
+    // フレームを進めていなくても、既に反映されている。
     expect(documentStore.cursor).toEqual({ line: 3, column: 5 });
     expect(frames).toHaveLength(0);
   });
@@ -81,9 +81,10 @@ describe('カーソル位置の報告', () => {
     move(11, 1);
     move(12, 4);
 
-    // まだ描いていないので、載せた時点の位置のまま。
+    // まだ描画していないため、マウントした時点の位置のまま。
     expect(documentStore.cursor).toEqual({ line: 1, column: 1 });
-    // **予約は 1 つだけ。** 打鍵の数だけ rAF を積まない。
+    // 予約は 1 つだけ。
+    // 打鍵の数だけ rAF を予約しない。
     expect(frames).toHaveLength(1);
 
     flush();
@@ -98,7 +99,7 @@ describe('カーソル位置の報告', () => {
     move(7, 2);
     flush();
 
-    // 参照ごと同じ。**動かない値でリアクティビティを起こさない。**
+    // 参照ごと同じ。変化していない値でリアクティビティを発生させない。
     expect(documentStore.cursor).toBe(first);
   });
 
@@ -113,7 +114,7 @@ describe('カーソル位置の報告', () => {
 
     expect(documentStore.cursor).toBeNull();
     expect(cancelled).toBe(1);
-    // 取り消したフレームが後から走って、古い位置を出し直さない。
+    // 取り消したフレームが後から実行されて、古い位置が再表示されることはない。
     flush();
     expect(documentStore.cursor).toBeNull();
   });

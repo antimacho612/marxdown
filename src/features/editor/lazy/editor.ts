@@ -5,7 +5,7 @@
  * これにより Undo 履歴・カーソル・IME の挙動がモード間で揃う。
  * Preview へ切り替えても `dispose()` しない（Undo 履歴を保持するため / §4）。
  * ただし Monaco は非表示のあいだ寸法を失うので、表示を戻したら `relayoutEditor()` を呼ぶこと。
- * 破棄するのはタブを閉じるとき（M3 / N-PERF-06）のみである。
+ * タブを閉じたときに破棄するのはそのタブのモデルだけで、エディター本体は破棄しない（N-PERF-06）。
  *
  * `#mx-editor` は `index.html` にあり Svelte 管理下に無い（`#mx-preview` と同じ理由 / ADR-0005）。
  * Monaco はモデルの EOL を自分で推定するため、明示的に LF を指定して読み書きしないと CRLF が混ざる（N-CMP-03）。
@@ -29,9 +29,10 @@ import { watchEditorSettings } from './watch-settings.svelte';
 let editor: monaco.editor.IStandaloneCodeEditor | null = null;
 
 /**
- * タブ 1 枚が抱えるもの（M3 Phase 2b）。
+ * タブ 1 つが保持するもの。
  *
- * **Undo 履歴はモデルが持つ。** タブごとに分けないと、切り替えた先で Undo したときに前の文書の本文が編集面へ入る。
+ * Undo 履歴はモデルが持つ。
+ * タブごとに分けないと、切り替えた先で Undo したときに前の文書の本文が編集面へ入る。
  * そのまま保存すればファイル全体が別物になる（N-CMP-03 / `document/text.ts` の `switchTo`）。
  *
  * `viewState` はカーソルとスクロール位置である。同じタブへ戻ったときに読んでいた場所から続けられる。
@@ -43,22 +44,22 @@ interface TabModel {
   /**
    * ダーティ判定の基準（F-EDIT-03）。`markClean()` が呼ばれるたびに、そのときの版へ動かす（`sync`）。
    *
-   * 内容が変わったことだけを見ると、Undo で編集前の内容まで戻ってもダーティのままになる（#43）。
+   * 内容が変わったことだけを見ると、Undo で編集前の内容まで戻ってもダーティのままになる。
    * `getAlternativeVersionId()` は Undo でその版へ戻ると同じ値に戻るため、本文を文字列で比較しなくても基準と同じ内容かどうかを判定できる。
    */
   cleanVersionId: number;
   /** カーソルとスクロール位置。切り替えて離れるときに保存する。 */
   viewState: monaco.editor.ICodeEditorViewState | null;
-  /** 内容の購読。モデルを捨てるときに一緒に解除する。 */
+  /** 内容の購読。モデルを破棄するときに一緒に解除する。 */
   subscription: monaco.IDisposable;
 }
 
 const tabModels = new Map<number, TabModel>();
 
-/** いま編集面に載っているタブ。まだ何も載せていなければ `null`。 */
+/** いま編集面に表示しているタブ。まだ何も表示していなければ `null`。 */
 let currentKey: number | null = null;
 
-/** いま載っているモデル。 */
+/** いま表示しているモデル。 */
 function currentModel(): monaco.editor.ITextModel | null {
   return editor?.getModel() ?? null;
 }
@@ -68,14 +69,14 @@ function readText(): string {
   return currentModel()?.getValue(monaco.editor.EndOfLinePreference.LF) ?? '';
 }
 
-/** いま載っているタブの記録。 */
+/** いま表示しているタブの記録。 */
 function currentEntry(): TabModel | null {
   if (currentKey === null) return null;
   return tabModels.get(currentKey) ?? null;
 }
 
 /**
- * モデルを 1 つ作り、ダーティの購読を張る。
+ * モデルを 1 つ作り、ダーティ状態の購読を登録する。
  *
  * `EOL` は明示的に LF にする。Monaco は内容から推定するため、指定しないと CRLF が混ざる（N-CMP-03）。
  */
@@ -93,20 +94,20 @@ function createTabModel(documentId: string, text: string): TabModel {
       // `setDirty` は値が変わらなければ何もしない。
       //
       // `editor.onDidChangeModelContent` ではなくモデル側を購読する。
-      // エディターの通知は Undo で版を巻き戻す前に飛ぶ「速い」ほうで、それで判定すると Undo で基準まで戻ってもダーティが外れない（#43 の再来。実測で確認済み）。
+      // エディターの通知は Undo で版を巻き戻す前に発火するため、それで判定すると Undo で基準まで戻ってもダーティが外れない。
       //
-      // 載っていないモデルからは通知しない。切り替え先の状態を、背後のモデルが上書きしてしまう。
+      // 表示していないモデルからは通知しない。背後のモデルが切り替え先の状態を上書きしてしまう。
       if (model !== currentModel()) return;
       setDirty(model.getAlternativeVersionId() !== entry.cleanVersionId);
       // Split では右のプレビューを追いかけさせる（F-MODE-03）。
-      // 打鍵ごとには描き直さない（`document/live.ts` が待つ）。
+      // 打鍵ごとには再描画しない（`document/live.ts` が待つ）。
       scheduleLiveRender();
     }),
   };
   return entry;
 }
 
-/** 記録ごと捨てる。購読も一緒に解除する。 */
+/** 記録ごと破棄する。購読も一緒に解除する。 */
 function disposeEntry(entry: TabModel): void {
   entry.subscription.dispose();
   entry.model.dispose();
@@ -124,7 +125,7 @@ export function mountEditor(host: HTMLElement): monaco.editor.IStandaloneCodeEdi
   const doc = getDocumentText();
 
   editor = monaco.editor.create(host, {
-    // モデルはマウント後に載せる（`switchTo`）。
+    // モデルはマウント後に設定する（`switchTo`）。
     // ここで作ると、どのタブのものかが決まらないまま 1 つ目のモデルができる。
     model: null,
     // コンテナのサイズに追随させる（ResizeObserver）。
@@ -141,7 +142,7 @@ export function mountEditor(host: HTMLElement): monaco.editor.IStandaloneCodeEdi
      */
 
     // 概要ルーラは表示しない。
-    // Markdown では表示する情報がほとんど無く、表示すると本文の幅がそのぶん狭くなる（ADR-0001 から引き継ぐ判断）。
+    // Markdown では表示する情報がほとんど無く、表示すると本文の幅がそのぶん狭くなる。
     overviewRulerLanes: 0,
     overviewRulerBorder: false,
     hideCursorInOverviewRuler: true,
@@ -172,12 +173,11 @@ export function mountEditor(host: HTMLElement): monaco.editor.IStandaloneCodeEdi
     unicodeHighlight: { ambiguousCharacters: false, invisibleCharacters: false },
   });
 
-  // テーマ（CSS トークン由来）と設定（`settings.json` 由来）は、当て直す先が同じ
-  // 1 つのインスタンスなので、入口も 1 つにしておく。
+  // テーマ（CSS トークン由来）と設定（`settings.json` 由来）は適用先が同じ 1 つのインスタンスであるため、入口も 1 つにしておく。
   const instance = editor;
   const refreshAppearance = (): void => {
-    // 配色を先に当てる（ADR-0014）。
-    // `applyEditorTheme` は面に効いているトークンを読み出すため、後にすると既定の色を写すことになる。
+    // 配色を先に適用する（ADR-0014）。
+    // `applyEditorTheme` は面に適用されているトークンを読み出すため、後にすると既定の色を反映することになる。
     applyEditorPalette();
     applyEditorTheme();
     applyEditorOptions(instance);
@@ -186,11 +186,10 @@ export function mountEditor(host: HTMLElement): monaco.editor.IStandaloneCodeEdi
   refreshAppearance();
 
   // 組み込みの配色は遅延チャンクにある（ADR-0014）。
-  // 待たないのは、`#mx-editor` がまだ空だからである。読み込めた時点で当て直される。
+  // 待たないのは、`#mx-editor` がまだ空だからである。読み込めた時点で再適用される。
   void installEditorPalette(refreshAppearance);
-  // 見張るものが 2 つあるのは、変化が 2 系統あるため。
-  // トークン（テーマ / プレビューの設定 / 表示倍率）は CSS に現れ、
-  // エディターの設定（折り返し・タブ幅など）は現れない。
+  // 監視対象が 2 つあるのは、変化が 2 系統あるためである。
+  // トークン（テーマ / プレビューの設定 / 表示倍率）は CSS に現れ、エディターの設定（折り返し・タブ幅など）は現れない。
   watchEditorTokens(refreshAppearance);
   watchEditorSettings(refreshAppearance);
 
@@ -205,7 +204,7 @@ export function mountEditor(host: HTMLElement): monaco.editor.IStandaloneCodeEdi
 
   // 行番号だけを扱うインタフェースを渡す（`features/view/scroll-sync.ts`）。
   // Split に入る前から渡しておく。
-  // アウトラインからのジャンプは Edit でも動作する必要があり、そこで必要になるのは同期ではなくこのインタフェースそのものである（#59）。
+  // アウトラインからのジャンプは Edit でも動作する必要があり、そこで必要になるのは同期ではなくこのインタフェースそのものである。
   attachEditorScrollPort(createScrollPort(editor));
 
   // ここから先、本文の真実は Monaco のモデルにある（ADR-0005）。
@@ -224,7 +223,7 @@ export function mountEditor(host: HTMLElement): monaco.editor.IStandaloneCodeEdi
       // Monaco の行番号は 1 始まり。`data-line` は 0 始まりである。
       const number = line + 1;
       if (number < 1 || number > current.getLineCount()) return;
-      // Undo の 1 手として積む。プレビュー上でチェックした後、`Ctrl+Z` で戻せる。
+      // Undo の 1 回分として履歴に残す。プレビュー上でチェックした後、`Ctrl+Z` で戻せる。
       current.pushEditOperations(
         null,
         [
@@ -251,14 +250,14 @@ export function mountEditor(host: HTMLElement): monaco.editor.IStandaloneCodeEdi
 }
 
 /**
- * 編集面に載せる文書を切り替える（`document/text.ts` の `switchTo`）。
+ * 編集面に表示する文書を切り替える（`document/text.ts` の `switchTo`）。
  *
  * 同じタブの同じ文書なら、モデルをそのまま使う。
  * 読み直し（`F5` / 外部変更）でここへ来ることがあり、そのときは内容だけを差し替えて Undo 履歴を残す。
  *
- * 別の文書なら**モデルごと作り直す**。
+ * 別の文書ならモデルごと作り直す。
  * 引き継ぐと、Undo で前の文書の本文が編集面へ入る（`document/text.ts` の `switchTo`）。
- * 1 タブ 1 モデルとし、同じタブで別の文書を開いたときは前のモデルを捨てる。
+ * 1 タブ 1 モデルとし、同じタブで別の文書を開いたときは前のモデルを破棄する。
  */
 function switchToDocument(key: number, documentId: string, text: string): void {
   const target = editor;
@@ -295,10 +294,10 @@ function switchToDocument(key: number, documentId: string, text: string): void {
 }
 
 /**
- * そのタブのモデルを捨てる（タブを閉じたとき / N-PERF-06）。
+ * そのタブのモデルを破棄する（タブを閉じたとき / N-PERF-06）。
  *
- * 載っているモデルを捨てる場合は、先に編集面から外す。
- * 外さずに `dispose()` すると、Monaco が破棄済みのモデルを描き続けようとする。
+ * 表示中のモデルを破棄する場合は、先に編集面から外す。
+ * 外さずに `dispose()` すると、Monaco が破棄済みのモデルを描画し続けようとする。
  */
 function disposeTabModel(key: number): void {
   const entry = tabModels.get(key);
@@ -323,7 +322,7 @@ export function focusEditor(): void {
 }
 
 /**
- * 器の大きさを測り直す（`features/mode/mode.ts` が面を出したときに呼ぶ）。
+ * コンテナの大きさを測り直す（`features/mode/mode.ts` が面を表示したときに呼ぶ）。
  *
  * `display: none` の間、Monaco は寸法を保持しない。
  * `automaticLayout` の ResizeObserver は非表示の間は動作しないため、表示を戻した時点で測り直す。
@@ -414,8 +413,8 @@ export function moveToEndForBench(): void {
 /**
  * Split のスクロール同期を始める / やめる（F-MODE-05）。
  *
- * エディターの実体を外へ渡さないための包みである。
- * 同期の中身（`features/view/scroll-sync.ts`）は行番号だけの窓口（`EditorScrollPort`）しか知らず、座標計算は `scroll-port.ts` にある。
+ * エディターの実体を外部へ渡さないためのラッパーである。
+ * 同期の中身（`features/view/scroll-sync.ts`）は行番号だけを扱うインタフェース（`EditorScrollPort`）しか知らず、座標計算は `scroll-port.ts` にある。
  */
 export function setSplitSync(on: boolean): void {
   if (on) startScrollSync();

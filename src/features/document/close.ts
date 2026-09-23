@@ -5,7 +5,7 @@
  * 判定は `documentStore.meta === null` の 1 つだけなので（`app/App.svelte`）、ここで消し残すと本文が無いのに文字数や倍率が残ったステータスバーになる。
  *
  * エディター（Monaco）は破棄しない。
- * インスタンスの解放は N-PERF-06 の担当であり、タブごとのモデルと一体で決める（06.roadmap/m3-workspace.md Phase 3）。
+ * モデルの解放はタブを閉じる経路が行う（N-PERF-06 / 02.architecture/07-editor-wysiwyg.md §1）。
  * ここでは本文を空にするところまでを行う。
  */
 import { paint, releasePreviewResources } from '@/features/preview';
@@ -19,20 +19,20 @@ import { setDocumentText } from './text';
 const PREVIEW_SELECTOR = '#mx-preview';
 
 /**
- * 表示中の文書を捨てて、何も開いていない状態に戻す。
+ * 表示中の文書を破棄して、何も開いていない状態に戻す。
  *
  * 未保存の確認は行わない。呼ぶ側（タブを閉じる経路）が済ませている。
  */
 export function closeDocument(): void {
-  // 打鍵ごとの再描画が予約されたままだと、消した後に本文が描き戻される。
+  // 打鍵ごとの再描画が予約されたままだと、消した後に本文が再描画される。
   cancelLiveRender();
 
-  // 空のチャンク列で描き直すと、段階的描画の打ち切り（`cancelPaint`）も同時に行われる（OQ-18）。
+  // 空のチャンク列で再描画すると、段階的描画の打ち切り（`cancelPaint`）も同時に行われる。
   const container = document.querySelector<HTMLElement>(PREVIEW_SELECTOR);
   if (container) paint(container, []);
 
-  // 遅延チャンクが抱えているもの（Mermaid の observer と描画済み SVG）を捨てる（N-PERF-06）。
-  // `paint` は本文を消すだけで、その外側で持っているものには手が届かない。
+  // 遅延チャンクが保持しているもの（Mermaid の observer と描画済み SVG）を解放する（N-PERF-06）。
+  // `paint` は本文を消すだけで、その外側で持っているものは解放しない。
   releasePreviewResources();
 
   const path = documentStore.meta?.path ?? null;
@@ -45,7 +45,7 @@ export function closeDocument(): void {
   documentStore.cursor = null;
 
   // 本文は空にするが、エディターの読み書き口は外さない。
-  // 外すと Monaco が載ったままこちら側の保持分と二重になる（`text.ts` の `detachEditor`）。
+  // 外すと Monaco がマウントされたままこちら側の保持分と二重になる（`text.ts` の `detachEditor`）。
   setDocumentText('');
   markClean();
 

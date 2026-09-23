@@ -18,7 +18,7 @@ interface Wrap {
    * その位置に記号があると見なすかを、記号文字の連続数から判定する。
    *
    * `*` は太字と斜体で共有されている。
-   * 単純に「`*` で始まるか」で見ると、`**bold**` に斜体を掛けたときに太字の記号を 1 つずつ剥がしてしまうため、CommonMark と同じく連続数（1 なら斜体、2 なら太字、3 なら両方）で見分ける。
+   * 単純に「`*` で始まるか」で見ると、`**bold**` に斜体を掛けたときに太字の記号を 1 つずつ取り除いてしまうため、CommonMark と同じく連続数（1 なら斜体、2 なら太字、3 なら両方）で見分ける。
    */
   present: (run: number) => boolean;
 }
@@ -146,7 +146,7 @@ function prefixLength(text: string, pattern: RegExp): number {
  * `build` は 1 行につき 1 回呼ばれ、その行に対する変更（`null` なら変えない）を返す。
  * 番号付きリストの連番のために `index` を渡す。
  *
- * 行を丸ごと差し替えるとカーソルが行頭へ飛び入力位置を見失うため、変えるのは記法の部分だけにして本文には触らない。
+ * 行を丸ごと差し替えるとカーソルが行頭へ移動して入力位置を見失うため、変えるのは記法の部分だけにして本文には触らない。
  * 選択範囲は指定せず Monaco に編集を通して移動させることで、記法だけを触っているかぎりカーソルは同じ場所に残る。
  *
  * 1 行も変わらなければ `null` を返す。
@@ -169,7 +169,7 @@ function lineCommand(
   };
 }
 
-/** 行頭の記法をすべて剥がして、インデントと素の本文に分ける。 */
+/** 行頭の記法をすべて取り除いて、インデントと素の本文に分ける。 */
 function stripMarkers(text: string): { indent: string; body: string } {
   const indent = /^[\t ]*/.exec(text)?.[0] ?? '';
   let body = text.slice(indent.length);
@@ -293,7 +293,7 @@ export const toggleCodeBlock: MarkdownEdit = (model, selections) => {
     };
   }
 
-  // 空行にカーソルを置いただけなら、空のブロックを入れて中へ運ぶ
+  // 空行にカーソルを置いただけなら、空のブロックを挿入してその中へカーソルを置く
   if (empty && first.text === '') {
     const at = first.from + FENCE.length + 1;
     return {

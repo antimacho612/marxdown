@@ -41,7 +41,7 @@ function fakeParser(): MarkdownParser {
 }
 
 interface Harness {
-  /** Rust 側が投げてくる外部変更イベントの代わり。 */
+  /** Rust 側が送る外部変更イベントの代わり。 */
   emit: (change: FileChange) => void;
   readDocument: ReturnType<typeof vi.fn>;
   watchPath: ReturnType<typeof vi.fn>;
@@ -90,7 +90,7 @@ beforeEach(() => {
   configureOpener({ parser: fakeParser(), softBreak: () => false, syntax: () => [], ...workspaceOpenerHooks() });
 });
 
-/** F-EDIT-16 / 03.ux-spec/07-status-and-notifications.md §2 の 1 行目。 */
+/** F-EDIT-16 / 03.ux-spec/07-status-and-notifications.md §2。 */
 describe('外部変更の自動反映', () => {
   it('開いているファイルを読み直し、ステータスバーで伝える', async () => {
     const h = install();
@@ -98,7 +98,7 @@ describe('外部変更の自動反映', () => {
     h.readDocument.mockClear();
 
     h.emit(changed('C:/work/a.md'));
-    // ダーティでなければ失われるものが無い。尋ねずに読み込み、本文を塞がないステータスバーに出す（issue #60）
+    // ダーティでなければ失われるものが無い。尋ねずに読み込み、本文を隠さないステータスバーに出す（03.ux-spec/07-status-and-notifications.md §2.1）
     await vi.waitFor(() => expect(documentStore.statusMessage).toBe(ja.open.reloadedExternal));
 
     expect(documentStore.notice).toBeNull();
@@ -153,7 +153,7 @@ describe('外部変更の自動反映', () => {
     expect(h.readDocument, '重ねて読まない').toHaveBeenCalledTimes(1);
 
     release();
-    // 落とすと画面が古いまま止まるので、終わってからもう一度読む
+    // 破棄すると画面が古いまま止まるので、終わってからもう一度読む
     await vi.waitFor(() => expect(h.readDocument).toHaveBeenCalledTimes(2));
   });
 });
@@ -174,8 +174,8 @@ describe('監視の付け替え', () => {
 /**
  * 編集中の外部変更（N-REL-02 / 02.architecture/08-state-management.md §3）。
  *
- * **ここが「ユーザーの入力を絶対に失わない」の実装そのもの。**
- * 自動で読み直すと、打った内容が黙って消える。
+ * ここが「ユーザーの入力を絶対に失わない」の実装そのもの。
+ * 自動で読み直すと、打った内容が通知なく消える。
  */
 describe('編集中に外部変更が来たとき', () => {
   it('読み直さず、消えない警告で選ばせる', async () => {
