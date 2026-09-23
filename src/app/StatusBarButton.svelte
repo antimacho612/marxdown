@@ -11,6 +11,10 @@
 
 属性はそのまま渡す。
 メニューを開く側は `aria-haspopup` / `aria-expanded` と `onkeydown` を、押すだけの側は `title` と `onclick` だけを渡す。
+
+`class` だけは上書きではなく連結する。
+`{...rest}` に任せると `mx-statusbar__button` が消え、見た目がこの部品から外れる。
+渡した側のスタイルは Svelte のスコープが付かないため、参照する側は `:global()` で書く必要がある（`app/StatusBar.svelte` のフルパス）。
 -->
 
 <script lang="ts">
@@ -20,21 +24,32 @@
   interface Props extends HTMLButtonAttributes {
     /** ボタンの実体。位置を測定する側とフォーカスを戻す側だけが受け取る。 */
     element?: HTMLButtonElement | undefined;
+    /** 追加のクラス。基本のクラスに足す。 */
+    class?: string | undefined;
     children: Snippet;
   }
 
-  let { element = $bindable(), children, ...rest }: Props = $props();
+  let { element = $bindable(), class: extra, children, ...rest }: Props = $props();
 </script>
 
-<button type="button" class="mx-statusbar__button" bind:this={element} {...rest}>
+<button type="button" class={['mx-statusbar__button', extra]} bind:this={element} {...rest}>
   {@render children()}
 </button>
 
 <style>
+  /*
+   * バーの高さいっぱいを取る（`align-self: stretch`）。
+   *
+   * 字面ぶんの高さ（実測 14.8px）しか無いと、最大化したときに画面の下端が当たり判定にならない。
+   * 端まで動かすだけで到達できることは、`app/CaptionButton.svelte` が右上で成立させているのと同じ話である。
+   * 角丸を付けないのも同じ理由で、上下の端まで押せる面にする。
+   */
   .mx-statusbar__button {
+    align-self: stretch;
+    display: inline-flex;
+    align-items: center;
     padding: 0 var(--mx-space-2);
     border: none;
-    border-radius: var(--mx-radius-sm);
     background: none;
     color: inherit;
     font: inherit;
@@ -48,6 +63,11 @@
   .mx-statusbar__button[aria-expanded='true'] {
     background: var(--mx-color-bg-hover);
     color: var(--mx-color-fg);
+  }
+
+  /* 押し込み。Windows はホバーより淡い面で押下を表す（`app/CaptionButton.svelte` と同じ）。 */
+  .mx-statusbar__button:active {
+    background: var(--mx-color-bg-inset);
   }
 
   .mx-statusbar__button:focus-visible {

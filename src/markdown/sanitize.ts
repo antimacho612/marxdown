@@ -8,6 +8,8 @@
  */
 import DOMPurify, { type Config } from 'dompurify';
 
+import { formatSrcset, parseSrcset } from '@/lib/srcset';
+
 /**
  * スキーム付き URI かどうかの判定と、許可するスキーム。
  *
@@ -46,40 +48,7 @@ function isAllowedUri(value: string): boolean {
  * href/src と同じ 1 属性 1 URL の検証には乗らない。候補単位でパースしてから検証する。
  */
 function filterSrcset(value: string): string {
-  const candidates: string[] = [];
-  const len = value.length;
-  let pos = 0;
-
-  while (pos < len) {
-    while (pos < len && /[\s,]/.test(value[pos] ?? '')) pos++;
-    if (pos >= len) break;
-
-    const urlStart = pos;
-    while (pos < len && !/\s/.test(value[pos] ?? '')) pos++;
-    let url = value.slice(urlStart, pos);
-
-    // 記述子なしの候補は URL の直後がカンマになる（末尾のカンマは区切りであって URL の一部ではない）
-    let noDescriptor = false;
-    while (url.endsWith(',')) {
-      url = url.slice(0, -1);
-      noDescriptor = true;
-    }
-
-    let descriptor = '';
-    if (!noDescriptor) {
-      while (pos < len && /\s/.test(value[pos] ?? '')) pos++;
-      const descStart = pos;
-      while (pos < len && value[pos] !== ',') pos++;
-      descriptor = value.slice(descStart, pos).trim();
-      if (pos < len) pos++; // カンマを読み飛ばす
-    }
-
-    if (url !== '' && isAllowedUri(url)) {
-      candidates.push(descriptor ? `${url} ${descriptor}` : url);
-    }
-  }
-
-  return candidates.join(', ');
+  return formatSrcset(parseSrcset(value).filter((candidate) => isAllowedUri(candidate.url)));
 }
 
 let configured = false;

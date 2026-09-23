@@ -139,3 +139,56 @@ describe('拒まれた画像', () => {
     });
   });
 });
+
+describe('<picture><source srcset> のダークモード用画像', () => {
+  it('相対パスの srcset を解決する', async () => {
+    setPlatform({
+      ...original,
+      resolveAsset: (href: string) => Promise.resolve(`asset://${href.replace('../assets/', 'C:/assets/')}`),
+    } as Platform);
+
+    const element = container(
+      '<picture><source media="(prefers-color-scheme: dark)" srcset="../assets/logo-dark.svg" /><img src="../assets/logo-light.svg" alt="logo" /></picture>',
+    );
+    enhance(element, { baseDir: 'C:/work/docs' });
+
+    await vi.waitFor(() => {
+      expect(element.querySelector('source')?.getAttribute('srcset')).toBe('asset://C:/assets/logo-dark.svg');
+      expect(element.querySelector('img')?.getAttribute('src')).toBe('asset://C:/assets/logo-light.svg');
+    });
+  });
+
+  it('記述子つきの複数候補もそれぞれ解決する', async () => {
+    setPlatform({
+      ...original,
+      resolveAsset: (href: string) => Promise.resolve(`asset://${href}`),
+    } as Platform);
+
+    const element = container('<picture><source srcset="a.png 1x, b.png 2x" /><img src="a.png" /></picture>');
+    enhance(element, { baseDir: 'C:/work/docs' });
+
+    await vi.waitFor(() => {
+      expect(element.querySelector('source')?.getAttribute('srcset')).toBe('asset://a.png 1x, asset://b.png 2x');
+    });
+  });
+
+  it('解決に失敗した候補だけを外し、全滅すれば source ごと外す', async () => {
+    setPlatform({
+      ...original,
+      resolveAsset: (href: string) =>
+        href === 'missing.svg'
+          ? Promise.reject({ kind: 'not-found', message: '無い' })
+          : Promise.resolve(`asset://${href}`),
+    } as Platform);
+
+    const element = container(
+      '<picture><source srcset="missing.svg" /><img src="../assets/logo-light.svg" alt="logo" /></picture>',
+    );
+    enhance(element, { baseDir: 'C:/work/docs' });
+
+    await vi.waitFor(() => {
+      expect(element.querySelector('source')).toBeNull();
+      expect(element.querySelector('img')).not.toBeNull();
+    });
+  });
+});

@@ -1,5 +1,4 @@
 {
-  "theme": "system",
   "editor.bracketPairColorization.enabled": false,
   "editor.cursorBlinking": "blink",
   "editor.cursorStyle": "line",
@@ -19,10 +18,12 @@
   "editor.renderWhitespace": "none",
   "editor.rulers": [],
   "editor.scrollBeyondLastLine": true,
-  "editor.theme": "default",
   "editor.tabSize": 2.0,
+  "editor.theme": "default",
+  "editor.wordSeparators": "`~!@#$%^&*()-=+[{]}\\|;:'\",.<>/?",
   "editor.wordWrap": "on",
   "editor.wordWrapColumn": 80.0,
+  "explorer.exclude": [],
   "markdown.abbreviations": false,
   "markdown.definitionLists": false,
   "markdown.insertions": false,
@@ -35,8 +36,10 @@
   "preview.fontFamily": "",
   "preview.fontSize": 16.0,
   "preview.lineHeight": 1.75,
-  "preview.maxWidth": 100.0,
+  "preview.maxWidth": 72.0,
   "preview.softBreak": false,
+  "preview.tableStyle": "lines",
   "preview.theme": "default",
-  "window.closeBehavior": "tray"
+  "theme": "system",
+  "window.closeToTray": true
 }

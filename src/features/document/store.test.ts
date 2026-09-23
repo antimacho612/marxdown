@@ -1,12 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { documentStore, INFO_NOTICE_MS, notifyInfo } from './store.svelte';
+import { documentStore, notifyStatus, STATUS_MESSAGE_MS } from './store.svelte';
 
 /**
  * ストアが公開している状態の名前を集める。
  *
  * ルーンで宣言したフィールド（`meta` など）はインスタンスの own プロパティになり、
- * 手書きのアクセサ（`notice`）はプロトタイプに乗る。**置き場所が 2 つに分かれる**ので、
+ * 手書きのアクセサ（`statusMessage`）はプロトタイプに乗る。**置き場所が 2 つに分かれる**ので、
  * ADR-0005 の見張りを続けるには両方を見る必要がある。
  * `#dismissTimer` のような private フィールドはどちらにも現れない（状態ではないので正しい）。
  */
@@ -27,8 +27,9 @@ beforeEach(() => {
   documentStore.textStats = null;
   documentStore.cursor = null;
   documentStore.eolOverride = null;
-  // 代入すると自動消滅のタイマーも解除される
   documentStore.notice = null;
+  // 代入すると自動消滅のタイマーも解除される
+  documentStore.statusMessage = null;
 });
 
 describe('documentStore', () => {
@@ -52,6 +53,7 @@ describe('documentStore', () => {
       'notice',
       'outline',
       'stats',
+      'statusMessage',
       'textStats',
     ]);
   });
@@ -76,7 +78,8 @@ describe('documentStore', () => {
   });
 });
 
-describe('notifyInfo', () => {
+/** 自動で消える情報はステータスバーに出す（issue #60）。 */
+describe('notifyStatus', () => {
   beforeEach(() => {
     vi.useFakeTimers();
   });
@@ -85,37 +88,45 @@ describe('notifyInfo', () => {
     vi.useRealTimers();
   });
 
-  it('情報通知は既定の時間で消える', () => {
-    notifyInfo('外部の変更を読み込みました');
-    expect(documentStore.notice?.message).toBe('外部の変更を読み込みました');
+  it('一時メッセージは既定の時間で消える', () => {
+    notifyStatus('外部の変更を読み込みました');
+    expect(documentStore.statusMessage).toBe('外部の変更を読み込みました');
 
-    vi.advanceTimersByTime(INFO_NOTICE_MS);
+    vi.advanceTimersByTime(STATUS_MESSAGE_MS);
 
-    expect(documentStore.notice).toBeNull();
+    expect(documentStore.statusMessage).toBeNull();
   });
 
-  it('警告とエラーは消えない', () => {
+  it('通知バーは出しっぱなしにする（本文の上に重ねるものは操作するまで消さない）', () => {
     documentStore.notice = { level: 'error', message: '読み込めませんでした' };
 
-    vi.advanceTimersByTime(INFO_NOTICE_MS * 10);
+    vi.advanceTimersByTime(STATUS_MESSAGE_MS * 10);
 
     expect(documentStore.notice?.message).toBe('読み込めませんでした');
   });
 
-  it('自動消滅の待機中に差し替わったら、後から出た通知を消さない', () => {
-    notifyInfo('情報');
-    vi.advanceTimersByTime(INFO_NOTICE_MS - 1);
-    documentStore.notice = { level: 'error', message: 'エラー' };
+  it('一時メッセージは通知バーを消さない（別の面である）', () => {
+    documentStore.notice = { level: 'error', message: '読み込めませんでした' };
 
-    vi.advanceTimersByTime(INFO_NOTICE_MS * 2);
+    notifyStatus('再読み込みしました');
 
-    expect(documentStore.notice?.message).toBe('エラー');
+    expect(documentStore.notice?.message).toBe('読み込めませんでした');
+  });
+
+  it('自動消滅の待機中に差し替わったら、後から出たメッセージを消さない', () => {
+    notifyStatus('古い');
+    vi.advanceTimersByTime(STATUS_MESSAGE_MS - 1);
+    notifyStatus('新しい');
+
+    vi.advanceTimersByTime(STATUS_MESSAGE_MS - 1);
+
+    expect(documentStore.statusMessage).toBe('新しい');
   });
 
   it('タイマーは 1 本しか走らない（ポーリングにしない / N-PERF-05）', () => {
-    notifyInfo('a');
-    notifyInfo('b');
-    notifyInfo('c');
+    notifyStatus('a');
+    notifyStatus('b');
+    notifyStatus('c');
     expect(vi.getTimerCount()).toBe(1);
   });
 });

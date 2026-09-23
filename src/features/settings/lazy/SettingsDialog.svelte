@@ -22,7 +22,7 @@ Rust 側も拒否するが、UI が「保存できたように見せる」のを
    *
    * 直前に表示していた位置は設定ファイルに残すほどの情報ではなく、同じセッションで開き直したときに復元できれば足りる。
    */
-  let lastCategory: CategoryId = 'appearance';
+  let lastCategory: CategoryId = 'application';
 </script>
 
 <script lang="ts">
@@ -30,11 +30,21 @@ Rust 側も拒否するが、UI が「保存できたように見せる」のを
 
   import type ThemeFieldComponent from '@/features/theme/lazy/ThemeField.svelte';
   import { ja } from '@/i18n/ja';
+  import CloseIcon from '@/lib/CloseIcon.svelte';
   import { DEFAULT_SETTINGS, getPlatform, type SettingKey, type SettingsProblem } from '@/platform';
 
   import { settingsStore } from '../store.svelte';
   import { changeSetting } from './change';
-  import { Navigation, NumberField, RadioGroup, Section, SelectField, TextField, ToggleField } from './components';
+  import {
+    ListField,
+    Navigation,
+    NumberField,
+    RadioGroup,
+    Section,
+    SelectField,
+    TextField,
+    ToggleField,
+  } from './components';
   import { LAYOUT, type CategoryId, type FieldEntry } from './layout';
   import type SampleComponent from './samples/Sample.svelte';
 
@@ -156,28 +166,6 @@ Rust 側も拒否するが、UI が「保存できたように見せる」のを
   }
 
   /**
-   * 縦罫線だけは入力欄の文字列とストアの値が 1 対 1 で対応しない（`80, 100` と `[80, 100]`）。
-   *
-   * 値をそのまま `value` に渡すと、`80,` まで入力した時点で `80` に書き戻されてカンマが消える。
-   * 入力途中の文字列はこのコンポーネント側で保持し、値として解釈できたときだけストアへ反映する。
-   */
-  // 初期値だけが要る。追従は下の `$effect` が担当する。
-  // svelte-ignore state_referenced_locally
-  let rulersText = $state(values['editor.rulers'].join(', '));
-  /** このコンポーネントが反映した値。これと異なる値が届いた場合は外部で変更されたことを表す。 */
-  // 同上。
-  // svelte-ignore state_referenced_locally
-  let pushedRulers = $state(values['editor.rulers'].join(', '));
-
-  $effect(() => {
-    const next = values['editor.rulers'].join(', ');
-    if (next === pushedRulers) return;
-    // 外部エディターでの編集か「既定に戻す」。入力欄を追いつかせる。
-    rulersText = next;
-    pushedRulers = next;
-  });
-
-  /**
    * 見本の部品（OQ-38）。読み込むまでは `null` で、その間は見本の場所に何も描かない。
    *
    * 見本を持つのは「プレビュー」「エディター」のカテゴリだけなので、設定を開いただけでは `sample` チャンクを取りに行かない。
@@ -204,19 +192,31 @@ Rust 側も拒否するが、UI が「保存できたように見せる」のを
     }
   });
 
-  function onRulersInput(raw: string): void {
-    rulersText = raw;
+  /** 並びの項目のキー。`layout.ts` で `list` を当てたものだけがここに入る。 */
+  type ListKey = Extract<FieldEntry, { widget: 'list' }>['key'];
 
+  /**
+   * カンマ区切りの 1 行を並びとして解釈し、ストアへ反映する（`ListField.svelte`）。
+   *
+   * 反映した 1 行を返す。解釈できない場合は `null` を返し、入力欄の文字列だけが残る。
+   * 空の要素を落とすため、`dist, ` の末尾のカンマは値には現れない。
+   */
+  function onListInput(key: ListKey, raw: string): string | null {
     const parts = raw
       .split(',')
       .map((part) => part.trim())
       .filter((part) => part.length > 0);
-    // 打っている途中（`80, ` の空欄や `8o` の打ち間違い）では当てない。
-    if (parts.some((part) => !/^\d+$/u.test(part))) return;
 
+    if (key === 'explorer.exclude') {
+      changeSetting(key, parts);
+      return parts.join(', ');
+    }
+
+    // 縦罫線は数値の並びである。打っている途中（`80, ` の空欄や `8o` の打ち間違い）では当てない。
+    if (parts.some((part) => !/^\d+$/u.test(part))) return null;
     const next = parts.map(Number);
-    pushedRulers = next.join(', ');
-    changeSetting('editor.rulers', next);
+    changeSetting(key, next);
+    return next.join(', ');
   }
 </script>
 
@@ -235,7 +235,9 @@ Rust 側も拒否するが、UI が「保存できたように見せる」のを
 >
   <header class="mx-settings__header">
     <h2 class="mx-settings__title">{ja.settings.title}</h2>
-    <button type="button" class="mx-settings__close" aria-label={ja.settings.close} onclick={close}>✕</button>
+    <button type="button" class="mx-settings__close" aria-label={ja.settings.close} onclick={close}>
+      <CloseIcon />
+    </button>
   </header>
 
   {#if broken}
@@ -324,16 +326,15 @@ Rust 側も拒否するが、UI が「保存できたように見せる」のを
       value={values[entry.key]}
       onChange={(value) => changeSetting(entry.key, value)}
     />
-  {:else}
-    <!-- 縦罫線だけは入力途中の文字列を渡す（上の `rulersText` を参照）。 -->
-    <TextField
+  {:else if entry.widget === 'list'}
+    <ListField
       settingKey={entry.key}
       label={entry.label}
       {description}
-      value={rulersText}
-      placeholder={ja.settings.editor.rulers.placeholder}
-      inputmode="numeric"
-      onInput={onRulersInput}
+      value={values[entry.key].join(', ')}
+      placeholder={entry.placeholder}
+      inputmode={entry.key === 'editor.rulers' ? 'numeric' : 'text'}
+      onInput={(raw) => onListInput(entry.key, raw)}
       onReset={resetOf(entry.key)}
     />
   {/if}
@@ -398,7 +399,7 @@ Rust 側も拒否するが、UI が「保存できたように見せる」のを
     display: flex;
     align-items: center;
     gap: var(--mx-space-2);
-    padding: var(--mx-space-2) var(--mx-space-2) var(--mx-space-2) var(--mx-space-4);
+    padding: var(--mx-space-3) var(--mx-space-3) var(--mx-space-3) var(--mx-space-6);
     border-bottom: 1px solid var(--mx-color-border-subtle);
   }
 
@@ -411,8 +412,10 @@ Rust 側も拒否するが、UI が「保存できたように見せる」のを
 
   .mx-settings__close {
     flex: none;
-    width: 28px;
-    height: 28px;
+    display: grid;
+    place-items: center;
+    inline-size: var(--mx-control-height);
+    block-size: var(--mx-control-height);
     border: none;
     border-radius: var(--mx-radius-sm);
     background: none;
@@ -423,6 +426,10 @@ Rust 側も拒否するが、UI が「保存できたように見せる」のを
     &:hover {
       background: var(--mx-color-bg-hover);
       color: var(--mx-color-fg);
+    }
+
+    &:active {
+      background: var(--mx-color-bg-inset);
     }
   }
 
@@ -442,16 +449,23 @@ Rust 側も拒否するが、UI が「保存できたように見せる」のを
     grid-template-columns: 10rem 1fr;
   }
 
+  /*
+   * 28 項目を 1 列に積むため、行どうしの間隔がそのまま圧迫感になる。
+   *
+   * 項目の中（ラベルと説明）が 8px、項目どうしが 20px、節どうしが 40px。
+   * 隣り合う段の差を 2 倍以上に保つと、読む側は数えずに「まとまり」を見分けられる。
+   * 12px で一律に積んでいた頃は、どこまでが 1 つの節なのかが罫線でしか分からなかった。
+   */
   .mx-settings__pane {
     min-width: 0;
     min-inline-size: 0;
     overflow-y: auto;
     margin: 0;
-    padding: var(--mx-space-4) var(--mx-space-6);
+    padding: var(--mx-space-6) var(--mx-space-8) var(--mx-space-10);
     border: none;
     display: flex;
     flex-direction: column;
-    gap: var(--mx-space-3);
+    gap: var(--mx-space-5);
   }
 
   /*

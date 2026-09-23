@@ -3,13 +3,17 @@
 
   出る項目はドキュメントのメタ情報で変わる。BOM 付き・CRLF・読み取り専用は
   実ファイルを用意しないと見られないので、ここに並べておく。
+
+  **フルパスの潰れ方もここでしか見られない**（issue #145）。
+  深いところに置いたファイルを実際に用意しなくても、ディレクトリ側だけが省略記号になり、
+  ファイル名と右端の倍率が残ることを確かめられる。
 -->
 <script module lang="ts">
   import { defineMeta } from '@storybook/addon-svelte-csf';
 
-  import { documentStore } from '@/features/document';
+  import { documentStore, type StoredMeta } from '@/features/document';
   import { viewStore } from '@/features/view';
-  import type { DocumentMeta, ViewMode } from '@/platform';
+  import type { ViewMode } from '@/platform';
 
   import StatusBar from './StatusBar.svelte';
 
@@ -19,7 +23,7 @@
     parameters: { layout: 'fullscreen' },
   });
 
-  const BASE: DocumentMeta = {
+  const BASE: StoredMeta = {
     path: 'C:\\Users\\me\\repos\\marxdown\\README.md',
     eol: 'lf',
     bom: false,
@@ -33,9 +37,10 @@
    * ストアはモジュールの singleton なので、story ごとに入れ直す。
    * `loaders` を使う理由は Welcome.stories.svelte と同じ。
    */
-  function seed(meta: DocumentMeta | null, zoom = 1, mode: ViewMode = 'preview') {
+  function seed(meta: StoredMeta | null, zoom = 1, mode: ViewMode = 'preview', message: string | null = null) {
     return () => {
       documentStore.meta = meta;
+      documentStore.statusMessage = message;
       documentStore.textStats = meta ? { chars: 12_345, words: 2100, readingMinutes: 4 } : null;
       viewStore.zoom = zoom;
       viewStore.mode = mode;
@@ -64,3 +69,26 @@
 
 <!-- 何も開いていないとき。左側が丸ごと消え、倍率も出ない。 -->
 <Story name="ファイル未オープン" loaders={[seed(null)]} />
+
+<!--
+  一時メッセージ（issue #60）。左の項目を押し出さず、右端の倍率も残ることを確かめるのがこの story の目的である。
+  ストア側のタイマーで 3 秒後に消えるため、見るには story を開き直す。
+-->
+<Story name="一時メッセージ" loaders={[seed(BASE, 1, 'preview', '外部の変更を読み込みました')]} />
+
+<!--
+  深いパス（issue #145）。**ディレクトリ側だけが省略記号になり、ファイル名は残る。**
+  右端の倍率が画面外へ押し出されないことも、ここで見る。
+-->
+<Story
+  name="深いパス"
+  loaders={[
+    seed({
+      ...BASE,
+      path: 'C:\\Users\\me\\Documents\\projects\\2026\\q3\\customer-a\\deliverables\\spec\\requirements-and-acceptance-criteria.md',
+    }),
+  ]}
+/>
+
+<!-- 無題の文書（`Ctrl+N`）。パスが無いので、フルパスの項目ごと出ない。 -->
+<Story name="無題" loaders={[seed({ ...BASE, path: null })]} />

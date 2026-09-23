@@ -113,6 +113,6 @@ export function declarations(preset: Preset): string {
     lines.push(`${name}:${typeof value === 'string' ? value : `light-dark(${value[0]},${value[1]})`};`);
   }
 
-  lines.push(`--mx-color-selection:color-mix(in srgb,var(--mx-color-accent) 22%,transparent);`);
+  lines.push(`--mx-color-selection:color-mix(in srgb,var(--mx-color-accent) 32%,transparent);`);
   return lines.join('');
 }

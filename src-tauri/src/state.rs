@@ -286,10 +286,21 @@ impl AppState {
     ///
     /// ディスクを読み直さないのは、外部エディターでの編集をファイル監視が既に取り込んでいるためである。
     /// `✕` を押すたびにファイル I/O を行うのは、得られる結果に対してコストが高い。
-    pub fn close_behavior(&self) -> crate::settings::CloseBehavior {
+    pub fn closes_to_tray(&self) -> bool {
         self.settings
             .lock()
-            .map(|s| s.values.window_close_behavior)
+            .map(|s| s.values.window_close_to_tray)
+            .unwrap_or(true)
+    }
+
+    /// エクスプローラーから除外する glob（`explorer.exclude` / #146）。メモリ上の設定を見る。
+    ///
+    /// `closes_to_tray` と同じ理由でディスクを読み直さない。
+    /// 外部エディターでの編集はファイル監視が既に取り込んでおり、一覧を開くたびにファイル I/O を挟む理由がない。
+    pub fn exclude_patterns(&self) -> Vec<String> {
+        self.settings
+            .lock()
+            .map(|s| s.values.explorer_exclude.clone())
             .unwrap_or_default()
     }
 

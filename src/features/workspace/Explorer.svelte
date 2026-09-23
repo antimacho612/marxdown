@@ -12,15 +12,34 @@
   import { documentStore } from '@/features/document';
   import { ja } from '@/i18n/ja';
   import { runCommand } from '@/lib/commands';
+  import { splitPath } from '@/lib/path';
 
   import { setTreeRootFromFile, treeStore } from './tree.svelte';
 
   const path = $derived(documentStore.meta?.path ?? null);
+
+  /** 見出し行に出す基点の名前。パス全体はツールチップに寄せる。 */
+  const rootName = $derived(treeStore.root === null ? null : splitPath(treeStore.root).name || treeStore.root);
 </script>
 
 <!--
-  スクロール領域（03.ux-spec/06-panes.md §1）。ペイン自身（`LeftPane.svelte`）は枠と幅だけを持つため、
-  中身が縦に溢れたときの scroll はここが持つ（`Outline.svelte` の `mx-outline__list` と同じ分担）。
+  見出し行（03.ux-spec/01-screen-layout.md §2 のスケッチ）。
+  ライトペイン（`features/outline/Outline.svelte`）が同じ形の行を持っており、
+  こちらだけ無いと、左右のペインで情報の始まりが揃わない。
+-->
+<div class="mx-explorer__head">
+  <span class="mx-explorer__title">{ja.tree.title}</span>
+  {#if rootName !== null}
+    <span class="mx-explorer__root" title={treeStore.root}>{rootName}</span>
+  {/if}
+</div>
+
+<!--
+  中身を縦に積む器（03.ux-spec/06-panes.md §1）。ペイン自身（`LeftPane.svelte`）は枠と幅だけを持つ。
+
+  スクロールはここではなく中身の側が持つ。
+  ツールバー（`lazy/ExplorerToolbar.svelte`）をスクロールさせないための分担であり、
+  空状態とツリーがそれぞれ自分のスクロール領域を持つ。
 -->
 <div class="mx-explorer">
   {#if treeStore.root === null}
@@ -51,7 +70,7 @@
       {/if}
     </div>
   {:else}
-    {#await import('./lazy/FileTree.svelte')}
+    {#await import('./lazy/ExplorerBody.svelte')}
       <p class="mx-explorer__note">{ja.tree.loading}</p>
     {:then module}
       <module.default />
@@ -62,10 +81,39 @@
 </div>
 
 <style>
+  /* 高さと罫線はアウトラインの見出し行と同じ値にする（`features/outline/Outline.svelte`）。 */
+  .mx-explorer__head {
+    display: flex;
+    flex: none;
+    align-items: center;
+    gap: var(--mx-space-2);
+    height: 28px;
+    padding-inline: var(--mx-space-3);
+    border-bottom: 1px solid var(--mx-color-border-subtle);
+  }
+
+  .mx-explorer__title {
+    flex: none;
+    color: var(--mx-color-fg-muted);
+    font-size: var(--mx-font-size-ui-sm);
+    font-weight: 600;
+    letter-spacing: 0.04em;
+  }
+
+  .mx-explorer__root {
+    min-width: 0;
+    color: var(--mx-color-fg-subtle);
+    font-size: var(--mx-font-size-ui-sm);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
   .mx-explorer {
     flex: 1;
+    display: flex;
+    flex-direction: column;
     min-height: 0;
-    overflow-y: auto;
   }
 
   .mx-explorer__note {
@@ -78,7 +126,9 @@
     display: flex;
     flex-direction: column;
     gap: var(--mx-space-2);
+    min-height: 0;
     padding-bottom: var(--mx-space-3);
+    overflow-y: auto;
   }
 
   .mx-explorer__empty .mx-explorer__note {
@@ -90,7 +140,7 @@
     margin-inline: var(--mx-space-3);
     padding: var(--mx-space-2);
     border: 1px solid transparent;
-    border-radius: var(--mx-radius-sm);
+    border-radius: var(--mx-radius);
     background: var(--mx-color-accent);
     color: var(--mx-color-accent-fg);
     font: inherit;
@@ -108,13 +158,24 @@
     color: var(--mx-color-fg);
   }
 
+  /*
+   * 面の色で押し込みを表す。
+   * `opacity` で薄くすると下地が透け、載せた文字（白）のコントラストが下がる。
+   */
   .mx-explorer__action:hover {
-    opacity: 0.9;
+    background: var(--mx-color-accent-hover);
+  }
+
+  .mx-explorer__action:active {
+    background: var(--mx-color-accent-active);
   }
 
   .mx-explorer__action--secondary:hover {
-    opacity: 1;
     background: var(--mx-color-bg-hover);
+  }
+
+  .mx-explorer__action--secondary:active {
+    background: var(--mx-color-bg-inset);
   }
 
   .mx-explorer__action:focus-visible {

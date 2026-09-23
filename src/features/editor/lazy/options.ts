@@ -55,6 +55,7 @@ export function editorOptions(values: Settings): EditorOptions {
     wordWrapColumn: values['editor.wordWrapColumn'],
     tabSize: values['editor.tabSize'],
     insertSpaces: values['editor.insertSpaces'],
+    wordSeparators: values['editor.wordSeparators'],
     cursorStyle: values['editor.cursorStyle'],
     cursorBlinking: values['editor.cursorBlinking'],
     cursorSurroundingLines: values['editor.cursorSurroundingLines'],

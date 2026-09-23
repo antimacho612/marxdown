@@ -1,21 +1,13 @@
 /**
- * UI 文言。
- *
- * i18n ライブラリは導入しない（04.tech-stack/05-frontend.md §1 / OQ-11）。
- * 当面は日本語のみだが、文言を定数に集約しておくことで、将来の抽出をコード変更なしに行えるようにしておく。
+ * NOTE: 当面は日本語のみのため、i18n ライブラリは導入しない。
+ * 将来的に必要になった時のために定数に集約しておく。
  */
 
-/** UI 文言の全体。 */
 export const ja = {
   app: {
     name: 'Marxdown',
   },
-  /**
-   * Welcome 画面（03.ux-spec/08-empty-states.md §1）。
-   *
-   * チュートリアルもツアーも表示しない。ショートカットの併記だけで操作を伝える。
-   * 押せない項目を並べるのは Principle 3「Simple Means Low Cognitive Load」に反する。
-   */
+
   welcome: {
     title: 'Marxdown',
     newFile: '新規ファイル',
@@ -26,55 +18,48 @@ export const ja = {
     dropHint: 'ここに Markdown ファイルをドロップ',
     cliHint: 'ターミナルからは marxdown <file.md>',
   },
-  /**
-   * カスタムタイトルバー（03.ux-spec/01-screen-layout.md §1）。
-   *
-   * ウィンドウ操作ボタンには文字を表示せず、アイコンだけを表示する。
-   * ここにあるのはすべてスクリーンリーダー向けの名前とツールチップであり、Windows の標準タイトルバーが読み上げる文言に合わせてある。
-   */
-  /** ファイルツリー（F-NAV-03 / レフトペイン）。 */
+
   tree: {
+    title: 'エクスプローラー',
     loading: '読み込み中…',
     empty: 'このフォルダには何もありません',
-    /**
-     * 基点が決まっていないとき（#103）。
-     *
-     * ファイルを開いただけでは基点は決まらない。フォルダを開く操作が要る。
-     * 文言だけでは次の操作が分からないため、下の 2 つのボタンと組で表示する。
-     */
     noRoot: 'まだフォルダを開いていません',
-    /** ダイアログでフォルダを選ぶ（`Ctrl+Alt+O`）。 */
     openFolder: 'フォルダを開く',
-    /** 表示中のファイルの親ディレクトリを基点にする。VS Code には無い導線である。 */
     openCurrentFolder: '表示中のファイルがあるフォルダを開く',
     failed: 'ファイルツリーを読み込めませんでした',
+    noMatch: '条件に一致するファイルがありません',
+    toolbar: 'エクスプローラーの操作',
+    /**
+     * 文字ラベルを持たないトグルのツールチップ。
+     * 読み上げ側は `aria-pressed` が伝えるため、状態を添えるのはツールチップだけにする。
+     */
+    toggleState: (label: string, on: boolean) => `${label}: ${on ? 'オン' : 'オフ'}`,
+    markdownOnly: 'Markdown だけ表示',
+    markdownOnlyOverridden: 'Markdown だけ表示: 拡張子フィルターが有効な間は適用されません',
+    extensions: '拡張子で絞り込む',
+    extensionsInput: '表示する拡張子',
+    extensionsPlaceholder: 'md, txt, png',
   },
-  /**
-   * コマンドパレット（`Ctrl+Shift+P` / F-NAV-06）。
-   *
-   * すべての機能への到達手段であり、ここの文言がそのまま機能の名前になる。
-   */
+
   palette: {
     title: 'コマンドパレット',
     placeholder: 'コマンドを検索',
     noMatch: '一致するコマンドがありません',
   },
-  /**
-   * クイックオープン（`Ctrl+P` / F-NAV-05）。
-   *
-   * 並びは「最近開いたファイル → フォルダ内 Markdown」である（03.ux-spec/05-command-palette.md）。
-   */
+
   quickOpen: {
     title: 'クイックオープン',
     placeholder: 'ファイル名で検索',
     noMatch: '一致するファイルがありません',
-    /** 基点が無く、最近開いたファイルも無い。 */
     empty: 'ファイルを開くと、その場所から検索できます',
-    /** 最近開いたファイルであることの目印。右端に出す。 */
     recent: '最近',
-    /** 上限で打ち切ったとき。全体を検索できていないことを伝える。 */
+    /**
+     * 上限で打ち切ったとき。全体を検索できていないことを伝える。\
+     * `ファイルが多いため、先頭 ${count} 件だけを検索します`
+     */
     truncated: (count: number) => `ファイルが多いため、先頭 ${count} 件だけを検索します`,
   },
+
   tab: {
     /** タブ全体の読み上げ名（`role="tablist"`）。 */
     list: '開いているファイル',
@@ -88,30 +73,19 @@ export const ja = {
     /** タブの右クリックメニュー。読み上げ名に使う。 */
     menu: (name: string) => `${name} の操作`,
   },
+
   titlebar: {
     menu: 'メニュー',
-    /**
-     * まだ一度も保存していない文書の名前（`Ctrl+N` / `features/document/new.ts`）。
-     *
-     * ファイル名の位置に表示する。
-     * 「無題」は名前であって状態の説明ではないため、未保存の印（`●`）とは別のものであり、両方が同時に表示される。
-     */
     untitled: '無題',
     minimize: '最小化',
     maximize: '最大化',
     restore: '元のサイズに戻す',
     close: '閉じる',
   },
-  /**
-   * ハンバーガーメニュー（03.ux-spec/01-screen-layout.md §3「初学者の逃げ道」）。
-   *
-   * メニューバーを置かないという決定の代わりに、タイトルバー左端に 1 つだけ配置する。
-   * 並べるのは、その時点で実行できる項目だけである。
-   */
+
   menu: {
     new: '新規ファイル',
     open: 'ファイルを開く',
-    /** フォルダを開く（`Ctrl+Alt+O`）。ファイルツリーの基点を決める（F-NAV-03）。 */
     openFolder: 'フォルダを開く',
     /** 空の新しいウィンドウ（`Ctrl+Alt+N` / F-OPEN-06）。 */
     newWindow: '新しいウィンドウ',
@@ -119,81 +93,45 @@ export const ja = {
     moveToNewWindow: '別ウィンドウで開く',
     save: '保存',
     saveAs: '名前を付けて保存',
-    /**
-     * モードの切り替え（F-MODE-06）。ラベルには切り替え先を表示する。
-     * 現在が Preview なら「編集」、Edit なら「プレビュー」となり、操作の結果を事前に判断できる。
-     */
     toEdit: '編集する',
     toPreview: 'プレビューに戻る',
-    /** Split（F-MODE-03 / 03.ux-spec/03-split-mode.md）。ラベルは行き先を言う。 */
     toSplit: '左右に並べる',
     fromSplit: '分割をやめる',
     settings: '設定',
     recent: '最近開いたファイル',
     noRecent: 'まだ何も開いていません',
     reload: '再読み込み',
-    /** ステータスバーの `LF` / `CRLF` と同じ操作（F-EDIT-14）。 */
     toggleEol: '改行コードを切り替える',
-    /** 表示モードの順送り（`Ctrl+Shift+M`）。トグル 2 つとは別の操作である。 */
     cycleMode: '表示モードを順に切り替える',
-    /** 指定行へ移動（`Ctrl+G`）。**編集面があるときだけ**（Preview には行番号が無い）。 */
     gotoLine: '指定行へ移動',
-    /** 表の列幅を揃える（`Shift+Alt+F`）。`gotoLine` と同じく編集面があるときだけ。 */
     formatTable: '表の列幅を揃える',
-    /** スクロール同期（Split のときだけ意味を持つ）。 */
     toggleScrollSync: 'スクロール同期を切り替える',
-    /** アウトラインを表示してフォーカスする（閉じない）。 */
     showOutline: 'アウトラインへ移動',
-    /** ファイルツリーを表示してフォーカスする（閉じない）。 */
     showExplorer: 'エクスプローラーへ移動',
-    /** クイックオープン（`Ctrl+P`）。「ファイルを開く」はダイアログのほうが使っている。 */
     quickOpen: 'ファイルへ移動',
     zoom: '表示倍率',
     zoomIn: '拡大',
     zoomOut: '縮小',
     zoomReset: '等倍',
-    /**
-     * 検索（F-VIEW-10 / F-EDIT-05）。ラベルには検索対象を表示する。
-     * Preview では本文の DOM を、Edit ではエディターのテキストを検索する（`features/mode/find.ts`）。
-     * 同じ `Ctrl+F` でも対象が異なるため、名前を分ける。
-     */
     search: 'プレビュー内を検索',
     find: '検索',
     replace: '置換',
-    /**
-     * 終了（ADR-0007 論点 3）。
-     *
-     * `✕` はトレイ格納の意味になったため、「閉じる」とは別の語が必要になる。
-     * 「Marxdown を終了」ではなく「終了」としているのは、トレイメニュー（OS 側）と違い、ここが既にアプリの内部であるためである。
-     */
     quit: '終了',
   },
-  /**
-   * ペイン（03.ux-spec/06-panes.md）。
-   *
-   * ペインそのものには見出しを表示しない（中身が自身の見出しを持つ）。
-   * ここにあるのは、ドラッグ領域とメニュー項目の名前だけである。
-   */
+
   pane: {
     resizeRight: 'ライトペインの幅を変更',
     resizeLeft: 'レフトペインの幅を変更',
-    /** レフトペイン（Explorer / F-NAV-03）。中身は Phase 5b。 */
     showExplorer: 'エクスプローラーを表示',
     hideExplorer: 'エクスプローラーを隠す',
     showOutline: 'アウトラインを表示',
     hideOutline: 'アウトラインを隠す',
   },
-  /**
-   * アウトライン（F-VIEW-02 / 03.ux-spec/06-panes.md §2）。
-   *
-   * 空であることを明示するのが 03.ux-spec/06-panes.md §2 の要求である。
-   * 読み込み中と受け取られないよう、何が無いのかを明示し、見出しを書けば表示されることを添える。
-   */
+
   outline: {
     title: 'アウトライン',
     empty: '見出しがありません',
     emptyHint: '# で始まる行が見出しになります',
-    /** #61。指定した深さより浅い見出しが 1 つも無いとき。 */
     filtered: 'この深さまでの見出しがありません',
     collapse: 'アウトラインを折りたたむ',
     expand: 'アウトラインを展開する',
@@ -201,52 +139,35 @@ export const ja = {
     jumpPlaceholder: '見出しを検索',
     jumpNoMatch: '一致する見出しがありません',
   },
-  /** 戻る / 進む（F-NAV-07）。 */
+
   history: {
     back: '戻る',
     forward: '進む',
   },
+
   /** 別ウィンドウで開く（F-OPEN-06）。 */
   window: {
-    /**
-     * 未保存のタブは移せない（N-REL-01）。
-     *
-     * 本文は Monaco の `ITextModel` にあり、別ウィンドウへ渡す経路が無い（ADR-0005）。
-     * 渡せるのはパスだけであるため、保存していない内容は移した先に現れない。
-     */
-    dirtyTab: '保存してから別ウィンドウで開いてください。',
-    /** 無題の文書（`Ctrl+N`）にはパスが無く、移した先で開き直せない。 */
-    untitledTab: '保存していない文書は別ウィンドウで開けません。',
+    /** 本文を取り出せなかったタブ。保存済みならパスだけで移せるため、保存を促す（N-REL-01）。 */
+    textUnavailable: '本文を取り出せませんでした。保存してから別ウィンドウで開いてください。',
     failed: '新しいウィンドウを開けませんでした',
   },
+
   open: {
     reloaded: '再読み込みしました',
-    /**
-     * 外部変更を自動で読み込んだとき（03.ux-spec/07-status-and-notifications.md §2 の 1 行目）。
-     * 自分では何もしていないので、何が起きたかを先に言う。
-     */
     reloadedExternal: '外部の変更を読み込みました',
-    /**
-     * 編集中に外部で変更されたとき（03.ux-spec/07-status-and-notifications.md §2 の「選択」）。
-     *
-     * ダーティなら確認せずに読み直さない（02.architecture/08-state-management.md §3）。
-     * 読み直すと未保存の編集が失われるため、ユーザーに選択させる。
-     */
     changedExternally: 'ファイルが外部で変更されました',
     reloadAction: '再読み込み',
     ignoreAction: '無視',
   },
-  /** 保存（F-EDIT-02, 03 / 03.ux-spec/07-status-and-notifications.md §2）。 */
+
   save: {
     failed: '保存できませんでした',
-    /** §2 の「警告」の文面。消えない通知として出す。*/
     conflict: '保存できませんでした: 別のプロセスが変更しています',
     overwrite: '上書き',
-    /** 押すと編集内容が失われる。押すまでは何も起きない。*/
     reloadInstead: '再読み込み',
-    /** タイトルバーの `●`（§1）。読み上げのために文言を持たせる。 */
     dirtyLabel: '未保存の変更があります',
   },
+
   preview: {
     copy: 'コピー',
     copied: 'コピーしました',
@@ -254,16 +175,11 @@ export const ja = {
     copyLabel: 'コードブロックをコピー',
     imageOutOfScope: 'この画像は参照が許可されていない場所にあります',
     imageMissing: '画像が見つかりません',
-    /**
-     * スコープ外の画像を許可するボタン（OQ-17）。
-     *
-     * 何が起きるかを文言で言い切る。「許可する」だけだと、どこまで開くのかが読み取れない。
-     */
     imageAllow: 'このフォルダの画像を許可',
     imageAllowHint: (dir: string) => `${dir} の直下だけを、アプリを終了するまで許可します`,
     imageAllowFailed: '許可できませんでした',
   },
-  /** プレビュー内検索（F-VIEW-10）。 */
+
   search: {
     label: 'プレビュー内を検索',
     placeholder: '検索',
@@ -271,84 +187,50 @@ export const ja = {
     next: '次を検索',
     close: '検索を閉じる',
     noMatch: '見つかりません',
-    /** `truncated` は上限で打ち切った場合。黙って切らずに `+` を付けて示す。 */
     position: (index: number, total: number, truncated: boolean) =>
       `${index} / ${total.toLocaleString('ja-JP')}${truncated ? '+' : ''}`,
   },
-  /*
-   * エディター自身が出力する文言（検索・置換パネルなど）は Monaco が日本語を同梱しているため、ここには置かない
-   * （`features/editor/lazy/monaco.ts` が `nls/lang/ja.js` を読み込む）。
-   *
-   * CodeMirror では `EditorState.phrases` に原文と日本語の対応表を自前で持っていたが、[ADR-0009](../../docs/adr/0009-editor-engine-monaco.md) により不要になった。
-   */
-  /** Split（F-MODE-03, 05 / 03.ux-spec/03-split-mode.md）。 */
+
   split: {
     resize: '分割の幅を変える',
     ratio: (percent: number) => `エディター ${percent}%`,
-    /**
-     * スクロール同期（§2）。ラベルは現在の状態を、ツールチップは操作の結果を示す。
-     * アイコンだけでは、現在有効なのか押すと有効になるのかを判別できない。
-     */
     syncOn: 'スクロール同期: ON',
     syncOff: 'スクロール同期: OFF',
     toggleSync: 'クリックでスクロール同期を切り替える',
   },
-  /** リンククリックの分岐（02.architecture/09-security.md §2）。 */
+
   link: {
     confirmOpen: (path: string) => `既定のアプリで開きますか: ${path}`,
     open: '開く',
     reveal: 'フォルダで表示',
     outOfScope: (path: string) => `参照が許可されていない場所です: ${path}`,
   },
+
   notice: {
     dismiss: '通知を閉じる',
   },
-  /** 編集面から出す通知（`features/editor/lazy/`）。設定の中の `settings.editor` とは別である。 */
+
   editor: {
-    /**
-     * 画像を貼ったが保存先が決まらない（F-EDIT-13）。
-     *
-     * 「保存してください」ではなく「保存できません」と言い切る。
-     * 保存先は開いているファイルの隣に決まるため、名前が付くまでは置き場所が存在しない。
-     */
     pasteImageUntitled: '無題の文書には画像を貼り付けられません。先にファイルを保存してください。',
     pasteImageFailed: '画像を保存できませんでした',
   },
-  /**
-   * ユーザー設定（02.architecture/04-rust-responsibilities.md §5 / 03.ux-spec/07-status-and-notifications.md §2）。
-   *
-   * 「読めませんでした」に留めるのは、既定値で動作していることと、ファイルを上書きしていないことの両方を 1 行に収めるためである。
-   * 原因（何行目が壊れているか）はエディター側で確認できる。
-   */
+
   settings: {
     broken: 'settings.json を読めませんでした。既定の設定で表示しています',
     openFile: 'ファイルを開く',
-
-    /*
-     * 設定 UI（F-CONF-05 / ADR-0011）。
-     *
-     * セットアップではなく調整のための画面である（03.ux-spec/README.md §1「Defaults Matter」）。
-     * 説明文は項目ごとには付けない。
-     * 既定値のままで完成していることが前提であり、補足が必要なのは、指定しても反映されない場合があるものと、単位が自明でないものだけである。
-     *
-     * ラベルは VS Code のキー名の直訳にしない。
-     * `settings.json` を読み書きする場合はキー名がそのまま見えているため（F-CONF-06）、GUI 側は日本語として読める語を選ぶ。
-     */
     title: '設定',
     close: '設定を閉じる',
-    /** 壊れている間は保存を試みない。理由をここに出して入力欄を止める（02.architecture/04-rust-responsibilities.md §5）。*/
     readOnly: 'settings.json を読めないため、変更を保存できません。ファイルを直してから開き直してください',
 
-    /** 左のカテゴリ（ADR-0011）。並びは「触る頻度」ではなく「対象の大きさ」順。*/
     categories: {
-      appearance: '外観',
+      application: 'アプリケーション',
       preview: 'プレビュー',
       editor: 'エディター',
       markdown: '記法',
+      explorer: 'エクスプローラー',
       outline: 'アウトライン',
-      window: 'ウィンドウ',
     },
-    /** エディターの中の節。項目が 22 個あるので、見出し無しでは探せない。 */
+
     sections: {
       font: 'フォント',
       display: '表示',
@@ -361,18 +243,8 @@ export const ja = {
     themeDark: 'ダーク',
     themeHint: 'ライトとダークの切り替え。配色はプレビューとエディターで別々に選べる',
 
-    /**
-     * 配色（F-CONF-08 / ADR-0014）。プレビューとエディターで同じ文言を使う。
-     *
-     * 選択肢の名前は組み込みの定義側（`features/theme/lazy/presets.ts`）が持つ。
-     * ユーザーが追加したものが混ざるため、ここに名前の表を置けない。
-     *
-     * 一覧はライト / ダークの別で束ねる。
-     * 50 枚を明暗の区別なく 1 列に並べると、ライトの配色を探している人が全部を読むことになる。
-     */
     palette: '配色',
     paletteHint: '組み込みの 50 種類と、themes フォルダーに置いた CSS から選ぶ',
-    /** 配色を選んでいない状態。既定のトークンがそのまま使われる（F-CONF-02）。 */
     paletteDefault: 'Marxdown',
     paletteGroups: {
       user: '追加したもの',
@@ -380,13 +252,11 @@ export const ja = {
       light: 'ライト',
       dark: 'ダーク',
     },
-    /** 設定ファイルに書かれているが、組み込みにも `themes/` にも無い綴り。既定へ落とさず、選択肢として残す。 */
     paletteMissing: (id: string) => `${id}（見つかりません）`,
     openThemes: 'themes フォルダーを開く',
 
     fontFamily: '本文のフォント',
     codeFontFamily: 'コードのフォント',
-    /** ウェブフォントは CSP（`font-src 'self'`）で読み込めない（02.architecture/10-theming.md §3）。 */
     fontFamilyHint: 'OS に入っているフォント名。無いフォントを書いても既定のフォントに落ちる',
     fontFamilyPlaceholder: '既定のフォント',
     fontSize: { label: '文字サイズ', description: '文字サイズを制御します（単位: px）。' },
@@ -399,13 +269,16 @@ export const ja = {
       label: 'ソフトブレーク',
       description: '段落内の単独の改行をそのまま <br> として描画するかどうかを制御します。',
     },
+    tableStyle: {
+      label: '表の罫線',
+      description: '表の区切りの引き方を制御します。列が多い表では、格子や交互の塗りのほうが行を追いやすくなります。',
+      options: {
+        lines: '横罫線のみ',
+        grid: '格子',
+        zebra: '交互に塗る',
+      },
+    },
 
-    /**
-     * 追加記法（04.tech-stack/04-markdown.md §3）。どれも既定 OFF。
-     *
-     * 説明には記法そのものを書く。名前だけでは何が起きるか判断できず、
-     * 「操作する前に結果を判断できる」（Principle 3）を満たさない。
-     */
     markdown: {
       abbreviations: {
         label: '略語',
@@ -425,10 +298,6 @@ export const ja = {
       superscript: { label: '上付き文字', description: '`x^2^` の `2` を上付きで描画します。' },
     },
 
-    /**
-     * エディター（ADR-0012）。プレビューと同じ語を使う（文字サイズ / 行間）。
-     * 同じ項目を別の名前にすると、設定が 2 か所にあることを読み取れなくなる。
-     */
     editor: {
       fontFamily: 'フォント名',
       fontSize: { label: '文字サイズ', description: '文字サイズを制御します（単位: px）。' },
@@ -491,6 +360,10 @@ export const ja = {
         label: 'タブをスペースで挿入',
         description: 'Tab キーを押したときにタブではなくスペースを挿入するかどうかを制御します。',
       },
+      wordSeparators: {
+        label: '単語の区切り文字',
+        description: '「Ctrl+←」「Ctrl+→」などの単語単位のカーソル移動で、区切りとして扱う文字を指定します。',
+      },
       cursorStyle: 'カーソルの形',
       cursorStyleOptions: {
         line: '縦線',
@@ -518,7 +391,15 @@ export const ja = {
       },
     },
 
-    /** アウトライン（#61）。 */
+    explorer: {
+      exclude: {
+        label: '除外するパス',
+        description:
+          'エクスプローラーとクイックオープンに表示しないパスを glob パターンで指定します。カンマ区切りで複数指定できます。スラッシュを含まないパターンは、どの階層にある同じ名前にも一致します。隠しファイルと node_modules は、この設定に関わらず表示されません。',
+        placeholder: '例: dist, *.tmp, docs/generated',
+      },
+    },
+
     outline: {
       maxDepth: {
         label: '表示する見出しの階層',
@@ -526,21 +407,13 @@ export const ja = {
       },
     },
 
-    /** ウィンドウ（ADR-0007）。`✕` の意味が既定と違うので、選べることを見せる。*/
     window: {
-      closeBehavior: '✕ を押したとき',
-      closeBehaviorTray: 'タスクトレイに格納する',
-      closeBehaviorExit: 'Marxdown を終了する',
-      closeBehaviorHint: '格納しておくと、次に開くときが速い',
+      closeToTray: {
+        label: '✕ で閉じたときにタスクトレイに格納する',
+        description: 'ウィンドウを閉じても終了せず、タスクトレイに常駐します。次に開くときの表示が速くなります。',
+      },
     },
 
-    /**
-     * 見本（ADR-0011）。
-     * モーダルにしたことで背後の本文が見えないため、フォントに関する項目だけはこの画面で確認できるようにする。
-     *
-     * 本文幅（`ch`）と、折り返しやタブ幅などの挙動は見本には反映されない。
-     * 再現できない範囲まで似せると、実際の表示と異なるものを示すことになる。
-     */
     sampleHeading: '見出し',
     sampleBody: '本文のサンプル。強調とコードが混ざる。',
     sampleList: 'リストの項目',
@@ -553,55 +426,22 @@ export const ja = {
     edit: '設定（JSON）を開く',
     editHint: 'ここに無い項目は settings.json に直接書ける',
   },
-  /**
-   * 配色（F-CONF-08 / ADR-0014）。通知バーに出す文言。
-   *
-   * 2 行とも適用しなかったことを伝える。
-   * 本文は表示できているため、読み込みの失敗ではなく適用していないことを明示する。
-   * 対象のファイルは、添えるボタンのラベルで示す（`reportThemeResult`）。
-   */
+
   themes: {
     open: 'themes フォルダーを開く',
-    /** 選ばれている綴りがカタログに無い。既定へ落とさないため、これが唯一の手がかりになる。 */
     unknown: '選ばれている配色が見つからないため適用していません',
     rejected: '配色を面の中に収められないため適用していません。} の対応を確認してください',
   },
-  /** ステータスバー（03.ux-spec/07-status-and-notifications.md §3）。 */
+
   status: {
-    /**
-     * 表示モードの名前（03.ux-spec/02-view-modes.md §1）。
-     *
-     * 英語のままにする。
-     * モード名は VS Code の Preview / Edit と同じ語であり、画面上は 1 語のラベルとして機能する（OQ-11 の i18n とは別の判断）。
-     */
     mode: { preview: 'Preview', edit: 'Edit', split: 'Split' } as const,
     lines: (n: number) => `${n} 行`,
     bytes: (n: number) => `${formatBytes(n)}`,
     chars: (n: number) => `${n.toLocaleString('ja-JP')} 文字`,
     readingTime: (minutes: number) => `約 ${minutes} 分`,
-    /**
-     * カーソル位置（§3 の図）。英語のままとし、モード名と同じ扱いにする（OQ-11 とは別）。
-     * VS Code や Sublime と同じ綴りであることが、そのまま読み方の説明になる。
-     *
-     * 桁区切りは入れない。
-     * 行番号は位置を表す値であり量ではないため、`12,345 行目` のような表記にしない。
-     */
     cursor: (line: number, column: number) => `Ln ${line}, Col ${column}`,
     readonly: '読み取り専用',
-    /**
-     * EOL の変換（§3「クリックで EOL 変換」/ `features/document/eol.ts`）。
-     *
-     * 変換先を表示する。
-     * ラベル（`LF`）が現在の状態を示しているため、ツールチップでも状態を繰り返すと、操作後の結果を示す箇所が無くなる。
-     */
     eolConvert: (next: string) => `クリックで ${next.toUpperCase()} に変換（保存時に書き戻す）`,
-    /**
-     * エンコーディングの表示名（`src-tauri/src/document/encoding.rs` の `Encoding`）。
-     *
-     * 綴りは各エンコーディングの一般的な表記に合わせる。
-     * 値をそのまま大文字にすると `SHIFT-JIS` / `UTF16-LE` になり、どちらも本来の表記ではない。
-     * 選択する UI に並ぶ以上、一般的な表記でないと判別しにくい。
-     */
     encoding: {
       // eslint-disable-next-line unicorn/text-encoding-identifier-case -- 画面に出す通り名であって、識別子ではない
       utf8: 'UTF-8',
@@ -610,27 +450,30 @@ export const ja = {
       'shift-jis': 'Shift_JIS',
       'euc-jp': 'EUC-JP',
     } as const,
-    /** エンコーディングの再解釈（§3 / `features/document/encoding.ts`）。読み直しを伴う。*/
     encodingReinterpret: 'クリックでエンコーディングを選び直す（読み直す）',
     reinterpreted: (name: string) => `${name} として読み直しました`,
-    /** モードの切り替え（§3「クリックでモード切替メニュー」）。 */
     modeSwitch: 'クリックで表示モードを切り替える',
-    zoomReset: 'クリックで等倍に戻す',
+    pathCopy: 'クリックでフルパスをコピーする',
+    pathCopied: 'フルパスをコピーしました',
+    pathCopyFailed: 'フルパスをコピーできませんでした',
+    zoomSelect: 'クリックで表示倍率を変更する',
     parsedIn: (ms: number) => `パース ${ms.toFixed(1)}ms`,
     paintedIn: (ms: number) => `描画 ${ms.toFixed(1)}ms`,
   },
+
   error: {
     'not-found': (path: string) => `ファイルが見つかりません: ${path}`,
+    removedFromRecent: '（最近開いたファイルの一覧から外しました）',
     'permission-denied': (path: string) => `アクセスが拒否されました: ${path}`,
     'out-of-scope': (path: string) => `許可されていない場所を参照しています: ${path}`,
     'too-large': (path: string) => `ファイルが大きすぎます: ${path}`,
     binary: (path: string) => `テキストではないため開けません: ${path}`,
     conflict: 'ファイルが外部で変更されています',
-    'invalid-argument': (detail: string) => `引数が不正です: ${detail}`,
+    'invalid-argument': (detail: string) => `引数を解釈できません: ${detail}`,
     'settings-broken': 'settings.json を読めないため、設定を保存できません',
     io: (detail: string) => `入出力エラー: ${detail}`,
     unknownArgs: (args: string[]) => `解釈できない引数: ${args.join(', ')}`,
-    renderFailed: 'このファイルの表示に失敗しました',
+    renderFailed: 'このファイルの表示に失敗しました。F5 で読み直せます',
   },
 } as const;
 

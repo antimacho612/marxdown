@@ -19,7 +19,8 @@ type Labels<K extends SettingKey> = Readonly<Record<Settings[K] & string, string
 /**
  * キーに当てられる部品。スキーマの `kind` から決まる。
  *
- * `number[]`（縦罫線）だけは入力欄の文字列と値が 1:1 でないため `custom` に落ち、ダイアログ側が個別に描く。
+ * 並び（`number[]` / `string[]`）は入力欄の文字列と値が 1:1 でないため `list` になる。
+ * 打っている途中の文字列を保持するのは `ListField.svelte` で、値としての解釈はダイアログ側が持つ。
  *
  * 文字列だけ 2 択にしてある。
  * 配色（ADR-0014）は値としては文字列だが、選択肢は組み込みと `themes/` の合成であり、`values` を持たないぶん `select` には載らない（`theme`）。
@@ -33,7 +34,7 @@ type WidgetFor<K extends SettingKey> =
         ? { widget: 'toggle' }
         : SettingKind<K> extends 'string'
           ? { widget: 'text'; placeholder?: string } | { widget: 'theme' }
-          : { widget: 'custom' };
+          : { widget: 'list'; placeholder: string };
 
 type FieldOf<K extends SettingKey> = {
   kind: 'field';
@@ -102,8 +103,8 @@ function wrapsByColumn(values: Settings): boolean {
 /** 左のカテゴリ（ADR-0011）。並び順は使用頻度ではなく、設定が影響する範囲の大きさに従う。 */
 export const LAYOUT = [
   {
-    id: 'appearance',
-    label: ja.settings.categories.appearance,
+    id: 'application',
+    label: ja.settings.categories.application,
     entries: [
       {
         kind: 'field',
@@ -112,6 +113,13 @@ export const LAYOUT = [
         label: ja.settings.theme,
         description: ja.settings.themeHint,
         labels: { system: ja.settings.themeSystem, light: ja.settings.themeLight, dark: ja.settings.themeDark },
+      },
+      {
+        kind: 'field',
+        key: 'window.closeToTray',
+        widget: 'toggle',
+        label: ja.settings.window.closeToTray.label,
+        description: ja.settings.window.closeToTray.description,
       },
     ],
   },
@@ -172,6 +180,14 @@ export const LAYOUT = [
         widget: 'toggle',
         label: ja.settings.softBreak.label,
         description: ja.settings.softBreak.description,
+      },
+      {
+        kind: 'field',
+        key: 'preview.tableStyle',
+        widget: 'select',
+        label: ja.settings.tableStyle.label,
+        description: ja.settings.tableStyle.description,
+        labels: ja.settings.tableStyle.options,
       },
       { kind: 'sample', sample: 'content' },
     ],
@@ -283,7 +299,8 @@ export const LAYOUT = [
       {
         kind: 'field',
         key: 'editor.rulers',
-        widget: 'custom',
+        widget: 'list',
+        placeholder: ja.settings.editor.rulers.placeholder,
         label: ja.settings.editor.rulers.label,
         description: ja.settings.editor.rulers.description,
       },
@@ -330,6 +347,13 @@ export const LAYOUT = [
       },
       {
         kind: 'field',
+        key: 'editor.wordSeparators',
+        widget: 'text',
+        label: ja.settings.editor.wordSeparators.label,
+        description: ja.settings.editor.wordSeparators.description,
+      },
+      {
+        kind: 'field',
         key: 'editor.cursorStyle',
         widget: 'select',
         label: ja.settings.editor.cursorStyle,
@@ -373,6 +397,20 @@ export const LAYOUT = [
     entries: SYNTAX_FIELDS,
   },
   {
+    id: 'explorer',
+    label: ja.settings.categories.explorer,
+    entries: [
+      {
+        kind: 'field',
+        key: 'explorer.exclude',
+        widget: 'list',
+        placeholder: ja.settings.explorer.exclude.placeholder,
+        label: ja.settings.explorer.exclude.label,
+        description: ja.settings.explorer.exclude.description,
+      },
+    ],
+  },
+  {
     id: 'outline',
     label: ja.settings.categories.outline,
     entries: [
@@ -383,23 +421,6 @@ export const LAYOUT = [
         step: 1,
         label: ja.settings.outline.maxDepth.label,
         description: ja.settings.outline.maxDepth.description,
-      },
-    ],
-  },
-  {
-    id: 'window',
-    label: ja.settings.categories.window,
-    entries: [
-      {
-        kind: 'field',
-        key: 'window.closeBehavior',
-        widget: 'radio',
-        label: ja.settings.window.closeBehavior,
-        description: ja.settings.window.closeBehaviorHint,
-        labels: {
-          tray: ja.settings.window.closeBehaviorTray,
-          exit: ja.settings.window.closeBehaviorExit,
-        },
       },
     ],
   },

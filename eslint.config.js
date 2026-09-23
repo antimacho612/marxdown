@@ -1,11 +1,3 @@
-/**
- * ESLint の設定（04.tech-stack.md §7）。
- *
- * Lint は ESLint 1 本に絞ってある。`.ts` と `.svelte` を同じ設定で見るため。
- *
- * 各プラグインの recommended を土台にし、個別のルールを足し引きする形にしている。
- * 落としているものについては `UNICORN_NOT_ENFORCED_BEFORE` を見ること。
- */
 import js from '@eslint/js';
 import prettier from 'eslint-config-prettier/flat';
 import { createTypeScriptImportResolver } from 'eslint-import-resolver-typescript';
@@ -20,15 +12,6 @@ import tseslint from 'typescript-eslint';
 /** Rust 側の initialization_script が注入するグローバルの命名規約。 */
 const INJECTED_GLOBALS = ['__MARXDOWN_BOOTSTRAP__', '__MARXDOWN_T4__', '__TAURI_INTERNALS__'];
 
-/**
- * `unicorn.configs.recommended` のうち、**既存コードが違反しているため落としているもの**。
- *
- * ここで全部を有効にすると、いま取り組んでいる変更と無関係な差分が数百行出て、
- * その変更で何が変わったのかが読めなくなる。
- *
- * **現状維持のためのスナップショットであって、恒久的な否定ではない。**
- * 直すときは、この配列から外す変更だけを単独のコミットにすること。
- */
 const UNICORN_NOT_ENFORCED_BEFORE = [
   'catch-error-name',
   'consistent-boolean-name',
@@ -71,16 +54,7 @@ const UNICORN_NOT_ENFORCED_BEFORE = [
   'switch-case-braces',
 ];
 
-/**
- * 公開面（`index.ts`）を通した参照だけを許す feature の一覧（02.architecture/03-layers.md §2）。
- *
- * 直接 import できてしまうと `index.ts` が「外から使ってよいものの一覧」でなくなる。
- * `lazy/` の下だけは除く。動的 import の入口を名指しする必要があり、
- * そこを `index.ts` 経由にするとクリティカルパスから静的に辿れてしまう。
- *
- * **`UNICORN_NOT_ENFORCED_BEFORE` と逆で、こちらは足していく側。**
- * feature を 1 つ整理するたびに 1 行増やす。
- */
+/** 公開用 `index.ts` を通した参照だけを許す feature の一覧。 */
 const FEATURE_BARREL_ENFORCED = [
   'document',
   'editor',
@@ -104,18 +78,14 @@ const rules = {
   'no-underscore-dangle': ['error', { allow: INJECTED_GLOBALS }],
   'no-await-in-loop': 'error',
 
-  // 全角スペースは**正規表現の中**で意図的に使っている
-  // （`text-stats.ts` の CJK 判定、`pipeline.ts` のスラグ化）。
+  // 全角スペースは正規表現の中で意図的に使っている（例: `text-stats.ts` の CJK 判定、`pipeline.ts` のスラグ化）。
   'no-irregular-whitespace': ['error', { skipRegExps: true }],
 
   '@typescript-eslint/consistent-type-imports': 'error',
   '@typescript-eslint/no-explicit-any': 'error',
-  // 先頭 `_` は「使わないことが意図である」印。Platform 層の空実装で使っている。
   '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
 
   'unicorn/filename-case': ['error', { cases: { kebabCase: true, pascalCase: true } }],
-  // Worker の postMessage に targetOrigin は存在しない（window.postMessage 用のルール）
-  'unicorn/require-post-message-target-origin': 'off',
   'unicorn/prevent-abbreviations': 'off',
   'unicorn/no-null': 'off',
   'unicorn/prefer-global-this': 'off',
@@ -135,18 +105,15 @@ const rules = {
 
   'import-x/no-cycle': 'error',
   'import-x/no-unassigned-import': 'error',
-  // DOMPurify の default export に同名の named export がある（`sanitize.ts`）。
+  // DOMPurify の default export に同名の named export があるため（`sanitize.ts`）。
   'import-x/no-named-as-default': 'off',
 
-  // `new Promise((ok, ng) => ...)` を許す。計測スクリプトで使っている。
+  // 計測スクリプトで使っているため
   'promise/param-names': 'off',
 };
 
 export default tseslint.config(
   {
-    // **`**/` を付けること。** 平坦なパターンはリポジトリ直下にしか効かず、
-    // `.claude/worktrees/*/dist` のようなネストしたビルド成果物を舐めに行く
-    // （lint が数分かかるようになる）。
     ignores: [
       '**/dist/**',
       '**/node_modules/**',
@@ -170,12 +137,9 @@ export default tseslint.config(
       globals: { ...globals.browser },
     },
     settings: {
-      // `@/*` は tsconfig の `paths` にしかない。TypeScript の解決器を噛ませないと
-      // import-x が全滅する（`no-cycle` も `no-unresolved` も動かない）。
       'import-x/resolver-next': [
         createTypeScriptImportResolver({
           project: ['./tsconfig.json', './tsconfig.node.json'],
-          // 2 つ指定していることへの警告。分割は意図的（tsconfig.json のコメント参照）。
           noWarnOnMultipleProjects: true,
         }),
       ],
@@ -202,8 +166,7 @@ export default tseslint.config(
     languageOptions: { globals: { ...globals.node } },
     rules: {
       'no-console': 'off',
-      // 計測スクリプトは「1 回ずつ順番に実行する」ことが要件そのもの。
-      // 並列化すると計測値が壊れる。
+      // 計測スクリプトは1 回ずつ順番に実行しないと正式な計測にならないため。
       'no-await-in-loop': 'off',
       'import-x/no-unassigned-import': 'off',
     },
@@ -215,14 +178,15 @@ export default tseslint.config(
   },
 
   {
-    // CSS の副作用インポートと、テストのセットアップは代入しようがない。
-    // `features/editor/monaco.ts` は **Monaco から何を取るかの一覧**そのもので、
-    // contrib の登録は副作用インポート以外の書き方が無い（ADR-0009）。
-    // `features/preview/lazy/math.ts` は KaTeX の CSS を遅延チャンク側へ載せる入口である（F-VIEW-13）。
+    //
     files: [
+      // CSS の副作用インポートのため
       'src/main.ts',
+      // テストのセットアップのため
       'tests/setup.ts',
+      // Monaco から何を取るかの一覧そのもので、contrib の登録は副作用インポート以外の書き方が無い。
       'src/features/editor/lazy/monaco.ts',
+      // KaTeX の CSS
       'src/features/preview/lazy/math.ts',
       'src/features/preview/lazy/mermaid.ts',
       '.storybook/**',
@@ -231,15 +195,11 @@ export default tseslint.config(
   },
 
   {
-    // jsdom に無いものを立てるのが仕事のファイル（Monaco が要求する
-    // `ResizeObserver` / `matchMedia` / `queryCommandSupported`）。
     files: ['tests/setup.ts'],
     rules: { 'unicorn/no-global-object-property-assignment': 'off' },
   },
 
   {
-    // `tseslint.configs` / `tseslint.parser` は default export のメンバーで、
-    // 同名の named export も持つ。この設定ファイルでは default 経由が正しい。
     files: ['eslint.config.js'],
     rules: { 'import-x/no-named-as-default-member': 'off' },
   },
@@ -250,16 +210,13 @@ export default tseslint.config(
   },
 
   {
-    // E2E。**ここだけ Node と WebdriverIO のグローバルが同居する。**
-    // `browser` / `$` / `expect` はランナーが注入するので、
-    // import しないまま使うのが正しい（型は tsconfig.e2e.json が入れる）。
+    // `browser` / `$` / `expect` はランナーが注入するので、import しないまま使うのが正しい（型は tsconfig.e2e.json が入れる）。
     files: ['e2e/**'],
     languageOptions: {
       globals: { ...globals.node, ...globals.mocha, browser: 'readonly', $: 'readonly', $$: 'readonly' },
     },
     rules: {
       'no-console': 'off',
-      // spec は「1 つずつ順番に確かめる」ことが要件そのもの。
       'no-await-in-loop': 'off',
       // ドライバのプロセス起動と対象ファイルの入れ替えは、素直に副作用として書く。
       'unicorn/no-process-exit': 'off',
@@ -269,6 +226,5 @@ export default tseslint.config(
     },
   },
 
-  // 整形は Prettier の担当。競合するルールをすべて落とす（**必ず最後**）。
   prettier,
 );

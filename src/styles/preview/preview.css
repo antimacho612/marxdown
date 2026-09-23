@@ -8,10 +8,13 @@
  */
 
 .mx-preview {
+  /* 固定した見出し行が止まる位置の計算にも使う（`.mx-table[data-mx-fits] thead th`）。 */
+  --mx-preview-padding-block-start: var(--mx-space-10);
+
   height: 100%;
   overflow-y: auto;
   overflow-x: hidden;
-  padding: var(--mx-space-8) var(--mx-space-6) 40vh;
+  padding: var(--mx-preview-padding-block-start) var(--mx-space-6) 40vh;
 
   font-family: var(--mx-font-content);
   font-size: calc(var(--mx-font-size-content) * var(--mx-zoom));
@@ -28,6 +31,12 @@
 
   /* 本文は選択できる */
   user-select: text;
+
+  /*
+   * 表が本文幅の外へ張り出すときの基準（`.mx-table[data-mx-wide]`）。
+   * `cqi` はこの要素の内容領域（padding の内側）を指すため、張り出しても横スクロールバーは出ない。
+   */
+  container-type: inline-size;
 
   /* 日本語と英数字の間隔を整える */
   text-spacing-trim: trim-start;
@@ -54,27 +63,36 @@
   line-height: 1.3;
   letter-spacing: -0.01em;
   scroll-margin-top: var(--mx-space-6);
+  /* 2 行になる見出しを均等に割る。1 行目が長く 2 行目に 1 語だけ残る形を避ける。 */
+  text-wrap: balance;
 }
 
-/* 「余白で階層を作る」— 上の余白が下より大きいことで、見出しが「次のまとまりの始まり」として読める。 */
+/*
+ * 「余白で階層を作る」— 上の余白が下より大きいことで、見出しが「次のまとまりの始まり」として読める。
+ *
+ * 上下の比を 3:1 以上に保つのが規則である。
+ * 段落どうしの間隔（24px）より見出しと本文の間隔を小さくして初めて、見出しが下の段落に結びつく。
+ * h1 と h2 は罫線が区切りの一部を担うため、比を 3:1 に留めてある。
+ */
 .mx-content h1 {
   font-size: 1.9em;
   font-weight: 700;
   margin: 0 0 var(--mx-space-6);
   padding-bottom: var(--mx-space-3);
-  border-bottom: 1px solid var(--mx-color-border-subtle);
+  border-bottom: 1px solid var(--mx-color-border);
 }
 
 .mx-content h2 {
   font-size: 1.45em;
-  margin: calc(var(--mx-space-8) * 1.25) 0 var(--mx-space-4);
+  margin: var(--mx-space-12) 0 var(--mx-space-4);
   padding-bottom: var(--mx-space-2);
-  border-bottom: 1px solid var(--mx-color-border-subtle);
+  border-bottom: 1px solid var(--mx-color-border);
 }
 
 .mx-content h3 {
   font-size: 1.2em;
   margin: var(--mx-space-8) 0 var(--mx-space-3);
+  letter-spacing: -0.005em;
 }
 
 .mx-content h4 {
@@ -90,15 +108,26 @@
 
 /* ========== 本文 ========== */
 
+/*
+ * ブロックの下余白は 24px。
+ *
+ * 行送りは 1.75em ≒ 28px なので、これは「1 行の隙間よりわずかに狭い」値にあたる。
+ * 以前は段落・リスト・コードブロック・引用のすべてが 16px で、区切りが 1 行分より狭いうえに
+ * 1 種類しか無かった。**文書のどこを見ても間隔が同じ**という状態が、単調さの実体である。
+ * 見出しの下（4〜16px）・箇条書きの中（4px）と 3 段階に分けることで、まとまりが見えるようになる。
+ */
 .mx-content p {
-  margin: 0 0 var(--mx-space-4);
+  margin: 0 0 var(--mx-space-6);
+  /* 最終行に単語が 1 つだけ落ちるのを避ける。 */
+  text-wrap: pretty;
 }
 
 .mx-content :is(ul, ol) {
-  margin: 0 0 var(--mx-space-4);
-  padding-left: 1.6em;
+  margin: 0 0 var(--mx-space-6);
+  padding-inline-start: 1.6em;
 }
 
+/* 箇条書きの中は詰める。項目どうしは段落どうしより近い関係にある。 */
 .mx-preview li {
   margin-bottom: var(--mx-space-1);
 }
@@ -108,10 +137,25 @@
   margin-bottom: 0;
 }
 
+/*
+ * 中黒と番号は本文より一段落とす。
+ * 本文と同じ濃さだと、箇条書きが 1 行ごとに同じ強さの点を打つことになり、本文より先に目に入る。
+ */
+.mx-preview :is(ul, ol) > li::marker {
+  color: var(--mx-color-fg-subtle);
+}
+
+/*
+ * 引用の帯だけアクセントを混ぜる。
+ *
+ * 本文の面にはアクセントが 1 つも無く、コードのトークン色以外は無彩色だった。
+ * 透過で混ぜてあるので、配色（`preview.theme`）を変えてもその面に馴染む。
+ */
 .mx-content blockquote {
-  margin: 0 0 var(--mx-space-4);
-  padding: var(--mx-space-1) 0 var(--mx-space-1) var(--mx-space-4);
-  border-left: 3px solid var(--mx-color-border);
+  margin: 0 0 var(--mx-space-6);
+  padding-block: var(--mx-space-1);
+  padding-inline: var(--mx-space-4) 0;
+  border-inline-start: 3px solid color-mix(in srgb, var(--mx-color-accent) 45%, transparent);
   color: var(--mx-color-fg-muted);
 }
 
@@ -119,13 +163,32 @@
   margin-bottom: 0;
 }
 
+/*
+ * 話題の切れ目。段落の間隔（24px）と区別が付く必要があるので、節の入れ替わりと同じ 48px にする。
+ *
+ * 面の上に線 1 本だけで立つ罫線は `--mx-color-border` を使う。
+ * `--mx-color-border-subtle` は面（コードブロック・Front Matter）の縁を示すための濃さで、
+ * 地色の上に単独で置くと線があること自体が読み取れない（#142）。
+ */
 .mx-content hr {
-  margin: var(--mx-space-8) 0;
+  margin: var(--mx-space-12) 0;
   border: 0;
-  border-top: 1px solid var(--mx-color-border-subtle);
+  border-top: 1px solid var(--mx-color-border);
 }
 
 /* ========== コード ========== */
+
+/*
+ * インラインコードの文字色。fg と accent の混色にしてあり、`theme/lazy/preset.ts` の TokenKey（18 個で固定）に
+ * 新しいキーを足さずに 50 枚のプリセットへ反映される。fg が主体なので、コントラスト比の保証はプリセットの fg 側にそのまま乗る。
+ *
+ * 宣言を `:root` ではなく面に置くのは、カスタムプロパティの値に含まれる var() が
+ * 宣言した要素で置換を終えるためである。配色は `#mx-preview` に当たるので、`:root` で宣言すると
+ * 上書きされる前の accent と fg が焼き付き、どの配色でも既定の色のまま描かれる（#142）。
+ */
+.mx-preview {
+  --mx-color-code-inline: color-mix(in srgb, var(--mx-color-fg) 65%, var(--mx-color-accent) 35%);
+}
 
 .mx-preview code {
   font-family: var(--mx-font-code);
@@ -138,6 +201,7 @@
   padding: 0.15em 0.35em;
   border-radius: var(--mx-radius-sm);
   background: var(--mx-color-bg-inset);
+  color: var(--mx-color-code-inline);
 }
 
 /*
@@ -149,7 +213,7 @@
  */
 .mx-content pre {
   max-width: min(100%, calc(var(--mx-content-width) + 8ch));
-  margin: 0 auto var(--mx-space-4);
+  margin: 0 auto var(--mx-space-6);
   padding: var(--mx-space-4);
   border: 1px solid var(--mx-color-border-subtle);
   border-radius: var(--mx-radius);
@@ -184,7 +248,7 @@
   background: var(--mx-color-bg);
   color: var(--mx-color-fg-muted);
   font-family: var(--mx-font-ui);
-  font-size: 11px;
+  font-size: var(--mx-font-size-ui-sm);
   line-height: 1.6;
   cursor: pointer;
 
@@ -291,6 +355,7 @@
  * 壊れた画像アイコンを出さない。
  * 「読めなかった」ではなく「**読ませなかった**」ことが伝わる必要がある。
  */
+/* 破線は「読ませなかった」ことの記号として意図的に残す（Front Matter の実線とは役割が違う）。 */
 .mx-image-blocked {
   display: inline-flex;
   align-items: baseline;
@@ -338,41 +403,264 @@
   color: var(--mx-color-fg-subtle);
 }
 
-/* 画像は本文幅を超えない。LLM が貼るスクリーンショットは大きいことが多い */
-.mx-preview img {
-  max-width: 100%;
-  height: auto;
-}
-
 /* ========== 表 ========== */
 
-.mx-content table {
-  max-width: min(100%, calc(var(--mx-content-width) + 8ch));
-  margin: 0 auto var(--mx-space-4);
-  border-collapse: collapse;
-  font-size: 0.925em;
-  display: block;
+/*
+ * 表は `.mx-table` で包んである（`markdown/plugins/table.ts`）。
+ * 横スクロールと端の処理は包む要素が持ち、表自身は罫線と揃えだけを担当する。
+ *
+ * 属性は描画後に `features/preview/table.ts` が測って付ける。
+ * `data-mx-wide` は本文幅に収まらなかった表、`data-mx-fits` は（張り出した後に）収まった表、
+ * `data-mx-scrolls` は張り出しても収まらなかった表である。
+ * どれも付いていないのは測る前の状態で、そのときは横スクロールだけができる。
+ */
+.mx-table {
+  max-width: 100%;
+  margin: 0 auto var(--mx-space-6);
   overflow-x: auto;
 }
 
-.mx-preview :is(th, td) {
-  padding: var(--mx-space-2) var(--mx-space-3);
-  border: 1px solid var(--mx-color-border-subtle);
-  text-align: left;
-  vertical-align: top;
+/*
+ * 本文幅に収まらない表は、プレビューの幅いっぱいまで張り出す。
+ *
+ * 本文の測度（既定 72ch）は文章を読むための幅であり、7 列の表を入れると 1 列あたり 10 文字で折り返す。
+ * 単位が `cqi` なのは、基準がプレビューの内容領域（`.mx-preview` の padding の内側）だからである。
+ * 本文幅の設定にも、ペインの開閉にも、この 1 本で追従する。
+ *
+ * 本文の直下にある表だけを対象にする。
+ * 箇条書きや引用の中にある表は、基準になる幅が本文幅ではないため、張り出させると位置がずれる。
+ */
+.mx-content > .mx-table[data-mx-wide] {
+  width: 100cqi;
+  max-width: 100cqi;
+  margin-inline: calc(50% - 50cqi);
 }
 
+/*
+ * 横に収まった表だけ、スクロール容器であることをやめる。
+ *
+ * 見出し行の `position: sticky` は、スクロール容器の縦方向のスクロール量を基準に位置が決まる。
+ * `overflow-x` を持つ要素は縦にもスクロール容器になるため、包む要素を基準にすると見出しが固定されない。
+ * ここを `visible` にすると、基準が `.mx-preview` になって本文のスクロールに対して固定される。
+ */
+.mx-table[data-mx-fits] {
+  overflow: visible;
+}
+
+.mx-table[data-mx-fits] thead th {
+  position: sticky;
+  /*
+   * 止まる位置は、スクロール容器の padding の内側が基準になる。
+   * `0` にすると本文は padding の帯を通って見え、固定した見出しの上を行が流れていく。
+   * padding のぶんだけ戻して、面の上端で止める。
+   */
+  top: calc(-1 * var(--mx-preview-padding-block-start));
+  z-index: 1;
+  /* 下の行が透けて見えないよう、面を自分で塗る。 */
+  background-color: var(--mx-color-bg);
+  /*
+   * 罫線ではなく影で引く。
+   * `border-collapse: collapse` の罫線はセルの間で共有されるため、固定された見出しと一緒には動かない。
+   */
+  border-bottom: 0;
+  box-shadow: inset 0 -2px 0 var(--mx-color-border);
+}
+
+/*
+ * 列は中身の幅を取る（`max-content`）。
+ *
+ * 既定（`auto`）だと、表は与えられた幅に収まるところまで各セルを折り返す。
+ * 8 列の表が本文幅に押し込まれて、1 列あたり数文字で折り返された状態は「収まっている」と判定され、
+ * 張り出しも横スクロールも起きない。
+ * 1 列あたりの上限はセル側の `max-width` が持つ。
+ */
+.mx-content table {
+  width: max-content;
+  border-collapse: collapse;
+  font-size: 0.925em;
+}
+
+/*
+ * 罫線は横だけにする（既定 / `preview.tableStyle` が `lines`）。
+ *
+ * 全セルを囲むと、数行の表でも格子が本文の中で最も強い図形になる。
+ * 行を追うために要るのは横の区切りであって、縦の区切りは列の間隔が担える。
+ */
+.mx-preview :is(th, td) {
+  padding: var(--mx-space-2) var(--mx-space-4) var(--mx-space-2) 0;
+  border: 0;
+  border-bottom: 1px solid var(--mx-color-border);
+  text-align: start;
+  vertical-align: top;
+  /*
+   * 1 列が伸び続けるのを止める。
+   * URL や識別子が 1 つ混じるだけで、列幅の配分が崩れて他の列が潰れる。
+   * 折り返し自体は `.mx-preview` の `overflow-wrap: anywhere` が行う。
+   */
+  max-width: 44ch;
+}
+
+.mx-preview :is(th, td):last-child {
+  padding-inline-end: 0;
+}
+
+/* 見出し行は面ではなく、少し太い罫線で区切る。 */
 .mx-preview th {
-  background: var(--mx-color-bg-subtle);
+  border-bottom: 2px solid var(--mx-color-border);
   font-weight: 620;
+}
+
+/* 最終行の罫線は表の下端になる。段落との間に線が 1 本残ると、次の見出しの罫線と紛らわしい。 */
+.mx-preview tbody > tr:last-child > td {
+  border-bottom: 0;
+}
+
+/* 行を追う手がかり。横に長い表で、視線が 1 行の中に留まる。 */
+.mx-preview tbody > tr:hover {
+  background-color: var(--mx-color-bg-hover);
+}
+
+/*
+ * 揃え（`markdown/plugins/table.ts`）。
+ *
+ * GFM の `---:` は markdown-it が `style` 属性で出力するが、`markdown/sanitize.ts` がそれを落とす。
+ * 属性へ移し替えたものをここで解釈する。
+ */
+.mx-preview :is(th, td)[data-mx-align='left'] {
+  text-align: left;
+}
+
+.mx-preview :is(th, td)[data-mx-align='center'] {
+  text-align: center;
+}
+
+.mx-preview :is(th, td)[data-mx-align='right'] {
+  text-align: right;
+}
+
+/* 数値だけの列。桁の位置が縦に揃う。 */
+.mx-preview :is(th, td)[data-mx-num] {
+  font-variant-numeric: tabular-nums;
+}
+
+/* 格子（`preview.tableStyle` が `grid`）。列が多い表では、縦の区切りがあるほうがセルの対応を追いやすい。 */
+.mx-preview[data-mx-table-style='grid'] :is(th, td) {
+  padding-inline: var(--mx-space-3);
+  border: 1px solid var(--mx-color-border);
+}
+
+.mx-preview[data-mx-table-style='grid'] th {
+  border-bottom-color: var(--mx-color-border);
+}
+
+.mx-preview[data-mx-table-style='grid'] tbody > tr:last-child > td {
+  border-bottom: 1px solid var(--mx-color-border);
+}
+
+/* 交互の塗り（`preview.tableStyle` が `zebra`）。行数が多い表で、横方向に視線が滑らない。 */
+.mx-preview[data-mx-table-style='zebra'] tbody > tr:nth-child(even) {
+  background-color: var(--mx-color-bg-subtle);
+}
+
+/*
+ * 端のフェード。横に切れていることを示す。
+ *
+ * スクロールバーは自動で隠れるため、それだけでは「全部見えている」と読める。
+ * 幅は `features/preview/table.ts` が測るので、実際にはみ出している表にしか付かない。
+ */
+.mx-table[data-mx-scrolls] {
+  --mx-table-fade: 2rem;
+  --mx-table-fade-start: 0px;
+  --mx-table-fade-end: var(--mx-table-fade);
+
+  mask-image: linear-gradient(
+    to right,
+    transparent 0,
+    black var(--mx-table-fade-start),
+    black calc(100% - var(--mx-table-fade-end)),
+    transparent 100%
+  );
+}
+
+/*
+ * スクロール位置に追従させる（progressive enhancement）。
+ *
+ * 端まで送った側のフェードは消す。残したままだと、まだ続きがあるように見える。
+ * `animation-timeline` が無い環境では上の静的な指定が残り、右端だけがフェードした状態になる。
+ */
+@property --mx-table-fade-start {
+  syntax: '<length>';
+  inherits: false;
+  initial-value: 0px;
+}
+
+@property --mx-table-fade-end {
+  syntax: '<length>';
+  inherits: false;
+  initial-value: 0px;
+}
+
+@keyframes mx-table-fade-start {
+  from {
+    --mx-table-fade-start: 0px;
+  }
+
+  to {
+    --mx-table-fade-start: var(--mx-table-fade);
+  }
+}
+
+@keyframes mx-table-fade-end {
+  from {
+    --mx-table-fade-end: var(--mx-table-fade);
+  }
+
+  to {
+    --mx-table-fade-end: 0px;
+  }
+}
+
+@supports (animation-timeline: scroll(self inline)) {
+  .mx-table[data-mx-scrolls] {
+    animation:
+      mx-table-fade-start linear both,
+      mx-table-fade-end linear both;
+    animation-timeline: scroll(self inline), scroll(self inline);
+    animation-range:
+      0 var(--mx-table-fade),
+      calc(100% - var(--mx-table-fade)) 100%;
+  }
 }
 
 /* ========== 画像・リンク ========== */
 
+/*
+ * 下線はフォント自身の指標から引く。
+ * 既定の位置は日本語のディセンダと重なりやすく、`reset.css` の一律 1px / 2px では
+ * 本文（16px）と脚注（0.85em）で見え方が揃わない。
+ */
+.mx-content a {
+  text-underline-position: from-font;
+  text-decoration-thickness: from-font;
+}
+
+/* クリック可能と分かるよう、ホバーで文字色を変える。href を持たない data-mx-blocked は対象外（#143）。 */
+.mx-content a:not([data-mx-blocked]):hover {
+  color: var(--mx-color-accent-hover);
+}
+
+/*
+ * 画像は本文幅を超えない。LLM が貼るスクリーンショットは大きいことが多い。
+ *
+ * 縁を 1px 置くのは、白地のスクリーンショットが本文の面に溶けるのを防ぐため。
+ * 無彩色の半透明にしてあるので、配色を変えてもその面に馴染む（色の付いた灰を敷くと縁が汚れて見える）。
+ */
 .mx-preview img {
   max-width: 100%;
   height: auto;
   border-radius: var(--mx-radius-sm);
+  outline: 1px solid light-dark(rgb(0 0 0 / 10%), rgb(255 255 255 / 10%));
+  outline-offset: -1px;
 }
 
 /* サニタイザが落とした参照は、黙って消さずに痕跡を残す */
@@ -388,7 +676,8 @@
   max-width: var(--mx-content-width);
   margin: 0 auto var(--mx-space-6);
   padding: var(--mx-space-3) var(--mx-space-4);
-  border: 1px dashed var(--mx-color-border);
+  /* 破線は「まだ出来ていない」ものの記号として読まれる。ここは正しく表示できている状態である。 */
+  border: 1px solid var(--mx-color-border-subtle);
   border-radius: var(--mx-radius);
   background: var(--mx-color-bg-subtle);
   color: var(--mx-color-fg-muted);
@@ -400,6 +689,23 @@
 }
 
 /* ========== GitHub Alerts ========== */
+
+/*
+ * 5 種の色は配色の accent から導出する（ADR-0015）。
+ *
+ * 明度と彩度を accent から借り、色相だけを種別ごとに固定する。
+ * accent は面に対して読める濃さに選ばれているので、どの配色でもその面に合った濃さの 5 色になる。
+ * プリセット（`theme/lazy/presets.ts`）にキーを足さないため、`theme` チャンクのサイズは変わらない。
+ *
+ * 宣言を面に置く理由はインラインコードの文字色と同じである（`--mx-color-code-inline` のコメント）。
+ */
+.mx-preview {
+  --mx-color-alert-note: var(--mx-color-accent);
+  --mx-color-alert-tip: oklch(from var(--mx-color-accent) l c 150);
+  --mx-color-alert-important: oklch(from var(--mx-color-accent) l c 300);
+  --mx-color-alert-warning: oklch(from var(--mx-color-accent) l c 75);
+  --mx-color-alert-caution: oklch(from var(--mx-color-accent) l c 25);
+}
 
 /*
  * > [!NOTE] の引用を色付きの面にする。
@@ -415,9 +721,9 @@
 .mx-content .markdown-alert {
   --mx-alert: var(--mx-color-alert-note);
 
-  margin: 0 0 var(--mx-space-4);
+  margin: 0 0 var(--mx-space-6);
   padding: var(--mx-space-3) var(--mx-space-4);
-  border-left: 3px solid var(--mx-alert);
+  border-inline-start: 3px solid var(--mx-alert);
   border-radius: 0 var(--mx-radius) var(--mx-radius) 0;
   background: color-mix(in srgb, var(--mx-alert) 7%, transparent);
 }
@@ -537,7 +843,7 @@
 
 /* 脚注の本体は本文の末尾にまとまって出る。本文より一段弱く描いて、「ここから先は注釈」であることを、見出しを足さずに伝える。 */
 .mx-content .footnotes-sep {
-  margin: var(--mx-space-8) 0 var(--mx-space-4);
+  margin: var(--mx-space-12) 0 var(--mx-space-6);
 }
 
 .mx-preview .footnotes {

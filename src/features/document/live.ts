@@ -6,8 +6,8 @@
  * 本文の DOM 再構築はパース本体よりコストが高いため、打鍵ごとには描かず打ち終わりを待つ（N-PERF-03）。
  * `paint` は受け皿を差し替えて表示位置を先頭に戻すため、スクロール位置は自分で保持して再設定する。
  */
-import { enhance, paint } from '@/features/preview';
-import { viewStore } from '@/features/view';
+import { enhance, paint, type PaintResult } from '@/features/preview';
+import { takeEditorLead, viewStore } from '@/features/view';
 import { ja } from '@/i18n/ja';
 import { toMessage } from '@/lib/error';
 import { dirOf } from '@/lib/path';
@@ -170,8 +170,8 @@ export async function renderNow(): Promise<void> {
     if (visible) {
       // `paint` は中身を差し替えるため、スクロール位置を保持してから設定し直す。
       const scrollTop = container.scrollTop;
-      paint(container, parsed.chunks, parsed.frontMatter);
-      container.scrollTop = scrollTop;
+      const painted = paint(container, parsed.chunks, parsed.frontMatter);
+      restoreScroll(container, scrollTop, painted);
     }
 
     documentStore.frontMatter = parsed.frontMatter;
@@ -208,6 +208,40 @@ export async function renderNow(): Promise<void> {
     again = false;
     await renderNow();
   }
+}
+
+/**
+ * 再描画で崩れたスクロール位置を当て直す（#148）。
+ *
+ * 段階的描画の途中は最初のチャンクしか DOM に無く、scrollHeight が足りないため代入した値は上限で切り詰められる（`preview/paint.ts`）。
+ * そのままにすると、打鍵のたびにプレビューが最初のチャンクの末尾まで戻る。
+ * 残りのチャンクが入り終わってからもう一度当てる（`document/open.ts` が復元位置に対して行っているものと同じ）。
+ *
+ * 動かしているのは利用者ではないため、Split では主導権をエディター側に置く。
+ * 置かないと、切り詰められた位置からの `scroll` が同期の主導権を取り、打っている行からエディターまで引き離される。
+ */
+function restoreScroll(container: HTMLElement, scrollTop: number, painted: PaintResult): void {
+  takeEditorLead();
+  container.scrollTop = scrollTop;
+
+  const clamped = container.scrollTop;
+  if (clamped < scrollTop) void reapplyScroll(container, scrollTop, clamped, painted);
+}
+
+/** 残りのチャンクが入り終わるのを待って、切り詰められた位置を当て直す。 */
+async function reapplyScroll(
+  container: HTMLElement,
+  scrollTop: number,
+  clamped: number,
+  painted: PaintResult,
+): Promise<void> {
+  await painted.done;
+
+  // 待っている間に利用者がプレビューを動かしていれば、そちらを優先する。
+  if (container.scrollTop !== clamped) return;
+
+  takeEditorLead();
+  container.scrollTop = scrollTop;
 }
 
 /** テスト用。予約と実行状態を初期化する。 */

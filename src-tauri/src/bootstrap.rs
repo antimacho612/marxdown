@@ -406,10 +406,7 @@ mod tests {
         let script = to_init_script(&b);
         assert!(script.contains(r#""theme":"dark""#), "{script}");
         assert!(script.contains(r#""preview.maxWidth""#), "{script}");
-        assert!(
-            script.contains(r#""window.closeBehavior":"tray""#),
-            "{script}"
-        );
+        assert!(script.contains(r#""window.closeToTray":true"#), "{script}");
     }
 
     /// 壊れている事実も bootstrap に載る。通知バーは初回フレームで出せる（03.ux-spec/07-status-and-notifications.md §2）。

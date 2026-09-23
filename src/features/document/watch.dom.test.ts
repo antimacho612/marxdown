@@ -82,6 +82,7 @@ beforeEach(() => {
   document.body.innerHTML = '<div id="mx-preview"></div>';
   documentStore.meta = null;
   documentStore.notice = null;
+  documentStore.statusMessage = null;
   documentStore.isDirty = false;
   recentStore.entries = [];
 
@@ -91,21 +92,16 @@ beforeEach(() => {
 
 /** F-EDIT-16 / 03.ux-spec/07-status-and-notifications.md §2 の 1 行目。 */
 describe('外部変更の自動反映', () => {
-  it('開いているファイルを読み直し、情報通知で伝える', async () => {
+  it('開いているファイルを読み直し、ステータスバーで伝える', async () => {
     const h = install();
     await openPath('C:/work/a.md');
     h.readDocument.mockClear();
 
     h.emit(changed('C:/work/a.md'));
-    await vi.waitFor(() =>
-      expect(documentStore.notice).toMatchObject({
-        level: 'info',
-        message: ja.open.reloadedExternal,
-        // ダーティでなければ失われるものが無い。尋ねずに読み込んで自動で消す
-        autoDismissMs: 3000,
-      }),
-    );
+    // ダーティでなければ失われるものが無い。尋ねずに読み込み、本文を塞がないステータスバーに出す（issue #60）
+    await vi.waitFor(() => expect(documentStore.statusMessage).toBe(ja.open.reloadedExternal));
 
+    expect(documentStore.notice).toBeNull();
     expect(h.readDocument).toHaveBeenCalledWith('C:/work/a.md', undefined);
   });
 
@@ -126,12 +122,14 @@ describe('外部変更の自動反映', () => {
     await openPath('C:/work/a.md');
     h.readDocument.mockClear();
     documentStore.notice = null;
+    documentStore.statusMessage = null;
 
     h.emit(changed('C:/work/a.md', 'removed'));
     await Promise.resolve();
 
     expect(h.readDocument).not.toHaveBeenCalled();
     expect(documentStore.notice).toBeNull();
+    expect(documentStore.statusMessage).toBeNull();
     expect(documentStore.meta?.path).toBe('C:/work/a.md');
   });
 
@@ -193,9 +191,8 @@ describe('編集中に外部変更が来たとき', () => {
 
     const notice = documentStore.notice;
     expect(h.readDocument).not.toHaveBeenCalled();
+    // 自動で消えると、気づかないまま古い内容を保存することになる。通知バーには消える仕組みを持たせていない
     expect(notice).toMatchObject({ level: 'warning', message: ja.open.changedExternally });
-    // 自動で消えると、気づかないまま古い内容を保存することになる
-    expect(notice?.autoDismissMs).toBeUndefined();
   });
 
   it('「再読み込み」を選ぶと読み直す', async () => {

@@ -1,22 +1,18 @@
 <!--
-  タブストリップ（F-NAV-01, 02 / 03.ux-spec/01-screen-layout.md §2）。
-  タイトルバーの中央領域（`TitleBar.svelte` の `center`）に差し込まれる。
+@component
+タブストリップ。
 
-  **主ウィンドウでは 2 枚以上のときしか描かれない。** 出し分けは差し込む側（`app/App.svelte`）が行う。
-  1 枚のときはタイトルバーが既定のファイル名表示のままであり、この経路を通らない（§1「タブも 1 枚のうちは出さない」）。
-  サテライト（F-OPEN-06）だけは 1 枚でも描く。その窓に何が入っているかを示すものが他に無いためである。
+タブを窓の外へ落とすと、そのタブはサテライトウィンドウへ切り離される（`release`）。
 
-  窓の外へ落とすと、そのタブはサテライトへ切り離される（F-OPEN-06 / `release`）。
-
-  タブそのものはボタンで構成する。
-  タイトルバーは `data-tauri-drag-region="deep"` でネイティブドラッグを掴む領域だが、`<button>` は自動的に除外されるため、タブを押しても窓が動かない。
-  逆にタブが並んでいない余白は掴めるままになる。
-
-  並べ替えはポインタイベントで行う（F-NAV-02）。
-  HTML5 の drag イベントは使えない。ドロップされたファイルの絶対パスを受け取るために `disable_drag_drop_handler()` を呼べず（`04.tech-stack/06-rust.md` §6）、ネイティブのハンドラが有効な状態では WebView2 がページ内のドラッグも受け取るためである。
+@warning
+HTML5 の drag イベントは使えない。
+ドロップされたファイルの絶対パスを受け取るために `disable_drag_drop_handler()` を呼べず、
+ネイティブのハンドラが有効な状態では WebView2 がページ内のドラッグも受け取るため。
 -->
+
 <script lang="ts">
   import { ja } from '@/i18n/ja';
+  import CloseIcon from '@/lib/CloseIcon.svelte';
   import { splitPath } from '@/lib/path';
 
   import { moveTabToSatellite } from './new-window';
@@ -41,13 +37,12 @@
   let startX = 0;
   /**
    * しきい値を超えたか。超えていなければ、離した時点でクリックとして扱う。
-   *
    * ルーンにしてあるのは、掴んでいる表示（`mx-tab--dragging`）がこの値を見るためである。
    */
   let moved = $state(false);
 
   /**
-   * 掴む。**左ボタンだけ。**
+   * 掴む。左ボタンだけ。
    *
    * ポインタを捕捉するのは、タブが並べ替えでポインタの下から動くためである。
    * 捕捉しないと、動いた瞬間に別の要素へイベントが移り、そこで並べ替えが止まる。
@@ -89,8 +84,8 @@
   /**
    * 離す。表示の切り替えはここで行わない。
    *
-   * 切り替えは `click` に任せる。ポインタで処理してしまうと、`<button>` を
-   * キーボード（Enter / Space）で押したときに何も起きなくなる。
+   * 切り替えは `click` に任せる。
+   * ポインタで処理してしまうと、`<button>` をキーボード（Enter / Space）で押したときに何も起きなくなる。
    * `moved` は残す。直後に来る `click` を握り潰す判断に使う。
    *
    * 窓の外で離した場合は、そのタブをサテライトへ切り離す（F-OPEN-06）。
@@ -147,10 +142,54 @@
   }
 
   /**
+   * 隠れている側。`''` は溢れていない。
+   *
+   * スクロールバーは出さない（タイトルバーの高さに収まらない）。
+   * 代わりに隠れている側の端をぼかす。手がかりが無いと、溢れたタブは存在しないのと同じになる。
+   */
+  let overflow = $state<'' | 'start' | 'end' | 'both'>('');
+
+  /** 端 1px の差は、ブラウザ側の丸めで溢れていなくても残る。判定から外す。 */
+  const OVERFLOW_EPSILON = 1;
+
+  function measureOverflow(): void {
+    if (!strip) return;
+    const start = strip.scrollLeft > OVERFLOW_EPSILON;
+    const end = strip.scrollLeft + strip.clientWidth < strip.scrollWidth - OVERFLOW_EPSILON;
+    overflow = start && end ? 'both' : start ? 'start' : end ? 'end' : '';
+  }
+
+  /**
+   * 幅が変わったときの再判定。
+   *
+   * `scroll` はテンプレート側で拾う。ポーリングはしない（アイドル時 CPU ≒ 0）。
+   */
+  $effect(() => {
+    if (!strip) return;
+    const observer = new ResizeObserver(() => measureOverflow());
+    observer.observe(strip);
+    return () => observer.disconnect();
+  });
+
+  /**
+   * タブが増減したときと、表示するタブが変わったときの追従。
+   *
+   * `Ctrl+Tab` や `Ctrl+N` で溢れた先へ移ると、強調されたタブが画面外に残る。
+   */
+  $effect(() => {
+    const count = tabsStore.tabs.length;
+    const active = tabsStore.activeId;
+    if (count === 0 || active === null) return;
+    // WARNING: `block: 'nearest'` を外さないこと。縦に動かす余地は無く、外すと本文側がスクロールする。
+    strip?.querySelector('.mx-tab--active')?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    measureOverflow();
+  });
+
+  /**
    * 表示する名前。無題の文書（`Ctrl+N`）にはパスが無い。
    *
    * ディレクトリは出さない。
-   * 同名のファイルを見分ける手段は `title`（ツールチップ）に寄せ、横幅は枚数のために使う。
+   * 同名のファイルを見分ける手段は `title`（ツールチップ）とステータスバーのフルパスに寄せ、横幅は枚数のために使う。
    */
   function nameOf(tab: Tab): string {
     const path = tabMeta(tab).path;
@@ -194,7 +233,14 @@
   }
 </script>
 
-<div class="mx-tabs" role="tablist" aria-label={ja.tab.list} bind:this={strip}>
+<div
+  class="mx-tabs"
+  role="tablist"
+  aria-label={ja.tab.list}
+  data-mx-overflow={overflow || undefined}
+  bind:this={strip}
+  onscroll={measureOverflow}
+>
   {#each tabsStore.tabs as tab (tab.id)}
     {@const name = nameOf(tab)}
     {@const active = tab.id === tabsStore.activeId}
@@ -224,7 +270,7 @@
         aria-label={ja.tab.close(name)}
         onclick={() => void closeTab(tab.id)}
       >
-        ✕
+        <CloseIcon size={10} />
       </button>
     </div>
   {/each}
@@ -242,20 +288,28 @@
 {/if}
 
 <style>
-  /*
-   * 枚数が増えたら横へスクロールさせる。
-   * 幅を等分すると、2 枚のときと 10 枚のときで同じタブの位置が変わり、位置で覚えられなくなる。
-   */
   .mx-tabs {
     display: flex;
     align-items: stretch;
     min-width: 0;
     overflow-x: auto;
     scrollbar-width: none;
-  }
 
-  .mx-tabs::-webkit-scrollbar {
-    display: none;
+    &::-webkit-scrollbar {
+      display: none;
+    }
+
+    &[data-mx-overflow='end'] {
+      mask-image: linear-gradient(to right, #000 calc(100% - 24px), transparent);
+    }
+
+    &[data-mx-overflow='start'] {
+      mask-image: linear-gradient(to left, #000 calc(100% - 24px), transparent);
+    }
+
+    &[data-mx-overflow='both'] {
+      mask-image: linear-gradient(to right, transparent, #000 24px, #000 calc(100% - 24px), transparent);
+    }
   }
 
   .mx-tab {
@@ -264,14 +318,17 @@
     max-width: 14rem;
     border-right: 1px solid var(--mx-color-border-subtle);
     color: var(--mx-color-fg-muted);
+
+    &:hover {
+      background: var(--mx-color-bg-hover);
+      color: var(--mx-color-fg);
+    }
   }
 
-  /*
-   * 選択中のタブは本文と地続きに見せる。
-   * 下線ではなく背景で表すのは、タイトルバーの下端が本文との境界線になっているためである。
-   */
-  .mx-tab--active {
+  .mx-tab--active,
+  .mx-tab--active:hover {
     background: var(--mx-color-bg);
+    box-shadow: var(--mx-current-marker-block);
     color: var(--mx-color-fg);
   }
 
@@ -298,17 +355,21 @@
   }
 
   /*
-   * 掴んでいる最中。位置は並びそのものが変わることで表すため、要素は動かさない。
+   * 掴んでいる最中。
+   * 位置は並びそのものが変わることで表すため、要素は動かさない。
    * 掴んでいることだけが分かればよい。
    */
   .mx-tab--dragging {
     opacity: 0.6;
   }
 
-  /* 未保存の印。タイトルバーの `●` と同じ扱い（気づく程度の強さがあればよい）。 */
+  /*
+   * 未保存の印。
+   * 常時表示されるものではないため、表示されたときに気づく程度の強さがあればよい。
+   */
   .mx-tab__dirty {
     color: var(--mx-color-fg-muted);
-    font-size: 10px;
+    font-size: var(--mx-font-size-ui-xs);
     line-height: 1;
   }
 
@@ -317,19 +378,31 @@
    * ホバーしたときだけ現れる形にすると、押せる位置が事前に分からず、タブの幅も変わる。
    */
   .mx-tab__close {
+    margin-bottom: 2px;
     display: flex;
     align-items: center;
+    align-self: stretch;
     padding-inline: var(--mx-space-1);
     border: 0;
+    border-radius: var(--mx-radius-sm);
     background: none;
     color: var(--mx-color-fg-subtle);
     font: inherit;
-    font-size: 10px;
-    line-height: var(--mx-titlebar-height);
     cursor: pointer;
+
+    &:hover {
+      background: var(--mx-color-bg-hover);
+      color: var(--mx-color-fg);
+    }
+
+    &:active {
+      background: var(--mx-color-bg-inset);
+    }
   }
 
-  .mx-tab__close:hover {
-    color: var(--mx-color-fg);
+  .mx-tab__label:focus-visible,
+  .mx-tab__close:focus-visible {
+    outline: 2px solid var(--mx-color-accent);
+    outline-offset: -2px;
   }
 </style>

@@ -45,8 +45,12 @@ pub const KEY_EDITOR_RULERS: &str = "editor.rulers";
 pub const KEY_EDITOR_SCROLL_BEYOND_LAST_LINE: &str = "editor.scrollBeyondLastLine";
 pub const KEY_EDITOR_THEME: &str = "editor.theme";
 pub const KEY_EDITOR_TAB_SIZE: &str = "editor.tabSize";
+pub const KEY_EDITOR_WORD_SEPARATORS: &str = "editor.wordSeparators";
 pub const KEY_EDITOR_WORD_WRAP: &str = "editor.wordWrap";
 pub const KEY_EDITOR_WORD_WRAP_COLUMN: &str = "editor.wordWrapColumn";
+
+/// エクスプローラーから常に除外するパスの glob（`src/glob.rs` / #146）。
+pub const KEY_EXPLORER_EXCLUDE: &str = "explorer.exclude";
 
 /// 追加記法（`src/markdown/plugins/syntax.ts` の `SYNTAX_NAMES` と 1:1）。どれも既定 OFF。
 pub const KEY_MARKDOWN_ABBREVIATIONS: &str = "markdown.abbreviations";
@@ -65,14 +69,15 @@ pub const KEY_PREVIEW_FONT_SIZE: &str = "preview.fontSize";
 pub const KEY_PREVIEW_LINE_HEIGHT: &str = "preview.lineHeight";
 pub const KEY_PREVIEW_MAX_WIDTH: &str = "preview.maxWidth";
 pub const KEY_PREVIEW_SOFT_BREAK: &str = "preview.softBreak";
+pub const KEY_PREVIEW_TABLE_STYLE: &str = "preview.tableStyle";
 pub const KEY_PREVIEW_THEME: &str = "preview.theme";
 
-pub const KEY_WINDOW_CLOSE_BEHAVIOR: &str = "window.closeBehavior";
+pub const KEY_WINDOW_CLOSE_TO_TRAY: &str = "window.closeToTray";
 
 /// プレビューの既定。`src/styles/tokens.css` と揃える。
 pub const DEFAULT_FONT_SIZE: f64 = 16.0;
 pub const DEFAULT_LINE_HEIGHT: f64 = 1.75;
-pub const DEFAULT_MAX_WIDTH: f64 = 100.0;
+pub const DEFAULT_MAX_WIDTH: f64 = 72.0;
 
 /// エディターの既定（ADR-0012）。プレビューとは別の値を使う。
 ///
@@ -83,6 +88,8 @@ pub const DEFAULT_EDITOR_LINE_HEIGHT: f64 = 1.6;
 /// 1 行目がウィンドウの縁に貼り付かないだけの余白。
 pub const DEFAULT_EDITOR_PADDING_TOP: f64 = 12.0;
 pub const DEFAULT_EDITOR_TAB_SIZE: f64 = 2.0;
+/// VS Code の `editor.wordSeparators` の既定値と同じ（Monaco も同じ値を使う）。
+pub const DEFAULT_EDITOR_WORD_SEPARATORS: &str = r#"`~!@#$%^&*()-=+[{]}\|;:'",.<>/?"#;
 pub const DEFAULT_EDITOR_WORD_WRAP_COLUMN: f64 = 80.0;
 
 /// アウトラインの既定。6（`h6`）は見出しの最大階層であり、実質「制限なし」を意味する。
@@ -111,6 +118,11 @@ const OUTLINE_MAX_DEPTH_RANGE: (f64, f64) = (1.0, 6.0);
 /// 上限を置かないと、手で書いた `[1,2,3,...]` がそのまま描画コストになる。
 const RULERS_MAX: usize = 8;
 
+/// 除外パターンの本数の上限。
+/// 1 エントリごとに全パターンを試すため、本数がそのまま一覧の走査コストになる。
+/// `src/glob.rs` の `MAX_PATTERNS` と揃える。
+const EXCLUDE_MAX: usize = 64;
+
 /// 明暗の指定（F-CONF-01）。配色そのものは `preview.theme` / `editor.theme` が持つ。
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -122,14 +134,15 @@ pub enum Theme {
     Dark,
 }
 
-/// ウィンドウを閉じたときの挙動（F-WIN-* / ADR-0007）。
-/// 既定を `Tray` にしているのは、常駐してウォーム起動を利用することがプロダクトの中心価値だからである（ADR-0004）。
+/// 表の罫線の引き方（F-VIEW-01）。
+/// 既定の `Lines` は横罫線だけを引く。全セルを囲むと、数行の表でも格子が本文の中で最も強い図形になる。
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
-pub enum CloseBehavior {
+pub enum TableStyle {
     #[default]
-    Tray,
-    Exit,
+    Lines,
+    Grid,
+    Zebra,
 }
 
 /// 折り返し（VS Code `editor.wordWrap`）。
@@ -268,10 +281,18 @@ pub struct Settings {
     pub editor_theme: String,
     #[serde(rename = "editor.tabSize")]
     pub editor_tab_size: f64,
+    /// 単語単位のカーソル移動（`Ctrl+←` / `Ctrl+→`）で区切りとして扱う文字（#126）。
+    #[serde(rename = "editor.wordSeparators")]
+    pub editor_word_separators: String,
     #[serde(rename = "editor.wordWrap")]
     pub editor_word_wrap: WordWrap,
     #[serde(rename = "editor.wordWrapColumn")]
     pub editor_word_wrap_column: f64,
+
+    /// エクスプローラーとクイックオープンから常に除外するパスの glob（#146）。
+    /// 空なら追加の除外はしない。隠しファイルと `node_modules` は設定に関わらず除外される（`dir.rs`）。
+    #[serde(rename = "explorer.exclude")]
+    pub explorer_exclude: Vec<String>,
 
     /// 設定で有効化する追加記法（04.tech-stack/04-markdown.md §3）。
     /// **どれも既定 OFF である。** 標準的でない記法が意図せず発火して本文が壊れるほうが、認知負荷が高い。
@@ -310,6 +331,9 @@ pub struct Settings {
     /// 段落内の単独の改行を `<br>` として描画するか（`markdown-it` の `breaks` / #45）。
     #[serde(rename = "preview.softBreak")]
     pub preview_soft_break: bool,
+    /// 表の罫線の引き方（F-VIEW-01）。
+    #[serde(rename = "preview.tableStyle")]
+    pub preview_table_style: TableStyle,
     /// 本文の配色（[ADR-0014](../../docs/adr/0014-editor-theme-catalog.md)）。
     ///
     /// `editor.theme` と同じくカタログを共有する文字列である。
@@ -318,8 +342,10 @@ pub struct Settings {
     #[serde(rename = "preview.theme")]
     pub preview_theme: String,
 
-    #[serde(rename = "window.closeBehavior")]
-    pub window_close_behavior: CloseBehavior,
+    /// `✕` で閉じたときにトレイへ格納するか（F-WIN-* / ADR-0007）。
+    /// 既定を `true` にしているのは、常駐してウォーム起動を利用することがプロダクトの中心価値だからである（ADR-0004）。
+    #[serde(rename = "window.closeToTray")]
+    pub window_close_to_tray: bool,
 
     /// Marxdown が解釈しないキー。破棄せず保持することだけが役目である。
     #[serde(flatten)]
@@ -356,8 +382,13 @@ impl Default for Settings {
             editor_scroll_beyond_last_line: true,
             editor_theme: DEFAULT_THEME_ID.to_owned(),
             editor_tab_size: DEFAULT_EDITOR_TAB_SIZE,
+            editor_word_separators: DEFAULT_EDITOR_WORD_SEPARATORS.to_owned(),
             editor_word_wrap: WordWrap::default(),
             editor_word_wrap_column: DEFAULT_EDITOR_WORD_WRAP_COLUMN,
+
+            // 既定では追加の除外をしない。
+            // 隠しファイルと `node_modules` は設定に関わらず落ちるため（`dir.rs`）、ここに書き出すと同じ判断が 2 か所に分かれる。
+            explorer_exclude: Vec::new(),
 
             markdown_abbreviations: false,
             markdown_definition_lists: false,
@@ -377,9 +408,10 @@ impl Default for Settings {
             preview_max_width: DEFAULT_MAX_WIDTH,
             // CommonMark 準拠。改行を <br> にしない（#45）。
             preview_soft_break: false,
+            preview_table_style: TableStyle::default(),
             preview_theme: DEFAULT_THEME_ID.to_owned(),
 
-            window_close_behavior: CloseBehavior::default(),
+            window_close_to_tray: true,
 
             extra: Map::new(),
         }
@@ -447,6 +479,8 @@ impl Settings {
             editor_theme: take_theme_id(&mut map, KEY_EDITOR_THEME).unwrap_or(d.editor_theme),
             editor_tab_size: take_int(&mut map, KEY_EDITOR_TAB_SIZE, TAB_SIZE_RANGE)
                 .unwrap_or(d.editor_tab_size),
+            editor_word_separators: take(&mut map, KEY_EDITOR_WORD_SEPARATORS)
+                .unwrap_or(d.editor_word_separators),
             editor_word_wrap: take(&mut map, KEY_EDITOR_WORD_WRAP).unwrap_or(d.editor_word_wrap),
             editor_word_wrap_column: take_int(
                 &mut map,
@@ -454,6 +488,8 @@ impl Settings {
                 WORD_WRAP_COLUMN_RANGE,
             )
             .unwrap_or(d.editor_word_wrap_column),
+
+            explorer_exclude: take_exclude(&mut map).unwrap_or(d.explorer_exclude),
 
             markdown_abbreviations: take(&mut map, KEY_MARKDOWN_ABBREVIATIONS)
                 .unwrap_or(d.markdown_abbreviations),
@@ -484,10 +520,12 @@ impl Settings {
                 .unwrap_or(d.preview_max_width),
             preview_soft_break: take(&mut map, KEY_PREVIEW_SOFT_BREAK)
                 .unwrap_or(d.preview_soft_break),
+            preview_table_style: take(&mut map, KEY_PREVIEW_TABLE_STYLE)
+                .unwrap_or(d.preview_table_style),
             preview_theme: take_theme_id(&mut map, KEY_PREVIEW_THEME).unwrap_or(d.preview_theme),
 
-            window_close_behavior: take(&mut map, KEY_WINDOW_CLOSE_BEHAVIOR)
-                .unwrap_or(d.window_close_behavior),
+            window_close_to_tray: take(&mut map, KEY_WINDOW_CLOSE_TO_TRAY)
+                .unwrap_or(d.window_close_to_tray),
 
             extra: map,
         }
@@ -568,6 +606,22 @@ fn take_rulers(map: &mut Map<String, Value>) -> Option<Vec<f64>> {
     )
 }
 
+/// 除外パターン。空文字と空白だけのものを落とし、本数を上限で切る。
+///
+/// 型が違う要素が 1 つでもあれば、配列ごと既定（除外しない）に戻す（`take_rulers` と同じ判断）。
+/// 綴りが glob として読めるかはここでは調べない。
+/// 判定は `crate::glob` にあり、読めなかった 1 本だけがそこで落ちる。
+fn take_exclude(map: &mut Map<String, Value>) -> Option<Vec<String>> {
+    let values: Vec<String> = take(map, KEY_EXPLORER_EXCLUDE)?;
+    Some(
+        values
+            .into_iter()
+            .filter(|v| !v.trim().is_empty())
+            .take(EXCLUDE_MAX)
+            .collect(),
+    )
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -603,11 +657,7 @@ mod tests {
         assert_eq!(s.theme, Theme::Dark);
         assert_eq!(s.preview_font_size, DEFAULT_FONT_SIZE);
         assert_eq!(s.editor_font_size, DEFAULT_EDITOR_FONT_SIZE);
-        assert_eq!(
-            s.window_close_behavior,
-            CloseBehavior::Tray,
-            "常駐が既定（ADR-0004）"
-        );
+        assert!(s.window_close_to_tray, "常駐が既定（ADR-0004）");
     }
 
     /// ADR-0012。**読む面と書く面でタイポグラフィが別**であること自体を固定する。
@@ -771,6 +821,26 @@ mod tests {
             Settings::from_map(serde_json::from_str(r#"{"editor.rulers":[80,"ひゃく"]}"#).unwrap());
 
         assert!(s.editor_rulers.is_empty(), "部分的に拾わない");
+    }
+
+    #[test]
+    fn exclude_patterns_drop_the_blank_ones_and_are_capped() {
+        let mut list: Vec<String> = (0..EXCLUDE_MAX + 4).map(|i| format!("d{i}")).collect();
+        list.insert(0, "  ".into());
+        let json = serde_json::json!({ KEY_EXPLORER_EXCLUDE: list });
+
+        let s = Settings::from_map(json.as_object().unwrap().clone());
+
+        assert_eq!(s.explorer_exclude.len(), EXCLUDE_MAX);
+        assert_eq!(s.explorer_exclude[0], "d0", "空白だけの行は落ちる");
+    }
+
+    #[test]
+    fn an_exclude_list_with_a_bad_element_falls_back_to_none() {
+        let s =
+            Settings::from_map(serde_json::from_str(r#"{"explorer.exclude":["dist",3]}"#).unwrap());
+
+        assert!(s.explorer_exclude.is_empty(), "部分的に拾わない");
     }
 
     #[test]

@@ -20,7 +20,7 @@ export function toggleMaximizeWindow(): void {
   void getPlatform().toggleMaximizeWindow();
 }
 
-/** 閉じる。設定 `window.closeBehavior` によってはトレイへの格納になる（ADR-0007 論点 2）。 */
+/** 閉じる。設定 `window.closeToTray` によってはトレイへの格納になる（ADR-0007 論点 2）。 */
 export function closeWindow(): void {
   void getPlatform().closeWindow();
 }

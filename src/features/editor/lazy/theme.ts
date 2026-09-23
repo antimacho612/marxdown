@@ -72,7 +72,7 @@ export function readNumber(name: string, fallback: number): number {
  * 色トークンを `#rrggbb` / `#rrggbbaa` にする。
  *
  * トークンは hex とは限らない。
- * `--mx-color-selection` は `rgb(59 91 219 / 18%)` で書かれている。
+ * `--mx-color-selection` は `rgb(59 91 219 / 32%)` で書かれている。
  * 判定用の要素に `color` として適用し `getComputedStyle` から読み戻すと、ブラウザが正規化した rgb() が返る。
  * 自前で色関数を解釈するより確実であり、トークンの記法に制約を設けずに済む。
  */
@@ -87,7 +87,7 @@ function readColor(name: string, fallback: string): string {
 
   const numbers = parts
     .split(/[\s,/]+/u)
-    // eslint-disable-next-line unicorn/prefer-number-coercion -- `18%` の `%` を落とす
+    // eslint-disable-next-line unicorn/prefer-number-coercion -- `32%` の `%` を落とす
     .map((part) => Number.parseFloat(part))
     .filter((value) => Number.isFinite(value));
 
@@ -168,7 +168,7 @@ function buildTheme(): monaco.editor.IStandaloneThemeData {
       'editorLineNumber.activeForeground': readColor('--mx-color-fg-muted', '#60646c'),
       'editor.lineHighlightBackground': readColor('--mx-color-bg-subtle', '#f6f7f9'),
       'editor.lineHighlightBorder': '#00000000',
-      'editor.selectionBackground': readColor('--mx-color-selection', '#3b5bdb2e'),
+      'editor.selectionBackground': readColor('--mx-color-selection', '#3b5bdb52'),
       // 選択した語と一致する箇所。検索の一致より弱く表示する。
       // 検索の対象ではなく、同じ語が存在するという情報でしかない。
       'editor.selectionHighlightBackground': readColor('--mx-color-bg-hover', '#e3e6ea'),

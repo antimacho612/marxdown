@@ -84,7 +84,7 @@ export function imageLink(relativePath: string): MarkdownEdit {
 async function pasteImage(editor: monaco.editor.IStandaloneCodeEditor, file: File, extension: string): Promise<void> {
   const path = documentStore.meta?.path ?? null;
   if (path === null || path === '') {
-    documentStore.notice = { level: 'info', message: ja.editor.pasteImageUntitled };
+    documentStore.statusMessage = ja.editor.pasteImageUntitled;
     return;
   }
 

@@ -9,7 +9,10 @@
 import { ja } from '@/i18n/ja';
 import { processInIdle } from '@/lib/idle';
 import { dirOf } from '@/lib/path';
+import { formatSrcset, parseSrcset } from '@/lib/srcset';
 import { getPlatform, type CoreError } from '@/platform';
+
+import { observeTables, releaseTables } from './table';
 
 /** 処理済みの印。2 回目の `enhance` はこれを見て未処理の要素だけを対象にする。 */
 const DONE = 'mxEnhanced';
@@ -27,6 +30,10 @@ export interface EnhanceOptions {
  * 画像 1 枚の解決が遅いためにコピーボタンが表示されない、という依存関係を作らない。
  */
 export function enhance(container: HTMLElement, options: EnhanceOptions): void {
+  // 表だけはアイドルを待たずに測る。
+  // 幅が決まるまで張り出しも見出しの固定も当たらないため、後に回すと読み始めてから表の見た目が変わる。
+  // 実際に測るのは表がある文書だけで、無ければ `querySelectorAll` 1 回で終わる。
+  observeTables(container);
   void enhanceCodeBlocks(container);
   void enhanceImages(container, options.baseDir);
   void enhanceMath(container);
@@ -36,8 +43,8 @@ export function enhance(container: HTMLElement, options: EnhanceOptions): void {
 /**
  * 遅延チャンクが抱えているものを捨てる（N-PERF-06）。
  *
- * 対象はいまのところ Mermaid だけである（`IntersectionObserver` と描画済み SVG のキャッシュ）。
- * ロードされていなければ何もしない。
+ * 対象は Mermaid（`IntersectionObserver` と描画済み SVG のキャッシュ）と、表の幅の監視である。
+ * Mermaid はロードされていなければ何もしない。
  *
  * **`paint` のたびに呼んではいけない。** キャッシュが毎回空になり、Split の編集中に全図が描き直される。
  * 呼ぶのは文書を閉じたときだけである（`features/document/close.ts`）。
@@ -45,6 +52,7 @@ export function enhance(container: HTMLElement, options: EnhanceOptions): void {
 export function releasePreviewResources(): void {
   disposeMermaid?.();
   disposeMermaid = null;
+  releaseTables();
 }
 
 /** ロード済みの Mermaid の解放口。`main` から Mermaid を静的に辿らせないため、関数だけを預かる。 */
@@ -177,17 +185,28 @@ const READY = /^(?:https?:|data:|asset:|blob:)/i;
 
 async function enhanceImages(container: HTMLElement, baseDir: string): Promise<void> {
   const images = [...container.querySelectorAll<HTMLImageElement>('img[src]')].filter((img) => !(DONE in img.dataset));
-  if (images.length === 0) return;
+  const sources = [...container.querySelectorAll<HTMLSourceElement>('picture > source[srcset]')].filter(
+    (source) => !(DONE in source.dataset),
+  );
+  if (images.length === 0 && sources.length === 0) return;
 
   for (const img of images) img.dataset[DONE] = '';
+  for (const source of sources) source.dataset[DONE] = '';
 
-  const local = images.filter((img) => !READY.test(img.getAttribute('src') ?? ''));
-  if (local.length === 0 || baseDir === '') return;
+  const localImages = images.filter((img) => !READY.test(img.getAttribute('src') ?? ''));
+  const localSources = sources.filter((source) =>
+    parseSrcset(source.getAttribute('srcset') ?? '').some((candidate) => !READY.test(candidate.url)),
+  );
+  if ((localImages.length === 0 && localSources.length === 0) || baseDir === '') return;
 
   // 1 枚ごとに IPC が 1 往復する。アイドル時に分割して実行し、スクロールを妨げないようにする。
-  await processInIdle(local, (img) => {
+  await processInIdle(localImages, (img) => {
     const href = img.getAttribute('src') ?? '';
     void resolveImage(img, href, baseDir);
+  });
+
+  await processInIdle(localSources, (source) => {
+    void resolveSource(source, baseDir);
   });
 }
 
@@ -202,6 +221,33 @@ async function resolveImage(img: HTMLImageElement, href: string, baseDir: string
     // `![](../../../.ssh/id_rsa)` が拒否されたことは、ユーザーに見える形で伝える。
     img.replaceWith(blockedPlaceholder(img, href, baseDir, coreError(e)));
   }
+}
+
+/**
+ * `<picture><source srcset>`（ダークモード用画像の出し分けなど）の解決。
+ *
+ * `source` は `img` と違って alt テキストや許可ボタンの置き場が無いため、
+ * 解決に失敗した候補は静かに除く。1 つも残らなければ `source` ごと外し、
+ * `picture` が持つ `img` へのフォールバックに委ねる。
+ */
+async function resolveSource(source: HTMLSourceElement, baseDir: string): Promise<void> {
+  const candidates = parseSrcset(source.getAttribute('srcset') ?? '');
+  const platform = getPlatform();
+
+  const resolved = await Promise.all(
+    candidates.map(async (candidate) => {
+      if (READY.test(candidate.url)) return candidate;
+      try {
+        return { ...candidate, url: await platform.resolveAsset(candidate.url, baseDir) };
+      } catch {
+        return null;
+      }
+    }),
+  );
+
+  const remaining = resolved.filter((candidate) => candidate !== null);
+  if (remaining.length === 0) source.remove();
+  else source.setAttribute('srcset', formatSrcset(remaining));
 }
 
 /** Rust から返ったエラー（`src-tauri/src/error.rs`）。形が違えば `null`。 */

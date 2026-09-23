@@ -19,6 +19,14 @@
     id: string;
     /** 表示と照合に使う文字列。 */
     label: string;
+    /**
+     * 表示しない照合用の別名（コマンドの英語キーワードなど / #104）。
+     *
+     * ラベルで当たったものが常に上に来る（`fuzzyFilter`）。
+     * 一致した語は表示しないので、なぜその行が出ているのかは利用者からは見えない。
+     * 出したところで読むものが増えるだけであり、上位に並ぶのは今もラベルで当たったものである。
+     */
+    keywords?: string;
     /** 右端に薄く出す補足（ディレクトリや見出しレベルなど）。 */
     detail?: string;
     /** 右端に出すキー。メニューと表示形式を揃えるため、`detail` とは別に持つ。 */
@@ -57,7 +65,11 @@
   let input: HTMLInputElement | null = $state(null);
   let list: HTMLElement | null = $state(null);
 
-  const matches = $derived(fuzzyFilter(items, query, (item) => item.label).slice(0, SHOWN));
+  const matches = $derived(
+    fuzzyFilter(items, query, (item) =>
+      item.keywords === undefined ? [item.label] : [item.label, item.keywords],
+    ).slice(0, SHOWN),
+  );
 
   /** 絞り込みが変わると、いま選んでいる行は意味を失う。先頭へ戻す。 */
   let seenQuery = '';
@@ -196,7 +208,8 @@
     max-height: 60vh;
     padding: var(--mx-space-2);
     border: 1px solid var(--mx-color-border);
-    border-radius: var(--mx-radius);
+    /* 内側の入力欄は 4px、その外に 8px の余白があるため、外側は 12px にする（同心の角丸）。 */
+    border-radius: calc(var(--mx-radius-sm) + var(--mx-space-2));
     background: var(--mx-color-bg-subtle);
     box-shadow: var(--mx-shadow-1);
     font-size: var(--mx-font-size-ui);
@@ -234,7 +247,7 @@
   .mx-palette__note {
     margin: var(--mx-space-2) 0 0;
     color: var(--mx-color-fg-subtle);
-    font-size: 11px;
+    font-size: var(--mx-font-size-ui-sm);
   }
 
   .mx-palette__empty {
@@ -269,8 +282,22 @@
     background: var(--mx-color-bg-hover);
   }
 
+  .mx-palette__list button:active {
+    background: var(--mx-color-bg-inset);
+  }
+
+  /* ホバー中の面（`bg-hover`）では subtle が 4.5:1 に届かない。1 段上げる。 */
+  .mx-palette__list button:hover :is(.mx-palette__detail, .mx-palette__shortcut) {
+    color: var(--mx-color-fg-muted);
+  }
+
+  /*
+   * 現在の候補。印はアウトライン・メニュー・タブと同じものを使う（`--mx-current-marker`）。
+   * 以前はここだけ淡い塗り（`--mx-color-selection`）で、同じ意味が一覧ごとに違う見た目になっていた。
+   */
   .mx-palette__item--selected {
-    background: var(--mx-color-selection);
+    box-shadow: var(--mx-current-marker);
+    background: var(--mx-color-bg-inset);
     color: var(--mx-color-fg);
   }
 
@@ -285,7 +312,7 @@
     flex: none;
     margin-inline-start: var(--mx-space-2);
     color: var(--mx-color-fg-subtle);
-    font-size: 11px;
+    font-size: var(--mx-font-size-ui-sm);
   }
 
   .mx-palette__shortcut {

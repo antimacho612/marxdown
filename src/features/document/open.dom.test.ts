@@ -73,6 +73,7 @@ beforeEach(() => {
   documentStore.frontMatter = null;
   documentStore.stats = null;
   documentStore.notice = null;
+  documentStore.statusMessage = null;
   documentStore.isDirty = false;
   recentStore.entries = [];
 
@@ -290,16 +291,13 @@ describe('reloadCurrent', () => {
     expect(writes.at(-1)).toBe(400);
   });
 
-  it('再読み込みしたことを情報通知で伝える（内容が同じでも画面は動かないため）', async () => {
+  it('再読み込みしたことをステータスバーで伝える（内容が同じでも画面は動かないため）', async () => {
     install();
     await openPath('C:/work/b.md');
 
     await reloadCurrent();
 
-    expect(documentStore.notice).toMatchObject({
-      level: 'info',
-      message: ja.open.reloaded,
-    });
+    expect(documentStore.statusMessage).toBe(ja.open.reloaded);
   });
 
   it('何も開いていなければ何もしない', async () => {

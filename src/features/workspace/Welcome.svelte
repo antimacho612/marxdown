@@ -6,6 +6,7 @@
 <script lang="ts">
   import { ja } from '@/i18n/ja';
   import { runCommand } from '@/lib/commands';
+  import Icon from '@/lib/Icon.svelte';
   import Mark from '@/lib/Mark.svelte';
   import { splitPath } from '@/lib/path';
 
@@ -22,7 +23,7 @@
   const shown = $derived(recentStore.entries.slice(0, RECENT_SHOWN));
 </script>
 
-<div class="mx-welcome">
+<div class="mx-welcome mx-over-main">
   <div class="mx-welcome__panel">
     <h1 class="mx-welcome__title">
       <Mark size={30} />
@@ -34,16 +35,19 @@
       「開く」を先に置くのは、閲覧を中心とした道具であるためである（Principle 2）。
     -->
     <button type="button" class="mx-welcome__action" onclick={() => runCommand('document.open')}>
+      <Icon name="document" />
       <span>{ja.welcome.openFile}</span>
       <kbd>Ctrl+O</kbd>
     </button>
 
     <button type="button" class="mx-welcome__action" onclick={() => runCommand('folder.open')}>
+      <Icon name="folder" />
       <span>{ja.welcome.openFolder}</span>
       <kbd>Ctrl+Alt+O</kbd>
     </button>
 
     <button type="button" class="mx-welcome__action" onclick={() => runCommand('document.new')}>
+      <Icon name="document-plus" />
       <span>{ja.welcome.newFile}</span>
       <kbd>Ctrl+N</kbd>
     </button>
@@ -64,8 +68,18 @@
                 onclick={() => runCommand('document.openPath', entry.path)}
                 title={entry.path}
               >
+                <!-- 履歴に並ぶのは常に Markdown なので、ファイルツリーの Markdown と同じ図記号にする。 -->
+                <Icon name="document-text" size={14} />
                 <span class="mx-welcome__item-name">{split.name}</span>
-                <span class="mx-welcome__item-dir">{split.dir}</span>
+                <!--
+                  `<bdi dir="ltr">` が要る。
+                  容器が `direction: rtl`（頭を削るため）なので、パスの両端にある中立文字が bidi で並べ替わる。
+                  実測では `/virtual` が `virtual/`、`~/notes` が `notes/~`、`C:` が `:C` として表示されていた。
+
+                  容器と `<bdi>` は分ける。同じ要素に置くと、著者スタイルの `direction: rtl` が
+                  属性由来の `ltr` に勝ち、分離が RTL 方向で解決されて元の症状に戻る。
+                -->
+                <span class="mx-welcome__item-dir"><bdi dir="ltr">{split.dir}</bdi></span>
               </button>
             </li>
           {/each}
@@ -82,38 +96,51 @@
   /*
    * 中央揃えではなく、左揃えのブロックを中央に配置する。
    * 項目とショートカットが縦に揃わないと、一覧として読み取りにくい。
+   *
+   * 置き場所は `shell.css` の `.mx-over-main` が持つ。
+   * `grid-area: main` で指すと Split に割り当て先が無く、右下の暗黙セルへ落ちる。
    */
   .mx-welcome {
-    grid-area: main;
     z-index: 5;
     display: grid;
-    place-content: center;
+    /*
+     * `safe` を外さないこと。
+     * 中身が器より広いとき、素の `center` は左右へ均等にはみ出し、**先頭側は掴めなくなる**
+     * （スクロールは末尾側にしか伸びない）。
+     */
+    place-content: safe center;
     background: var(--mx-color-bg);
-    overflow-y: auto;
+    overflow: auto;
   }
 
+  /*
+   * 幅は器（本文の列）に対して決める。
+   *
+   * `80vw` はビューポート基準なので、両ペインを開くと列の幅を大きく超える。
+   * 実測（820px / 両ペイン展開）で列は 340px しかなく、480px の板が左右へ溢れていた。
+   */
   .mx-welcome__panel {
     display: flex;
     flex-direction: column;
     gap: var(--mx-space-3);
-    width: min(30rem, 80vw);
-    padding: var(--mx-space-8) 0;
+    width: min(30rem, 100%);
+    padding: var(--mx-space-10) var(--mx-space-6);
   }
 
   .mx-welcome__title {
     display: flex;
     align-items: center;
     gap: var(--mx-space-3);
-    margin: 0 0 var(--mx-space-2);
-    font-size: 22px;
+    margin: 0 0 var(--mx-space-4);
+    font-size: var(--mx-font-size-title);
     font-weight: 650;
     letter-spacing: -0.01em;
     color: var(--mx-color-fg);
   }
 
   .mx-welcome__heading {
-    margin: var(--mx-space-4) 0 var(--mx-space-1);
-    font-size: 11px;
+    margin: var(--mx-space-5) 0 var(--mx-space-2);
+    font-size: var(--mx-font-size-ui-sm);
     font-weight: 600;
     letter-spacing: 0.06em;
     text-transform: uppercase;
@@ -124,8 +151,7 @@
   .mx-welcome__action {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    gap: var(--mx-space-4);
+    gap: var(--mx-space-3);
     padding: var(--mx-space-2) var(--mx-space-3);
     margin-inline: calc(-1 * var(--mx-space-3));
     border: none;
@@ -138,6 +164,11 @@
     cursor: pointer;
   }
 
+  /* ショートカットだけを右端へ送る。図記号と名前は左に固めて、行の頭を揃える。 */
+  .mx-welcome__action > kbd {
+    margin-inline-start: auto;
+  }
+
   .mx-welcome__list {
     list-style: none;
     margin: 0;
@@ -146,8 +177,8 @@
 
   .mx-welcome__item {
     display: flex;
-    align-items: baseline;
-    gap: var(--mx-space-3);
+    align-items: center;
+    gap: var(--mx-space-2);
     width: 100%;
     padding: var(--mx-space-1) var(--mx-space-3);
     margin-inline: calc(-1 * var(--mx-space-3));
@@ -165,12 +196,21 @@
     flex: none;
   }
 
+  /* 図記号は補助。名前より一段落として、行の頭で騒がせない。 */
+  .mx-welcome__item > :global(.mx-icon) {
+    color: var(--mx-color-fg-subtle);
+  }
+
+  .mx-welcome__item:hover > :global(.mx-icon) {
+    color: var(--mx-color-fg-muted);
+  }
+
   /* ディレクトリは補助情報。長いパスは頭を削って末尾（＝現在地）を残す */
   .mx-welcome__item-dir {
     flex: 1;
     min-width: 0;
     color: var(--mx-color-fg-subtle);
-    font-size: 11px;
+    font-size: var(--mx-font-size-ui-sm);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -181,6 +221,20 @@
   .mx-welcome__action:hover,
   .mx-welcome__item:hover {
     background: var(--mx-color-bg-hover);
+  }
+
+  /*
+   * ホバー中の面は `bg-hover` で、そこでは subtle が 4.5:1 に届かない。
+   * 文字色を 1 段上げる（`tokens.css` の文字色のコメント）。
+   */
+  .mx-welcome__item:hover .mx-welcome__item-dir {
+    color: var(--mx-color-fg-muted);
+  }
+
+  /* 押し込み。Windows は「ホバーより淡い面」で押下を表す（`app/CaptionButton.svelte` と同じ）。 */
+  .mx-welcome__action:active,
+  .mx-welcome__item:active {
+    background: var(--mx-color-bg-inset);
   }
 
   .mx-welcome__action:focus-visible,
@@ -197,6 +251,6 @@
   }
 
   .mx-welcome__hint:first-of-type {
-    margin-top: var(--mx-space-4);
+    margin-top: var(--mx-space-5);
   }
 </style>

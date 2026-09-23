@@ -57,13 +57,17 @@
 </Field>
 
 <style>
+  /*
+   * 寸法は Windows 11 の ToggleSwitch（40x20）に合わせてある。
+   * 44x24 に 18px の玉と影を載せていた時期は、Windows のアプリの中でここだけ他のプラットフォームの部品に見えた。
+   */
   .mx-settings__toggle {
     flex: none;
     position: relative;
     margin: 0;
     padding: 0;
-    height: 24px;
-    width: 44px;
+    height: 20px;
+    width: 40px;
     display: inline-flex;
     align-items: center;
     border: 1px solid var(--mx-color-border);
@@ -73,9 +77,10 @@
     touch-action: manipulation;
     -webkit-tap-highlight-color: transparent;
     vertical-align: middle;
+    /* 高頻度の操作なので 150ms を上限にする（03.ux-spec/09-motion.md §1 の基準: 本文のレイアウトに触らない）。 */
     transition:
-      background-color 200ms ease,
-      border-color 200ms ease;
+      background-color 150ms ease-out,
+      border-color 150ms ease-out;
 
     &:focus-visible {
       outline: 2px solid var(--mx-color-accent);
@@ -90,26 +95,56 @@
 
   .mx-settings__toggle__thumb {
     position: absolute;
-    left: 2px;
+    left: 3px;
     top: 50%;
-    width: 18px;
-    height: 18px;
+    width: 12px;
+    height: 12px;
     transform: translateY(-50%);
     border-radius: 9999px;
     background: var(--mx-color-fg-muted);
-    box-shadow: var(--mx-shadow-1);
     pointer-events: none;
     transition:
-      transform 200ms cubic-bezier(0.4, 0, 0.2, 1),
-      background-color 200ms ease;
+      transform 150ms cubic-bezier(0.2, 0, 0, 1),
+      background-color 150ms ease-out;
+  }
+
+  .mx-settings__toggle:hover {
+    border-color: var(--mx-color-fg-subtle);
   }
 
   .mx-settings__toggle--checked {
+    border-color: var(--mx-color-accent);
     background: var(--mx-color-accent);
 
     .mx-settings__toggle__thumb {
       background: light-dark(var(--mx-color-accent-fg), var(--mx-color-fg));
-      transform: translateY(-50%) translateX(20px);
+      transform: translateY(-50%) translateX(22px);
+    }
+  }
+
+  .mx-settings__toggle--checked:hover {
+    border-color: var(--mx-color-accent-hover);
+    background: var(--mx-color-accent-hover);
+  }
+
+  .mx-settings__toggle:active {
+    background: var(--mx-color-bg-inset);
+  }
+
+  .mx-settings__toggle--checked:active {
+    background: var(--mx-color-accent-active);
+    border-color: var(--mx-color-accent-active);
+  }
+
+  /*
+   * リポジトリの中で、ここだけがこの指定を持たない状態だった。
+   * 通知バー・パレット・設定ダイアログ・プレビュー・見出しジャンプはいずれも尊重している
+   * （03.ux-spec/10-accessibility.md「`prefers-reduced-motion` の尊重」）。
+   */
+  @media (prefers-reduced-motion: reduce) {
+    .mx-settings__toggle,
+    .mx-settings__toggle__thumb {
+      transition: none;
     }
   }
 </style>

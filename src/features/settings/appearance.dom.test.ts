@@ -72,9 +72,10 @@ describe('applyAppearance', () => {
   });
 
   it('本文幅の単位は ch（02.architecture/10-theming.md §2）', () => {
-    applyAppearance(withSettings({ 'preview.maxWidth': 72 }));
+    // 既定（72）以外を渡す。既定と同じ値は書かずに消す仕様であり、単位を確かめられない。
+    applyAppearance(withSettings({ 'preview.maxWidth': 90 }));
 
-    expect(root().style.getPropertyValue('--mx-content-width')).toBe('72ch');
+    expect(root().style.getPropertyValue('--mx-content-width')).toBe('90ch');
   });
 
   it('文字サイズは px、行間は無次元', () => {
@@ -186,5 +187,33 @@ describe('applyPalette (ADR-0013 / ADR-0014)', () => {
     document.body.replaceChildren();
 
     expect(() => applyAppearance(withSettings({ 'preview.theme': 'nord' }))).not.toThrow();
+  });
+});
+
+describe('applyTableStyle (preview.tableStyle)', () => {
+  it('既定（横罫線のみ）では属性を付けない', () => {
+    applyAppearance(DEFAULT_SETTINGS);
+
+    expect(surface('mx-preview').dataset['mxTableStyle']).toBeUndefined();
+  });
+
+  it('選んだ引き方が本文の面に付く', () => {
+    applyAppearance(withSettings({ 'preview.tableStyle': 'zebra' }));
+
+    expect(surface('mx-preview').dataset['mxTableStyle']).toBe('zebra');
+  });
+
+  it('既定に戻すと属性ごと外れる', () => {
+    applyAppearance(withSettings({ 'preview.tableStyle': 'grid' }));
+    applyAppearance(DEFAULT_SETTINGS);
+
+    expect(surface('mx-preview').dataset['mxTableStyle']).toBeUndefined();
+  });
+
+  /** 配色と同じく、クロームは巻き込まない（ADR-0013）。 */
+  it(':root には付けない', () => {
+    applyAppearance(withSettings({ 'preview.tableStyle': 'grid' }));
+
+    expect(root().dataset['mxTableStyle']).toBeUndefined();
   });
 });

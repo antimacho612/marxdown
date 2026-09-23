@@ -81,7 +81,7 @@ Rust 側は `src-tauri/` で `cargo fmt` / `cargo clippy --all-targets -- -D war
 ```bash
 pnpm fixtures                                  # bench/fixtures/ の基準ファイルを生成
 pnpm bench                                     # Markdown パイプライン単体
-pnpm build:app                                 # release ビルド（計測には必須）
+pnpm build                                     # release ビルド（計測には必須）
 pnpm bench:boot                                # Cold Start（T0〜T9 の中央値）
 node scripts/bench-startup.mjs --sweep         # A/B（Worker / メインスレッド、描画方法）
 node scripts/bench-startup.mjs --warm          # Warm Start（単一インスタンス）
@@ -104,7 +104,7 @@ Marxdown の最初の目標は「作っている本人が毎日使う」こと�
 そのためには **ターミナルから `marxdown foo.md` と打てる** 必要がある。
 
 ```bash
-pnpm build:app
+pnpm build
 ```
 
 `src-tauri/target/release/marxdown.exe` が出来る。これを PATH に通す。
@@ -123,7 +123,7 @@ $exe = Resolve-Path .\src-tauri\target\release
 
 > **release ビルドのパスを直接通している** のは意図的。
 > インストーラ（`src-tauri/target/release/bundle/nsis/`）を入れると、ビルドのたびに再インストールが要る。
-> `pnpm build:app` の出力をそのまま指しておけば、ビルドし直すだけで次の起動から新しい版になる。
+> `pnpm build` の出力をそのまま指しておけば、ビルドし直すだけで次の起動から新しい版になる。
 
 2 回目以降の `marxdown foo.md` は新しいプロセスを立てず、常駐しているプロセスにパスを転送する（単一インスタンス / ADR-0004）。
 ここが速さの中心なので、**ドッグフーディングではウィンドウを閉じずに置いておく** のが本来の使い方。

@@ -16,6 +16,7 @@ pub mod commands;
 pub mod dir;
 mod document;
 pub mod error;
+pub mod glob;
 pub mod instance;
 pub mod scope;
 pub mod settings;

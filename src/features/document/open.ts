@@ -18,7 +18,7 @@ import { markClean } from './dirty';
 import { confirmDiscard } from './discard';
 import {
   documentStore,
-  notifyInfo,
+  notifyStatus,
   toMeta,
   type NoticeAction,
   type StoredMeta,
@@ -157,12 +157,12 @@ export interface ReloadOptions {
    */
   encoding?: Encoding;
   /**
-   * 読み直した後に出す情報通知の文言。既定は「再読み込みしました」（`F5`）。
+   * 読み直した後にステータスバーへ出す文言。既定は「再読み込みしました」（`F5`）。
    *
    * 差し替えるのは文言だけで足りる。
    * 操作によるものか外部変更によるものかで変わるのは何が起きたかの説明であり、読み直しの手順ではない。
    */
-  notice?: string;
+  status?: string;
 }
 
 /** 開き終えたときの計測値。開発ビルドのステータスバーと起動計測が使う。 */
@@ -300,14 +300,16 @@ export async function openPath(path: string, options: OpenOptions = {}): Promise
     payload = await getPlatform().readDocument(path, options.encoding);
   } catch (e) {
     const kind = kindOf(e);
+    // 履歴から外したときだけ、そのことを文面に足す。外していないのに書くと、起きていないことを伝える。
+    const missing = kind === 'not-found' && config !== null;
     documentStore.notice = {
       level: 'error',
-      message: describeOpenError(e, path),
+      message: describeOpenError(e, path) + (missing ? ja.error.removedFromRecent : ''),
       // Marxdown では読めないが、OS の既定アプリでなら開ける（F-VIEW-06）。
       // ファイルツリーは Markdown 以外も並べる以上、画像や書庫を選ぶこと自体は避けられない。
       ...(kind === 'binary' && { actions: externalOpenActions(path) }),
     };
-    if (kind === 'not-found') config?.onMissing(path);
+    if (missing) config?.onMissing(path);
     return null;
   }
 
@@ -377,8 +379,8 @@ export async function reloadCurrent(options: ReloadOptions = {}): Promise<OpenOu
     history: false,
   });
 
-  // 内容が同じで画面が変化しない場合も、操作を受け付けたことは通知する（3 秒で消える情報通知）。
-  if (outcome) notifyInfo(options.notice ?? ja.open.reloaded);
+  // 内容が同じで画面が変化しない場合も、操作を受け付けたことは伝える（3 秒で消えるステータスバーのメッセージ）。
+  if (outcome) notifyStatus(options.status ?? ja.open.reloaded);
   return outcome;
 }
 

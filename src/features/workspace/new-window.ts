@@ -86,7 +86,7 @@ export async function moveTabToSatellite(id: number, position?: { x: number; y: 
   // 未保存、または無題の文書。パスだけでは中身が失われるため、本文ごと渡す（決定 1 / N-REL-01）。
   const text = textOf(tab.id, tab.text);
   if (text === null) {
-    documentStore.notice = { level: 'warning', message: ja.window.dirtyTab };
+    documentStore.notice = { level: 'warning', message: ja.window.textUnavailable };
     return false;
   }
 

@@ -1,5 +1,3 @@
-# 05.performance-budget.md §5.5 の「全 PR / コミット」で回すものだけをここに置く。
-# 起動時間とメモリは環境ノイズが大きいため hook には載せない（マイルストーンごとの手動計測）。
 pre-commit:
   parallel: true
   jobs:

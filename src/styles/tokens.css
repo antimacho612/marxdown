@@ -26,7 +26,17 @@
   --mx-font-code-stack: 'Cascadia Code', 'Consolas', 'BIZ UDGothic', 'Meiryo', monospace;
   --mx-font-code: var(--mx-font-code-stack);
 
+  /*
+   * クロームの型スケール。
+   *
+   * 13px が基準で、補足（件数・パス・説明文）が 11px、装飾に近い印（ダーティ印・ツリーの三角）が 10px。
+   * ベタ書きすると、実際に使っている 4 段目までカスタムテーマから触れなくなる。
+   */
   --mx-font-size-ui: 13px;
+  --mx-font-size-ui-sm: 11px;
+  --mx-font-size-ui-xs: 10px;
+  --mx-font-size-title: 22px;
+
   --mx-font-size-content: 16px;
   --mx-font-size-code: 0.875em;
   --mx-font-ligatures-code: normal;
@@ -34,8 +44,14 @@
   --mx-line-height: 1.75;
   --mx-line-height-tight: 1.35;
 
-  /* 本文幅を制限する。100ch 程度を既定にする。 */
-  --mx-content-width: 100ch;
+  /*
+   * 本文幅を制限する。
+   *
+   * 既定は 72ch。実測で 1 行あたり欧文 78 字・全角 39 字にあたる（Segoe UI Variable Text 16px で 1ch = 8.63px）。
+   * 長文の推奨測度は 60〜75 字で、100ch では欧文 108 字に達し、次の行頭を追いにくくなる。
+   * 値は `preview.maxWidth` で変えられる（`features/settings/appearance.ts`）。
+   */
+  --mx-content-width: 72ch;
 
   /*
    * 表示倍率。
@@ -45,16 +61,41 @@
    */
   --mx-zoom: 1;
 
-  /* ========== 余白 ========== */
+  /*
+   * ========== 余白 ==========
+   *
+   * 数字は 4px 単位の刻み（`--mx-space-6` = 24px）。
+   * 本文の段落間（24px）と節の入れ替わり（48px）に 2 倍の差が要るため、8 の上に 10 と 12 を持つ。
+   * 以前は `calc(var(--mx-space-8) * 1.25)` のような倍率で作っていたが、
+   * 刻みの外にある値はスケールとして働かず、次に足すときの基準にならない。
+   */
   --mx-space-1: 4px;
   --mx-space-2: 8px;
   --mx-space-3: 12px;
   --mx-space-4: 16px;
+  --mx-space-5: 20px;
   --mx-space-6: 24px;
   --mx-space-8: 32px;
+  --mx-space-10: 40px;
+  --mx-space-12: 48px;
 
   --mx-radius: 6px;
   --mx-radius-sm: 4px;
+
+  /*
+   * フォーム部品の高さと、設定ダイアログのコントロール列の幅。
+   *
+   * トークン層に置いてあるのは、`Field.svelte` と `RadioGroup.svelte` が同じ値を必要とするためである。
+   * どちらも scoped `<style>` を持つコンポーネントであり、CSS を直接共有できない。
+   */
+  --mx-control-height: 28px;
+  --mx-control-column: 15rem;
+
+  /*
+   * 一覧の「現在の項目」の印。
+   */
+  --mx-current-marker: inset 2px 0 0 var(--mx-color-accent);
+  --mx-current-marker-block: inset 0 -2px 0 0 var(--mx-color-accent);
 
   /* ========== 色（ライト） ========== */
   --mx-color-bg: #ffffff;
@@ -62,29 +103,34 @@
   --mx-color-bg-inset: #eef0f3;
   /* ホバー面。UI 要素の反応にだけ使い、本文には持ち込まない */
   --mx-color-bg-hover: #e3e6ea;
+  /*
+   * 文字色は 3 段。
+   *
+   * どの段も、載る面（bg / bg-subtle / bg-inset）に対して 4.5:1 以上になるよう選んである
+   * （03.ux-spec/10-accessibility.md「コントラスト比 4.5:1 以上（既定テーマ）」）。
+   * 検証は `tokens.contrast.test.ts` が機械的に行う。目視で決めると必ずずれる。
+   *
+   * bg-hover の上だけは subtle が 4.5 に届かない。
+   * そこは色を暗くするのではなく、ホバー時に 1 段上げる（各コンポーネントの `:hover { color: ... }`）。
+   * 3 段の間隔を潰さずに済み、ホバーで読みやすくなる方向とも一致する。
+   */
   --mx-color-fg: #1c2024;
-  --mx-color-fg-muted: #60646c;
-  --mx-color-fg-subtle: #8b8d98;
+  --mx-color-fg-muted: #53575f;
+  --mx-color-fg-subtle: #6a6d76;
   --mx-color-border: #d9dbe0;
   --mx-color-border-subtle: #e8eaee;
   --mx-color-accent: #3b5bdb;
+  /* アクセント面の押し込み。`opacity` で薄くすると下地が透け、載せた文字のコントラストが下がる。 */
+  --mx-color-accent-hover: #3550c4;
+  --mx-color-accent-active: #2f47ad;
   --mx-color-accent-fg: #ffffff;
-  --mx-color-danger: #c92a2a;
-  --mx-color-warning: #a06a00;
-  --mx-color-selection: rgb(59 91 219 / 18%);
-
+  --mx-color-danger: #bc2020;
+  --mx-color-warning: #8a5a00;
   /*
-   * GitHub Alerts。
-   *
-   * 5 種で固定なので、汎用の意味色を 5 つ増やさずここにまとめる。
-   * 3 つは既存の意味色の別名で、var() は使う側で解決されるのでダークの上書きに自動で追従する。
-   * 実体を持つのは緑と紫の 2 つだけ。
+   * エディターの選択中は現在行のハイライトが消える（Monaco の仕様）ため、
+   * 選択の可視性はこの色だけで担う必要がある。18% では背景に埋もれて見づらかった（#125）。
    */
-  --mx-color-alert-note: var(--mx-color-accent);
-  --mx-color-alert-tip: #1a7f5a;
-  --mx-color-alert-important: #7048e8;
-  --mx-color-alert-warning: var(--mx-color-warning);
-  --mx-color-alert-caution: var(--mx-color-danger);
+  --mx-color-selection: rgb(59 91 219 / 32%);
 
   /*
    * ウィンドウ操作ボタンの「閉じる」。
@@ -153,17 +199,17 @@
   --mx-color-bg-hover: #292d30;
   --mx-color-fg: #edeef0;
   --mx-color-fg-muted: #b0b4ba;
-  --mx-color-fg-subtle: #7c8085;
+  --mx-color-fg-subtle: #8a8f95;
   --mx-color-border: #2c2f33;
   --mx-color-border-subtle: #212426;
   --mx-color-accent: #8da2fb;
+  /* 暗い面ではアクセントが明るい側にあるため、押し込むほど明るくする。 */
+  --mx-color-accent-hover: #a3b4fc;
+  --mx-color-accent-active: #b8c5fd;
   --mx-color-accent-fg: #10131a;
   --mx-color-danger: #ff8b8b;
   --mx-color-warning: #e0b341;
-  --mx-color-selection: rgb(141 162 251 / 22%);
-
-  --mx-color-alert-tip: #5fd0a0;
-  --mx-color-alert-important: #b197fc;
+  --mx-color-selection: rgb(141 162 251 / 32%);
 
   --mx-color-search-match: rgb(255 196 0 / 35%);
   --mx-color-search-current: var(--mx-color-accent);
@@ -188,17 +234,17 @@
     --mx-color-bg-hover: #292d30;
     --mx-color-fg: #edeef0;
     --mx-color-fg-muted: #b0b4ba;
-    --mx-color-fg-subtle: #7c8085;
+    --mx-color-fg-subtle: #8a8f95;
     --mx-color-border: #2c2f33;
     --mx-color-border-subtle: #212426;
     --mx-color-accent: #8da2fb;
+    /* 暗い面ではアクセントが明るい側にあるため、押し込むほど明るくする。 */
+    --mx-color-accent-hover: #a3b4fc;
+    --mx-color-accent-active: #b8c5fd;
     --mx-color-accent-fg: #10131a;
     --mx-color-danger: #ff8b8b;
     --mx-color-warning: #e0b341;
-    --mx-color-selection: rgb(141 162 251 / 22%);
-
-    --mx-color-alert-tip: #5fd0a0;
-    --mx-color-alert-important: #b197fc;
+    --mx-color-selection: rgb(141 162 251 / 32%);
 
     --mx-color-search-match: rgb(255 196 0 / 35%);
     --mx-color-search-current: var(--mx-color-accent);

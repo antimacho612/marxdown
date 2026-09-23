@@ -26,15 +26,17 @@
    * 開いているあいだ状態は変わらない（パレットが前面にあり、他の操作が入らない）ため、
    * 1 回組み立てれば足りる。ラベルが状態で変わるもの（「編集する」/「プレビューに戻る」）も、
    * 開いた瞬間の状態で確定してよい。
+   *
+   * 英語キーワード（`keywords`）も渡す。ラベルが日本語しか無いため、
+   * これが無いと `save` と打っても 1 件も出てこない（#104 / `catalog.ts`）。
    */
   const items: PaletteItem[] = listedCommands()
     // 開いている当人は並べない。選んでも同じものが開くだけである。
     .filter((entry) => entry.id !== 'palette.open')
-    .map((entry) =>
-      entry.shortcut === undefined
-        ? { id: entry.id, label: entry.label }
-        : { id: entry.id, label: entry.label, shortcut: entry.shortcut },
-    );
+    .map((entry) => {
+      const item: PaletteItem = { id: entry.id, label: entry.label, keywords: entry.keywords };
+      return entry.shortcut === undefined ? item : { ...item, shortcut: entry.shortcut };
+    });
 
   function run(id: string): void {
     runCommand(id as CommandId);

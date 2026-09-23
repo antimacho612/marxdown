@@ -21,7 +21,26 @@ export interface CommandEntry {
   id: CommandId;
   /** 表示名。状態で変わるものだけ関数で渡す。 */
   label: string | (() => string);
+  /**
+   * 英語で引くための語（#104）。表示はしない。
+   *
+   * ラベルが日本語しか無いため、`file` や `save` と打つと 1 件も出てこない。
+   * id（`document.open`）を照合しても「ファイルを開く」に `file` は含まれず届かないので、
+   * 呼び名として使われる語をここに並べる。
+   *
+   * 表示しないため `i18n/ja.ts` には置かない。あちらは人に見せる文言の置き場所である。
+   * 省略できない形にしてあり、書き漏らしは `catalog.test.ts` が検出する。
+   */
+  keywords: string;
   /** 右端に出すキー。割り当てが無いものは省く。 */
+  shortcut?: string;
+}
+
+/** 表示できる形にしたコマンド 1 つ。`keywords` はパレットの照合にだけ使い、表示しない。 */
+export interface ResolvedCommand {
+  id: CommandId;
+  label: string;
+  keywords: string;
   shortcut?: string;
 }
 
@@ -35,67 +54,91 @@ export interface CommandEntry {
  * 並びは `app/commands.ts` の実体の表に合わせてある。突き合わせるときに目で追える。
  */
 export const COMMAND_CATALOG: CommandEntry[] = [
-  { id: 'document.new', label: ja.menu.new, shortcut: 'Ctrl+N' },
-  { id: 'document.open', label: ja.menu.open, shortcut: 'Ctrl+O' },
-  { id: 'folder.open', label: ja.menu.openFolder, shortcut: 'Ctrl+Alt+O' },
-  { id: 'document.quickOpen', label: ja.menu.quickOpen, shortcut: 'Ctrl+P' },
-  { id: 'document.reload', label: ja.menu.reload, shortcut: 'F5' },
-  { id: 'document.save', label: ja.menu.save, shortcut: 'Ctrl+S' },
-  { id: 'document.saveAs', label: ja.menu.saveAs, shortcut: 'Ctrl+Shift+S' },
-  { id: 'document.toggleEol', label: ja.menu.toggleEol },
+  { id: 'document.new', label: ja.menu.new, keywords: 'new file document create', shortcut: 'Ctrl+N' },
+  { id: 'document.open', label: ja.menu.open, keywords: 'open file document', shortcut: 'Ctrl+O' },
+  { id: 'folder.open', label: ja.menu.openFolder, keywords: 'open folder directory workspace', shortcut: 'Ctrl+Alt+O' },
+  { id: 'document.quickOpen', label: ja.menu.quickOpen, keywords: 'quick open file goto', shortcut: 'Ctrl+P' },
+  { id: 'document.reload', label: ja.menu.reload, keywords: 'reload revert file', shortcut: 'F5' },
+  { id: 'document.save', label: ja.menu.save, keywords: 'save file write', shortcut: 'Ctrl+S' },
+  { id: 'document.saveAs', label: ja.menu.saveAs, keywords: 'save as file write', shortcut: 'Ctrl+Shift+S' },
+  { id: 'document.toggleEol', label: ja.menu.toggleEol, keywords: 'toggle eol line ending newline crlf lf' },
 
-  { id: 'window.new', label: ja.menu.newWindow, shortcut: 'Ctrl+Alt+N' },
-  { id: 'window.moveTab', label: ja.menu.moveToNewWindow },
+  { id: 'window.new', label: ja.menu.newWindow, keywords: 'new window instance process', shortcut: 'Ctrl+Alt+N' },
+  { id: 'window.moveTab', label: ja.menu.moveToNewWindow, keywords: 'move tab window satellite detach' },
 
-  { id: 'tab.close', label: ja.tab.closeCurrent, shortcut: 'Ctrl+W' },
-  { id: 'tab.next', label: ja.tab.next, shortcut: 'Ctrl+Tab' },
-  { id: 'tab.previous', label: ja.tab.previous, shortcut: 'Ctrl+Shift+Tab' },
-  { id: 'tab.reopen', label: ja.tab.reopen, shortcut: 'Ctrl+Shift+T' },
+  { id: 'tab.close', label: ja.tab.closeCurrent, keywords: 'close tab', shortcut: 'Ctrl+W' },
+  { id: 'tab.next', label: ja.tab.next, keywords: 'next tab', shortcut: 'Ctrl+Tab' },
+  { id: 'tab.previous', label: ja.tab.previous, keywords: 'previous prev tab', shortcut: 'Ctrl+Shift+Tab' },
+  { id: 'tab.reopen', label: ja.tab.reopen, keywords: 'reopen restore closed tab', shortcut: 'Ctrl+Shift+T' },
 
-  { id: 'history.back', label: ja.history.back, shortcut: 'Alt+←' },
-  { id: 'history.forward', label: ja.history.forward, shortcut: 'Alt+→' },
+  { id: 'history.back', label: ja.history.back, keywords: 'back history navigate', shortcut: 'Alt+←' },
+  { id: 'history.forward', label: ja.history.forward, keywords: 'forward history navigate', shortcut: 'Alt+→' },
 
   // ペインとビューは意味が違う（`app/commands.ts`）。ラベルもそれに合わせる。
   {
     id: 'pane.toggleLeft',
     label: () => (viewStore.panes.left.open ? ja.pane.hideExplorer : ja.pane.showExplorer),
+    keywords: 'toggle left pane sidebar explorer',
     shortcut: 'Ctrl+Shift+B',
   },
   {
     id: 'pane.toggleRight',
     label: () => (viewStore.panes.right.open ? ja.pane.hideOutline : ja.pane.showOutline),
+    keywords: 'toggle right pane sidebar outline',
     shortcut: 'Ctrl+Alt+B',
   },
-  { id: 'explorer.show', label: ja.menu.showExplorer, shortcut: 'Ctrl+Shift+E' },
-  { id: 'outline.show', label: ja.menu.showOutline, shortcut: 'Ctrl+Shift+U' },
-  { id: 'outline.jump', label: ja.outline.jump, shortcut: 'Ctrl+Shift+O' },
+  {
+    id: 'explorer.show',
+    label: ja.menu.showExplorer,
+    keywords: 'explorer show file tree sidebar',
+    shortcut: 'Ctrl+Shift+E',
+  },
+  {
+    id: 'outline.show',
+    label: ja.menu.showOutline,
+    keywords: 'outline show heading sidebar',
+    shortcut: 'Ctrl+Shift+U',
+  },
+  {
+    id: 'outline.jump',
+    label: ja.outline.jump,
+    keywords: 'outline jump goto heading symbol',
+    shortcut: 'Ctrl+Shift+O',
+  },
 
   {
     id: 'view.togglePreview',
     label: () => (viewStore.mode === 'preview' ? ja.menu.toEdit : ja.menu.toPreview),
+    keywords: 'toggle preview edit view mode',
     shortcut: 'Ctrl+Shift+V',
   },
   {
     id: 'view.toggleSplit',
     label: () => (viewStore.mode === 'split' ? ja.menu.fromSplit : ja.menu.toSplit),
+    keywords: 'toggle split view mode',
     shortcut: 'Ctrl+\\',
   },
-  { id: 'view.cycleMode', label: ja.menu.cycleMode, shortcut: 'Ctrl+Shift+M' },
-  { id: 'view.toggleScrollSync', label: ja.menu.toggleScrollSync },
+  { id: 'view.cycleMode', label: ja.menu.cycleMode, keywords: 'cycle view mode', shortcut: 'Ctrl+Shift+M' },
+  { id: 'view.toggleScrollSync', label: ja.menu.toggleScrollSync, keywords: 'toggle scroll sync' },
 
-  { id: 'editor.gotoLine', label: ja.menu.gotoLine, shortcut: 'Ctrl+G' },
-  { id: 'editor.formatTable', label: ja.menu.formatTable, shortcut: 'Shift+Alt+F' },
+  { id: 'editor.gotoLine', label: ja.menu.gotoLine, keywords: 'goto line number', shortcut: 'Ctrl+G' },
+  { id: 'editor.formatTable', label: ja.menu.formatTable, keywords: 'format table', shortcut: 'Shift+Alt+F' },
 
-  { id: 'find.open', label: () => (viewStore.mode === 'preview' ? ja.menu.search : ja.menu.find), shortcut: 'Ctrl+F' },
-  { id: 'find.replace', label: ja.menu.replace, shortcut: 'Ctrl+H' },
+  {
+    id: 'find.open',
+    label: () => (viewStore.mode === 'preview' ? ja.menu.search : ja.menu.find),
+    keywords: 'find search',
+    shortcut: 'Ctrl+F',
+  },
+  { id: 'find.replace', label: ja.menu.replace, keywords: 'replace find search', shortcut: 'Ctrl+H' },
 
-  { id: 'preview.zoomIn', label: ja.menu.zoomIn, shortcut: 'Ctrl+=' },
-  { id: 'preview.zoomOut', label: ja.menu.zoomOut, shortcut: 'Ctrl+-' },
-  { id: 'preview.zoomReset', label: ja.menu.zoomReset, shortcut: 'Ctrl+0' },
+  { id: 'preview.zoomIn', label: ja.menu.zoomIn, keywords: 'zoom in preview', shortcut: 'Ctrl+=' },
+  { id: 'preview.zoomOut', label: ja.menu.zoomOut, keywords: 'zoom out preview', shortcut: 'Ctrl+-' },
+  { id: 'preview.zoomReset', label: ja.menu.zoomReset, keywords: 'zoom reset preview', shortcut: 'Ctrl+0' },
 
-  { id: 'palette.open', label: ja.palette.title, shortcut: 'Ctrl+Shift+P' },
-  { id: 'settings.open', label: ja.menu.settings, shortcut: 'Ctrl+,' },
-  { id: 'app.quit', label: ja.menu.quit, shortcut: 'Ctrl+Q' },
+  { id: 'palette.open', label: ja.palette.title, keywords: 'command palette', shortcut: 'Ctrl+Shift+P' },
+  { id: 'settings.open', label: ja.menu.settings, keywords: 'settings preferences config option', shortcut: 'Ctrl+,' },
+  { id: 'app.quit', label: ja.menu.quit, keywords: 'quit exit close app', shortcut: 'Ctrl+Q' },
 ];
 
 /**
@@ -110,14 +153,15 @@ export const COMMAND_CATALOG: CommandEntry[] = [
  * パレット自身（`palette.open`）は載せてある。ハンバーガーメニューから辿れる必要があるためで
  * （03.ux-spec/01-screen-layout.md §3 の「初学者の逃げ道」）、パレットの中では呼び出し側が外す。
  */
-export function listedCommands(): { id: CommandId; label: string; shortcut?: string }[] {
+export function listedCommands(): ResolvedCommand[] {
   return COMMAND_CATALOG.filter((entry) => isCommandListed(entry.id)).map(resolve);
 }
 
 /** その 1 つを表示できる形にする。メニューが並べる順を決めるときに使う。 */
-export function resolve(entry: CommandEntry): { id: CommandId; label: string; shortcut?: string } {
+export function resolve(entry: CommandEntry): ResolvedCommand {
   const label = typeof entry.label === 'function' ? entry.label() : entry.label;
-  return entry.shortcut === undefined ? { id: entry.id, label } : { id: entry.id, label, shortcut: entry.shortcut };
+  const shown = { id: entry.id, label, keywords: entry.keywords };
+  return entry.shortcut === undefined ? shown : { ...shown, shortcut: entry.shortcut };
 }
 
 /** id から引く。メニューが自分の並びでラベルを取るのに使う。 */

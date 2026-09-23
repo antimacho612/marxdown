@@ -50,8 +50,17 @@ interface NumberListEntry {
   maxLength: number;
 }
 
+/** 文字列の並び。`maxLength` は本数の上限で、`maxItemLength` は 1 本あたりの長さの上限。 */
+interface StringListEntry {
+  kind: 'string[]';
+  default: readonly string[];
+  maxLength: number;
+  maxItemLength: number;
+}
+
 /** スキーマ 1 項目。種別ごとに持つ情報が違うため判別可能なユニオンにしてある。 */
-export type SettingSchemaEntry = EnumEntry | NumberEntry | BooleanEntry | StringEntry | NumberListEntry;
+export type SettingSchemaEntry =
+  EnumEntry | NumberEntry | BooleanEntry | StringEntry | NumberListEntry | StringListEntry;
 
 /**
  * 既定値が選択肢の中にあることを型で縛る。
@@ -127,12 +136,23 @@ export const SETTINGS_SCHEMA = defineSettingsSchema({
    */
   'editor.theme': { kind: 'string', default: 'default' },
   'editor.tabSize': { kind: 'number', default: 2, min: 1, max: 8 },
+  /** 単語単位のカーソル移動（`ctrl + ←` / `ctrl + →`）で区切りとして扱う文字（#126）。既定値は VS Code と同じ。 */
+  'editor.wordSeparators': { kind: 'string', default: '`~!@#$%^&*()-=+[{]}\\|;:\'",.<>/?' },
   'editor.wordWrap': {
     kind: 'enum',
     values: ['off', 'on', 'wordWrapColumn', 'bounded'],
     default: 'on',
   },
   'editor.wordWrapColumn': { kind: 'number', default: 80, min: 20, max: 500 },
+
+  /**
+   * エクスプローラーとクイックオープンから常に除外するパスの glob（#146）。
+   *
+   * 隠しファイルと `node_modules` は設定に関わらず除外される（`src-tauri/src/dir.rs`）。
+   * 判定は Rust 側にある（`src-tauri/src/glob.rs`）。フロントへ渡してから隠すと、画面に出ないものまで IPC に載る。
+   * 上限は `src-tauri/src/settings/schema.rs` の `EXCLUDE_MAX` と `glob.rs` の `MAX_PATTERN_LEN` に揃える。
+   */
+  'explorer.exclude': { kind: 'string[]', default: [], maxLength: 64, maxItemLength: 256 },
 
   /*
    * 追加記法（04.tech-stack/04-markdown.md §3）。**どれも既定 OFF である。**
@@ -161,10 +181,23 @@ export const SETTINGS_SCHEMA = defineSettingsSchema({
    */
   'preview.fontSize': { kind: 'number', default: 16, min: 8, max: 72 },
   'preview.lineHeight': { kind: 'number', default: 1.75, min: 1, max: 3 },
-  /** 本文幅。単位は `ch`（02.architecture/10-theming.md §2）。 */
-  'preview.maxWidth': { kind: 'number', default: 100, min: 20, max: 200 },
+  /**
+   * 本文幅。単位は `ch`（02.architecture/10-theming.md §2）。
+   *
+   * 既定の 72ch は、実測で 1 行あたり欧文 78 字・全角 39 字にあたる（Segoe UI Variable Text 16px で 1ch = 8.63px）。
+   * 長文の推奨測度は 60〜75 字で、100ch では欧文 108 字に達し、次の行頭を追いにくくなる。
+   * 既定値は `styles/tokens.css` の `--mx-content-width` と一致させる（設定を書いていない利用者はそちらを見る）。
+   */
+  'preview.maxWidth': { kind: 'number', default: 72, min: 20, max: 200 },
   /** 段落内の単独の改行を `<br>` として描画するか（`markdown-it` の `breaks` / #45）。既定は CommonMark 準拠で false。 */
   'preview.softBreak': { kind: 'boolean', default: false },
+  /**
+   * 表の罫線の引き方。
+   *
+   * 既定の `lines` は横罫線だけを引く。全セルを囲むと、数行の表でも格子が本文の中で最も強い図形になる。
+   * 列が多い表では行を追いにくくなるため、格子（`grid`）と交互の塗り（`zebra`）を選べるようにしてある。
+   */
+  'preview.tableStyle': { kind: 'enum', values: ['lines', 'grid', 'zebra'], default: 'lines' },
   /**
    * 本文の配色（ADR-0014）。`editor.theme` と同じくカタログを共有する文字列である。
    *
@@ -175,8 +208,8 @@ export const SETTINGS_SCHEMA = defineSettingsSchema({
    */
   'preview.theme': { kind: 'string', default: 'default' },
 
-  /** ウィンドウを閉じたときの挙動（ADR-0007）。 */
-  'window.closeBehavior': { kind: 'enum', values: ['tray', 'exit'], default: 'tray' },
+  /** `✕` で閉じたときにトレイへ格納するか（ADR-0007）。false ならプロセスを終了する。 */
+  'window.closeToTray': { kind: 'boolean', default: true },
 });
 
 type Schema = typeof SETTINGS_SCHEMA;
@@ -191,7 +224,9 @@ type ValueOf<E> = E extends { kind: 'enum'; values: readonly (infer V)[] }
         ? string
         : E extends { kind: 'number[]' }
           ? number[]
-          : never;
+          : E extends { kind: 'string[]' }
+            ? string[]
+            : never;
 
 /**
  * `settings.json` の値の形。スキーマから導出されるため、ここに手で追記しない。
@@ -220,7 +255,7 @@ export type BooleanKey = { [K in keyof Schema]: Schema[K] extends { kind: 'boole
 
 /** 個々の設定値の型。UI 側が `Settings` のキーを覚えずに済むよう、別名を切ってある。 */
 export type Theme = Settings['theme'];
-export type WindowCloseBehavior = Settings['window.closeBehavior'];
+export type TableStyle = Settings['preview.tableStyle'];
 export type WordWrap = Settings['editor.wordWrap'];
 export type LineNumbers = Settings['editor.lineNumbers'];
 export type RenderWhitespace = Settings['editor.renderWhitespace'];

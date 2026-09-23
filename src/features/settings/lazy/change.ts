@@ -7,6 +7,7 @@
  * 書き戻しの結果を待たずに楽観的にストアへ入れるのは、Rust 側も同じ範囲（`SETTINGS_SCHEMA`）で潰すため返り値が一致するからである。
  */
 import { describeOpenError, documentStore } from '@/features/document';
+import { reloadTree } from '@/features/workspace';
 import {
   clampSetting,
   DEFAULT_SETTINGS,
@@ -90,6 +91,11 @@ async function persist(): Promise<void> {
 
   settingsStore.values = saved;
   applyAppearance(saved);
+
+  // 除外の glob が変わったらファイルツリーを読み直す（#146）。
+  // `changeSetting` ではなくここで行うのは、打鍵のたびに木を読み直さないためである。
+  // 保存はデバウンスされており、入力が止まってから 1 回だけ通る。
+  if ('explorer.exclude' in patch) void reloadTree();
 }
 
 /** テスト用。デバウンス中の書き込みを今すぐ流す。 */

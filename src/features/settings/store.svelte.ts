@@ -6,6 +6,7 @@
  * 「壊れている」という事実は通知バー（`documentStore.notice`）に流すだけでここには残さない（ADR-0005。状態を 2 か所に持つと直した後に片方だけ残る）。
  */
 import { documentStore } from '@/features/document';
+import { reloadTree } from '@/features/workspace';
 import { ja } from '@/i18n/ja';
 import { DEFAULT_SETTINGS, getPlatform, type Bootstrap, type Settings, type SettingsProblem } from '@/platform';
 
@@ -65,10 +66,14 @@ export async function refreshSettings(): Promise<void> {
     return;
   }
 
+  // 除外の glob は Rust 側で当たるため、変わったかどうかはこちらで見比べるしかない（#146）。
+  const excludeChanged = !sameStrings(settingsStore.values['explorer.exclude'], loaded.values['explorer.exclude']);
+
   // 外部エディターでの編集も、設定 UI からの変更と同じ経路を通って表示に反映される。
   // 設定を編集しながら結果を確認できるのはこの構造による（02.architecture/04-rust-responsibilities.md §5）。
   settingsStore.values = loaded.values;
   applyAppearance(loaded.values);
+  if (excludeChanged) void reloadTree();
 
   if (loaded.broken) {
     reportSettingsProblem(loaded.broken);
@@ -77,6 +82,11 @@ export async function refreshSettings(): Promise<void> {
   // 修正されていれば、自動では消えない通知をここで閉じる。
   // 壊れている間だけ表示すべきものであり、修正後も残ると未修正であるかのように見える。
   if (documentStore.notice?.message === ja.settings.broken) documentStore.notice = null;
+}
+
+/** 並びが同じ内容か。件数の少ない文字列の並びにしか使わない。 */
+function sameStrings(a: readonly string[], b: readonly string[]): boolean {
+  return a.length === b.length && a.every((value, index) => value === b[index]);
 }
 
 /**
