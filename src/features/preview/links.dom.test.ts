@@ -9,8 +9,7 @@ import { installLinkHandler } from './links';
 const original = getPlatform();
 
 /**
- * 開く先。**モジュールのモックではなく、注入する手をそのまま覗く**
- * （`installLinkHandler` が `document` を知らなくなったため）。
+ * 開く先。モジュールのモックではなく、注入する関数をそのまま観測する（`installLinkHandler` は `document` を参照しないため）。
  * 引数の形は `bootstrap.ts` が `openPath` へ渡すものに合わせてある。
  */
 const openPathSpy = vi.fn((_path: string, _options: { anchor?: string }) => Promise.resolve(null));
@@ -96,7 +95,7 @@ describe('リンククリックの分岐 (02.architecture/09-security.md §2)', 
 
   /**
    * `#` 以降はパスの一部ではない。付けたまま Rust へ渡すと not-found になる。
-   * **開いた後の着地点**として分けて渡す（F-VIEW-05 / F-VIEW-07）。
+   * 開いた後の着地点として分けて渡す（F-VIEW-05 / F-VIEW-07）。
    */
   it('アンカー付きの Markdown リンクは、パスと着地点に分けて渡す', () => {
     click('<a href="./other.md#section">other</a>');

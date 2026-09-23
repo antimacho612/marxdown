@@ -1,7 +1,7 @@
 /**
  * 本文中のリンククリックの分岐（F-VIEW-05, 06, 07 / N-SEC-04 / 02.architecture/09-security.md §2）。
  * `#anchor` はページ内スクロール、`./x.md` はアプリ内で開く、他のローカルパスは確認の上で既定アプリ、`http(s)`/`mailto` は既定ブラウザ・メーラー、未知のスキームは何もしない。
- * 許可リスト方式であり、中心ユースケースが信頼できない Markdown を開くことのため、「危険なものを弾く」方式だと未知のスキームで安全性の欠陥が生じる（ADR-0006）。
+ * 許可リスト方式であり、中心ユースケースが信頼できない Markdown を開くことのため、「危険なものを除外する」方式だと未知のスキームで安全性の欠陥が生じる（ADR-0006）。
  *
  * どの分岐でも必ず `preventDefault()` する。
  * WebView がページ遷移するとアプリのシェルごと差し替わり復帰できないためである（N-SEC-04）。
@@ -22,8 +22,7 @@ const SCHEME = /^([a-z][a-z0-9+.-]*):/i;
  * リンクから本文の外へ移動するときの処理（`app/bootstrap.ts` が起動時に渡す）。
  *
  * 開く処理も通知も `document` が担当するが、`document` は本文を描画するためにこの feature を参照している。
- * 直接呼び返すと feature 単位で循環するため、依存の向きを `document → preview` の一方向に保つ目的で注入にしてある
- * （`features/history` の `configureHistory` と同じ形）。
+ * 直接呼び返すと feature 単位で循環するため、依存の向きを `document → preview` の一方向に保つ目的で注入にしてある（`features/history` の `configureHistory` と同じ形）。
  */
 export interface LinkTargets {
   /** いま開いているファイルのパス。相対リンクの基点。無題なら空文字。 */
@@ -53,8 +52,7 @@ export function installLinkHandler(container: HTMLElement, next: LinkTargets): (
   targets = next;
 
   const onClick = (event: MouseEvent) => {
-    // 修飾クリックと中クリックは別の場所で開く操作を意図している。
-    // タブが実装されるまでは何もしないほうが、既定の遷移が発生するより安全である。
+    // 他のハンドラが既定動作を止めたクリックは扱わない。
     if (event.defaultPrevented) return;
 
     const anchor = (event.target as Element | null)?.closest('a');
@@ -98,8 +96,7 @@ function handle(href: string, container: HTMLElement): void {
 
   if (isMarkdownPath(resolved)) {
     // `./other.md#section` の `#` 以降はパスの一部ではない。
-    // 付けたまま渡すと Rust 側で not-found になるため、開いた後のスクロール先として別に渡す
-    // （相互にリンクされた文書群では、節を指定するリンクが頻繁に現れる）。
+    // 付けたまま渡すと Rust 側で not-found になるため、開いた後のスクロール先として別に渡す（相互にリンクされた文書群では、節を指定するリンクが頻繁に現れる）。
     const [path, anchor] = splitFragment(resolved);
     // 相対パスの正規化は Rust 側（`read_document` の canonicalize）に任せる。
     targets?.open(path, anchor);

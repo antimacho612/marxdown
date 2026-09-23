@@ -21,11 +21,11 @@ export interface PaintResult {
 }
 
 /**
- * 実行中の段階的描画（OQ-18）。
+ * 実行中の段階的描画。
  *
  * `paint()` は残りのチャンクを `requestIdle` で少しずつ入れるため、途中で次のファイルを開くと古いループが止まらない。
  * 未投入のチャンク文字列（`huge.md` で数 MB）と既に DOM から切り離された投入先要素を保持したまま処理を続けることになる。
- * M3 でタブが入るとこれがタブの枚数だけ並ぶため、N-PERF-06 の前提としてここを止める必要がある。
+ * タブを切り替えるたびに古いループが残るため、N-PERF-06 の前提としてここを止める必要がある。
  */
 let running: { cancelled: boolean } | null = null;
 
@@ -33,7 +33,7 @@ let running: { cancelled: boolean } | null = null;
  * 実行中の段階的描画を打ち切る。
  *
  * `paint()` の冒頭で呼ばれるため、通常は呼び出し側が意識する必要はない。
- * 本文を破棄するだけで描き直さない場面（タブを閉じる / M3）のために公開している。
+ * 本文を破棄するだけで再描画しない場面（タブを閉じる）のために公開している。
  */
 export function cancelPaint(): void {
   if (running) running.cancelled = true;
@@ -48,7 +48,7 @@ export function cancelPaint(): void {
  */
 export function paint(container: HTMLElement, chunks: string[], frontMatter: string | null = null): PaintResult {
   // 前の描画を先に停止する。
-  // 停止しないと、古いループが DOM から切り離されたツリーへ追記し続ける（`running` のコメントを参照 / OQ-18）。
+  // 停止しないと、古いループが DOM から切り離されたツリーへ追記し続ける（`running` のコメントを参照）。
   cancelPaint();
   container.replaceChildren();
 
@@ -88,8 +88,7 @@ export function paint(container: HTMLElement, chunks: string[], frontMatter: str
     const step = (deadline: IdleDeadline) => {
       // 打ち切られたらその時点で処理を終える。Promise も解決しない。
       //
-      // ここで `resolve` すると呼び出し側（`open.ts`）の `.then` が実行され、
-      // DOM から切り離されたコンテナに対して `enhance` とアンカーの復元を再度実行することになる。
+      // ここで `resolve` すると呼び出し側（`open.ts`）の `.then` が実行され、DOM から切り離されたコンテナに対して `enhance` とアンカーの復元を再度実行することになる。
       if (token.cancelled) return;
 
       // 1 回のアイドルで可能な限り挿入する。
@@ -119,7 +118,7 @@ export function paint(container: HTMLElement, chunks: string[], frontMatter: str
 /**
  * サニタイズ済み HTML を DocumentFragment にする。
  *
- * `innerHTML +=` を繰り返すと、既存の DOM が毎回捨てられて作り直される。
+ * `innerHTML +=` を繰り返すと、既存の DOM が毎回破棄されて作り直される。
  * `<template>` 経由でパースしてから append することで、追記が O(追加分) になる。
  */
 function toFragment(html: string): DocumentFragment {

@@ -1,10 +1,10 @@
 /**
  * 表示モードの決定と切り替え（F-MODE-01, 02, 06, 07 / 03.ux-spec/02-view-modes.md）。
  *
- * ここにあるのはモードの値と切り替え手続きだけである（06.roadmap/m2-editor.md §1.2 の制約）。
- * エディターは `features/editor/open-editor.ts` 経由の動的 import で、直接 import すると `editor` チャンクが `main` に載る。
- * 表示の切り替えは `data-mx-mode` 属性で CSS が行い要素の付け外しはしない（エディターを壊すと Undo 履歴が消え §4 に反する）。
- * `display: none` された要素は `scrollTop` を保てないため、隠す直前にスクロール位置を控えて戻すときに当て直す。
+ * ここにあるのはモードの値と切り替え手続きだけである。
+ * エディターは `features/editor/open-editor.ts` 経由の動的 import で読み込み、直接 import すると `editor` チャンクが `main` に含まれる。
+ * 表示の切り替えは `data-mx-mode` 属性で CSS が行い要素の付け外しはしない（エディターを破棄すると Undo 履歴が消え §4 に反する）。
+ * `display: none` された要素は `scrollTop` を保てないため、非表示にする直前にスクロール位置を保存し、戻すときに再設定する。
  */
 import { cancelLiveRender, renderNow } from '@/features/document';
 import { mountEditorLazily, relayoutEditorLazily, setSplitSyncLazily } from '@/features/editor';
@@ -26,9 +26,9 @@ let lastEditingMode: Exclude<ViewMode, 'preview'> = 'edit';
 /**
  * 順送りの並び（`Ctrl+Shift+M` / 03.ux-spec/02-view-modes.md §2 の図）。
  *
- * WYSIWYG は M5 で追加する。
- * 未実装のものを並びに含めない（操作しても何も起きない位置ができるため）。
- * M5 では要素を 1 つ追加するだけで済む。
+ * WYSIWYG（F-MODE-04）は未実装であるため並びに含めない（操作しても何も起きない位置ができるため）。
+ *
+ * TODO: WYSIWYG を実装したら要素を 1 つ追加する。
  */
 const CYCLE: ViewMode[] = ['preview', 'edit', 'split'];
 
@@ -38,10 +38,10 @@ let previewScroll = 0;
 /**
  * 起動時のモードを決める（F-MODE-07 / 03.ux-spec/02-view-modes.md §3）。
  *
- * 優先順位は、CLI で `--mode` が指定されていればそれに従い、次にファイル単位の記憶（設定 ON 時、M5 / F-MODE-08）、ファイルが読み取り専用なら Preview、それ以外は既定の Preview、の順である。
+ * 優先順位は、CLI で `--mode` が指定されていればそれに従い、次にファイル単位の記憶（設定 ON 時 / F-MODE-08）、ファイルが読み取り専用なら Preview、それ以外は既定の Preview、の順である。
  *
- * ファイル単位の記憶と、設定キー `defaultMode` は M5 で追加する。
- * 既定値が `"preview"` であるため、設定キーが無い現状の結果は既定の Preview と同じになる。
+ * TODO: ファイル単位の記憶と設定キー `defaultMode` は未実装である。
+ * 既定値が `"preview"` であるため、現状の結果は既定の Preview と同じになる。
  */
 export function decideInitialMode(bootstrap: Bootstrap | null, meta: DocumentMeta | null): ViewMode {
   if (bootstrap?.mode) return bootstrap.mode;
@@ -52,8 +52,7 @@ export function decideInitialMode(bootstrap: Bootstrap | null, meta: DocumentMet
 /**
  * 起動時に 1 回だけ適用する。シェルを描画するより前に呼ぶこと。
  *
- * 後から適用すると、Preview の面が 1 フレーム描画されてからエディターへ差し替わる
- * （倍率やペインと同じ理由 / 02.architecture/05-startup-sequence.md §1）。
+ * 後から適用すると、Preview の面が 1 フレーム描画されてからエディターへ差し替わる（倍率やペインと同じ理由 / 02.architecture/05-startup-sequence.md §1）。
  */
 export function initMode(mode: ViewMode): void {
   viewStore.mode = mode;
@@ -108,11 +107,11 @@ export async function setMode(mode: ViewMode): Promise<void> {
   // Edit の間はプレビューの DOM を作り直していない（表示していない面に対して paint しないため / `document/live.ts`）。
   // 表示する側へ戻った時点で 1 回だけ描画する。
   //
-  // Preview と Split の間の移動では描き直さない。
+  // Preview と Split の間の移動では再描画しない。
   // どちらでも面は表示されており、入力内容はその都度反映されている。
   //
   // ここに到達した時点で再描画の予約が残っていることがある（入力直後に切り替えた場合）。
-  // ここで描き直すため、その予約は不要になる。
+  // ここで再描画するため、その予約は不要になる。
   if (!wasVisible && willBeVisible) {
     cancelLiveRender();
     void renderNow();

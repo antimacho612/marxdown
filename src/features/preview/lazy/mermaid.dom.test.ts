@@ -2,9 +2,8 @@
 /**
  * Mermaid の描画まわり（F-VIEW-12 / 04.tech-stack/04-markdown.md §4）。
  *
- * Mermaid 本体は差し替える。jsdom には `getBBox` が無く、実物は図を描けない。
- * ここで確かめたいのは §4 が課す 4 つ（遅延ロード / 監視と解放 / キャッシュ / 失敗時のフォールバック）であり、
- * どれも Mermaid が何を返すかには依存しない。
+ * Mermaid 本体はモックに差し替える。jsdom には `getBBox` が無く、実際の Mermaid は図を描画できない。
+ * 検証するのは §4 が課す 4 つ（遅延ロード / 監視と解放 / キャッシュ / 失敗時のフォールバック）であり、どれも Mermaid が何を返すかには依存しない。
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -105,7 +104,7 @@ describe('遅延ロードと監視', () => {
     expect(FakeObserver.instances.at(-1)?.observed.size).toBe(0);
   });
 
-  it('呼び直すと前の監視を捨てる（`paint` が本文を差し替えるため / OQ-18）', async () => {
+  it('呼び直すと前の監視を捨てる（`paint` が本文を差し替えるため）', async () => {
     const { observeMermaid, disposeMermaid } = await import('./mermaid');
     disposeMermaid();
 

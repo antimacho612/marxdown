@@ -1,9 +1,9 @@
 /**
- * Ctrl + マウスホイールによる表示倍率の変更（F-VIEW-11 / 03.ux-spec/04-keybindings.md §3 / issue #6）。
+ * Ctrl + マウスホイールによる表示倍率の変更（F-VIEW-11 / 03.ux-spec/04-keybindings.md §3）。
  *
  * 倍率そのものの適用は `zoom.ts` が担当し、ここはホイールの入力を刻みへ変換するだけである。
  * 適用先が Preview だけではない（エディターの font-size にも `--mx-zoom` が乗る）ため、登録先も特定の要素ではなく `window` にする。
- * `Ctrl+=` / `Ctrl+-` がどこでも効くのと同じ範囲になる。
+ * `Ctrl+=` / `Ctrl+-` がどこでも有効なのと同じ範囲になる。
  */
 import { zoomIn, zoomOut } from './zoom';
 
@@ -26,7 +26,7 @@ let accumulated = 0;
  *
  * `passive: false` で登録する。
  * WebView 自身のページズームを止めないと、クロームごと拡大された上に `--mx-zoom` が二重に掛かる。
- * 修飾なしのホイールは最初の分岐で抜けるため、通常のスクロールに乗るコストは判定 1 回で済む。
+ * 修飾なしのホイールは最初の分岐で抜けるため、通常のスクロールに加わるコストは判定 1 回で済む。
  */
 export function installWheelZoom(): () => void {
   const onWheel = (event: WheelEvent) => {
@@ -37,8 +37,8 @@ export function installWheelZoom(): () => void {
     const delta = normalize(event);
     if (delta === 0) return;
 
-    // 向きが変わったら持ち越しを捨てる。
-    // 残しておくと、押し戻す操作が逆向きの蓄積を打ち消してから効き始め、最初の 1 ノッチが無反応になる。
+    // 向きが変わったら持ち越しを破棄する。
+    // 残しておくと、押し戻す操作が逆向きの蓄積を打ち消してから反映され始め、最初の 1 ノッチが無反応になる。
     if (Math.sign(delta) !== Math.sign(accumulated)) accumulated = 0;
     accumulated += delta;
 

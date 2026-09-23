@@ -2,8 +2,7 @@
 /**
  * 数式の描画（F-VIEW-13）。
  *
- * 中心ユースケースが「LLM が生成した、自分が書いていないファイルを開く」である以上、
- * ここも**攻撃者が書いた TeX**を前提に書く（`markdown/sanitize.dom.test.ts` と同じ立場）。
+ * 中心ユースケースが「LLM が生成した、自分が書いていないファイルを開く」である以上、ここも攻撃者が書いた TeX を前提にする（`markdown/sanitize.dom.test.ts` と同じ）。
  */
 import { describe, expect, it } from 'vitest';
 
@@ -42,7 +41,7 @@ describe('描画', () => {
   });
 
   it('支援技術が読む MathML を残す', () => {
-    // `sanitizeMath` が mathMl プロファイルを持たないと、ここが丸ごと落ちる。
+    // `sanitizeMath` が mathMl プロファイルを持たないと、ここが丸ごと除去される。
     const element = placeholder('x + y');
     renderMath(element);
 
@@ -50,7 +49,7 @@ describe('描画', () => {
   });
 
   it('字の位置を決める style 属性を残す', () => {
-    // 本文用の設定は style を落とすが、それを数式へ適用すると縦に潰れて読めなくなる。
+    // 本文用の設定は style を除去するが、それを数式へ適用すると縦方向に崩れて読めなくなる。
     const element = placeholder(String.raw`\frac{1}{2}`, 'block');
     renderMath(element);
 
@@ -69,7 +68,7 @@ describe('信頼できない TeX', () => {
   it('壊れた記法でも例外を投げず、要素を残す', () => {
     const element = placeholder(String.raw`\frac{1}{`);
     expect(() => renderMath(element)).not.toThrow();
-    // 空欄にはしない。描けなくても TeX が読める状態で残るほうが情報が多い（N-REL-04）。
+    // 空欄にはしない。描画できなくても TeX が読める状態で残るほうが情報が多い（N-REL-04）。
     expect(element.textContent).not.toBe('');
   });
 

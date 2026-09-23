@@ -1,11 +1,11 @@
 /**
- * プレビュー上のタスクリスト操作（F-VIEW-01 / OQ-05）。
+ * プレビュー上のタスクリスト操作（F-VIEW-01）。
  *
  * 押されたことを受けて元の行番号を割り出すところまでがこの層の仕事で、テキストをどう書き換えるかは `document` 側が決める。
  * 依存の向きを `document → preview` の一方向に保つため、`links.ts` と同じく注入にしてある。
  *
  * 出力しているのは `<input>` ではなく `role="checkbox"` の `<span>` である（`markdown/plugins/task-list.ts`）。
- * そのため、チェック状態の描画とキーボード操作はこちらで面倒を見る必要がある。
+ * そのため、チェック状態の描画とキーボード操作はこちらで扱う必要がある。
  */
 
 /** チェックが押されたときの処理（`app/bootstrap.ts` が起動時に渡す）。 */
@@ -25,7 +25,7 @@ let targets: TaskTargets | null = null;
  * プレビュー内のクリックとキー操作を 1 か所で受ける。
  *
  * 個々の要素にハンドラを付けないのは `links.ts` と同じ理由である。
- * 段階的描画で後から追加される本文にも、最初から効く。
+ * 段階的描画で後から追加される本文にも、最初から有効である。
  */
 export function installTaskHandler(container: HTMLElement, next: TaskTargets): () => void {
   targets = next;
@@ -37,13 +37,13 @@ export function installTaskHandler(container: HTMLElement, next: TaskTargets): (
   };
 
   const onKeyDown = (event: KeyboardEvent) => {
-    // `role="checkbox"` の作法に合わせる。Space が本来の操作で、Enter は付け足しである。
+    // `role="checkbox"` の作法に合わせる。Space が本来の操作で、Enter は追加の操作である。
     if (event.key !== ' ' && event.key !== 'Enter') return;
 
     const box = (event.target as Element | null)?.closest('.mx-task');
     if (!(box instanceof HTMLElement)) return;
 
-    // Space はプレビューのスクロールでもある。チェックボックスの上でだけ奪う。
+    // Space はプレビューのスクロールでもある。チェックボックスの上でだけ既定動作を止める。
     event.preventDefault();
     toggle(box);
   };

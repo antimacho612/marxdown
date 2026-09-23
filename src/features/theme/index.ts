@@ -5,8 +5,8 @@
  * `editor` / `settings` のどちらかに取り込まれると、50 枚ぶんの色が予算の対象外のチャンク（Monaco）に紛れる（`vite.config.ts` の `isThemeOnly`）。
  *
  * `main` に残るのは注入（`inject.ts`）・通知（`notice.ts`）と、プレビュー面の適用経路だけである。
- * プレビューは起動直後に見えている面であり、選ばれている配色を本文の描画より前に当てる必要がある。
- * `themes/` 由来の 1 枚は bootstrap に同梱されて届くため、その場合はカタログを読まずに当たる。
+ * プレビューは起動直後に見えている面であり、選ばれている配色を本文の描画より前に適用する必要がある。
+ * `themes/` 由来の 1 枚は bootstrap に同梱されて届くため、その場合はカタログを読まずに適用される。
  * 組み込みの配色を選んでいる場合だけチャンクの取得を待つが、その取得は bootstrap の処理と重なるため、本文が読めるまでの時間はほとんど増えない。
  */
 import { clearTheme, injectTheme, type ApplyResult } from './inject';
@@ -54,7 +54,7 @@ interface Declarations {
 /**
  * bootstrap に同梱されていた、プレビューで選ばれている `themes/` の 1 枚。
  *
- * Rust 側は選択中の id に一致するファイルがあるときだけ載せる（`src-tauri/src/themes.rs`）。
+ * Rust 側は選択中の id に一致するファイルがあるときだけ含める（`src-tauri/src/themes.rs`）。
  * 組み込みの配色を選んでいる場合と、存在しない綴りの場合は `null` で届く。
  */
 let primed: Declarations | null = null;
@@ -82,9 +82,9 @@ export function primePreviewTheme(theme: Declarations | null): void {
 }
 
 /**
- * プレビューの配色を当てる。`features/settings/appearance.ts` から設定値の適用として呼ばれる。
+ * プレビューの配色を適用する。`features/settings/appearance.ts` から設定値の適用として呼ばれる。
  *
- * 同期的に当たるのは `default` と bootstrap 由来の 1 枚だけで、組み込みの配色はカタログの取得を待つ。
+ * 同期的に適用されるのは `default` と bootstrap 由来の 1 枚だけで、組み込みの配色はカタログの取得を待つ。
  * 起動時の待ちは `awaitPreviewTheme()` が引き受ける。
  * 起動後（設定 UI からの変更・`settings.json` の外部編集）はカタログが解決済みであるため、待ちはマイクロタスク 1 つで済む。
  */
@@ -107,7 +107,7 @@ export function applyPreviewTheme(id: string): void {
 }
 
 /**
- * カタログの取得を待って当てる。起動時に本文を描くより前へ差し込む。
+ * カタログの取得を待って適用する。起動時に本文を描画するより前に実行する。
  *
  * 待ち先が無ければ即座に解決する。
  * 既定の配色で起動した場合がこれにあたり、`theme` チャンクは 1 バイトも読み込まれない。
@@ -132,7 +132,7 @@ export function enableThemeNotices(): void {
  *
  * 既定の配色で起動した場合は何もしない。
  * ここでカタログを読むと、配色を使っていない人にも `theme` チャンクを読ませることになる。
- * 起動後に配色を選んだ場合は `applyFromCatalog` が同じ購読を張るため、取りこぼさない。
+ * 起動後に配色を選んだ場合は `applyFromCatalog` が同じ購読を登録するため、変更を見逃さない。
  */
 export async function installPreviewThemeWatch(): Promise<void> {
   if (selected === DEFAULT_THEME_ID) return;
@@ -142,17 +142,17 @@ export async function installPreviewThemeWatch(): Promise<void> {
 }
 
 /**
- * カタログ側で当てる。
+ * カタログから適用する。
  *
- * `themes/` を読み直すのは、bootstrap に載らなかった綴りだけがここへ来るためである。
- * 起動直後であれば組み込みの配色か、存在しない綴りのどちらかなので、この読み直しは空振りに終わる。
+ * `themes/` を読み直すのは、bootstrap に含まれなかった綴りだけがここへ来るためである。
+ * 起動直後であれば組み込みの配色か、存在しない綴りのどちらかなので、この読み直しは結果を変えない。
  * それでも読むのは、起動後に `themes/` へ置かれたファイルを選んだ場合が同じ経路を通るからである。
  */
 async function applyFromCatalog(id: string): Promise<void> {
   const loaded = await loadThemeCatalog();
   await loaded.refreshUserThemes();
 
-  // 待っているあいだに別の配色が選ばれていれば、こちらの結果は捨てる。
+  // 待っているあいだに別の配色が選ばれていれば、こちらの結果は破棄する。
   if (selected !== id) return;
 
   settle(loaded.applyTheme('preview', id));
@@ -160,10 +160,10 @@ async function applyFromCatalog(id: string): Promise<void> {
 }
 
 /**
- * `themes/` が書き換えられたときの当て直し。
+ * `themes/` が書き換えられたときの再適用。
  *
  * モジュールに 1 つだけ持つ。
- * 呼ぶたびに関数を作ると、購読側が同一性で畳めず登録が積み上がる。
+ * 呼ぶたびに関数を作ると、購読側が同一性で重複を判定できず、登録が増え続ける。
  */
 function reapplyPreview(): void {
   // bootstrap の 1 枚は既に古い。ファイルが書き換えられた以上、読み直した結果だけが正しい。

@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
 /**
- * プレビュー上のタスクリスト操作の受け口（F-VIEW-01 / OQ-05）。
+ * プレビュー上のタスクリスト操作の受け口（F-VIEW-01）。
  *
- * ここで見張るのは「どの行を反転しようとしたか」と「押した結果が見た目に出るか」である。
+ * ここで検証するのは「どの行を反転しようとしたか」と「押した結果が見た目に反映されるか」である。
  * テキストをどう書き換えるかは `features/document/task.ts` の担当で、そちらは別に検証している。
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -72,7 +72,7 @@ describe('クリック', () => {
   });
 
   it('反転されなかったときは見た目を変えない', () => {
-    // 生 HTML で書かれた `<span class="mx-task">` がこれに当たる。
+    // 生 HTML で書かれた `<span class="mx-task">` がこれに該当する。
     // その行はタスクリストの形をしていないため、`document` 側が null を返す。
     toggle.mockReturnValue(null);
     const container = preview({ line: 0, checked: false });

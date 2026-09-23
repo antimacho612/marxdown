@@ -27,7 +27,7 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-describe('Ctrl + ホイールの表示倍率 (F-VIEW-11 / issue #6)', () => {
+describe('Ctrl + ホイールの表示倍率 (F-VIEW-11)', () => {
   it('上方向で拡大し、下方向で縮小する', () => {
     wheel(-100);
     expect(viewStore.zoom).toBe(1.1);

@@ -3,12 +3,11 @@
 面ごとの配色を選ぶ（ADR-0014）。
 
 設定 UI の部品でありながら `theme` チャンク側に置いてある。
-`SelectField` と分けたのは選択肢がスキーマの `values` から来ないためで、置き場所を分けたのは
-そこで必ずカタログ（50 枚ぶんの色）を引くためである。`settings` チャンクに置くと、
-設定を開いただけで配色の実体まで読み込まれる（`vite.config.ts` の `isThemeOnly`）。
+`SelectField` と分けたのは選択肢がスキーマの `values` から来ないためで、置き場所を分けたのはここで必ずカタログ（50 枚ぶんの色）を読み込むためである。
+`settings` チャンクに置くと、設定を開いただけで配色の実体まで読み込まれる（`vite.config.ts` の `isThemeOnly`）。
 
-選ばれている配色をこの場で当てるのは、見本のためである。
-エディター側の適用は Monaco がマウントされているときにしか走らず、Preview のまま設定を開いた場合は誰も注入しない。
+選ばれている配色をこの場で適用するのは、見本のためである。
+エディター側の適用は Monaco がマウントされているときにしか実行されず、Preview のまま設定を開いた場合はどこからも注入されない。
 `applyTheme` は何度呼んでも同じ結果になるため、両方から呼んで差し支えない。
 
 @prop surface
@@ -29,7 +28,7 @@
   import type { ThemeSummary } from './preset';
 
   interface Props {
-    /** 当てる面。カタログは共通で、選択だけが面ごとに独立している。 */
+    /** 適用する面。カタログは共通で、選択だけが面ごとに独立している。 */
     surface: Surface;
     label: string;
     description: string;
@@ -85,7 +84,7 @@
   /**
    * 設定ファイルに書かれているが、カタログに無い綴り。
    *
-   * 既定へ落とさないため（ADR-0014）、選択肢として残さないと `<select>` の表示が実際の値とずれる。
+   * 既定に置き換えないため（ADR-0014）、選択肢として残さないと `<select>` の表示が実際の値とずれる。
    * カタログを読み込む前も同じ状態になるが、そのあいだは何も出さない（読み込み後に一致する可能性がある）。
    */
   const missing = $derived(ready && value !== 'default' && themes.every((theme) => theme.id !== value) ? value : null);
@@ -117,7 +116,7 @@
 
 <!--
   配色を追加する導線。設定ダイアログの下端ではなく選択肢の隣に置く。
-  ここが「組み込みに無い配色は自分で足せる」と分かる唯一の場所である。
+  ここが「組み込みに無い配色は自分で追加できる」と分かる唯一の場所である。
 -->
 <div class="mx-settings__theme-actions">
   <button type="button" class="mx-settings__file" onclick={() => void getPlatform().openThemesDir()}>
@@ -150,7 +149,7 @@
     }
   }
 
-  /* 寸法は `settings/lazy/components/SelectField.svelte` と揃える。列の左辺がここだけずれる。 */
+  /* 寸法は `settings/lazy/components/SelectField.svelte` と揃える。揃えないと、列の左端がここだけずれる。 */
   .mx-settings__select {
     flex: 1;
     min-inline-size: 0;
