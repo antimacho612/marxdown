@@ -13,7 +13,7 @@ export type Eol = 'lf' | 'crlf';
 /** 扱えるエンコーディング。`src-tauri/src/document/encoding.rs` の `Encoding` と対応する。 */
 export type Encoding = 'utf8' | 'utf16-le' | 'utf16-be' | 'shift-jis' | 'euc-jp';
 
-/** 表示モード（F-MODE-01〜03）。WYSIWYG は M4 で追加する。 */
+/** 表示モード（F-MODE-01〜03）。WYSIWYG（F-MODE-04）は未実装である。 */
 export type ViewMode = 'preview' | 'edit' | 'split';
 
 /**
@@ -98,10 +98,10 @@ export interface CoreError {
     | 'io';
   message: string;
   /**
-   * 検証済みの解決先。`out-of-scope` のときだけ入る（OQ-17）。
+   * 検証済みの解決先。`out-of-scope` のときだけ入る。
    *
    * symlink を解決した後のパスであり、ドキュメントに書かれた文字列ではない。
-   * 何を許可しようとしているのかを見せるには、解決後のほうでなければ意味がない。
+   * 何を許可しようとしているのかを示すには、解決後のパスでなければならない。
    */
   path?: string | null;
 }
@@ -114,10 +114,7 @@ export interface PaneState {
 }
 
 /**
- * 左右のペイン（`src-tauri/src/store.rs` の `Panes`）。
- *
- * `left`（Explorer）は M3 で導入するが、構造だけ先に用意してある。
- * 後から追加すると、どちらの幅か判別できない 1 つの値が先に永続化される。
+ * 左右のペイン（`src-tauri/src/store.rs` の `Panes`）。幅は左右で別々に記録する。
  */
 export interface Panes {
   left: PaneState;
@@ -137,7 +134,7 @@ export const DEFAULT_PANES: Panes = {
  * Split の既定の分割比と可動域（03.ux-spec/03-split-mode.md §1）。
  * `src-tauri/src/store.rs` の `SPLIT_*` と 1:1 で対応する。
  *
- * 端まで寄せて片方の領域を失わないようにする。
+ * 端まで動かして片方の領域を失わないようにする。
  * 片方が失われると Split である意味が無くなり、元に戻すための操作対象も同時に消える。
  */
 export const SPLIT_DEFAULT = 0.5;
@@ -162,7 +159,7 @@ export interface SettingsLoad {
 }
 
 /**
- * ユーザーが `themes/` に置いた配色（`src-tauri/src/themes.rs` の `UserTheme` / ADR-0014）。
+ * ユーザーが `themes/` に置いた配色（`src-tauri/src/themes.rs` の `UserTheme`）。
  *
  * 組み込みの配色と同じ形でカタログに載り、プレビューとエディターのどちらからも選べる。
  * 同じ id が組み込みにもある場合はこちらが優先される。
@@ -237,7 +234,7 @@ export interface Bootstrap {
   documentError: BootstrapError | null;
   mode: ViewMode | null;
   /**
-   * 入力レスポンスの計測を走らせるか（`--bench-input` / 計測専用）。
+   * 入力レスポンスを計測するか（`--bench-input` / 計測専用）。
    *
    * 指定されていると `ready()` の後に `features/bench/input.ts`（遅延チャンク）が動作し、打鍵を合成して結果を `benchInputDone` へ渡す。
    * 書き出し先はここに載せない（任意のパスへ書き込める経路を作らないため）。
@@ -246,7 +243,7 @@ export interface Bootstrap {
   trace: TraceConfig | null;
   pendingPaths: string[];
   /**
-   * 復元するタブ（OQ-04 / M3 Phase 7）。**タブの並び順**である。
+   * 復元するタブ。タブの並び順である。
    *
    * 入るのは引数なしで起動したときだけである。
    * `document` には `sessionActive` が指すファイルが入っているので、それ以外を元の位置へ開き直す。
@@ -290,20 +287,20 @@ export interface Bootstrap {
   /** `settings.json` を読めなかった事実。通知バーに出す（03.ux-spec/07-status-and-notifications.md §2）。 */
   settingsError: SettingsProblem | null;
   /**
-   * プレビューで選ばれている `themes/` の 1 枚（ADR-0014）。
+   * プレビューで選ばれている `themes/` の 1 枚（02.architecture/10-theming.md §3.3）。
    *
    * 選択中の id に一致するファイルがあるときだけ入る。
    * 組み込みの配色を選んでいる場合と、存在しない綴りの場合は `null` で届く。
    *
    * ここに載せるのは、暗い配色を選んでいるときに既定の配色で初回フレームが描かれるのを防ぐためである。
-   * 組み込みの 50 枚はフロント側の遅延チャンクにあり、そちらは `theme` チャンクの取得を待って当たる。
+   * 組み込みの 50 枚はフロント側の遅延チャンクにあり、そちらは `theme` チャンクの取得を待って適用される。
    */
   previewTheme: UserTheme | null;
 }
 
 /** 別インスタンスから転送された起動要求（ウォーム起動）。 */
 export interface OpenRequest {
-  /** この要求の計測 ID。描画完了後に `warmDone` へ返す（S6）。 */
+  /** この要求の計測 ID。描画完了後に `warmDone` へ返す。 */
   requestId: number;
   paths: string[];
   mode: ViewMode | null;
@@ -366,37 +363,36 @@ export interface Platform {
    * 返るのはドキュメントから見た相対パスで、そのまま `![](...)` に書ける形をしている。
    *
    * `documentPath` は開いているファイルの絶対パスである。
-   * 無題の文書には基点が無いため、呼ぶ側が手前で断ること。
+   * 無題の文書には基点が無いため、呼ぶ側が手前で拒否すること。
    */
   writeAsset(documentPath: string, extension: string, data: Uint8Array): Promise<string>;
   /**
-   * スコープ外の画像を 1 件だけ許可する（OQ-17 / ADR-0006）。
+   * スコープ外の画像を 1 件だけ許可する（ADR-0006 / 02.architecture/09-security.md §3）。
    *
-   * 許可されるのは**その画像があるディレクトリ 1 つだけ**で、配下へは広がらない。
+   * 許可されるのはその画像があるディレクトリ 1 つだけで、配下へは広がらない。
    * アプリを終了すれば消える。利用者がプレースホルダのボタンを押したときにだけ呼ぶこと。
    */
   allowImageDir(href: string, baseDir: string): Promise<string>;
   /**
    * ディレクトリの中身を 1 階層ぶん返す（F-NAV-03 / ファイルツリー）。
    *
-   * 隠しファイル・`node_modules`・`explorer.exclude` の glob は Rust 側で落ちてくる（`src-tauri/src/dir.rs`）。
+   * 隠しファイル・`node_modules`・`explorer.exclude` の glob は Rust 側で除外されて届く（`src-tauri/src/dir.rs`）。
    * 再帰しないのは、開いたディレクトリだけを読む遅延展開のためである（03.ux-spec/06-panes.md §1）。
    *
-   * `root` は木の基点。`explorer.exclude` の glob をどこからの相対として解釈するかだけに使う（#146）。
+   * `root` は木の基点。`explorer.exclude` の glob をどこからの相対として解釈するかだけに使う。
    * 読む範囲を決めるのは `path` のほうであり、`root` は許可範囲を広げも狭めもしない。
    */
   listDir(path: string, root: string): Promise<DirEntry[]>;
   /**
    * 基点の配下の Markdown を再帰的に集める（F-NAV-05 / クイックオープン）。
    *
-   * 対象の拡張子は Platform 層が `lib/path.ts` から渡す。件数と深さには上限があり、
-   * 超えたときは `truncated` が立つ（`src-tauri/src/dir.rs`）。
+   * 対象の拡張子は Platform 層が `lib/path.ts` から渡す。件数と深さには上限があり、超えたときは `truncated` が立つ（`src-tauri/src/dir.rs`）。
    */
   listFiles(root: string): Promise<FileList>;
   /**
-   * 開いているタブを覚える（OQ-04）。**引数なしで起動したときだけ復元される。**
+   * 開いているタブを覚える。引数なしで起動したときだけ復元される。
    *
-   * 覚えるのはパスと表示中の位置だけで、本文は持たない。
+   * 覚えるのはパスと表示中のタブだけで、本文は持たない。
    * パスを持たないタブ（`Ctrl+N`）は呼び出し側で除くこと。
    */
   setSession(paths: string[], active: number): Promise<void>;
@@ -477,7 +473,7 @@ export interface Platform {
    */
   openSettingsFile(): Promise<void>;
   /**
-   * `themes/` に置かれた配色をすべて読む（ADR-0014）。
+   * `themes/` に置かれた配色をすべて読む。
    *
    * 組み込みの 50 枚はフロント側の遅延チャンクにあり、これで返るのはユーザーが追加したものだけである。
    * 1 枚ずつ取りに行く形にしていないのは、呼び出し側（選択肢の一覧と適用）がどちらも全件を必要とするためである。
@@ -485,7 +481,7 @@ export interface Platform {
   listUserThemes(): Promise<UserTheme[]>;
 
   /**
-   * `themes/` をファイルマネージャで開く（ADR-0014）。
+   * `themes/` をファイルマネージャで開く。
    *
    * 無ければ作り、書き方を説明する `README.css` を置いてから開く。
    * 設定項目もパスの設定も置かない以上、どこに何を書けばよいかを知る手段がこのボタンしかない。
@@ -493,20 +489,20 @@ export interface Platform {
   openThemesDir(): Promise<void>;
 
   /**
-   * `themes/` の中身の変更を購読する（ADR-0014）。
+   * `themes/` の中身の変更を購読する。
    *
-   * `onSettingsChanged` と同じく中身は渡さない。受け取ったら `listUserThemes` で読み直して当て直すのが唯一の使い方である。
+   * `onSettingsChanged` と同じく中身は渡さない。受け取ったら `listUserThemes` で読み直して適用し直すのが唯一の使い方である。
    * どの 1 枚が変わったかも渡さない。選択中の配色が変わったかどうかは、読み直した結果と突き合わせないと判断できない。
    */
   onUserThemesChanged(handler: () => void): () => void;
   /**
-   * 開いているファイルの監視を始める（F-EDIT-16 / 02.architecture/04-rust-responsibilities.md §4）。
+   * 表示中のファイルの監視を始める（F-EDIT-16 / 02.architecture/04-rust-responsibilities.md §4）。
    *
-   * 監視するのは開いているファイルだけである（N-PERF-05）。
-   * 呼ぶたびに前のファイルの監視は解除される（タブが入る M3 までは対象が 1 つしかない）。
+   * 監視するのは表示中のファイル 1 つだけである（N-PERF-05）。
+   * 呼ぶたびに前のファイルの監視は解除される。
    */
   watchPath(path: string): Promise<void>;
-  /** 監視をやめる。タブを閉じたとき（M3）に呼ぶ。 */
+  /** 監視をやめる。タブを閉じたときに呼ぶ。 */
   unwatchPath(path: string): Promise<void>;
   /** 監視しているファイルの外部変更を購読する。 */
   onFileChanged(handler: (change: FileChange) => void): () => void;
@@ -522,7 +518,7 @@ export interface Platform {
   /**
    * ウィンドウ操作（カスタムタイトルバー / 03.ux-spec/01-screen-layout.md §1）。
    *
-   * `decorations: false` にしているため、`─ □ ✕` は自前の `<button>` である。
+   * `decorations: false` であるため、`─ □ ✕` は自前の `<button>` である。
    * 実体は Rust 側の自作コマンドで、JS の `@tauri-apps/api/window` は導入していない（04.tech-stack/06-rust.md §2 と同じ判断）。
    *
    * ドラッグとダブルクリックによる最大化はここには無い。
@@ -541,7 +537,7 @@ export interface Platform {
   /**
    * サテライトウィンドウで開く（F-OPEN-06）。
    *
-   * タブと本文だけを持つウィンドウを、**同じプロセスの中に** 1 枚増やす。
+   * タブと本文だけを持つウィンドウを、同じプロセスの中に 1 枚増やす。
    * 2 つ以上渡すと、1 枚目が表示され残りはタブとして開かれる（起動時の `marxdown a.md b.md` と同じ扱い）。
    *
    * ウィンドウは WebView ごと作られるため、タブを増やすのとは桁の違うコストがかかる（ADR-0004 の Option C の欠点そのもの）。
@@ -552,7 +548,7 @@ export interface Platform {
     mode?: ViewMode;
     transfer?: number;
     /**
-     * 出す位置（論理ピクセルのスクリーン座標）。タブを窓の外へ落としたときだけ渡す。
+     * 出す位置（論理ピクセルのスクリーン座標）。タブを窓の外へドロップしたときだけ渡す。
      * 省略すると、元のウィンドウから少しずらした位置に出る。
      */
     position?: { x: number; y: number };
@@ -567,7 +563,7 @@ export interface Platform {
    */
   stashTransfer(payload: string): Promise<number>;
   /**
-   * 預けた本文を引き取る。**1 回しか取れない。**
+   * 預けた本文を引き取る。1 回しか取れない。
    *
    * 取れなかった場合（既に引き取り済み / ID の不一致）は `null` が返る。
    */
@@ -623,7 +619,7 @@ export interface Platform {
   ready(): Promise<void>;
   reportTrace(marks: TraceMark[]): Promise<void>;
   /**
-   * ウォーム起動の完了報告（S6）。argv 転送を受けてから本文が読める状態になるまでの経過ミリ秒を返す。
+   * ウォーム起動の完了報告。argv 転送を受けてから本文が読める状態になるまでの経過ミリ秒を返す。
    */
   warmDone(requestId: number, path: string, detail: string, kind?: WarmKind): Promise<number | null>;
   /**
@@ -652,7 +648,7 @@ export interface Platform {
    * トレイから復帰した瞬間を購読する（ADR-0007「計測項目」）。
    *
    * Warm Start とは別の経路である。
-   * Warm Start はウィンドウが可視のまま argv 転送を受けた場合の値（実測 20.0ms）で、こちらはサスペンドされた WebView が復帰して表示されるまでを測る。
+   * Warm Start はウィンドウが可視のまま argv 転送を受けた場合の値で、こちらはサスペンドされた WebView が復帰して表示されるまでを測る。
    * 同じ指標として比較すると判断を誤る。
    *
    * 受け取ったら次の rAF で `warmDone(id, ..., 'tray-resume')` を呼ぶ。

@@ -23,14 +23,14 @@ pub enum ViewMode {
 }
 
 /// 解析済みの起動引数。
-/// 不正な引数でも解析は失敗させず、`unknown` に積んで通知バーで知らせる。
+/// 不正な引数でも解析は失敗させず、`unknown` に加えて通知バーで知らせる。
 #[derive(Debug, Clone, Default)]
 pub struct CliArgs {
     /// 絶対パスに解決済み。存在確認はまだ行っていない。
     pub paths: Vec<PathBuf>,
-    /// `-n` / `--new-window`。**独立したプロセスで開く**（F-OPEN-06）。
+    /// `-n` / `--new-window`。独立したプロセスで開く（F-OPEN-06）。
     ///
-    /// 既に所有者が居る場合、このプロセスは single-instance プラグインを登録せず、argv も転送しない（`instance.rs`）。
+    /// 既に所有者がいる場合、このプロセスは single-instance プラグインを登録せず、argv も転送しない（`instance.rs`）。
     /// 同じプロセスの中に窓を増やすのはサテライト（`crate::open_satellite`）であり、こちらとは別の経路である。
     pub new_window: bool,
     pub mode: Option<ViewMode>,
@@ -41,13 +41,13 @@ pub struct CliArgs {
     /// `--bench-input <OUT>`。入力レスポンスを計測し、JSON を書き出して終了する。
     ///
     /// 計測専用（`scripts/bench-input.mjs` 用）。
-    /// M2 の完了条件「キー入力 → 反映が p95 で 16ms 以内」と [OQ-15](../../docs/07.open-questions/oq-15-markdown-worker.md) の判定は、どちらもこの経路でしか測定できない。
+    /// 入力レスポンス（05.performance-budget/04-targets.md §3）はこの経路でしか測定できない。
     pub bench_input: Option<PathBuf>,
-    /// `--gc-probe`。WebView2 に `--js-flags=--expose-gc` を渡す（OQ-18）。
+    /// `--gc-probe`。WebView2 に `--js-flags=--expose-gc` を渡す。
     ///
-    /// 計測専用。
-    /// メモリが解放されない原因が到達可能な参照によるものか、Blink / V8 が未回収なだけかを切り分けるために必要である。
-    /// これが無いと DevTools から `gc()` を呼べず、候補 1 を検証できない。
+    /// 計測専用（05.performance-budget/05-operations.md §3）。
+    /// 閉じた文書のメモリが、到達可能な参照によって残っているのか、GC が未実行なだけなのかを切り分けるために使う。
+    /// これが無いと DevTools から `gc()` を呼べない。
     pub gc_probe: bool,
     pub show_help: bool,
     pub show_version: bool,
@@ -72,7 +72,7 @@ OPTIONS:
     -V, --version              バージョンを表示する
 
 MEASUREMENT OPTIONS (計測用。開発ビルドでのみ意味を持つ):
-        --gc-probe                              DevTools から gc() を呼べるようにする (OQ-18)
+        --gc-probe                              DevTools から gc() を呼べるようにする
         --bench-input <OUT>                     入力レスポンスを計測し JSON を OUT へ書き出して終了する
 ";
 
@@ -144,7 +144,7 @@ pub fn parse(argv: &[String], cwd: &Path) -> CliArgs {
                     args.bench_input = Some(resolve(cwd, &v));
                 }
             }
-            // WebView2 / Tauri 自身が受け取るフラグは黙って無視する
+            // WebView2 / Tauri 自身が受け取るフラグは通知せずに無視する
             other if other.starts_with("--webview") || other.starts_with("--wv2") => {}
             other if other.starts_with('-') && other.len() > 1 => {
                 args.unknown.push(other.to_string());
@@ -194,8 +194,7 @@ mod tests {
         parse(&v, &cwd())
     }
 
-    /// OQ-18 の切り分け用。**既定では渡らない**ことが要件の半分なので、
-    /// 付けたときだけ true になることを固定する。
+    /// メモリ計測用。既定では渡らないことが要件の半分なので、付けたときだけ true になることを固定する。
     #[test]
     fn the_gc_probe_is_opt_in() {
         assert!(!args(&["a.md"]).gc_probe, "既定では expose-gc を渡さない");
@@ -253,7 +252,7 @@ mod tests {
     }
 
     /// `--trace-startup` と同じく、出力先は cwd 基準で解決する。
-    /// **既定では立たない**ことが要件の半分（計測経路が普段の起動に混ざらない）。
+    /// 既定では有効にならないことが要件の半分（計測経路が普段の起動に混ざらない）。
     #[test]
     fn the_input_bench_is_opt_in_and_resolves_its_output() {
         assert!(args(&["a.md"]).bench_input.is_none());
@@ -264,8 +263,8 @@ mod tests {
         assert!(a.unknown.is_empty());
     }
 
-    /// 過去に存在し、結論が出たので撤去したフラグ。
-    /// 消したことを**テストで固定する**。うっかり復活させると落ちる。
+    /// 実装の比較にだけ使うフラグ（`--spike-*`）は受け付けない。
+    /// 比較のためだけの経路を製品に残さない（05.performance-budget/05-operations.md §1）。
     #[test]
     fn retired_spike_flags_are_no_longer_recognized() {
         let a = args(&[

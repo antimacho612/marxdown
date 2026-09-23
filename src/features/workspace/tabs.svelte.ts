@@ -1,19 +1,18 @@
 /**
  * タブ（F-NAV-01, 02 / 02.architecture/08-state-management.md §1）。
  *
- * UI はまだ無い（[06.roadmap > m3 §1.1](../../../docs/06.roadmap/m3-workspace.md) の Phase 2）。
- * ここにあるのはモデルと、開く・切り替える・閉じるの操作だけである。
+ * ここにあるのはモデルと、開く・切り替える・閉じるの操作である。
+ * 表示は `TabStrip.svelte` が担当する。
  *
  * アクティブなタブは本文を持たない。
  * 本文の真実はエディターがマウントされていれば Monaco の `ITextModel`、そうでなければ `document/text.ts` であり、ここに複製すると 1 打鍵ごとに巨大な文字列がリアクティビティを通過する（ADR-0005）。
- * 抱えるのは非アクティブのタブだけで、切り替えのときに退避する。
- * この不変条件は `tabs.test.ts` が機械的に見張る。
+ * 保持するのは非アクティブのタブだけで、切り替えのときに退避する。
+ * この不変条件は `tabs.dom.test.ts` が機械的に検証する。
  *
- * Preview の DOM は保持しない（M3 §1.1 の決定）。切り替えのたびに捨てて描き直す。
- * `readme.md` のパースは 0.32ms であり、枚数ぶんの積算が構造的に起きない形を先に選んでいる。
+ * Preview の DOM は保持しない。切り替えのたびに破棄して再描画する。
+ * パースは十分に速く（measurements/04-markdown-pipeline.md）、タブの枚数に比例してメモリが増えない形を優先している。
  *
- * Undo 履歴はまだ引き継がない。
- * タブごとの `ITextModel` を持つには破棄の設計（N-PERF-06 / Phase 3）と一体で決める必要があり、Phase 2 で入れる。
+ * Undo 履歴はタブごとの `ITextModel` が持つ（`features/editor/lazy/editor.ts`）。
  */
 import {
   closeDocument,
@@ -44,11 +43,11 @@ export interface Tab {
   readonly id: number;
   meta: StoredMeta;
   /**
-   * 退避してある本文。**アクティブなタブでは常に `null`。**
+   * 退避してある本文。アクティブなタブでは常に `null`。
    *
    * 非アクティブのタブでも、ディスクと一致していて読み直せるものは持たない。
-   * 枚数ぶんの本文を抱えると、開いたファイルの合計サイズがそのままメモリに積み上がる（N-PERF-06）。
-   * 抱えるのは失うと戻せないもの、すなわち未保存の変更と無題の文書だけである。
+   * 枚数ぶんの本文を保持すると、開いたファイルの合計サイズがそのままメモリに加算される（N-PERF-06）。
+   * 保持するのは失うと戻せないもの、すなわち未保存の変更と無題の文書だけである。
    */
   text: string | null;
   /** Preview のスクロール位置。切り替えて戻ったときに同じ位置から読み始められるようにする。 */
@@ -66,8 +65,7 @@ class TabsStore {
   /**
    * `documentStore.meta` が実際にどのタブの内容と同期しているか。
    *
-   * `activateTab` はディスクから読み直す間も先に `activeId` を新しいタブへ移すため（`activateTab` 内のコメント参照）、
-   * 読み込みが終わるまで `documentStore.meta` は前のタブの値のままになる。
+   * `activateTab` はディスクから読み直す間も先に `activeId` を新しいタブへ移すため（`activateTab` 内のコメント参照）、読み込みが終わるまで `documentStore.meta` は前のタブの値のままになる。
    * これが `activeId` と食い違っている間は `documentStore.meta` を信用しない（`tabMeta`）。
    */
   loadedId = $state<number | null>(null);
@@ -90,8 +88,8 @@ let nextId = 1;
  * `Save As`（`document/save.ts`）は保存先とサイズをストアへ直接書き戻すため、タブ側の値は古くなる。
  * 本文・ダーティと同じく、いま表示しているものの真実はタブの外にある（ADR-0005）。
  *
- * 古いまま使うと、切り替えて戻ったときに**保存前のファイルを開き直す**ことになる。
- * `loadedId` が無いと、切り替え直後の読み込み中に前のタブのメタ情報が新しいタブのものとして一瞬出る（#107）。
+ * 古いまま使うと、切り替えて戻ったときに保存前のファイルを開き直すことになる。
+ * `loadedId` が無いと、切り替え直後の読み込み中に前のタブのメタ情報が新しいタブのものとして一瞬表示される。
  */
 export function tabMeta(tab: Tab): StoredMeta {
   if (tab.id !== tabsStore.activeId || tab.id !== tabsStore.loadedId) return tab.meta;
@@ -111,7 +109,7 @@ export function isTabDirty(tab: Tab): boolean {
 }
 
 /**
- * 開く先のタブ。**無ければここで作る**（`OpenerConfig.targetKey`）。
+ * 開く先のタブ。無ければここで作る（`OpenerConfig.targetKey`）。
  *
  * 作る場面は起動直後の 1 枚目だけである。
  * 2 枚目以降はタブ側が先にアクティブを移してから開く（`activateTab` / `openPathInNewTab`）。
@@ -140,7 +138,7 @@ export function targetTabKey(): number {
  * 1 枚も無ければここで作る。
  * 起動経路（`app/bootstrap.ts`）に「最初のタブを作る」処理を置かずに済むようにしてあり、開いた結果が必ず 1 枚のタブとして現れる。
  *
- * 開いた直後はディスクと一致しているため、ダーティの源も退避してある本文も落とす。
+ * 開いた直後はディスクと一致しているため、ダーティの状態も退避してある本文も破棄する。
  * 切り替えによる再表示でもここを通るが、その場合は直後に `activateTab` が退避した値を戻す。
  */
 export function adoptOpened(meta: StoredMeta): void {
@@ -161,10 +159,10 @@ export function adoptOpened(meta: StoredMeta): void {
 }
 
 /**
- * 新しいタブとして開く（Phase 2 の argv 転送・D&D・複数選択が使う）。
+ * 新しいタブとして開く（argv 転送・D&D・複数選択が使う）。
  *
  * 現在のタブは退避してから残す。
- * 未保存の確認（`confirmDiscard`）は通さない。捨てるものが無く、いまの内容はタブとして残るためである。
+ * 未保存の確認（`confirmDiscard`）は通さない。破棄するものが無く、いまの内容はタブとして残るためである。
  */
 export async function openInNewTab(payload: StoredPayload): Promise<boolean> {
   stashActive();
@@ -197,8 +195,8 @@ export async function openUntitledTab(): Promise<boolean> {
  * タブを切り替える。既にアクティブなら何もしない。
  *
  * 本文は、退避してあればそれを、無ければディスクから読み直す。
- * 読み直す側が既定なのは、クリーンなタブが本文を抱えないためである（`Tab.text`）。
- * 読み直しは外部変更を拾い直すことにもなる。監視は開いているファイルにしか掛かっていないため（N-PERF-05）、背後のタブは古くなりうる。
+ * 読み直す側が既定なのは、クリーンなタブが本文を保持しないためである（`Tab.text`）。
+ * 読み直しは外部変更を反映することにもなる。監視は表示中の文書にしか登録されていないため（N-PERF-05）、背後のタブは古くなりうる。
  *
  * 読み直せなかったタブ（外部で削除・リネームされたファイル）は取り除く（`dropUnopenable`）。
  */
@@ -216,7 +214,7 @@ export async function activateTab(id: number): Promise<boolean> {
   tabsStore.activeId = id;
 
   // 退避してあった値は開く前に読む。
-  // 開く途中で `adoptOpened` がこのタブを「開いた直後の状態」に落とすため、後から読むと消えている。
+  // 開く途中で `adoptOpened` がこのタブを「開いた直後の状態」に戻すため、後から読むと消えている。
   const { text: held, textDirty, eolOverride, scrollTop } = target;
 
   // 開く前の表示。開けなかったときに、表示が切り替わったかどうかを見分けるために持つ。
@@ -228,7 +226,7 @@ export async function activateTab(id: number): Promise<boolean> {
           resetScroll: false,
           restoreScroll: scrollTop,
           remember: false,
-          // 捨てるものは無い。切り替え元はタブとして残る（`OpenOptions.confirm`）。
+          // 破棄するものは無い。切り替え元はタブとして残る（`OpenOptions.confirm`）。
           confirm: false,
         })
       : await openDocument(
@@ -237,14 +235,14 @@ export async function activateTab(id: number): Promise<boolean> {
         );
 
   if (opened === null) {
-    // 表示が切り替わっていれば、失敗したのは描画であり文書は載っている。タブはそのままにする。
+    // 表示が切り替わっていれば、失敗したのは描画であり文書は読み込まれている。タブはそのままにする。
     if (documentStore.meta !== shown) return false;
     await dropUnopenable(id, previousId);
     return false;
   }
 
   // `openDocument` はディスクと一致した状態から始める（`markClean`）ので、ダーティは開いた後に戻す。
-  // EOL の希望を先に戻すのは、`setDirty` が合成後の値を出し直すためである。順序が逆だと、本文だけがダーティなタブとして 1 度描かれる。
+  // EOL の希望を先に戻すのは、`setDirty` が合成後の値を出し直すためである。順序が逆だと、本文だけがダーティなタブとして 1 度描画される。
   documentStore.eolOverride = eolOverride;
   setDirty(textDirty);
   target.textDirty = textDirty;
@@ -255,15 +253,14 @@ export async function activateTab(id: number): Promise<boolean> {
 /** `closeTab` の振る舞いの差を表す。 */
 export interface CloseTabOptions {
   /**
-   * 未保存の変更を捨ててよいか尋ねるか。既定 true（F-EDIT-03）。
+   * 未保存の変更を破棄してよいか尋ねるか。既定 true（F-EDIT-03）。
    *
-   * false にするのは、**捨てるものが無い**ことが呼び出し側で分かっている場合だけである
-   * （`OpenOptions.confirm` と同じ判断）。
+   * false にするのは、破棄するものが無いことが呼び出し側で分かっている場合だけである（`OpenOptions.confirm` と同じ判断）。
    * サテライトへ本文ごと移す経路がこれにあたる。移した先に同じ内容が開いているため、ここで尋ねると同じものを 2 回確認することになる。
    */
   confirm?: boolean;
   /**
-   * 閉じたタブを「開き直せる」一覧に積むか。既定 true（`Ctrl+Shift+T`）。
+   * 閉じたタブを「開き直せる」一覧に加えるか。既定 true（`Ctrl+Shift+T`）。
    *
    * false にするのは、そのタブが消えたのではなく移動した場合である。
    * 別のウィンドウで開いているものを「閉じたタブ」として復活させると、同じファイルが 2 か所で開く。
@@ -274,7 +271,7 @@ export interface CloseTabOptions {
 /**
  * タブを閉じる（F-NAV-02 / `Ctrl+W`）。
  *
- * 未保存の変更があるタブは、**先にそのタブを表示してから**尋ねる。
+ * 未保存の変更があるタブは、先にそのタブを表示してから尋ねる。
  * 何を失うのかが見えない状態で「破棄しますか」と聞かれても答えられない。
  *
  * 最後の 1 枚を閉じると 0 枚になり、Welcome 画面へ戻る（`closeDocument`）。
@@ -294,9 +291,9 @@ export async function closeTab(id: number, options: CloseTabOptions = {}): Promi
   if (options.remember !== false) rememberClosed(target, index);
   tabsStore.tabs = tabsStore.tabs.filter((tab) => tab.id !== id);
 
-  // そのタブのために抱えているものを捨てる（N-PERF-06）。
+  // そのタブのために保持しているものを解放する（N-PERF-06）。
   // エディターのモデル（Undo 履歴を含む）と、戻る / 進むの履歴が対象である。
-  // 閉じたタブのぶんが残ると、常駐しているあいだ枚数分だけ積算する。
+  // 閉じたタブの分が残ると、常駐しているあいだ閉じた枚数に比例して増え続ける。
   disposeDocumentText(id);
   dropHistory(id);
 
@@ -324,7 +321,7 @@ export async function closeTab(id: number, options: CloseTabOptions = {}): Promi
  * 直前に閉じたタブを開き直す（`Ctrl+Shift+T`）。
  *
  * 覚えているのはパスとスクロール位置だけである。
- * 未保存の内容は閉じるときに確認したうえで捨てているため、復元すると「捨てたはずのものが戻る」ことになる。
+ * 未保存の内容は閉じるときに確認したうえで破棄しているため、復元すると「破棄したはずのものが戻る」ことになる。
  */
 export async function reopenClosedTab(): Promise<boolean> {
   const entry = closed.pop();
@@ -340,9 +337,8 @@ export async function reopenClosedTab(): Promise<boolean> {
  * 同じファイルが 2 枚並ぶと、片方で編集して片方を保存したときにどちらが正しいのか決められなくなる。
  *
  * 先にタブの枠を作ってから開く。
- * 読み込みの失敗・通知・履歴からの除去は `openPath` に集約されているため（`document/open.ts`）、
- * ここで先に読んで枠を作る形にすると、その経路を迂回することになる。
- * 開けなかった場合は枠を捨てて元のタブへ戻す。
+ * 読み込みの失敗・通知・履歴からの除去は `openPath` に集約されているため（`document/open.ts`）、ここで先に読んで枠を作る形にすると、その経路を迂回することになる。
+ * 開けなかった場合は枠を破棄して元のタブへ戻す。
  */
 export async function openPathInNewTab(
   path: string,
@@ -367,26 +363,26 @@ export async function openPathInNewTab(
   tabsStore.activeId = tab.id;
 
   const opened = await openPath(path, {
-    // 捨てるものは無い。いまの文書はタブとして残る。
+    // 破棄するものは無い。いまの文書はタブとして残る。
     confirm: false,
     resetScroll: scrollTop === 0,
     ...(scrollTop > 0 && { restoreScroll: scrollTop }),
-    // 復元では最近開いたファイルを積み直さない（M3 Phase 7）。
+    // 復元では最近開いたファイルに記録し直さない。
     // 起動しただけで一覧が前回のタブで埋まると、「最後に開いた順」の意味が失われる。
     ...(options.remember === false && { remember: false }),
   });
   if (opened !== null) return true;
 
-  // 開けなかった。表示は変わっていない（`openPath` は読み込みに失敗した時点で戻る）ので、枠を捨てて元へ戻す。
+  // 開けなかった。表示は変わっていない（`openPath` は読み込みに失敗した時点で戻る）ので、枠を破棄して元へ戻す。
   tabsStore.tabs = tabsStore.tabs.filter((entry) => entry.id !== tab.id);
   restoreActive(previousId);
   return false;
 }
 
 /**
- * 落とされた / 転送されたファイルを順に開く（F-OPEN-08 / ADR-0004）。
+ * ドロップされた / 転送されたファイルを順に開く（F-OPEN-08 / ADR-0004）。
  *
- * 直列に開く。並行にすると、どのタブがアクティブなのかを開く処理どうしが取り合う。
+ * 直列に開く。並行にすると、どのタブをアクティブにするかが開く処理どうしで競合する。
  * 最後に開けたものが表示された状態になる。
  */
 export async function openPathsInTabs(paths: string[]): Promise<boolean> {
@@ -401,9 +397,8 @@ export async function openPathsInTabs(paths: string[]): Promise<boolean> {
 /**
  * タブを並べ替える（F-NAV-02）。`toIndex` は移動後の位置（0 始まり）。
  *
- * 端は丸める。掴んだまま行き過ぎたときに、並びが飛ぶより端で止まるほうが扱いやすい。
- * 動かなかったときは `false` を返す。ドラッグ中は 1 ピクセルごとに呼ばれるため、
- * 呼び出し側が「変わったか」を判断せずに済むようにしてある。
+ * 端は丸める。ドラッグで行き過ぎたときに、並びが大きく変わるより端で止まるほうが扱いやすい。
+ * 動かなかったときは `false` を返す。ドラッグ中は 1 ピクセルごとに呼ばれるため、呼び出し側が「変わったか」を判断せずに済むようにしてある。
  */
 export function moveTab(id: number, toIndex: number): boolean {
   const from = tabsStore.tabs.findIndex((tab) => tab.id === id);
@@ -433,8 +428,7 @@ export async function cycleTab(delta: 1 | -1): Promise<boolean> {
 /**
  * n 番目のタブ（`Ctrl+1`〜`Ctrl+9`）。`index` は 1 始まり。
  *
- * 9 番目より後ろには行けない。VS Code の `Ctrl+9`（最後のタブ）とは違うが、
- * 03.ux-spec/04-keybindings.md §3 が「n 番目のタブ」と定めている。
+ * 9 番目より後ろには行けない。VS Code の `Ctrl+9`（最後のタブ）とは違うが、03.ux-spec/04-keybindings.md §3 が「n 番目のタブ」と定めている。
  */
 export async function selectTabAt(index: number): Promise<boolean> {
   const target = tabsStore.tabs[index - 1];
@@ -451,10 +445,10 @@ export function resetTabs(): void {
 }
 
 /**
- * 開けなかったタブを取り除き、表示と一致した状態へ戻す（#106）。
+ * 開けなかったタブを取り除き、表示と一致した状態へ戻す。
  *
  * 外部で削除・リネームされたファイルのタブがこれにあたる。
- * クリーンなタブは本文を抱えないため（`Tab.text`）、読み直せないタブに表示できる中身はどこにも無い。
+ * クリーンなタブは本文を保持しないため（`Tab.text`）、読み直せないタブに表示できる中身はどこにも無い。
  * 残したままアクティブにすると、表示は切り替え元のまま、タブの見出し・エディター・保存先だけが移った状態になる。
  *
  * `previousId` は切り替え元のタブ。閉じた直後の隣を開こうとした場合だけ `null` になり、そのときは戻る先が無い。
@@ -488,7 +482,7 @@ async function dropUnopenable(id: number, previousId: number | null): Promise<vo
 /**
  * 表示中の文書のタブをアクティブに戻す。開く操作が表示を変えずに失敗したときに使う。
  *
- * 退避してあった本文は落とす。アクティブなタブは本文を持たない（`Tab.text`）。
+ * 退避してあった本文は破棄する。アクティブなタブは本文を持たない（`Tab.text`）。
  */
 function restoreActive(id: number | null): void {
   tabsStore.activeId = id;
@@ -533,8 +527,8 @@ function placeholder(path: string): StoredMeta {
 /**
  * 表示中の状態をアクティブなタブへ退避する。
  *
- * 本文を抱えるのは、失うと戻せないものだけである（`Tab.text`）。
- * ディスクと一致していて読み直せるものは捨てる。
+ * 本文を保持するのは、失うと戻せないものだけである（`Tab.text`）。
+ * ディスクと一致していて読み直せるものは破棄する。
  */
 function stashActive(): void {
   const active = tabsStore.active;

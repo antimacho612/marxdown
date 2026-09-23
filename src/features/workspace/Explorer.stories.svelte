@@ -1,8 +1,7 @@
 <!--
-  Explorer の空状態と、見出し行からツリーまでの積み方（F-NAV-03 / #103）。
+  Explorer の空状態と、見出し行からツリーまでの配置（F-NAV-03）。
 
-  基点が決まるのは `marxdown <dir>` か「フォルダを開く」を通ったときだけなので、
-  実アプリでこの状態を出すには起動し直すしかない。ここでは `loaders` でストアに直接入れる。
+  基点が決まるのは `marxdown <dir>` か「フォルダを開く」を通ったときだけなので、実アプリでこの状態を出すには起動し直すしかない。ここでは `loaders` でストアに直接入れる。
   ツリーそのものの見た目は `lazy/FileTree.stories.svelte`、絞り込みは `lazy/ExplorerBody.stories.svelte` にある。
 -->
 <script module lang="ts">
@@ -66,8 +65,8 @@
 <Story name="フォルダも文書も無い" loaders={[withoutRoot(null)]} />
 
 <!--
-  ファイル指定で起動した直後（#103）。
-  親ディレクトリは分かっているので、ダイアログを開かずに基点にできる導線を足す（VS Code には無い）。
+  ファイル指定で起動した直後。
+  親ディレクトリは分かっているので、ダイアログを開かずに基点にできる導線を置く（VS Code には無い）。
 -->
 <Story name="文書だけ開いている" loaders={[withoutRoot(META)]} />
 

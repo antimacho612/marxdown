@@ -1,21 +1,21 @@
 <!--
   ファイルツリー（F-NAV-03 / 03.ux-spec/06-panes.md §1）。レフトペインの中身。
 
-  **遅延チャンク側にある。** ペインを開くまで読み込まない（クリティカルパスの外 / 05.performance-budget）。
+  遅延チャンク側にある。
+  ペインを開くまで読み込まない（クリティカルパスの外 / 05.performance-budget）。
   入口は `Explorer.svelte` の動的 import で、`main` に残るのはその 1 行だけである。
 
   Markdown を通常の色で、それ以外を淡く表示する（Markdown First）。
-  隠しファイルと `node_modules` は Rust 側で落ちてくるので、ここには来ない。
+  隠しファイルと `node_modules` は Rust 側で除外されるため、ここには来ない。
 
-  ツールバーの絞り込み（`filter.svelte.ts`）はここで当てる。
+  ツールバーの絞り込み（`filter.svelte.ts`）はここで適用する。
   ディレクトリは対象外なので、絞り込んでいても枝を辿れる。
 
-  **単一クリックで開く。** VS Code の「プレビュー的に開く（イタリックのタブ）」は採らない。
-  タブの状態が 2 種類に増え、タブのモデル（M3 Phase 1）に例外を作ることになる割に、
-  得られるのは「開きすぎたタブが自動で置き換わる」ことだけである。
+  単一クリックで開く。
+  VS Code の「プレビュー的に開く（イタリックのタブ）」は採らない。
+  タブの状態が 2 種類に増え、タブのモデルに例外を作ることになる割に、得られるのは「開きすぎたタブが自動で置き換わる」ことだけである。
 
-  キーボード操作と `role` の配り方は `features/outline/Outline.svelte` と揃えてある。
-  以前はロールだけを宣言して矢印キーを持たず、`aria-expanded` も押せない `<li>` の側に付いていた。
+  キーボード操作と `role` の割り当て方は `features/outline/Outline.svelte` と揃えてある。
 -->
 <script lang="ts">
   import { documentStore } from '@/features/document';
@@ -50,13 +50,13 @@
   /** 表示中のファイル。エクスプローラーを開いていても、どれを見ているのか分からない状態にしない。 */
   const current = $derived(documentStore.meta?.path ?? null);
 
-  /** 木の根だけが持つ要素。フォーカスの受け口とキーボード操作の窓口になる（`Ctrl+Shift+E`）。 */
+  /** 木の根だけが持つ要素。フォーカスの受け取り先とキーボード操作の処理先になる（`Ctrl+Shift+E`）。 */
   let list: HTMLElement | null = $state(null);
 
   /**
    * 根の 1 件目へフォーカスする手段を登録する（`show-explorer.ts`）。
    *
-   * 入れ子の `FileTree` は登録しない。登録すると、枝を開くたびに受け口が入れ替わる。
+   * 入れ子の `FileTree` は登録しない。登録すると、枝を開くたびに受け取り先が入れ替わる。
    */
   $effect(() => {
     if (depth !== 0) return;
@@ -64,7 +64,7 @@
     return () => registerExplorerFocus(null);
   });
 
-  /** 順路に載っている項目の候補。開いている枝もすべて含む（DOM 順＝見えている順）。 */
+  /** 順路に置ける項目の候補。開いている枝もすべて含む（DOM 順＝見えている順）。 */
   function stops(): HTMLElement[] {
     return [...(list?.querySelectorAll<HTMLElement>('.mx-tree__item') ?? [])];
   }
@@ -72,7 +72,7 @@
   /**
    * その項目へフォーカスを移し、Tab の順路も一緒に動かす。
    *
-   * `focusin` を拾う形にはしない。
+   * `focusin` で処理する形にはしない。
    * 木は再帰コンポーネントで、順路の持ち主（`treeStore.focusPath`）は根の外にある。
    * 焦点の移動と順路の更新を 1 か所で行うほうが、どの経路から来ても同じ結果になる。
    */
@@ -126,9 +126,9 @@
   }
 
   /**
-   * その項目を Tab の順路に載せるか。
+   * その項目を Tab の順路に置くか。
    *
-   * 載せるのは木全体で 1 つだけ。まだ触っていなければ、根の 1 件目に置く。
+   * 置くのは木全体で 1 つだけである。まだ操作していなければ、根の 1 件目に置く。
    */
   function isStop(entry: DirEntry, index: number): boolean {
     if (treeStore.focusPath === null) return depth === 0 && index === 0;
@@ -145,7 +145,7 @@
    * ディレクトリには効果がない。ファイルツリーの基点はウィンドウごとに 1 つであり、枝の開閉は別ウィンドウと関係がない。
    */
   function open(entry: DirEntry, event: MouseEvent): void {
-    // 押した項目を順路に載せる。次に Tab で戻ったとき、離れた場所に着地しない。
+    // 押した項目を順路に置く。次に Tab で戻ったとき、離れた場所へ移動しない。
     treeStore.focusPath = entry.path;
     if (entry.dir) {
       void toggleDir(entry.path);
@@ -212,7 +212,7 @@
         </button>
 
         {#if entry.dir && expanded}
-          <!-- 開いた枝だけを描く。閉じれば中身ごと消える（`tree.svelte.ts` が捨てる）。 -->
+          <!-- 開いた枝だけを描く。閉じれば中身ごと消える（`tree.svelte.ts` が破棄する）。 -->
           <FileTree dir={entry.path} depth={depth + 1} />
         {/if}
       </li>

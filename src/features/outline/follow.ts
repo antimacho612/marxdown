@@ -1,13 +1,12 @@
 /**
- * 本文のスクロールに追従して「いまどの見出しの中にいるか」を決める
- * （F-VIEW-02 / 03.ux-spec/06-panes.md §2）。
+ * 本文のスクロールに追従して「いまどの見出しの中にいるか」を決める（F-VIEW-02 / 03.ux-spec/06-panes.md §2）。
  *
  * `IntersectionObserver` を使う（N-PERF-05）。
  * `setInterval` はアイドル時も CPU を使い続け、`scroll` イベントはスクロール中しか発火せず全見出しの位置測り直しでレイアウトを強制する。
- * 本文の上端から 15% の帯を検出線とし、見出しの上端が越えたかを覚えて「越えているものの最後」を現在位置とする。
- * 座標は交差時にブラウザが渡すので測りに行かない（レイアウト強制なし）。
+ * 本文の上端から 15% の帯を検出線とし、見出しの上端が越えたかを記録して「越えているものの最後」を現在位置とする。
+ * 座標は交差時にブラウザが渡すため測定しない（レイアウト強制なし）。
  *
- * Edit では本文が `display: none` で交差が起きないため、エディターのカーソル行から引く（`headingAtLine` / #59）。
+ * Edit では本文が `display: none` で交差が起きないため、エディターのカーソル行から求める（`headingAtLine`）。
  */
 import type { OutlineItem } from '@/markdown/plugins/line-map';
 
@@ -31,15 +30,14 @@ export interface OutlineFollower {
 /**
  * 追従を始める。返り値の `stop()` で必ず止めること。
  *
- * ペインを閉じている間はこの関数が呼ばれないため、観測は 1 つも動作しない
- * （アイドル時のコストが発生しない根拠）。
+ * ペインを閉じている間はこの関数が呼ばれないため、観測は 1 つも動作しない（アイドル時のコストが発生しない根拠）。
  *
  * @param container 本文のスクロールコンテナ（`#mx-preview`）
  * @param onActive 現在位置が変わったときに呼ばれる。見出しが 1 つも無ければ `-1`
  */
 export function followHeadings(container: HTMLElement, onActive: (index: number) => void): OutlineFollower {
   // WebView2 / WKWebView には必ずある（04.tech-stack/08-typescript.md）。
-  // 無いのはテスト環境（jsdom）だけなので、その場合は静かに何もしない。
+  // 無いのはテスト環境（jsdom）だけなので、その場合は何もしない。
   if (typeof IntersectionObserver === 'undefined') {
     return { refresh: () => {}, stop: () => {} };
   }
@@ -108,13 +106,12 @@ export function followHeadings(container: HTMLElement, onActive: (index: number)
 }
 
 /**
- * その行を含む見出しの添字（Edit の現在位置 / #59）。
+ * その行を含む見出しの添字（Edit の現在位置）。
  *
  * 指定した行番号より手前にある最後の見出しが該当する。
  * 最初の見出しより前（Front Matter や前書き）にある間は `-1` を返す。その範囲はどの見出しにも含まれない。
  *
- * カーソル行を使うのは、Edit で見えているのがエディターだからで、
- * VS Code のアウトラインが現在位置を示す基準と同じである。
+ * カーソル行を使うのは、Edit で見えているのがエディターだからで、VS Code のアウトラインが現在位置を示す基準と同じである。
  *
  * @param items アウトラインの項目。`line` は 0 始まり（`markdown/plugins/line-map.ts`）
  * @param line エディターのカーソル行。1 始まり

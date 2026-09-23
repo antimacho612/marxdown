@@ -2,24 +2,21 @@
 /**
  * アプリアイコンを 3 枚のマスター SVG から組み立てる。
  *
- * `tauri icon` は 1 枚のソースを縮小して全サイズを吐くので、
- * サイズごとにマスターを使い分けることが 1 コマンドではできない。
- * このスクリプトはマスターごとに走らせて、出力先ごとにどれを採るか振り分ける。
+ * `tauri icon` は 1 枚のソースを縮小して全サイズを出力するため、サイズごとにマスターを使い分けることが 1 コマンドではできない。
+ * このスクリプトはマスターごとに実行して、出力先ごとにどれを採るか振り分ける。
  *
  *   src-tauri/icons/source-plate.svg        円の台座つき（128px 以上）
- *   src-tauri/icons/source-plate-small.svg  円の台座つき（64px 以下）。余白を詰め、効果を落としてある
+ *   src-tauri/icons/source-plate-small.svg  円の台座つき（64px 以下）。余白を詰め、効果を省いてある
  *   src-tauri/icons/source.svg              台座なし（Linux の 32 / 64 png のみ）
  *
  * 台座版の境界を 64 / 128 の間に置いたのは ICO の標準サイズに合わせたため。
  *
- * Windows から見えるものは全部台座つきにしてある。実体は `icon.ico` と MSIX のタイル画像で、
- * タスクバー・エクスプローラ・Alt+Tab・トレイはすべて `icon.ico` を引く
- * （トレイは `default_window_icon()` を使い回し、Windows ではそれが .ico になる。
- * tauri-codegen が .ico を優先するため）。
+ * Windows から見えるものはすべて台座つきにしてある。
+ * 実体は `icon.ico` と MSIX のタイル画像で、タスクバー・エクスプローラ・Alt+Tab・トレイはすべて `icon.ico` を使う。
+ * トレイは `default_window_icon()` を使い回し、tauri-codegen が .ico を優先するため、Windows ではそれが .ico になる。
  * 透過のまま残すのは `32x32.png` / `64x64.png` の 2 枚だけで、これは Linux 側の作法。
  *
- * `icon.ico` は中に複数解像度を抱える。マスターを混在させるにはコンテナを自前で組む必要があるため、
- * ここで PNG を並べて書き出している（PNG 埋め込み ICO。Vista 以降が対応）。
+ * `icon.ico` は中に複数解像度を含む。マスターを混在させるにはコンテナを自前で組む必要があるため、ここで PNG を並べて書き出している（PNG 埋め込み ICO。Vista 以降が対応）。
  *
  * 使い方:
  *   pnpm icons
@@ -71,8 +68,7 @@ const PLATE_FILES = [
 const PLATE_SMALL_FILES = ['StoreLogo.png', 'Square30x30Logo.png', 'Square44x44Logo.png'];
 
 /**
- * 台座を敷かずに残すもの。Linux のパネル / ドックは透過アイコンが作法で、
- * `tauri.conf.json` の `icon` 配列経由で `default_window_icon()` に入るのもこちら。
+ * 台座を敷かずに残すもの。Linux のパネル / ドックは透過アイコンが作法で、`tauri.conf.json` の `icon` 配列経由で `default_window_icon()` に入るのもこちら。
  */
 const FLAT_FILES = ['32x32.png', '64x64.png'];
 
@@ -86,8 +82,7 @@ function run(source, out, sizes) {
  * PNG のバイト列を ICO コンテナに詰める。
  *
  * 各エントリのサイズは PNG の IHDR から読む。引数と食い違ったら止める。
- * ここが黙ってずれると、Windows が間違った解像度を選んで
- * エクスプローラだけぼやける、という追いにくい壊れ方をする。
+ * ここが気づかれずにずれると、Windows が間違った解像度を選んでエクスプローラだけぼやけるという、原因を追いにくい不具合になる。
  */
 function buildIco(entries) {
   const DIR = 6;

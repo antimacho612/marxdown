@@ -46,9 +46,6 @@ class ViewStore {
    *
    * 初期値は `panes.ts` が bootstrap から同期的に設定する。
    * 既定値のまま 1 フレーム描画されることはない（`zoom` と同じ理由 / 02.architecture/04-rust-responsibilities.md §5）。
-   *
-   * `left`（Explorer）は M3 で導入する。
-   * それまで書き換えられないが、構造を用意しておかないと、どちらの幅か判別できない値を先に永続化することになる。
    */
   panes = $state<Panes>({ left: { ...DEFAULT_PANES.left }, right: { ...DEFAULT_PANES.right } });
 

@@ -1,9 +1,9 @@
 //! タスクトレイ常駐（F-OS-08 / [ADR-0007]）。
 //!
-//! Cold Start の 84% は WebView2 の初期化であり、アプリ側では削減できない。
-//! 中心ユースケース（LLM が生成した Markdown を開いて読む）の反復を本気で速くする唯一の方法は、その初期化コストを 1 日 1 回だけに抑えることである（ADR-0004）。
-//! `✕` でプロセスが終わると、次に開くたびに 464.4ms のコストが再度発生する。
-//! トレイに残しておけば Warm Start（実測 20.0ms）で済む。
+//! Cold Start の大半は WebView2 の初期化であり、アプリ側では削減できない。
+//! 中心ユースケース（LLM が生成した Markdown を開いて読む）の反復を速くする唯一の方法は、その初期化コストを 1 日 1 回だけに抑えることである（ADR-0004）。
+//! `✕` でプロセスが終わると、次に開くたびに Cold Start のコストが再度発生する。
+//! トレイに残しておけば Warm Start で済む。
 //!
 //! 「閉じたのに終わっていない」ことで、ユーザーの理解が OS の慣習から外れる。
 //! ADR-0007 はこれを次の 3 つで補うと決めた。
@@ -14,7 +14,7 @@
 //! メニューは 03.ux-spec/07-status-and-notifications.md §4 が定める 3 項目だけに保ち、「設定」「新規ウィンドウ」は置かない。
 //! ウィンドウを開けば到達できるものをトレイに複製すると、複製したほうの内容だけが更新されず古くなる。
 //!
-//! [ADR-0007]: ../../docs.local/adr/0007-tray-residency.md
+//! [ADR-0007]: ../../docs/adr/0007-tray-residency.md
 
 use tauri::menu::{Menu, MenuEvent, MenuItem, PredefinedMenuItem, Submenu};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
@@ -39,7 +39,7 @@ const TRAY_RECENT_SHOWN: usize = 5;
 
 /// トレイアイコンを作る。
 ///
-/// `ready()` の後に呼ぶ（02.architecture/05-startup-sequence.md §1）。
+/// `ready()` の後に呼ぶ（02.architecture/05-startup-sequence.md §2）。
 /// OS 側の UI であり、本文表示には関与しない。
 /// ここでアイコンを構築するぶんだけ T3→T8 が伸びるが、それによる利点はない。
 pub fn install<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
@@ -52,8 +52,7 @@ pub fn install<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
         .tooltip("Marxdown")
         .menu(&build_menu(app)?)
         // 左クリックでウィンドウを復帰（ADR-0007 論点 6）。
-        // `show_menu_on_left_click(false)` にしないと、左クリックでもメニューが表示され、
-        // 「アイコンを押したら復帰する」という最も使用頻度の高い操作が実行できなくなる。
+        // `show_menu_on_left_click(false)` にしないと、左クリックでもメニューが表示され、「アイコンを押したら復帰する」という最も使用頻度の高い操作が実行できなくなる。
         .show_menu_on_left_click(false)
         .on_tray_icon_event(|tray, event| {
             let TrayIconEvent::Click {
@@ -132,7 +131,7 @@ fn on_menu_event<R: Runtime>(app: &AppHandle<R>, event: MenuEvent) {
         // ADR-0007 論点 3 の 3 経路のうちの 1 つで、論点 11 の保存もここを通る。
         //
         // この経路はフロントを通らない。
-        // 未保存の変更の確認を Rust 側に置いてあるのは、ここで取りこぼさないためである（F-EDIT-03 / `close.rs`）。
+        // 未保存の変更の確認を Rust 側に置いてあるのは、この経路でも確認を通すためである（F-EDIT-03 / `close.rs`）。
         crate::close::request_quit(app);
         return;
     }
@@ -151,8 +150,7 @@ fn on_menu_event<R: Runtime>(app: &AppHandle<R>, event: MenuEvent) {
 
     if let Some(path) = id.strip_prefix(PREFIX_RECENT) {
         // argv 転送と同じ経路に載せる。
-        // 「外から 1 枚開かせる」という意味が同じであり、別の入口を作ると片方だけ修正する漏れが発生する
-        // （`open.ts` が 5 つの入口を 1 か所に集めているのと同じ理由）。
+        // 「外から 1 枚開かせる」という意味が同じであり、別の入口を作ると片方だけ修正する漏れが発生する（`open.ts` が 5 つの入口を 1 か所に集めているのと同じ理由）。
         crate::close::restore(app);
         crate::forward_open(app, vec![path.to_string()]);
     }

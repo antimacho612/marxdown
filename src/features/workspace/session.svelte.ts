@@ -1,15 +1,14 @@
 /**
- * 前回のタブの記録と復元（OQ-04 / F-NAV-01 / M3 Phase 7）。
+ * 前回のタブの記録と復元（F-NAV-01 / 02.architecture/04-rust-responsibilities.md §5）。
  *
- * **引数なしで起動したときだけ復元する。** `marxdown foo.md` には「foo.md を見たい」という
- * 意図があり、そこへ前回の 8 枚を混ぜない。判断は Rust 側にあり（`src-tauri/src/bootstrap.rs`）、
- * ここに届く `session` は復元してよいものだけである。
+ * 引数なしで起動したときだけ復元する。
+ * `marxdown foo.md` には「foo.md を見たい」という意図があり、そこへ前回の 8 枚を混ぜない。
+ * 判断は Rust 側にあり（`src-tauri/src/bootstrap.rs`）、ここに届く `session` は復元してよいものだけである。
  *
- * 覚えるのはパスと並び順だけである。
- * 未保存の本文は持たない。`state.json` がドキュメントの複製を抱えることになり、
- * 触っていないバイト列を保持しないという方針（N-CMP-03）とも噛み合わない。
+ * 記録するのはパスと並び順だけである。
+ * 未保存の本文は持たない。`state.json` がドキュメントの複製を保持することになり、触っていないバイト列を保持しないという方針（N-CMP-03）とも整合しない。
  *
- * **覚えるのは主ウィンドウのタブだけである**（F-OPEN-06 / `Bootstrap.role`）。
+ * 記録するのは主ウィンドウのタブだけである（F-OPEN-06 / `Bootstrap.role`）。
  * `state.json` はセッションを 1 組しか持たない。
  * 別ウィンドウでも書くと、最後に操作したウィンドウの内容で上書きされ、次の起動で復元されるものが操作の順序で決まってしまう。
  */
@@ -24,10 +23,10 @@ let written = '';
 /**
  * 表示していた 1 枚以外を、元の位置へ開き直す。
  *
- * 表示していた 1 枚は bootstrap に載って既に開かれている（`document`）。
+ * 表示していた 1 枚は bootstrap に含まれて既に開かれている（`document`）。
  * 添字の順に挿入するので、最後には元の並びに戻る。
  *
- * 最近開いたファイルには積み直さない。
+ * 最近開いたファイルには記録し直さない。
  * 起動しただけで一覧が前回のタブで埋まると、「最後に開いた順」の意味が失われる。
  */
 export async function restoreSession(paths: readonly string[], active: number): Promise<void> {
@@ -43,26 +42,25 @@ export async function restoreSession(paths: readonly string[], active: number): 
 /**
  * タブの変化を `state.json` へ書き続ける。解除する関数を返す。
  *
- * コンポーネントではないので `$effect.root` で効果を張る器を自作する
- * （`features/editor/lazy/watch-settings.svelte.ts` と同じ形）。
+ * コンポーネントではないため `$effect.root` で effect のスコープを作る（`features/editor/lazy/watch-settings.svelte.ts` と同じ形）。
  *
  * デバウンスしない。ペインの幅と違い、ドラッグ中に毎フレーム変わる値ではない。
- * 並べ替えも掴んでいる間ではなく、離した時点で 1 回だけ動く（`moveTab`）。
+ * 並べ替えもドラッグ中に位置が入れ替わったときだけ変化する（`moveTab`）。
  */
 export function watchSession(): () => void {
   // サテライトでは何も書かない。解除の形だけ揃えて返す。
-  // 独立プロセスからの書き込みは Rust 側でも弾いているが（`store_set_session`）、無駄な IPC を出さないためにここでも見る。
+  // 独立プロセスからの書き込みは Rust 側でも拒否しているが（`store_set_session`）、無駄な IPC を出さないためにここでも見る。
   if (isSatellite()) return noop;
 
   return $effect.root(() => {
     $effect(() => {
       const kept = tabsStore.tabs
         .map((tab) => ({ id: tab.id, path: tabMeta(tab).path }))
-        // パスを持たないタブ（`Ctrl+N`）は覚えない。開き直せないものを載せても意味がない。
+        // パスを持たないタブ（`Ctrl+N`）は記録しない。開き直せないものを記録しても意味がない。
         .filter((entry): entry is { id: number; path: string } => entry.path !== null);
 
       const paths = kept.map((entry) => entry.path);
-      // 表示中のタブがパスを持たない場合は先頭に落とす。
+      // 表示中のタブがパスを持たない場合は先頭にする。
       const active = Math.max(
         0,
         kept.findIndex((entry) => entry.id === tabsStore.activeId),

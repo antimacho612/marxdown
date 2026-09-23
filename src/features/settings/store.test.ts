@@ -8,10 +8,10 @@ import { DEFAULT_PANES, DEFAULT_SETTINGS, getPlatform, setPlatform, type Bootstr
 import { initSettings, refreshSettings, reportSettingsProblem, settingsStore } from './store.svelte';
 
 /**
- * `src/features/document/store.test.ts` と同じ見張り。
+ * `src/features/document/store.test.ts` と同じ検査。
  *
- * ルーンで宣言したフィールドはインスタンスの own プロパティに、手書きのアクセサは
- * プロトタイプに乗る。**置き場所が 2 つに分かれる**ので両方を見る必要がある。
+ * ルーンで宣言したフィールドはインスタンスの own プロパティに、手書きのアクセサはプロトタイプに置かれる。
+ * 置き場所が 2 つに分かれるので両方を見る必要がある。
  */
 function stateKeys(): string[] {
   const proto: object = Object.getPrototypeOf(settingsStore);
@@ -54,7 +54,7 @@ beforeEach(() => {
 
 describe('設定ストア (02.architecture/04-rust-responsibilities.md §5)', () => {
   it('設定の値だけを持つ', () => {
-    // ここに「壊れているか」や本文が生えたら設計違反。
+    // ここに「壊れているか」や本文が加わったら設計違反。
     // 壊れている事実は通知バーに流して終わりにする（2 か所に持たない）。
     expect(stateKeys()).toEqual(['values']);
   });
@@ -80,9 +80,8 @@ describe('設定ストア (02.architecture/04-rust-responsibilities.md §5)', ()
   /**
    * 02.architecture/05-startup-sequence.md §1「テーマ / 本文幅 / フォントは描画より前」。
    *
-   * `initSettings` は `bootstrap.ts` が本文を描くより前に呼ぶ。**その場で
-   * 当たっている**ことをここで見張る。`$effect` で購読する形に変えると
-   * 当たる瞬間がマイクロタスク以降にずれ、一度出た絵が描き変わる。
+   * `initSettings` は `bootstrap.ts` が本文を描画するより前に呼ぶ。その場で適用されていることをここで検証する。
+   * `$effect` で購読する形に変えると適用がマイクロタスク以降にずれ、一度表示された内容が再描画される。
    */
   it('読み込んだ時点で見た目に当たっている（後から当てない）', () => {
     initSettings(bootstrapWith({ settings: { ...DEFAULT_SETTINGS, theme: 'dark', 'preview.maxWidth': 80 } }));
@@ -147,8 +146,8 @@ describe('settings.json の読み直し', () => {
   });
 
   /**
-   * 02.architecture/04-rust-responsibilities.md §5 の肝。編集の途中で JSON として壊れた状態を経由するのは普通のことで、
-   * そのたびにテーマが飛んでは設定を試行錯誤できない。
+   * 02.architecture/04-rust-responsibilities.md §5 の要点。
+   * 編集の途中で JSON として壊れた状態を経由するのは普通のことで、そのたびにテーマが既定に戻ると設定を試行錯誤できない。
    */
   it('読めない内容に変わっても既定値に戻さない', async () => {
     const kept = { ...DEFAULT_SETTINGS, theme: 'dark' as const };

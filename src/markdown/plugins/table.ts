@@ -19,7 +19,7 @@ const ALIGNS = ['left', 'center', 'right'] as const;
 type Align = (typeof ALIGNS)[number];
 
 /**
- * 数値と見なす形。桁区切りと通貨記号と単位は先に落としてから判定する。
+ * 数値と見なす形。桁区切りと通貨記号と単位は先に除いてから判定する。
  *
  * 判定を緩くすると、ID や日付やバージョン番号の列まで右寄せになる。
  * 迷う形は数値として扱わない。
@@ -29,7 +29,7 @@ const NUMERIC = /^[+-]?\d+(?:\.\d+)?$/;
 /** 判定から除くセル。「値が無い」の意味で置かれるもので、これしか無い列は数値列にしない。 */
 const NEUTRAL = new Set(['', '-', '--', '–', '—', 'ー', '/', 'n/a', 'na', '?', '不明', 'なし']);
 
-/** 桁区切り・通貨記号・単位・空白を落とす。`¥1,234` と `56.7 %` を数値として扱うため。 */
+/** 桁区切り・通貨記号・単位・空白を除く。`¥1,234` と `56.7 %` を数値として扱うため。 */
 function normalizeNumber(text: string): string {
   return text
     .replaceAll(/[\s,，]/gu, '')
@@ -132,7 +132,7 @@ function isNumericColumn(table: Table, column: number): boolean {
   return numbers > 0;
 }
 
-/** 揃えを属性へ移す。`style` は `sanitize.ts` が落とすため、残しても意味がない。 */
+/** 揃えを属性へ移す。`style` は `sanitize.ts` が除去するため、残しても意味がない。 */
 function applyAlign(cell: Cell, align: Align): void {
   cell.token.attrSet('data-mx-align', align);
 }

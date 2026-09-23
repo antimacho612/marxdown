@@ -10,7 +10,7 @@
 //! 前 2 者の一致は `the_defaults_match_the_frontend_table` が `tests/settings-default.json` 越しに固定している。
 //! プレビューの 3 項目（文字サイズ・行間・本文幅）だけはトークン層にも既定があり、ここがずれると設定ファイルが無いときと「既定値を明示的に書いたとき」で見た目が変わる。
 //! エディターの既定値はトークン層に無い。
-//! M2 まではプレビューのトークンをそのまま使用していたが、読む面と書く面でタイポグラフィを分けた（ADR-0012）。
+//! 読む面と書く面でタイポグラフィを分けているためである（ADR-0012）。
 
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
@@ -49,7 +49,7 @@ pub const KEY_EDITOR_WORD_SEPARATORS: &str = "editor.wordSeparators";
 pub const KEY_EDITOR_WORD_WRAP: &str = "editor.wordWrap";
 pub const KEY_EDITOR_WORD_WRAP_COLUMN: &str = "editor.wordWrapColumn";
 
-/// エクスプローラーから常に除外するパスの glob（`src/glob.rs` / #146）。
+/// エクスプローラーから常に除外するパスの glob（`src/glob.rs`）。
 pub const KEY_EXPLORER_EXCLUDE: &str = "explorer.exclude";
 
 /// 追加記法（`src/markdown/plugins/syntax.ts` の `SYNTAX_NAMES` と 1:1）。どれも既定 OFF。
@@ -82,7 +82,7 @@ pub const DEFAULT_MAX_WIDTH: f64 = 72.0;
 /// エディターの既定（ADR-0012）。プレビューとは別の値を使う。
 ///
 /// 16px / 1.75 は読むためのタイポグラフィであり、書く面では行間が広すぎて視線の移動量が増える。
-/// VS Code の既定（14px）に寄せ、行間だけ日本語のために少し広げている。
+/// VS Code の既定（14px）に合わせ、行間だけ日本語のために少し広げている。
 pub const DEFAULT_EDITOR_FONT_SIZE: f64 = 14.0;
 pub const DEFAULT_EDITOR_LINE_HEIGHT: f64 = 1.6;
 /// 1 行目がウィンドウの縁に貼り付かないだけの余白。
@@ -272,16 +272,16 @@ pub struct Settings {
     pub editor_rulers: Vec<f64>,
     #[serde(rename = "editor.scrollBeyondLastLine")]
     pub editor_scroll_beyond_last_line: bool,
-    /// エディターの配色（[ADR-0014](../../docs/adr/0014-editor-theme-catalog.md)）。
+    /// エディターの配色（02.architecture/10-theming.md §3）。
     ///
     /// 列挙ではなく文字列である。
     /// 選択肢は組み込みの 50 枚と `themes/` に置かれたファイルの合成であり、Rust 側で数え上げられない。
-    /// 知らない綴りを既定へ落とさないのもそのためで、`themes/` の読み込みが済むまでは選択中の配色が存在するかどうかを判定できない。
+    /// 知らない綴りを既定に戻さないのもそのためで、`themes/` の読み込みが済むまでは選択中の配色が存在するかどうかを判定できない。
     #[serde(rename = "editor.theme")]
     pub editor_theme: String,
     #[serde(rename = "editor.tabSize")]
     pub editor_tab_size: f64,
-    /// 単語単位のカーソル移動（`Ctrl+←` / `Ctrl+→`）で区切りとして扱う文字（#126）。
+    /// 単語単位のカーソル移動（`Ctrl+←` / `Ctrl+→`）で区切りとして扱う文字。
     #[serde(rename = "editor.wordSeparators")]
     pub editor_word_separators: String,
     #[serde(rename = "editor.wordWrap")]
@@ -289,13 +289,14 @@ pub struct Settings {
     #[serde(rename = "editor.wordWrapColumn")]
     pub editor_word_wrap_column: f64,
 
-    /// エクスプローラーとクイックオープンから常に除外するパスの glob（#146）。
+    /// エクスプローラーとクイックオープンから常に除外するパスの glob。
     /// 空なら追加の除外はしない。隠しファイルと `node_modules` は設定に関わらず除外される（`dir.rs`）。
     #[serde(rename = "explorer.exclude")]
     pub explorer_exclude: Vec<String>,
 
     /// 設定で有効化する追加記法（04.tech-stack/04-markdown.md §3）。
-    /// **どれも既定 OFF である。** 標準的でない記法が意図せず発火して本文が壊れるほうが、認知負荷が高い。
+    /// どれも既定 OFF である。
+    /// 標準的でない記法が意図せず発火して本文が壊れるほうが、認知負荷が高い。
     #[serde(rename = "markdown.abbreviations")]
     pub markdown_abbreviations: bool,
     #[serde(rename = "markdown.definitionLists")]
@@ -328,21 +329,21 @@ pub struct Settings {
     /// px ではないのは、フォントサイズを変えても 1 行あたりの文字数が変わらないようにするためである。
     #[serde(rename = "preview.maxWidth")]
     pub preview_max_width: f64,
-    /// 段落内の単独の改行を `<br>` として描画するか（`markdown-it` の `breaks` / #45）。
+    /// 段落内の単独の改行を `<br>` として描画するか（`markdown-it` の `breaks`）。
     #[serde(rename = "preview.softBreak")]
     pub preview_soft_break: bool,
     /// 表の罫線の引き方（F-VIEW-01）。
     #[serde(rename = "preview.tableStyle")]
     pub preview_table_style: TableStyle,
-    /// 本文の配色（[ADR-0014](../../docs/adr/0014-editor-theme-catalog.md)）。
+    /// 本文の配色（02.architecture/10-theming.md §3）。
     ///
     /// `editor.theme` と同じくカタログを共有する文字列である。
     /// 選択肢は組み込みの 50 枚と `themes/` に置かれたファイルの合成であり、Rust 側で数え上げられない。
-    /// 知らない綴りを既定へ落とさないのもそのためで、`themes/` の読み込みが済むまでは選択中の配色が存在するかどうかを判定できない。
+    /// 知らない綴りを既定に戻さないのもそのためで、`themes/` の読み込みが済むまでは選択中の配色が存在するかどうかを判定できない。
     #[serde(rename = "preview.theme")]
     pub preview_theme: String,
 
-    /// `✕` で閉じたときにトレイへ格納するか（F-WIN-* / ADR-0007）。
+    /// `✕` で閉じたときにトレイへ格納するか（F-OS-08 / ADR-0007）。
     /// 既定を `true` にしているのは、常駐してウォーム起動を利用することがプロダクトの中心価値だからである（ADR-0004）。
     #[serde(rename = "window.closeToTray")]
     pub window_close_to_tray: bool,
@@ -357,9 +358,8 @@ impl Default for Settings {
         Self {
             theme: Theme::default(),
 
-            // Monaco の既定と変えている 3 つ（記号の色分け・ミニマップ・空白の可視化）は、
-            // いずれも Markdown の構造に対して意味を持たない情報で画面を埋めるものである。
-            // 既定では無効にし、必要な人だけが有効にする（ADR-0001 から引き継ぐ判断）。
+            // Monaco の既定と変えている 3 つ（記号の色分け・ミニマップ・空白の可視化）は、いずれも Markdown の構造に対して意味を持たない情報で画面を埋めるものである。
+            // 既定では無効にし、必要な人だけが有効にする。
             editor_bracket_pair_colorization_enabled: false,
             editor_cursor_blinking: CursorBlinking::default(),
             editor_cursor_style: CursorStyle::default(),
@@ -387,7 +387,7 @@ impl Default for Settings {
             editor_word_wrap_column: DEFAULT_EDITOR_WORD_WRAP_COLUMN,
 
             // 既定では追加の除外をしない。
-            // 隠しファイルと `node_modules` は設定に関わらず落ちるため（`dir.rs`）、ここに書き出すと同じ判断が 2 か所に分かれる。
+            // 隠しファイルと `node_modules` は設定に関わらず除外されるため（`dir.rs`）、ここに書き出すと同じ判断が 2 か所に分かれる。
             explorer_exclude: Vec::new(),
 
             markdown_abbreviations: false,
@@ -406,7 +406,7 @@ impl Default for Settings {
             preview_font_size: DEFAULT_FONT_SIZE,
             preview_line_height: DEFAULT_LINE_HEIGHT,
             preview_max_width: DEFAULT_MAX_WIDTH,
-            // CommonMark 準拠。改行を <br> にしない（#45）。
+            // CommonMark 準拠。改行を <br> にしない。
             preview_soft_break: false,
             preview_table_style: TableStyle::default(),
             preview_theme: DEFAULT_THEME_ID.to_owned(),
@@ -540,7 +540,7 @@ impl Settings {
         }
     }
 
-    /// 変更したキーだけを当てる（02.architecture/04-rust-responsibilities.md §1 `write_settings`）。
+    /// 変更したキーだけを反映する（02.architecture/04-rust-responsibilities.md §1 `write_settings`）。
     ///
     /// 値が `null` のキーは削除する。設定 UI の「既定に戻す」がこれにあたる。
     pub fn patched(&self, patch: Map<String, Value>) -> Self {
@@ -576,10 +576,10 @@ fn take_int(map: &mut Map<String, Value>, key: &str, range: (f64, f64)) -> Optio
 ///
 /// 綴りが選択肢に存在するかは調べない。
 /// 組み込みの一覧はフロント側にあり、`themes/` の中身は読み込むまで分からない（[ADR-0014](../../docs/adr/0014-editor-theme-catalog.md)）。
-/// ここで弾くのは、属性セレクタへ埋め込めない文字を含むものだけである（`themes::valid_id` と同じ判定）。
+/// ここで除外するのは、属性セレクタへ埋め込めない文字を含むものだけである（`themes::valid_id` と同じ判定）。
 ///
 /// 存在しない配色を選んだ状態は保持したまま UI へ渡す。
-/// 既定へ落とすと、ファイル名の打ち間違いと未適用をユーザーが区別できない。
+/// 既定に戻すと、ファイル名の打ち間違いと未適用をユーザーが区別できない。
 fn take_theme_id(map: &mut Map<String, Value>, key: &str) -> Option<String> {
     let value: String = take(map, key)?;
     let ok = !value.is_empty()
@@ -606,11 +606,11 @@ fn take_rulers(map: &mut Map<String, Value>) -> Option<Vec<f64>> {
     )
 }
 
-/// 除外パターン。空文字と空白だけのものを落とし、本数を上限で切る。
+/// 除外パターン。空文字と空白だけのものを除き、本数を上限で切る。
 ///
 /// 型が違う要素が 1 つでもあれば、配列ごと既定（除外しない）に戻す（`take_rulers` と同じ判断）。
 /// 綴りが glob として読めるかはここでは調べない。
-/// 判定は `crate::glob` にあり、読めなかった 1 本だけがそこで落ちる。
+/// 判定は `crate::glob` にあり、読めなかった 1 本だけがそこで無視される。
 fn take_exclude(map: &mut Map<String, Value>) -> Option<Vec<String>> {
     let values: Vec<String> = take(map, KEY_EXPLORER_EXCLUDE)?;
     Some(
@@ -626,10 +626,9 @@ fn take_exclude(map: &mut Map<String, Value>) -> Option<Vec<String>> {
 mod tests {
     use super::*;
 
-    /// 既定値がフロント側（`src/platform/settings-schema.ts`）と一致することを、
-    /// 突き合わせ用の JSON 1 枚を挟んで固定する。
+    /// 既定値がフロント側（`src/platform/settings-schema.ts`）と一致することを、突き合わせ用の JSON 1 枚を挟んで固定する。
     /// 反対側から同じファイルを読むのは `src/platform/settings-schema.test.ts` である。
-    /// 食い違ったときは、どちらが正しいかを決めてから `UPDATE_SETTINGS_FIXTURE=1 cargo test` で焼き直す。
+    /// 食い違ったときは、どちらが正しいかを決めてから `UPDATE_SETTINGS_FIXTURE=1 cargo test` で作り直す。
     #[test]
     fn the_defaults_match_the_frontend_table() {
         let path =
@@ -660,7 +659,7 @@ mod tests {
         assert!(s.window_close_to_tray, "常駐が既定（ADR-0004）");
     }
 
-    /// ADR-0012。**読む面と書く面でタイポグラフィが別**であること自体を固定する。
+    /// ADR-0012。読む面と書く面でタイポグラフィが別であること自体を固定する。
     #[test]
     fn the_editor_does_not_inherit_the_preview_typography() {
         let d = Settings::default();
@@ -679,7 +678,7 @@ mod tests {
     }
 
     /// VS Code の綴りをそのまま受ける。
-    /// ここがずれると「VS Code から写したのに効かない」になる（F-CONF-06）。
+    /// ここがずれると「VS Code から写したのに動作しない」状態になる（F-CONF-06）。
     #[test]
     fn vscode_spellings_are_accepted() {
         let s = Settings::from_map(
@@ -731,7 +730,7 @@ mod tests {
         assert_eq!(Settings::from_map(map), s);
     }
 
-    /// ADR-0014。**面ごとに独立して選べること**と、既定が「属性なし」であること。
+    /// ADR-0014。面ごとに独立して選べることと、既定が「属性なし」であること。
     /// カタログは共通だが、選択は面ごとに別の値である。
     #[test]
     fn the_two_surfaces_pick_palettes_independently() {
@@ -747,7 +746,7 @@ mod tests {
         assert_eq!(s.editor_theme, "dracula");
     }
 
-    /// **知らない綴りも保持する**（ADR-0014）。両面とも同じ扱いである。
+    /// 知らない綴りも保持する（ADR-0014）。両面とも同じ扱いである。
     /// 組み込みの一覧はフロント側にあり、`themes/` の中身は読み込むまで分からないため、ここで存在を判定できない。
     #[test]
     fn an_unknown_theme_is_kept() {
@@ -761,8 +760,8 @@ mod tests {
         assert_eq!(s.to_map()[KEY_EDITOR_THEME], Value::from("another"));
     }
 
-    /// 属性セレクタへ埋め込めない綴りだけは既定へ落とす（`themes::valid_id` と同じ判定）。
-    /// **ファイル全体は壊さない。**
+    /// 属性セレクタへ埋め込めない綴りだけは既定に戻す（`themes::valid_id` と同じ判定）。
+    /// ファイル全体は壊さない。
     #[test]
     fn a_theme_that_could_escape_the_selector_falls_back() {
         for bad in ["dark';}html{display:none}", "", "a b", "../../etc"] {

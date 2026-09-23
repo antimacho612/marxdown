@@ -8,7 +8,7 @@
 import type { MarkdownIt, RendererRule, Token } from 'markdown-it';
 
 /**
- * `data-line` を付ける対象。インライン要素には付けない（数が爆発するため）。
+ * `data-line` を付ける対象。インライン要素には付けない（数が膨大になるため）。
  *
  * これらは `renderToken` を通るので、トークンに属性を足せばそのまま出力に載る。
  */

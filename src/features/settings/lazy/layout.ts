@@ -5,7 +5,7 @@
  * 定義とグループ分けを同じ構造にまとめると「同じキーが 2 つのカテゴリに出ていないか」を検査する義務が生まれるが、それは定義の問題ではなく並べ方の問題なので分けてある。
  *
  * 部品の種類はスキーマの `kind` と型で結ばれている。
- * 真偽値の項目に `<select>` を当てたり、選択肢のラベルを 1 つ書き忘れたりすると型が通らない。
+ * 真偽値の項目に `<select>` を割り当てたり、選択肢のラベルを 1 つ書き忘れたりすると型が通らない。
  * 網羅と重複は `layout.test.ts` が実行時に検証する（型で表現するとエラーの内容が読み取りにくくなる）。
  *
  * このファイルは遅延チャンク（`lazy/` の中）にあり、`ja` を引き込むためクリティカルパスからは参照しない。
@@ -17,13 +17,13 @@ import type { SettingKey, SettingKind, Settings } from '@/platform';
 type Labels<K extends SettingKey> = Readonly<Record<Settings[K] & string, string>>;
 
 /**
- * キーに当てられる部品。スキーマの `kind` から決まる。
+ * キーに割り当てられる部品。スキーマの `kind` から決まる。
  *
  * 並び（`number[]` / `string[]`）は入力欄の文字列と値が 1:1 でないため `list` になる。
  * 打っている途中の文字列を保持するのは `ListField.svelte` で、値としての解釈はダイアログ側が持つ。
  *
  * 文字列だけ 2 択にしてある。
- * 配色（ADR-0014）は値としては文字列だが、選択肢は組み込みと `themes/` の合成であり、`values` を持たないぶん `select` には載らない（`theme`）。
+ * 配色（ADR-0014）は値としては文字列だが、選択肢は組み込みと `themes/` の合成であり、`values` を持たないため `select` では扱えない（`theme`）。
  */
 type WidgetFor<K extends SettingKey> =
   SettingKind<K> extends 'enum'
@@ -45,18 +45,18 @@ type FieldOf<K extends SettingKey> = {
   visibleWhen?: (values: Settings) => boolean;
 } & WidgetFor<K>;
 
-/** 設定 1 項目の並べ方。キーごとに当てられる部品が型で決まる。 */
+/** 設定 1 項目の並べ方。キーごとに割り当てられる部品が型で決まる。 */
 export type FieldEntry = { [K in SettingKey]: FieldOf<K> }[SettingKey];
 
-/** エディターの中の節。項目が 22 個あるので、見出し無しでは探せない。 */
+/** エディターの中の節。項目が多いため、見出し無しでは探せない。 */
 interface SectionEntry {
   kind: 'section';
   label: string;
 }
 
 /**
- * 見本（ADR-0011）。モーダルにしたぶん背後の本文が見えないので、その場で確かめられるようにする。
- * 出せるのはフォントまわりだけで、本文幅や折り返しは真似ない。
+ * 見本（ADR-0011）。モーダルにしたことで背後の本文が見えないため、その場で確認できるようにする。
+ * 表示できるのはフォントまわりだけで、本文幅や折り返しは再現しない。
  */
 interface SampleEntry {
   kind: 'sample';
@@ -82,9 +82,8 @@ export type CategoryId = (typeof LAYOUT)[number]['id'];
  * 7 つとも同じ形（トグル 1 つ）なので、名前を書き下さずに文言の側から作る。
  * 書き下すと、キーと文言の組み合わせを取り違えても型では気づけない。
  *
- * ここで作る `key` は `markdown.<名前>` であり、`SettingKey` に無い名前があれば
- * `LAYOUT` の `satisfies` が型エラーにする。
- * `markdown/plugins/syntax.ts` の `SYNTAX_NAMES` との一致は `features/settings/syntax.test.ts` が見張る。
+ * ここで作る `key` は `markdown.<名前>` であり、`SettingKey` に無い名前があれば `LAYOUT` の `satisfies` が型エラーにする。
+ * `markdown/plugins/syntax.ts` の `SYNTAX_NAMES` との一致は `features/settings/syntax.test.ts` が検証する。
  */
 const SYNTAX_FIELDS = (Object.keys(ja.settings.markdown) as (keyof typeof ja.settings.markdown)[]).map((name) => ({
   kind: 'field' as const,
@@ -387,8 +386,7 @@ export const LAYOUT = [
     /*
      * 追加記法（04.tech-stack/04-markdown.md §3）。どれも既定 OFF である。
      *
-     * カテゴリを分けているのは、プレビューの中に混ぜると
-     * 「見た目の調整」と「本文の解釈が変わる設定」が同じ並びに来るためである。
+     * カテゴリを分けているのは、プレビューの中に混ぜると「見た目の調整」と「本文の解釈が変わる設定」が同じ並びに来るためである。
      * 後者は押した結果が本文そのものに出る。
      */
     id: 'markdown',

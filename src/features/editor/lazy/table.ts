@@ -4,7 +4,7 @@
  * 提供するのは 2 つだけである。`Tab` でのセル移動と、列幅の整形。
  * どちらも触るのは Markdown テキストそのものであり、表のモデルを別に持たない（ADR-0002）。
  *
- * **表と判定する条件は GFM に合わせて厳しくしてある。**
+ * 表と判定する条件は GFM に合わせて厳しくしてある。
  * `|` を含む行というだけでは表にしない。区切り行（`|---|---|`）を含むひと続きの塊であることを要求する。
  * 緩めると、`a || b` を含むコードブロックの中で `Tab` がインデントではなくセル移動になる。
  */
@@ -111,7 +111,7 @@ function tableAt(model: monaco.editor.ITextModel, lineNumber: number): TableBloc
 
 /** カーソルがどのセルにいるか。範囲外なら `-1`。 */
 function cellIndexAt(cells: CellRange[], column: number): number {
-  // 境界（`|` の直後・直前）はその左右どちらのセルにも属しうる。手前のセルに寄せる。
+  // 境界（`|` の直後・直前）はその左右どちらのセルにも属しうる。手前のセルとして扱う。
   return cells.findIndex((cell) => column >= cell.from && column <= cell.to);
 }
 
@@ -119,7 +119,7 @@ function cellIndexAt(cells: CellRange[], column: number): number {
  * セルの中身の範囲（前後の空白を除いた位置）。
  *
  * 空のセルでは両端を一致させ、カーソルだけを置く。
- * 前後の空白を両側から削ると範囲が交差するため、区切り記号の直後に寄せる。
+ * 前後の空白を両側から削ると範囲が交差するため、区切り記号の直後に置く。
  */
 function contentRange(text: string, cell: CellRange): CellRange {
   const raw = text.slice(cell.from, cell.to);
@@ -192,7 +192,7 @@ function moveToAdjacentRow(
 /**
  * 行内の相対位置を選択する。
  *
- * ここはモデルを変えない。`Tab` を押した結果が Undo に積まれると、`Ctrl+Z` が編集ではなく移動を戻すことになる。
+ * ここはモデルを変えない。`Tab` を押した結果が Undo の履歴に残ると、`Ctrl+Z` が編集ではなく移動を戻すことになる。
  */
 function select(editor: monaco.editor.ICodeEditor, lineNumber: number, range: CellRange): void {
   const selection = new monaco.Selection(lineNumber, range.from + 1, lineNumber, range.to + 1);
@@ -238,7 +238,7 @@ function delimiterCell(align: Align, width: number): string {
   return dashes;
 }
 
-/** 中身を指定の桁数まで右側に詰める。全角を 2 桁として数える。 */
+/** 中身の右側を空白で埋めて指定の桁数にする。全角を 2 桁として数える。 */
 function pad(text: string, width: number): string {
   return text + ' '.repeat(Math.max(0, width - widthOf(text)));
 }

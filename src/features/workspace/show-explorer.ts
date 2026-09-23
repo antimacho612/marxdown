@@ -16,7 +16,7 @@ let focusTree: (() => void) | null = null;
 let pending = false;
 
 /**
- * `FileTree.svelte` が自分のフォーカス手段を登録する口。
+ * `FileTree.svelte` が自分のフォーカス手段を登録する関数。
  * ペインを閉じる（＝コンポーネントが消える）ときに `null` を渡す。
  */
 export function registerExplorerFocus(focus: (() => void) | null): void {

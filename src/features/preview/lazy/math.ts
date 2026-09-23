@@ -2,10 +2,10 @@
  * 数式の描画（F-VIEW-13）。
  *
  * 遅延チャンク `math` の入口。
- * 数式を含む文書を描いたときにだけロードされるため、`preview` から静的に import してはいけない。
- * KaTeX は 74.2KB（gzip）あり、critical path の残余 23.64KB には収まらない（06.roadmap/m4-markdown.md §1.2）。
+ * 数式を含む文書を描画したときにだけロードされるため、`preview` から静的に import してはいけない。
+ * KaTeX は約 74KB（gzip）あり、critical path の予算に収まらない（02.architecture/05-startup-sequence.md §3 の分割境界）。
  *
- * CSS とフォントもこのチャンクに載る。
+ * CSS とフォントもこのチャンクに含まれる。
  * `katex.min.css` の `@font-face` は woff2 / woff / ttf の 3 形式を参照するが、ビルド時に woff2 だけへ削っている（`vite.config.ts`）。
  */
 import { renderToString } from 'katex';
@@ -19,7 +19,7 @@ import '@/styles/preview/math.css';
  * KaTeX のオプション。
  *
  * 中心ユースケースは「LLM が生成した、自分が書いていないファイルを開く」ことである（ADR-0006）。
- * したがって既定値のうち、入力が計算量やドキュメントの外へ影響できる 3 つを閉じてある。
+ * したがって既定値のうち、入力が計算量やドキュメントの外へ影響できる 3 つを制限してある。
  *
  * `trust: false` は `\href` / `\includegraphics` / `\htmlStyle` などを無効にする。
  * これが有効だと、数式からリンクと `style` を本文へ持ち込めてしまう（`sanitizeMath` が `style` を通していることと対になっている）。

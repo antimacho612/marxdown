@@ -1,6 +1,6 @@
 //! アプリケーション全体で共有する状態。
 //!
-//! 02.architecture/README.md 原則 C に従い、ここに置くのは Rust 側の処理に必要なものだけである。
+//! 02.architecture/01-principles.md 原則 C に従い、ここに置くのは Rust 側の処理に必要なものだけである。
 //! タブ・カーソル・設定などの UI 状態は TypeScript 側にある。
 
 use std::collections::HashMap;
@@ -16,28 +16,28 @@ use crate::settings::{Settings, SettingsLoad};
 use crate::store::{RecentEntry, StoreData};
 use crate::trace::Trace;
 
-/// アプリデータ領域（`%APPDATA%\com.antimacho612.marxdown\`）に置くもの（`state.json`: アプリが自動的に書く、`settings.json` / `themes/`: 人が書く（F-CONF-08 / ADR-0014））の場所（02.architecture/04-rust-responsibilities.md §5 / 02.architecture/10-theming.md §3）。
+/// アプリデータ領域（`%APPDATA%\com.antimacho612.marxdown\`）に置くものの場所（02.architecture/04-rust-responsibilities.md §5）。
+///
+/// `state.json` はアプリが自動的に書き、`settings.json` と `themes/` は人が書く。
 ///
 /// 1 つの構造体にまとめてある。
 /// どれも `identifier` から同じ規則で決まり、`AppState::new` に個別の `Option<PathBuf>` を並べると引数が際限なく増える。
-/// `None` は「置き場所が決まらなかった」ことを示し、その機能を諦める合図になる。
+/// `None` は「置き場所が決まらなかった」ことを示し、その機能を使わないという意味になる。
 #[derive(Debug, Clone, Default)]
 pub struct ConfigPaths {
     pub store: Option<PathBuf>,
     pub settings: Option<PathBuf>,
-    /// ユーザーが追加した配色の置き場所（`themes/`。ADR-0014）。
+    /// ユーザーが追加した配色の置き場所（`themes/`）。
     pub themes: Option<PathBuf>,
 }
 
 /// このプロセスが単一インスタンスの所有者かどうか（F-OPEN-06 / `instance.rs`）。
 ///
 /// 所有者は `tauri-plugin-single-instance` を登録したプロセスで、argv 転送の受け先になる。
-/// `--new-window` で起動し、既に所有者が居た場合だけ `Standalone` になる。
+/// `--new-window` で起動し、既に所有者がいた場合だけ `Standalone` になる。
 ///
 /// 3 か所で意味を持つ。
-/// トレイに常駐するのは所有者だけであり（ADR-0007 / トレイアイコンがプロセスの数だけ並ばないようにする）、
-/// `state.json` のウィンドウ矩形とセッションを書くのも所有者だけであり（後勝ちで消えるのを防ぐ）、
-/// それ以外の書き込みは読み直してから行う。
+/// トレイに常駐するのは所有者だけであり（ADR-0007 / トレイアイコンがプロセスの数だけ並ばないようにする）、`state.json` のウィンドウ矩形とセッションを書くのも所有者だけであり（後勝ちで消えるのを防ぐ）、それ以外の書き込みは読み直してから行う。
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum InstanceRole {
     Owner,
@@ -48,7 +48,7 @@ pub enum InstanceRole {
 pub struct AppState {
     pub args: CliArgs,
     pub trace: Trace,
-    /// 永続化ストア（最近開いたファイル / 表示倍率 / ウィンドウ状態）。
+    /// 永続化ストア（`state.json`）。
     /// 起動時に 1 回読み、変更のたびに書き戻す。
     store: Mutex<StoreData>,
     /// 設定ファイルたちの置き場所。
@@ -59,15 +59,14 @@ pub struct AppState {
     /// アセット参照を許可するディレクトリ（N-SEC-05）。
     /// 開いたドキュメントの親ディレクトリを追加していく。
     asset_roots: Mutex<Vec<PathBuf>>,
-    /// 利用者が 1 件ずつ許可した画像のディレクトリ（OQ-17）。
+    /// 利用者が 1 件ずつ許可した画像のディレクトリ（02.architecture/09-security.md §3）。
     ///
-    /// `asset_roots` と分けてある。こちらは**再帰しない**（直下だけ）うえ、
-    /// ファイルツリー（`list_dir` / `list_files`）からは辿れない。
+    /// `asset_roots` と分けてある。こちらは再帰しない（直下だけ）うえ、ファイルツリー（`list_dir` / `list_files`）からは辿れない。
     /// 画像 1 枚のために押したボタンで、フォルダが閲覧できるようになってはいけない。
     ///
     /// 永続化しない。誤って押した許可を次の起動へ持ち越さない。
     image_dirs: Mutex<Vec<PathBuf>>,
-    /// ウォーム起動（S6）の計測。argv 転送を受けた時刻を要求 ID ごとに保持する。
+    /// ウォーム起動の計測。argv 転送を受けた時刻を要求 ID ごとに保持する。
     warm: Mutex<HashMap<u64, Instant>>,
     warm_counter: AtomicU64,
     /// 最後にフロントへ知らせた「最大化されているか」。ウィンドウごとに持つ。
@@ -86,14 +85,12 @@ pub struct AppState {
     ///
     /// 更新は `false` と `true` の変わり目だけで、打鍵ごとの IPC にはならない（`features/document/save.ts`）。
     ///
-    /// ウィンドウごとに分けるのは、プロセスの終了（どれか 1 つでもダーティなら確認する）と、
-    /// ウィンドウ 1 枚を閉じる操作（そのウィンドウだけを見る）で必要な答えが違うためである。
+    /// ウィンドウごとに分けるのは、プロセスの終了（どれか 1 つでもダーティなら確認する）と、ウィンドウ 1 枚を閉じる操作（そのウィンドウだけを見る）で必要な答えが違うためである。
     dirty: Mutex<HashMap<String, bool>>,
     /// 最後にフォーカスされたウィンドウのラベル。
     ///
     /// 「外から 1 枚開かせる」経路（argv 転送 / トレイの最近開いたファイル）の宛先になる。
-    /// ウィンドウが 1 枚しかなかった頃は `MAIN_LABEL` 決め打ちでよかったが、複数あるときに主ウィンドウへ送ると、
-    /// ユーザーが見ている手前のウィンドウではない場所にタブが増える。
+    /// 主ウィンドウ（`MAIN_LABEL`）へ固定で送ると、ウィンドウが複数あるときにユーザーが見ている手前のウィンドウではない場所にタブが増える。
     focused: Mutex<String>,
     /// 追加ウィンドウのラベルに使う連番（`main-2`, `main-3`, ...）。
     ///
@@ -102,16 +99,16 @@ pub struct AppState {
     window_counter: AtomicU64,
     /// 単一インスタンスの所有者か（[`InstanceRole`]）。起動時に決まり、以後変わらない。
     role: InstanceRole,
-    /// サテライトへ移すタブの本文（F-OPEN-06 / 決定 1）。
+    /// サテライトへ移すタブの本文（F-OPEN-06 / ADR-0016 §3.4）。
     ///
     /// 未保存のタブはパスだけでは渡せない。
     /// 移す側が本文をここへ預け、新しいウィンドウが起動直後に 1 回だけ引き取る。
     ///
-    /// **中身は解釈しない。** フロントが組み立てた JSON 文字列をそのまま運ぶだけである
-    /// （02.architecture/README.md 原則 C「Markdown の意味解釈は TypeScript 側」）。
+    /// 中身は解釈しない。
+    /// フロントが組み立てた JSON 文字列をそのまま運ぶだけである（02.architecture/README.md 原則 C「Markdown の意味解釈は TypeScript 側」）。
     ///
     /// 1 件しか持たない。
-    /// 同時に 2 枚飛ばす操作が無いため、新しい転送で上書きし、引き取りで空にすれば取りこぼしも漏れも起きない。
+    /// 同時に 2 枚移す操作が無いため、新しい転送で上書きし、引き取りで空にすれば取りこぼしも漏れも起きない。
     transfer: Mutex<Option<(u64, String)>>,
     transfer_counter: AtomicU64,
 }
@@ -134,7 +131,7 @@ impl AppState {
                 roots.push(parent.to_path_buf());
             }
         }
-        // `marxdown <dir>` で開いたフォルダも許可範囲に入れる（F-OPEN-02 / OQ-17）。
+        // `marxdown <dir>` で開いたフォルダも許可範囲に入れる（F-OPEN-02）。
         // ファイルツリーがそこを辿る以上、辿れる範囲と読める範囲は一致していなければならない。
         if let Some(root) = bootstrap.workspace_root.as_ref() {
             roots.push(PathBuf::from(root));
@@ -159,9 +156,9 @@ impl AppState {
         }
     }
 
-    /// 移す本文を預かる。引き取りに使う ID を返す（F-OPEN-06 / 決定 1）。
+    /// 移す本文を預かる。引き取りに使う ID を返す（F-OPEN-06 / ADR-0016 §3.4）。
     ///
-    /// 前の預かりものは捨てる。
+    /// 前の預かりものは破棄する。
     /// 引き取られないまま残るのは、ウィンドウの生成に失敗した場合だけである。
     /// その 1 件を次の転送まで抱えることになるが、次の転送で必ず置き換わる。
     pub fn stash_transfer(&self, payload: String) -> u64 {
@@ -172,7 +169,7 @@ impl AppState {
         id
     }
 
-    /// 預かった本文を引き取る。**1 回しか取れない。**
+    /// 預かった本文を引き取る。1 回しか取れない。
     ///
     /// ID が一致しなければ何も返さず、預かりものも消さない。
     /// 起動が前後した場合に、別のウィンドウ宛ての本文を取ってしまわないようにする。
@@ -194,13 +191,13 @@ impl AppState {
     /// ロックを保持したままファイル I/O をしないよう、書き出す値を複製してから解放する。
     /// ストアの更新は最近開いたファイルに 1 件追加する程度の頻度であり、複製のコストよりロックの保持時間のほうが問題になる。
     ///
-    /// 所有者でないプロセスは、書き換える前にディスクから読み直す（F-OPEN-06 / 決定 6）。
+    /// 所有者でないプロセスは、書き換える前にディスクから読み直す（F-OPEN-06 / ADR-0016）。
     /// `state.json` は 1 枚しかなく、こちらが起動した後に所有者が書いた分はメモリ上の複製に反映されていない。
     /// 読み直さずに書くと、最近開いたファイルを 1 件足すたびに所有者側の更新をまとめて消すことになる。
     pub fn update_store<T>(&self, f: impl FnOnce(&mut StoreData) -> T) -> T {
         let (result, snapshot) = {
             let Ok(mut store) = self.store.lock() else {
-                // ロックが poisoned でも起動は止めない。永続化だけを諦める。
+                // ロックが poisoned でも起動は止めない。永続化だけを行わない。
                 return f(&mut StoreData::default());
             };
             if self.role == InstanceRole::Standalone {
@@ -253,7 +250,7 @@ impl AppState {
         current.clone()
     }
 
-    /// 変更したキーだけを当てて書き戻す（02.architecture/04-rust-responsibilities.md §1 `write_settings`）。
+    /// 変更したキーだけを反映して書き戻す（02.architecture/04-rust-responsibilities.md §1 `write_settings`）。
     ///
     /// 壊れている間は拒否する（02.architecture/04-rust-responsibilities.md §5 の 3 番目）。
     /// これが無いと、ユーザーが修正している最中に設定 UI がファイルの内容を丸ごと消してしまう。
@@ -293,7 +290,7 @@ impl AppState {
             .unwrap_or(true)
     }
 
-    /// エクスプローラーから除外する glob（`explorer.exclude` / #146）。メモリ上の設定を見る。
+    /// エクスプローラーから除外する glob（`explorer.exclude`）。メモリ上の設定を見る。
     ///
     /// `closes_to_tray` と同じ理由でディスクを読み直さない。
     /// 外部エディターでの編集はファイル監視が既に取り込んでおり、一覧を開くたびにファイル I/O を挟む理由がない。
@@ -322,7 +319,7 @@ impl AppState {
         self.paths.settings.as_deref()
     }
 
-    /// ユーザーが追加した配色の置き場所（ADR-0014）。
+    /// ユーザーが追加した配色の置き場所。
     ///
     /// パスをフロントには渡さない。
     /// 開くのも読むのも Rust 側の 1 か所に閉じており、`open_settings_file` と同じ理由で、任意のパスを受け取る経路を作らずに済む。
@@ -332,7 +329,7 @@ impl AppState {
 
     /// argv 転送を受けた瞬間に呼ぶ。返した ID をフロントへ渡す。
     ///
-    /// これが 02.architecture/05-startup-sequence.md §2 のウォーム起動の起点（W0）。
+    /// これが 02.architecture/05-startup-sequence.md §3 のウォーム起動の起点（W0）。
     pub fn begin_warm(&self) -> u64 {
         let id = self.warm_counter.fetch_add(1, Ordering::Relaxed);
         if let Ok(mut w) = self.warm.lock() {
@@ -396,9 +393,9 @@ impl AppState {
             .unwrap_or_default()
     }
 
-    /// ウィンドウが閉じたら、そのウィンドウの分の記録を落とす。
+    /// ウィンドウが閉じたら、そのウィンドウの分の記録を破棄する。
     ///
-    /// 残すと、閉じたウィンドウのダーティが `is_dirty()` に効き続けて終了できなくなる。
+    /// 残すと、閉じたウィンドウのダーティが `is_dirty()` に影響し続けて終了できなくなる。
     pub fn forget_window(&self, label: &str) {
         if let Ok(mut map) = self.dirty.lock() {
             map.remove(label);
@@ -444,10 +441,9 @@ impl AppState {
         }
     }
 
-    /// 利用者が許可した画像のディレクトリを 1 件加える（OQ-17）。同じパスは重複させない。
+    /// 利用者が許可した画像のディレクトリを 1 件加える。同じパスは重複させない。
     ///
-    /// 効果はそのディレクトリの直下だけで、配下のディレクトリには及ばない
-    /// （検証は `scope::resolve_in_dirs`）。
+    /// 効果はそのディレクトリの直下だけで、配下のディレクトリには及ばない（検証は `scope::resolve_in_dirs`）。
     pub fn allow_image_dir(&self, dir: PathBuf) {
         if let Ok(mut dirs) = self.image_dirs.lock() {
             if !dirs.contains(&dir) {
@@ -509,7 +505,7 @@ mod tests {
         )
     }
 
-    /// 02.architecture/04-rust-responsibilities.md §5 の 3 番目。ユーザーが直している最中に設定 UI がファイルごと吹き飛ばさない。
+    /// 02.architecture/04-rust-responsibilities.md §5 の 3 番目。ユーザーが直している最中に設定 UI がファイルの内容を丸ごと消さない。
     #[test]
     fn writing_is_refused_while_the_settings_file_is_broken() {
         let d = temp_dir("refuse");
@@ -554,7 +550,7 @@ mod tests {
     }
 
     /// 02.architecture/04-rust-responsibilities.md §5「読めない内容に変わったときは既定値に戻さない」。
-    /// 編集途中の中間状態でテーマが飛ぶのを防ぐ。
+    /// 編集途中の中間状態でテーマが既定値に戻るのを防ぐ。
     #[test]
     fn a_reload_of_a_broken_file_keeps_the_last_readable_values() {
         let d = temp_dir("reload");
@@ -637,7 +633,7 @@ mod tests {
         );
     }
 
-    /// 受け渡し箱は 1 回しか取れない（F-OPEN-06 / 決定 1）。
+    /// 受け渡し箱は 1 回しか取れない（F-OPEN-06 / ADR-0016 §3.4）。
     /// 二度取れると、同じ未保存の本文が 2 つのウィンドウに現れる。
     #[test]
     fn a_transfer_can_only_be_taken_once() {

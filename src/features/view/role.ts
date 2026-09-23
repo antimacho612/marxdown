@@ -28,8 +28,7 @@ export function windowRole(): WindowRole {
 /**
  * タブと本文だけを持つウィンドウか。
  *
- * これが true の間は、ファイルツリー・アウトライン・ハンバーガーメニューが存在せず、
- * 前回のタブとしても覚えない（`features/workspace/session.svelte.ts`）。
+ * これが true の間は、ファイルツリー・アウトライン・ハンバーガーメニューが存在せず、前回のタブとしても覚えない（`features/workspace/session.svelte.ts`）。
  */
 export function isSatellite(): boolean {
   return role === 'satellite';

@@ -31,8 +31,7 @@ let persistTimer: ReturnType<typeof setTimeout> | null = null;
 /**
  * 倍率を適用する。
  *
- * `persist` を false にすると保存しない。起動時の復元がこれにあたる
- * （読み出した値を、そのまま書き戻す必要はない）。
+ * `persist` を false にすると保存しない。起動時の復元がこれにあたる（読み出した値を、そのまま書き戻す必要はない）。
  */
 export function applyZoom(zoom: number, persist = true): number {
   const next = clamp(zoom);

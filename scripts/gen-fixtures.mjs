@@ -99,8 +99,6 @@ function list(rng, items = 5, ordered = false) {
   return out.join('\n');
 }
 
-/* ------------------------------------------------------------------ */
-
 function tiny(rng) {
   const out = ['# tiny.md — LLM の短い回答を模したファイル', ''];
   for (let i = 0; i < 3; i++) {
@@ -287,8 +285,6 @@ function math(rng) {
   while (bytesOf(out) < 20 * 1024) out.push(paragraph(rng, 2), '');
   return out.join('\n');
 }
-
-/* ------------------------------------------------------------------ */
 
 const FIXTURES = [
   ['tiny.md', () => tiny(makeRng(1))],

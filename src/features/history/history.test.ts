@@ -43,14 +43,14 @@ describe('リンク遷移の履歴 (F-NAV-07)', () => {
     expect(stepHistory(TAB, 1, 0)?.path).toBe('b.md');
   });
 
-  /** 06.roadmap/m1.5-shell-and-settings.md §2「スクロール位置も一緒に戻す」。 */
+  /** F-NAV-07。スクロール位置も一緒に戻す。 */
   it('離れる直前のスクロール位置を憶えていて、戻ると返す', () => {
     pushHistory(TAB, 'a.md', 0);
-    // a.md を 1200px スクロールしたところで b.md へ飛んだ
+    // a.md を 1200px スクロールしたところで b.md へ移動した
     pushHistory(TAB, 'b.md', 1200);
 
     expect(stepHistory(TAB, -1, 300)?.scrollTop).toBe(1200);
-    // 戻る直前の b.md の位置も控えてある。進み直せば戻ってくる
+    // 戻る直前の b.md の位置も記録してある。進み直せば戻ってくる
     expect(stepHistory(TAB, 1, 0)?.scrollTop).toBe(300);
   });
 
@@ -94,7 +94,7 @@ describe('リンク遷移の履歴 (F-NAV-07)', () => {
   });
 });
 
-describe('タブごとに分かれる (M3 Phase 2b)', () => {
+describe('タブごとに分かれる', () => {
   it('別のタブの履歴は混ざらない', () => {
     pushHistory(1, 'a.md', 0);
     pushHistory(1, 'b.md', 0);

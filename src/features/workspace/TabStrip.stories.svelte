@@ -37,7 +37,8 @@
 </script>
 
 <!--
-  1 枚（issue #145）。**枚数で表示は変わらない。** 閉じる `✕` も選択中の印もそのまま出る。
+  1 枚。枚数で表示は変わらない。
+  閉じる `✕` も選択中の印もそのまま出る。
   名前が数字で始まると Storybook の索引が作れない（識別子にならない）ため、`exportName` を明示する。
 -->
 <Story name="1 枚" exportName="OneTab" loaders={[withTabs([tab(1, `${DIR}\\README.md`)], 1)]} />

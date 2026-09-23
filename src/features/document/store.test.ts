@@ -5,9 +5,8 @@ import { documentStore, notifyStatus, STATUS_MESSAGE_MS } from './store.svelte';
 /**
  * ストアが公開している状態の名前を集める。
  *
- * ルーンで宣言したフィールド（`meta` など）はインスタンスの own プロパティになり、
- * 手書きのアクセサ（`statusMessage`）はプロトタイプに乗る。**置き場所が 2 つに分かれる**ので、
- * ADR-0005 の見張りを続けるには両方を見る必要がある。
+ * ルーンで宣言したフィールド（`meta` など）はインスタンスの own プロパティになり、手書きのアクセサ（`statusMessage`）はプロトタイプに置かれる。
+ * 置き場所が 2 つに分かれるので、ADR-0005 の検証には両方を見る必要がある。
  * `#dismissTimer` のような private フィールドはどちらにも現れない（状態ではないので正しい）。
  */
 function stateKeys(): string[] {
@@ -34,7 +33,7 @@ beforeEach(() => {
 
 describe('documentStore', () => {
   it('本文を保持するフィールドを持たない', () => {
-    // ここに content / html が生えたら ADR-0005 違反。
+    // ここに content / html が現れたら ADR-0005 違反。
     // 1 打鍵ごとに巨大な文字列がリアクティビティを通過し、入力レスポンス 16ms を満たせなくなる。
     const keys = stateKeys();
     expect(keys).not.toContain('content');
@@ -78,7 +77,7 @@ describe('documentStore', () => {
   });
 });
 
-/** 自動で消える情報はステータスバーに出す（issue #60）。 */
+/** 自動で消える情報はステータスバーに出す（03.ux-spec/07-status-and-notifications.md §2.1）。 */
 describe('notifyStatus', () => {
   beforeEach(() => {
     vi.useFakeTimers();

@@ -12,7 +12,7 @@ use std::time::{Instant, SystemTime, UNIX_EPOCH};
 
 use serde::{Deserialize, Serialize};
 
-/// 計測点 1 つ。Rust 側とフロント側の両方から積まれ、同じ時間軸に揃えて記録する。
+/// 計測点 1 つ。Rust 側とフロント側の両方から追加され、同じ時間軸に揃えて記録する。
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Mark {

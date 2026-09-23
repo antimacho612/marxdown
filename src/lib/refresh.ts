@@ -1,8 +1,7 @@
 /**
  * 本文が再描画されたことを知りたい側が登録する仕組み。
  *
- * 通知する側（`document/open.ts` / `document/live.ts`）と受け取る側（`preview/lazy/search.ts` / `outline/Outline.svelte`）が別の feature にあるため、
- * どちらかに置くと feature 同士が互いを直接参照することになる。
+ * 通知する側（`document/open.ts` / `document/live.ts`）と受け取る側（`preview/lazy/search.ts` / `outline/Outline.svelte`）が別の feature にあるため、どちらかに置くと feature 同士が互いを直接参照することになる。
  * そのため、どの feature にも依存しない登録簿として `lib/` に置く。
  *
  * 動的 import で呼び出さないのは、一度も使っていない機能のチャンク（`search` など）を取得しないためであり、受け取る側から登録する形にしている。
@@ -43,15 +42,14 @@ export function refreshOutline(): void {
 }
 
 /**
- * アウトラインが画面に出ているか（`Outline.svelte` が名乗る）。
+ * アウトラインが画面に出ているか（`Outline.svelte` が登録する）。
  *
  * Edit ではプレビューの面が表示されていないため、本文の DOM は作り直さない。
  * それでもアウトラインは表示されていることがあり、見出しだけは打鍵のたびに古くなる。
  * そのぶんのパースを実行するかどうかをこの値で判断する（`document/live.ts`）。
  *
  * 上の 2 つと同じく、受け取る側が登録する形にしている。
- * `live.ts` から `viewStore.panes.right.open` を参照すると、アウトラインを左ペインへ移した時点で `live.ts` が動作しなくなる
- * （ペインは中身を知らない / `features/panes/panes.ts`）。
+ * `live.ts` から `viewStore.panes.right.open` を参照すると、アウトラインを左ペインへ移した時点で `live.ts` が動作しなくなる（ペインは中身を知らない / `features/panes/panes.ts`）。
  */
 let outlineOnScreen = false;
 

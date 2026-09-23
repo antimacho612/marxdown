@@ -15,7 +15,7 @@ import { startup } from './bootstrap';
 /**
  * エディターのアイドルプリロードを止める（`installInitialEditor`）。
  *
- * `preloadEditor()` は Monaco（792KB）の動的 import であり、`requestIdle` 越しに `startup()` の解決より後で走る。
+ * `preloadEditor()` は Monaco（約 790KB）の動的 import であり、`requestIdle` 越しに `startup()` の解決より後で実行される。
  * テストが終わった後に読み込みが始まると、環境が破棄された後のモジュール解決になって失敗する。
  * ここで見たいのは起動の順序であって、エディターのチャンクが実際に取得できることではない。
  *
@@ -26,7 +26,7 @@ vi.mock('@/features/editor', async (importOriginal) => ({
   preloadEditor: () => Promise.resolve(),
 }));
 
-/** Worker を立てない。パイプラインの中身はこのテストの関心ではない。 */
+/** パイプラインを読み込まない。パイプラインの中身はこのテストの関心ではない。 */
 vi.mock('@/markdown/parser', () => ({
   createParser: () => ({
     parse: (text: string) =>
@@ -111,7 +111,7 @@ function documentAt(path: string): NonNullable<Bootstrap['document']> {
 }
 
 /**
- * 2 枚目以降のタブ（M3 Phase 7）。
+ * 2 枚目以降のタブ。
  *
  * `pendingPaths`（`marxdown a.md b.md`）と `session`（前回のタブ）の 2 経路がある。
  * どちらを使うかは Rust 側で決まり、同時には来ない。
@@ -192,7 +192,7 @@ describe('startup', () => {
       }),
     );
 
-    // シェルの描画は本文より前に走る。その時点で既に当たっていることを見る。
+    // シェルの描画は本文より前に実行される。その時点で既に適用されていることを見る。
     await startup(() => {
       seen.push(document.documentElement.dataset['theme']);
       seen.push(document.documentElement.style.getPropertyValue('--mx-content-width'));

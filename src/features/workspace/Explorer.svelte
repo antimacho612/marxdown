@@ -1,11 +1,9 @@
 <!--
-  レフトペインの中身（F-NAV-03）。**基点が決まっているときは動的 import の 1 行だけを持つ。**
+  レフトペインの中身（F-NAV-03）。基点が決まっているときは動的 import の 1 行だけを持つ。
 
-  ファイルツリー本体は遅延チャンクにあり、ペインを開くまで読み込まない
-  （クリティカルパスの外 / 05.performance-budget）。`open-editor.ts` などと同じ形で、
-  ここに置いても `workspace` の他の部分は `main` に残る。
+  ファイルツリー本体は遅延チャンクにあり、ペインを開くまで読み込まない（クリティカルパスの外 / 05.performance-budget）。`open-editor.ts` などと同じ形で、ここに置いても `workspace` の他の部分は `main` に残る。
 
-  基点が決まるのは `marxdown <dir>` か「フォルダを開く」を通ったときだけである（#103）。
+  基点が決まるのは `marxdown <dir>` か「フォルダを開く」を通ったときだけである。
   開いているファイルの親ディレクトリを自動で基点にはしない。
 -->
 <script lang="ts">
@@ -18,14 +16,13 @@
 
   const path = $derived(documentStore.meta?.path ?? null);
 
-  /** 見出し行に出す基点の名前。パス全体はツールチップに寄せる。 */
+  /** 見出し行に出す基点の名前。パス全体はツールチップに表示する。 */
   const rootName = $derived(treeStore.root === null ? null : splitPath(treeStore.root).name || treeStore.root);
 </script>
 
 <!--
   見出し行（03.ux-spec/01-screen-layout.md §2 のスケッチ）。
-  ライトペイン（`features/outline/Outline.svelte`）が同じ形の行を持っており、
-  こちらだけ無いと、左右のペインで情報の始まりが揃わない。
+  ライトペイン（`features/outline/Outline.svelte`）が同じ形の行を持っており、こちらだけ無いと、左右のペインで情報の始まりが揃わない。
 -->
 <div class="mx-explorer__head">
   <span class="mx-explorer__title">{ja.tree.title}</span>
@@ -35,11 +32,10 @@
 </div>
 
 <!--
-  中身を縦に積む器（03.ux-spec/06-panes.md §1）。ペイン自身（`LeftPane.svelte`）は枠と幅だけを持つ。
+  中身を縦に並べるコンテナ（03.ux-spec/06-panes.md §1）。ペイン自身（`LeftPane.svelte`）は枠と幅だけを持つ。
 
   スクロールはここではなく中身の側が持つ。
-  ツールバー（`lazy/ExplorerToolbar.svelte`）をスクロールさせないための分担であり、
-  空状態とツリーがそれぞれ自分のスクロール領域を持つ。
+  ツールバー（`lazy/ExplorerToolbar.svelte`）をスクロールさせないための分担であり、空状態とツリーがそれぞれ自分のスクロール領域を持つ。
 -->
 <div class="mx-explorer">
   {#if treeStore.root === null}
@@ -160,7 +156,7 @@
 
   /*
    * 面の色で押し込みを表す。
-   * `opacity` で薄くすると下地が透け、載せた文字（白）のコントラストが下がる。
+   * `opacity` で薄くすると下地が透け、上に置いた文字（白）のコントラストが下がる。
    */
   .mx-explorer__action:hover {
     background: var(--mx-color-accent-hover);

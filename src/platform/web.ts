@@ -66,7 +66,7 @@ interface WebState {
   /** Split の分割比（03.ux-spec/03-split-mode.md §1）。 */
   split: number;
   settings: Settings;
-  /** `themes/` に置いた配色（ADR-0014）。実装ではディレクトリ 1 つ、ここでは配列 1 本。 */
+  /** `themes/` に置いた配色。実装ではディレクトリ 1 つ、ここでは配列 1 本。 */
   userThemes: UserTheme[];
 }
 
@@ -99,12 +99,12 @@ function saveState(state: WebState): void {
   try {
     localStorage.setItem(STATE_KEY, JSON.stringify(state));
   } catch {
-    // 容量超過。dev 専用なので黙って諦める
+    // 容量超過。dev 専用なので何もしない
   }
 }
 
 /*
- * TeX の `\begin{aligned}` が `${aligned}` の書き損じに見えるため、この定数の間だけ落とす。
+ * TeX の `\begin{aligned}` が `${aligned}` の書き損じに見えるため、この定数の間だけ無効にする。
  * 中身は Markdown の本文であって、テンプレートリテラルの補間を意図した箇所は無い。
  */
 /* eslint-disable unicorn/no-incorrect-template-string-interpolation */
@@ -131,7 +131,7 @@ const platform: Platform = import.meta.env.DEV ? webPlatform : tauriPlatform
 
 > Platform 層があることで、この 2 つは同じ Domain 層から使える。
 
-## 前倒した記法（OQ-27）
+## GitHub 由来の拡張記法
 
 > [!NOTE]
 > GitHub Alerts は 5 種類ある。
@@ -208,7 +208,7 @@ flowchart LR
 /**
  * 実ファイルを仮想 FS に取り込み、仮想パスを返す。
  *
- * ブラウザは選ばれた / 落とされたファイルの絶対パスを渡さない。
+ * ブラウザは選ばれた / ドロップされたファイルの絶対パスを渡さない。
  * dev:web ではそれで構わないので、`/virtual/<名前>` を割り当てて中身だけ取り込む。
  */
 async function adoptFile(file: File): Promise<string | null> {
@@ -232,8 +232,7 @@ function initialBootstrap(): Bootstrap {
   const content = existing?.content ?? SAMPLE;
   const state = loadState();
 
-  // `?welcome` で「引数なし起動」を再現する。Welcome 画面（03.ux-spec/08-empty-states.md §1）を
-  // ブラウザだけで作り込めるようにするため。
+  // `?welcome` で「引数なし起動」を再現する。Welcome 画面（03.ux-spec/08-empty-states.md §1）をブラウザだけで作り込めるようにするため。
   const empty = params.has('welcome');
 
   // `?satellite` でサテライトのシェルを再現する（F-OPEN-06）。
@@ -259,7 +258,7 @@ function initialBootstrap(): Bootstrap {
     documentError: null,
     mode: (params.get('mode') as Bootstrap['mode']) ?? null,
     // `?benchInput` で計測経路をブラウザからも起動できるようにしておく。
-    // 計測値は参考にならない（dev サーバはモジュールを 1 つずつ配信し、Monaco の読み込みだけで数十秒かかる / 06.roadmap/m2-editor.md §5）。
+    // 計測値は参考にならない（dev サーバはモジュールを 1 つずつ配信し、Monaco の読み込みだけで数十秒かかる）。
     // この経路があるのは、処理が動作することを Tauri のビルドなしで確認するためである。
     benchInput: params.has('benchInput'),
     trace: { enabled: params.has('trace'), t0EpochMs: Date.now() },
@@ -276,17 +275,16 @@ function initialBootstrap(): Bootstrap {
     split: state.split,
     settings: state.settings,
     // `?brokenSettings` で「settings.json が壊れている」起動を再現する。
-    // 通知バー（03.ux-spec/07-status-and-notifications.md §2）と設定 UI の読み取り専用状態を
-    // ブラウザだけで確認できるようにするため。
+    // 通知バー（03.ux-spec/07-status-and-notifications.md §2）と設定 UI の読み取り専用状態をブラウザだけで確認できるようにするため。
     settingsError: brokenSettings(),
-    // 実装と同じく bootstrap に同梱して届く（ADR-0014）。
+    // 実装と同じく bootstrap に同梱して届く（02.architecture/10-theming.md §3.3）。
     // 後から適用する形にすると、dev:web でだけ既定の配色で 1 フレーム描かれる経路が再現しなくなる。
     previewTheme: previewThemeNow(state),
   };
 }
 
 /**
- * bootstrap に載せるプレビューの配色（ADR-0014）。
+ * bootstrap に載せるプレビューの配色（02.architecture/10-theming.md §3.3）。
  *
  * 実装（Rust）と同じく、選択中の id に一致する `themes/` のファイルがあるときだけ載せる。
  * 組み込みの配色を選んでいる場合は `null` で、フロントが `theme` チャンクの取得を待つ経路に入る。
@@ -301,7 +299,7 @@ function previewThemeNow(state: WebState): UserTheme | null {
 }
 
 /**
- * dev:web の `themes/`（ADR-0014）。
+ * dev:web の `themes/`。
  *
  * ブラウザに `%APPDATA%` は無いため、中身は `localStorage` に置く。
  * `?userTheme` を付けると、組み込みと同じ id の配色が 1 枚置かれた状態を再現する。
@@ -315,10 +313,10 @@ function userThemesNow(): UserTheme[] {
 }
 
 /**
- * ユーザーが追加した配色の見本（ADR-0014）。
+ * ユーザーが追加した配色の見本。
  *
- * 組み込みと同じ id にして、置き換えが効くことをブラウザだけで確認できるようにしてある。
- * 宣言だけでなくセレクタを含めてあるのは、包まれた後に CSS のネスト規則として効くことを見せるためである。
+ * 組み込みと同じ id にして、置き換えが機能することをブラウザだけで確認できるようにしてある。
+ * 宣言だけでなくセレクタを含めてあるのは、包まれた後に CSS のネスト規則として適用されることを見せるためである。
  */
 const SAMPLE_USER_THEME: UserTheme = {
   id: 'dracula',
@@ -401,12 +399,17 @@ export const webPlatform: Platform = {
   /**
    * `dev:web` にはディスクが無い。
    *
-   * 保存したふりをして相対パスだけ返す。挿入される Markdown の形と、無題の文書を断る経路は確認できる。
+   * 保存したふりをして相対パスだけ返す。挿入される Markdown の形と、無題の文書を拒否する経路は確認できる。
    * 実際に書けているかどうかは Rust 側のテスト（`src-tauri/src/asset.rs`）が見る。
    */
   async writeAsset(documentPath, extension) {
     const name = documentPath.split('/').pop() ?? 'untitled.md';
     return `${name}.assets/paste-${String(Date.now())}.${extension}`;
+  },
+
+  /** 仮想 FS にはスコープが無い。許可するものも無いので、そのまま返す。 */
+  async allowImageDir(href) {
+    return href;
   },
 
   /**
@@ -415,11 +418,6 @@ export const webPlatform: Platform = {
    * 実体を返さないのは、ここで木構造を模しても確かめられるのが並べ方だけだからである。
    * ファイルツリーの見た目は Storybook で見る（`FileTree.stories.svelte`）。
    */
-  /** 仮想 FS にはスコープが無い。許可するものも無いので、そのまま返す。 */
-  async allowImageDir(href) {
-    return href;
-  },
-
   async listDir() {
     return [];
   },
@@ -476,7 +474,7 @@ export const webPlatform: Platform = {
 
   async writeSettings(patch) {
     // 壊れているときは Rust 側（`AppState::patch_settings`）が拒否する。
-    // UI が「保存できたように見せる」ことのほうが害が大きいので、口も合わせておく。
+    // UI が「保存できたように見せる」ことのほうが害が大きいので、拒否する挙動も合わせておく。
     const broken = brokenSettings();
     if (broken) throw { kind: 'settings-broken', message: broken.message };
 
@@ -502,8 +500,8 @@ export const webPlatform: Platform = {
   },
 
   async openThemesDir() {
-    // 実装では「無ければ作って雛形を置いてから開く」。ブラウザには開く先が無いので、
-    // 見本を仮想の `themes/` に置いて、次の読み直しから効くようにする。
+    // 実装では「無ければ作って雛形を置いてから開く」。
+    // ブラウザには開く先が無いので、見本を仮想の `themes/` に置いて、次の読み直しから適用されるようにする。
     const state = loadState();
     if (state.userThemes.length === 0) {
       state.userThemes = [SAMPLE_USER_THEME];
@@ -530,7 +528,7 @@ export const webPlatform: Platform = {
         }
         void adoptFile(file).then(resolve);
       });
-      // 取り消しは change が飛ばない。dev 用なので待ちっぱなしを許容する
+      // 取り消しでは change が発火しない。dev 用なので待ったままになることを許容する
       input.click();
     });
   },
@@ -539,8 +537,7 @@ export const webPlatform: Platform = {
    * フォルダ選択（F-NAV-03）。
    *
    * ブラウザにはネイティブのフォルダ選択ダイアログが無く、`listDir` も空を返す。
-   * ここで確かめられるのは「基点が決まる前と後で Explorer の表示が入れ替わること」だけであるため、
-   * 名前を入力させて仮想 FS 上のパスにする。取り消しは `null` を返す。
+   * ここで確かめられるのは「基点が決まる前と後で Explorer の表示が入れ替わること」だけであるため、名前を入力させて仮想 FS 上のパスにする。取り消しは `null` を返す。
    */
   async pickFolder() {
     const name = globalThis.prompt('開くフォルダ名（dev:web の仮想 FS）', 'virtual');
@@ -604,8 +601,8 @@ export const webPlatform: Platform = {
 
   onDragDrop(handler) {
     // ブラウザには OS のドラッグ＆ドロップイベントが無いので HTML5 で代用する。
-    // 実装では絶対パスが取れないため、落ちてきた中身を仮想 FS に取り込んでから
-    // その仮想パスを渡す。Domain 層から見た形は Tauri 実装と同じになる。
+    // 絶対パスが取れないため、ドロップされた中身を仮想 FS に取り込んでからその仮想パスを渡す。
+    // Domain 層から見た形は Tauri 実装と同じになる。
     const onOver = (e: DragEvent) => {
       e.preventDefault();
       handler({ type: 'over' });

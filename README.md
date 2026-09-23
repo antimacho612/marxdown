@@ -83,7 +83,6 @@ pnpm fixtures                                  # bench/fixtures/ の基準ファ
 pnpm bench                                     # Markdown パイプライン単体
 pnpm build                                     # release ビルド（計測には必須）
 pnpm bench:boot                                # Cold Start（T0〜T9 の中央値）
-node scripts/bench-startup.mjs --sweep         # A/B（Worker / メインスレッド、描画方法）
 node scripts/bench-startup.mjs --warm          # Warm Start（単一インスタンス）
 pnpm analyze && node scripts/analyze-chunks.mjs  # バンドルの内訳
 ```
@@ -134,7 +133,7 @@ $exe = Resolve-Path .\src-tauri\target\release
 src/
   app/            起動シーケンス・アプリシェル・計測
   features/       document / preview / editor / …
-  markdown/       markdown-it パイプライン・Worker・サニタイズ
+  markdown/       markdown-it パイプライン・サニタイズ
   platform/       Tauri API の唯一の呼び出し口（テスト時は差し替え）
   styles/         デザイントークンとプレビューのタイポグラフィ
                   （コンポーネント固有の CSS は各 .svelte の <style> に同居）
@@ -148,7 +147,7 @@ src-tauri/src/
 
 守っている不変条件は 4 つ。
 
-1. **クリティカルパスを太らせない** — `main` + `md-worker` の合計を 150KB (gzip) 以内に保つ。エディター・Mermaid・KaTeX・ハイライタはすべて遅延チャンク。
+1. **クリティカルパスを太らせない** — `main` + `shared` + `pipeline` + アプリの CSS の合計を 150KB (gzip) 以内に保つ。エディター・Mermaid・KaTeX・ハイライタはすべて遅延チャンク。
 2. **Markdown テキストが唯一の真実** — AST も DOM も派生物で、テキストへ書き戻す経路を作らない。編集・保存で、触っていない箇所のバイト列を変えない。
 3. **ドキュメント本体をリアクティブな状態に置かない** — 本文の DOM はコンポーネントツリーの外にある。
 4. **Rust は速いことだけを担当する** — UI ロジックと Markdown の意味解釈は TypeScript 側。

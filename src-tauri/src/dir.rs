@@ -1,17 +1,16 @@
 //! ディレクトリの一覧（F-NAV-03 / ファイルツリー）。
 //!
-//! 中心ユースケースは「LLM が生成した、自分が書いていないファイルを開く」ことであり、
-//! 開いたファイルの隣に何があるかを見せるのがファイルツリーである。
+//! 中心ユースケースは「LLM が生成した、自分が書いていないファイルを開く」ことであり、開いたファイルの隣に何があるかを見せるのがファイルツリーである。
 //!
-//! **除外はここで行う。** 隠しファイル・`node_modules`・`.git` はフロントへ渡さない
-//! （03.ux-spec/06-panes.md §1）。フロント側で隠す形にすると、
-//! 「画面には出ないが IPC には載っている」状態になり、件数の多いディレクトリで
-//! 転送量だけが増える。
+//! 除外はここで行う。
+//! 隠しファイル・`node_modules`・`.git` はフロントへ渡さない（03.ux-spec/06-panes.md §1）。
+//! フロント側で隠す形にすると、「画面には出ないが IPC には載っている」状態になり、件数の多いディレクトリで転送量だけが増える。
 //!
-//! 利用者が足す除外（`explorer.exclude` / #146）も同じ場所で当てる。
+//! 利用者が足す除外（`explorer.exclude`）も同じ場所で適用する。
 //! こちらは基点からの相対パスに対する glob であり、判定そのものは `crate::glob` にある。
 //!
-//! **遅延展開の単位もここである。** 1 階層ぶんしか返さない。
+//! 遅延展開の単位もここである。
+//! 1 階層ぶんしか返さない。
 //! 再帰的に返すと、リポジトリの直上で開いたときに数万件を 1 回の IPC で運ぶことになる。
 
 use std::path::{Path, PathBuf};
@@ -49,7 +48,7 @@ fn is_visible(name: &str) -> bool {
     !name.starts_with('.') && !EXCLUDED.contains(&name)
 }
 
-/// 利用者が設定した除外（`explorer.exclude` / #146）。
+/// 利用者が設定した除外（`explorer.exclude`）。
 ///
 /// [`EXCLUDED`] とは別に持つ。
 /// 常に外すもの（隠しファイル・`node_modules`）は設定を空にしても戻らないという違いがある。
@@ -104,7 +103,7 @@ fn sort_entries(entries: &mut [DirEntry]) {
 /// `root` の配下であることを検証したうえで、`path` の中身を 1 階層ぶん返す。
 ///
 /// `exclude` は利用者が設定した除外（`explorer.exclude`）。
-/// 隠しファイルと `node_modules` はこれとは別に常に落ちる。
+/// 隠しファイルと `node_modules` はこれとは別に常に除外される。
 ///
 /// 存在しない・ディレクトリでない場合は [`CoreError::NotFound`]。
 /// スコープ外は [`CoreError::OutOfScope`]（N-SEC-05 / ADR-0006）。
@@ -122,7 +121,7 @@ pub fn list(roots: &[PathBuf], path: &Path, exclude: &Exclude) -> CoreResult<Vec
         if !is_visible(&name) || exclude.hides(&resolved, &name) {
             continue;
         }
-        // 種別が取れないものは飛ばす（削除された直後など）。一覧の 1 件のために失敗させない。
+        // 種別が取れないものは対象外にする（削除された直後など）。一覧の 1 件のために失敗させない。
         let Ok(kind) = item.file_type() else {
             continue;
         };
@@ -145,7 +144,7 @@ const MAX_FILES: usize = 5000;
 
 /// 潜る深さの上限。
 ///
-/// シンボリックリンクは辿らないので循環はしないが、生成物の深い入れ子で時間を使わないための保険である。
+/// シンボリックリンクは辿らないので循環はしないが、生成物の深い入れ子で時間を使わないための措置である。
 const MAX_DEPTH: usize = 16;
 
 /// クイックオープンの候補（F-NAV-05）。
@@ -165,8 +164,8 @@ pub struct FileList {
 /// シンボリックリンクは辿らない。
 /// 上限は [`MAX_FILES`] 件・深さ [`MAX_DEPTH`] で、超えたら `truncated` を立てて打ち切る。
 ///
-/// 拡張子を引数で受け取るのは、Markdown かどうかの判断をフロント側の 1 か所に残すためである
-/// （`lib/path.ts` の `MARKDOWN_EXTENSIONS`）。ここに一覧を置くと同じ判断が 2 か所に分かれる。
+/// 拡張子を引数で受け取るのは、Markdown かどうかの判断をフロント側の 1 か所に残すためである（`lib/path.ts` の `MARKDOWN_EXTENSIONS`）。
+/// ここに一覧を置くと同じ判断が 2 か所に分かれる。
 /// 比較は大文字小文字を区別しない。先頭の `.` は付けても付けなくてもよい。
 ///
 /// スコープ外は [`CoreError::OutOfScope`]（N-SEC-05 / ADR-0006）。
@@ -198,7 +197,7 @@ pub fn list_files(
 
 /// 1 階層ぶん集めて、ディレクトリへ潜る。
 ///
-/// 読めないディレクトリ（権限が無い / 消えた）はその枝ごと飛ばす。
+/// 読めないディレクトリ（権限が無い / 消えた）はその枝ごと対象外にする。
 /// 一覧の一部が読めないことで全体を失敗させない。
 fn collect(
     dir: &Path,
@@ -216,7 +215,7 @@ fn collect(
         return;
     };
 
-    // ファイルを先に拾ってから潜る。浅いところの候補を上限で失わない。
+    // ファイルを先に集めてから潜る。浅いところの候補を上限で失わない。
     let mut dirs = Vec::new();
     for item in read.flatten() {
         let name = item.file_name().to_string_lossy().to_string();
@@ -326,7 +325,7 @@ mod tests {
         assert!(has_extension("README.MD", &wanted));
         assert!(has_extension("a.markdown", &wanted));
         assert!(!has_extension("a.txt", &wanted));
-        // 拡張子を持たないもの。`.gitignore` は `is_visible` で先に落ちる。
+        // 拡張子を持たないもの。`.gitignore` は `is_visible` で先に除外される。
         assert!(!has_extension("Makefile", &wanted));
     }
 
@@ -369,8 +368,8 @@ mod tests {
         std::fs::remove_dir_all(&base).unwrap();
     }
 
-    /// 設定の除外は基点からの相対パスで効く。
-    /// 深い階層の `dist` も、基点直下の `docs/generated` も 1 つの設定から落とせる。
+    /// 設定の除外は基点からの相対パスで判定する。
+    /// 深い階層の `dist` も、基点直下の `docs/generated` も 1 つの設定から除外できる。
     #[test]
     fn user_patterns_hide_entries_relative_to_the_base() {
         let base = std::env::temp_dir().join("marxdown-dir-exclude-test");
@@ -439,7 +438,7 @@ mod tests {
         std::fs::remove_dir_all(&base).unwrap();
     }
 
-    /// 基点が無い場合は名前だけで判定する。`/` を含むパターンはその場では効かない。
+    /// 基点が無い場合は名前だけで判定する。`/` を含むパターンはその場では一致しない。
     #[test]
     fn without_a_base_only_the_name_is_matched() {
         let exclude = Exclude::new(&["dist".to_string(), "docs/generated".into()], None);

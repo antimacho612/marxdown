@@ -10,12 +10,11 @@
 //! 最後の 1 枚かどうかが分岐の起点である。
 //! 2 枚目以降の `✕` はそのウィンドウを閉じるだけで、トレイ格納にも終了にもならない。
 //!
-//! 論点 11: ウィンドウ位置の保存は `CloseRequested` でのみ行っていた（F-CONF-10）。
-//! `✕` を横取りしても同じイベントは来るため、格納時は問題ない。
-//! しかし、トレイメニューや `Ctrl+Q` からの終了ではこのイベントが発火しない。
-//! 常駐アプリになると、最後に `✕` を押した時点の位置から更新されないままになる。
+//! ウィンドウ位置の保存（F-CONF-10）を `CloseRequested` だけに置くと、トレイメニューや `Ctrl+Q` からの終了では保存されない（論点 11）。
+//! これらの経路ではこのイベントが発火しないためである。
+//! 常駐アプリでは、最後に `✕` を押した時点の位置から更新されないままになる。
 //!
-//! [ADR-0007]: ../../docs.local/adr/0007-tray-residency.md
+//! [ADR-0007]: ../../docs/adr/0007-tray-residency.md
 
 use tauri::{AppHandle, Emitter, Manager, Runtime};
 
@@ -84,8 +83,7 @@ pub fn restore<R: Runtime>(app: &AppHandle<R>) {
     };
 
     // 既に表示されているなら復帰ではない。
-    // トレイメニューの「開く」はウィンドウが表示されたままでも押せるため、
-    // ここで除外しないと Tray Resume に 0ms 近い値が混ざって中央値が壊れる。
+    // トレイメニューの「開く」はウィンドウが表示されたままでも押せるため、ここで除外しないと Tray Resume に 0ms 近い値が混ざって中央値が意味を失う。
     let was_hidden = !window.is_visible().unwrap_or(true);
 
     // `show()` の前に呼ぶ。
@@ -123,7 +121,7 @@ pub fn quit<R: Runtime>(app: &AppHandle<R>) {
 /// 終了してよいか確かめてから終える（F-EDIT-03 / 03.ux-spec/07-status-and-notifications.md §1）。
 ///
 /// Rust 側で確認するのは、終了の導線が 3 つあり（論点 3）、トレイメニューからの終了はフロントを経由しないためである。
-/// 確認をフロントに置くと、その経路だけ未保存の内容を黙って捨てることになる。
+/// 確認をフロントに置くと、その経路だけ未保存の内容を通知なく破棄することになる。
 /// 3 経路が合流しているのはここであるため、確認もここに置く。
 /// ダーティかどうかはフロントが `set_dirty` で知らせてくる（`state.rs`）。
 ///
@@ -160,9 +158,8 @@ fn ask_then_quit<R: Runtime>(app: AppHandle<R>) {
         DialogExt, MessageDialogButtons, MessageDialogKind, MessageDialogResult,
     };
 
-    // `YesNoCancelCustom` はラベルをカスタムした時点で、結果は `Yes` / `No` ではなく
-    // 常に `Custom(ラベル文字列)` で返ってくる（tauri-plugin-dialog の仕様）。
-    // ラベルで判定しないと、どちらのボタンを押しても `_` に落ちて無反応になる。
+    // `YesNoCancelCustom` はラベルをカスタムした時点で、結果は `Yes` / `No` ではなく常に `Custom(ラベル文字列)` で返ってくる（tauri-plugin-dialog の仕様）。
+    // ラベルで判定しないと、どちらのボタンを押しても `_` に該当して何も起きない。
     const SAVE_AND_QUIT: &str = "保存して終了";
     const QUIT_WITHOUT_SAVING: &str = "保存せず終了";
 
@@ -206,7 +203,7 @@ pub fn on_close_requested<R: Runtime>(app: &AppHandle<R>, label: &str) -> bool {
         .map(|s| s.owns_instance())
         .unwrap_or(true);
 
-    // ウィンドウ位置を覚えるのは、所有者プロセスの主ウィンドウの分だけである（F-CONF-10 / F-OPEN-06 の決定 6）。
+    // ウィンドウ位置を記録するのは、所有者プロセスの主ウィンドウの分だけである（F-CONF-10 / ADR-0016）。
     // 追加ウィンドウは閉じたら消え、独立プロセスの矩形を書くと所有者側の値を上書きしてしまう。
     if owner && label == MAIN_LABEL {
         save_window_state(app);
@@ -219,9 +216,9 @@ pub fn on_close_requested<R: Runtime>(app: &AppHandle<R>, label: &str) -> bool {
 
     // ここから下は「最後の 1 枚」である。閉じた先はトレイ格納か、プロセスの終了しかない。
 
-    // トレイに常駐するのは、所有者プロセスの主ウィンドウだけである（決定 3）。
+    // トレイに常駐するのは、所有者プロセスの主ウィンドウだけである（ADR-0016 §3.5）。
     // 独立プロセス（`--new-window`）とサテライトは常駐しない。
-    // 常駐させると、閉じたつもりのプロセスが積み上がり、トレイから戻したときに出てくる窓も一定しない。
+    // 常駐させると、閉じたつもりのプロセスが増え続け、トレイから戻したときに出てくる窓も一定しない。
     if owner && label == MAIN_LABEL && stashes_on_close(app) {
         // 初回だけ、`✕` の意味が変わることを説明する（論点 4）。
         //
@@ -243,8 +240,7 @@ pub fn on_close_requested<R: Runtime>(app: &AppHandle<R>, label: &str) -> bool {
     // 閉じたらプロセスが終わる。未保存があるなら必ず確認する（F-EDIT-03 / N-REL-01）。
     //
     // `✕` で閉じる経路にも確認が要る。
-    // トレイ常駐が既定であったうちは、閉じても本文はメモリに残っていたため確認が無くても何も失われなかった。
-    // 常駐しない窓が増えた以上（決定 3）、ここは `Ctrl+Q` と同じ扱いにする。
+    // トレイに常駐しない窓では閉じると本文が失われるため、ここは `Ctrl+Q` と同じ扱いにする（ADR-0016 §3.5）。
     let dirty = app
         .try_state::<AppState>()
         .map(|s| s.is_dirty())
@@ -281,8 +277,8 @@ fn close_one<R: Runtime>(app: &AppHandle<R>, label: &str) -> bool {
 /// 「保存して閉じる」がここで保存しないのも同じ理由である。
 /// 本文は Monaco の `ITextModel` にあり（ADR-0005）、保存できるのはフロントだけであるため、保存を依頼して戻る。
 ///
-/// 「保存せず閉じる」では先にダーティを落とす。
-/// 落とさずに `close()` を呼ぶと同じ確認へ戻ってきて、閉じられなくなる。
+/// 「保存せず閉じる」では先にダーティを解除する。
+/// 解除せずに `close()` を呼ぶと同じ確認へ戻ってきて、閉じられなくなる。
 fn ask_then_close<R: Runtime>(app: AppHandle<R>, label: String) {
     use tauri_plugin_dialog::{
         DialogExt, MessageDialogButtons, MessageDialogKind, MessageDialogResult,

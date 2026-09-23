@@ -42,10 +42,10 @@ export interface OpenerConfig {
   /** 開けなかったことを知らせる先。消えたファイルを最近開いた一覧から外す。 */
   onMissing: (path: string) => void;
   /**
-   * 現在の `preview.softBreak` の値（#45）。
+   * 現在の `preview.softBreak` の値。
    *
-   * `document` は `settings` feature を直接参照できないため（02.architecture/03-layers.md §3）、
-   * パースのたびに読む関数として注入する。値そのものを固定すると設定変更後も古い値でパースし続ける。
+   * `document` は `settings` feature を参照しないため（02.architecture/03-layers.md §3）、パースのたびに読む関数として注入する。
+   * 値そのものを固定すると設定変更後も古い値でパースし続ける。
    */
   softBreak: () => boolean;
   /**
@@ -55,7 +55,7 @@ export interface OpenerConfig {
    */
   syntax: () => readonly string[];
   /**
-   * 開く先のタブ（`features/workspace`）。**無ければそちらで作る。**
+   * 開く先のタブ（`features/workspace`）。無ければそちらで作る。
    *
    * エディターはこれをキーにモデルを分け（`document/text.ts` の `DocumentIdentity`）、履歴もこれで分かれる（F-NAV-07）。
    * 5 つの入口すべてに引数として足す代わりに、ここで 1 回だけ問う。
@@ -104,14 +104,13 @@ export interface OpenOptions {
    * `resetScroll` と同時に指定しない。
    */
   restoreScroll?: number;
-  /** 最近開いたファイルに積むか。既定 true。 */
+  /** 最近開いたファイルに加えるか。既定 true。 */
   remember?: boolean;
   /**
    * 未保存の変更を捨ててよいか尋ねるか。既定 true（F-EDIT-03）。
    *
-   * false にするのは、**捨てるものが無い**ことが呼び出し側で分かっている場合だけである。
-   * タブへ開く経路がこれにあたる。いまの文書はタブとして残るため何も失われず、
-   * タブを切り替えるたびに確認が出ると操作が成立しない（`features/workspace/tabs.svelte.ts`）。
+   * false にするのは、捨てるものが無いことが呼び出し側で分かっている場合だけである。
+   * タブへ開く経路がこれにあたる。いまの文書はタブとして残るため何も失われず、タブを切り替えるたびに確認が出ると操作が成立しない（`features/workspace/tabs.svelte.ts`）。
    */
   confirm?: boolean;
   /**
@@ -122,7 +121,7 @@ export interface OpenOptions {
    */
   anchor?: string;
   /**
-   * 戻る / 進むの履歴に積むか。既定は true（F-NAV-07）。
+   * 戻る / 進むの履歴に加えるか。既定は true（F-NAV-07）。
    *
    * false にするのは同じ位置を維持する操作だけである。
    * 再読み込み（`F5` / 外部変更）と、履歴そのものを辿る移動（`Alt+←` / `Alt+→`）がこれにあたる。
@@ -192,10 +191,10 @@ export async function openDocument(payload: StoredPayload, options: OpenOptions 
   const key = opener.targetKey();
 
   // 本文を差し替える前に、現在のスクロール位置を履歴へ記録する（F-NAV-07）。
-  // 無題の文書は戻り先として指定できないため積まない。
+  // 無題の文書は戻り先として指定できないため加えない。
   if (options.history !== false && payload.path !== null) pushHistory(key, payload.path, previewScrollTop());
 
-  // 本文を落としてから入れる。
+  // 本文を除いてから入れる。
   // そのまま代入すると `content` が実行時に残り、ストアが本文を保持し続ける（`toMeta`）。
   const meta = toMeta(payload);
   documentStore.meta = meta;
@@ -207,8 +206,7 @@ export async function openDocument(payload: StoredPayload, options: OpenOptions 
   // これが無いと 1 つのモデルを使い回すことになり、切り替えた先で Undo したときに前の文書の本文が編集面へ入る（N-CMP-03）。
   setDocumentText(payload.content, { key, documentId: payload.path ?? UNTITLED_ID });
 
-  // ディスクと一致した状態から始める。開き直しでもここを通るので
-  // 再読み込み後にダーティが残らない（F-EDIT-03）。
+  // ディスクと一致した状態から始める。開き直しでもここを通るので再読み込み後にダーティが残らない（F-EDIT-03）。
   markClean();
 
   options.betweenParseAndPaint?.();
@@ -233,7 +231,7 @@ export async function openDocument(payload: StoredPayload, options: OpenOptions 
     traceMark(options, 'T8');
 
     // アウトラインの差し替えは T8 の後（F-VIEW-02）。
-    // ライトペインが開いていると 1 見出し 1 要素の再描画が走り、`huge.md`（見出し 1249 個）で実測 70〜110ms かかる。
+    // ライトペインが開いていると 1 見出し 1 要素の再描画が発生し、`huge.md`（見出し 1249 個）で 70〜110ms かかる。
     // 手前に置くとそれが丸ごと T3→T8 に加算されてしまう。
     documentStore.outline = parsed.outline;
 
@@ -245,7 +243,7 @@ export async function openDocument(payload: StoredPayload, options: OpenOptions 
     documentStore.stats = outcome;
 
     // 画像解決・コピーボタン・ハイライトは T8 の後に行う（読むのに不要な処理のため）。
-    // 段階的描画では最初のチャンクしかまだ DOM に無いので、残りが入り終わったらもう一度呼ぶ（`enhance` は処理済みを飛ばす）。
+    // 段階的描画では最初のチャンクしかまだ DOM に無いので、残りが入り終わったらもう一度呼ぶ（`enhance` は処理済みの要素を対象外にする）。
     // 無題の文書は基点が無いため、相対パスの画像はスコープ外として扱われる（`preview/enhance.ts`）。
     const enhanceOptions = { baseDir: dirOf(payload.path ?? '') };
     enhance(container, enhanceOptions);
@@ -262,7 +260,7 @@ export async function openDocument(payload: StoredPayload, options: OpenOptions 
       if (anchorPending && options.anchor !== undefined) {
         anchorPending = !scrollToAnchor(container, options.anchor);
       }
-      // 段階的描画中は scrollHeight が足りず復元位置が頭打ちになるため、全部入ったら当て直す。
+      // 段階的描画中は scrollHeight が足りず復元位置が上限で切り詰められるため、全部入ったら設定し直す。
       if (options.restoreScroll !== undefined && container.scrollTop < options.restoreScroll) {
         container.scrollTop = options.restoreScroll;
       }
@@ -273,7 +271,7 @@ export async function openDocument(payload: StoredPayload, options: OpenOptions 
     opener.onOpened(meta, { remember: options.remember !== false });
 
     // 無題の文書は監視に載らない（ディスクに実体が無いため）。
-    // 開いているファイルだけを監視する（N-PERF-05）。前のファイルの監視は Rust 側で外れる。
+    // 表示中のファイルだけを監視する（N-PERF-05）。前のファイルの監視は Rust 側で解除される。
     if (payload.path !== null) void watch(payload.path);
 
     return outcome;
@@ -286,8 +284,8 @@ export async function openDocument(payload: StoredPayload, options: OpenOptions 
 /**
  * パスから開く。読み込みの失敗もここで処理する。
  *
- * 開けなかったファイルは履歴から外す。消えたファイルを一覧に残し続けると、
- * 次の起動でも同じ失敗を踏むことになる（03.ux-spec/08-empty-states.md §1 の一覧は道具であって記録ではない）。
+ * 開けなかったファイルは履歴から外す。
+ * 消えたファイルを一覧に残し続けると、次の起動でも同じ失敗が起きる（03.ux-spec/08-empty-states.md §1 の一覧は道具であって記録ではない）。
  */
 export async function openPath(path: string, options: OpenOptions = {}): Promise<OpenOutcome | null> {
   // 編集中の内容を捨てる前に尋ねる（F-EDIT-03）。開くと決まっていないので I/O より前に置く。
@@ -317,7 +315,7 @@ export async function openPath(path: string, options: OpenOptions = {}): Promise
 }
 
 /**
- * Marxdown では開けないファイルの逃げ道（F-VIEW-06）。
+ * Marxdown では開けないファイルを既定アプリで開く経路（F-VIEW-06）。
  *
  * 本文中の非 Markdown リンクと同じ選択肢を出す（`preview/links.ts` の `confirmOpenExternally`）。
  * ファイルツリーは Markdown 以外も並べるため、画像や書庫を選ぶ操作自体は起こりうる。
@@ -355,7 +353,7 @@ export async function openViaDialog(): Promise<OpenOutcome | null> {
 /**
  * いま開いているファイルを、ディスクの最新の内容で開き直す（F5）。
  *
- * F5 は WebView 自身の「再読み込み」に割り当たっているため、素通しすると `initialization_script` の起動時 bootstrap が再適用され、指定ファイルが再読み込みされてその後に開いたファイルの内容が上書きされてしまう。
+ * F5 は WebView 自身の「再読み込み」に割り当たっているため、そのまま通すと `initialization_script` の起動時 bootstrap が再適用され、指定ファイルが再読み込みされてその後に開いたファイルの内容が上書きされてしまう。
  * ここで意味を上書きし、読み直しとパースだけで済ませる（ウォーム起動と同じ経路）。
  * スクロール位置は保つ（先頭に戻ると「更新」ではなく「開き直し」になる）。
  * 外部変更の自動再読み込み（`watch.ts`）もここを通る。
@@ -369,13 +367,12 @@ export async function reloadCurrent(options: ReloadOptions = {}): Promise<OpenOu
   const container = document.querySelector<HTMLElement>(PREVIEW_SELECTOR);
 
   const outcome = await openPath(meta.path, {
-    // キーごと省く（`exactOptionalPropertyTypes` では `encoding: undefined` と
-    // 「指定なし」が別物になる）。
+    // キーごと省く（`exactOptionalPropertyTypes` では `encoding: undefined` と「指定なし」が別物になる）。
     ...(options.encoding && { encoding: options.encoding }),
     resetScroll: false,
     restoreScroll: container?.scrollTop ?? 0,
     remember: false,
-    // 同じ位置を維持する操作であるため履歴に積まない（積むと `Alt+←` が期待どおりに戻らなくなる）。
+    // 同じ位置を維持する操作であるため履歴に加えない（加えると `Alt+←` が期待どおりに戻らなくなる）。
     history: false,
   });
 

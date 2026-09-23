@@ -1,13 +1,13 @@
 /**
  * エディターのキーマップ（F-EDIT-04〜10, 12 / `editor` チャンク）。
  *
- * キーは 2 表にしか無い。`app/commands.ts` の `KEY_BINDINGS`（どこでも効くアプリ操作）と、ここ（エディターに居るときだけ効く編集操作）である。
- * 重なると要素側が先に処理し `globalThis` のリスナが二重に処理するため、重複キーは `REMOVED` で剥がす。
+ * キーの割り当ては 2 か所にだけある。`app/commands.ts` の `KEY_BINDINGS`（どこでも有効なアプリ操作）と、ここ（エディターにフォーカスがあるときだけ有効な編集操作）である。
+ * 重複すると Monaco が先に処理し、続けて `globalThis` のリスナも処理するため、重複するキーは `REMOVED` で Monaco から外す。
  *
- * Monaco は VS Code のキーが最初から入っているため、CodeMirror 時代の「互換キーマップを外から足す」作業が「アプリ側が握るキーを剥がす」だけになった（ADR-0009 の受け入れコスト 6）。
- * マルチカーソル/矩形選択の修飾子も既定で 03.ux-spec/04-keybindings.md §3 と一致するため直す必要がない。
+ * Monaco は VS Code のキーバインドを最初から持っているため、ここで行うのはアプリ側が処理するキーを外すことと、Markdown の書式を追加することだけである（ADR-0009 の受け入れコスト 6）。
+ * マルチカーソル/矩形選択の修飾子も既定で 03.ux-spec/04-keybindings.md §3 と一致するため変更する必要はない。
  *
- * `DROPPED` は `KeyMod` / `KeyCode` の定数で照合するため、パッケージの綴りが変わると型で落ちる（CodeMirror 版の文字列照合とは違い見張るテストが不要）。
+ * `REMOVED` は `KeyMod` / `KeyCode` の定数で照合するため、定数名が変わると型検査で検出できる。
  *
  * `Enter` / `Backspace` を横取りするが、IME 変換中（`keyCode: 229`）は Monaco がキーバインドを解決しないため確定操作を奪わない。
  */
@@ -46,8 +46,8 @@ const REMOVED: { keybinding: number; why: string }[] = [
   { keybinding: KeyMod.CtrlCmd | KeyCode.KeyF, why: 'アプリの Ctrl+F が面ごとに振り分ける' },
   { keybinding: KeyMod.CtrlCmd | KeyCode.KeyH, why: 'Ctrl+H も同じ経路を通す' },
 
-  // 指定行へ移動はアプリ側が担当する（`Ctrl+G` / M3 Phase 4）。
-  // Monaco も同じキーに `editor.action.gotoLine` を持っており、剥がさないと `globalThis` のリスナと二重に処理される。
+  // 指定行へ移動はアプリ側が担当する（`Ctrl+G`）。
+  // Monaco も同じキーに `editor.action.gotoLine` を持っており、外さないと `globalThis` のリスナと二重に処理される。
   // アクションそのものはアプリ側から実行する（`editor.ts` の `gotoLine`）。
   { keybinding: KeyMod.CtrlCmd | KeyCode.KeyG, why: 'アプリの Ctrl+G が指定行へ移動を開く' },
 
@@ -102,8 +102,7 @@ const MARKDOWN: { keybinding: number; edit: MarkdownEdit }[] = [
  *
  * `source` は `'keyboard'` でなければならない。
  * `CursorsController.type()` はこの文字列を参照しており、`'keyboard'` のときだけ `typeWithInterceptors` を通る（`common/cursor/cursor.js`）。
- * 別の名前を渡すと `Enter` が `autoIndent: 'keep'` を通らず、前の行のインデントを引き継がない
- * （`dev:web` で `  段落` の末尾から改行したときに桁 1 になることで確認した）。
+ * 別の名前を渡すと `Enter` が `autoIndent: 'keep'` を通らず、前の行のインデントを引き継がない（インデントした段落の末尾で改行すると桁 1 に戻る）。
  */
 const FALLTHROUGH: {
   keybinding: number;
@@ -111,7 +110,7 @@ const FALLTHROUGH: {
    * 編集を伴わない処理（表のセル移動 / F-EDIT-11）。`edit` より先に試す。
    *
    * 選択範囲を動かすだけなので `MarkdownEdit` では表せない。
-   * `runEdit` は編集が 0 件なら「処理しなかった」と見なすため、そちらに載せると必ず既定動作へ流れる。
+   * `runEdit` は編集が 0 件なら「処理しなかった」と見なすため、そちらに置くと常に既定動作へ渡る。
    */
   move?: (editor: monaco.editor.ICodeEditor) => boolean;
   edit: MarkdownEdit;
@@ -120,7 +119,7 @@ const FALLTHROUGH: {
 }[] = [
   { keybinding: KeyCode.Tab, move: moveToNextCell, edit: indentList, handler: 'tab' },
   { keybinding: KeyMod.Shift | KeyCode.Tab, move: moveToPreviousCell, edit: outdentList, handler: 'outdent' },
-  // F-EDIT-09 / F-EDIT-10。既定は「前の行のインデントを継ぐ改行」（`autoIndent: 'keep'`）。
+  // F-EDIT-09 / F-EDIT-10。既定は「前の行のインデントを引き継ぐ改行」（`autoIndent: 'keep'`）。
   { keybinding: KeyCode.Enter, edit: continueList, handler: 'type', payload: { text: '\n' } },
   { keybinding: KeyCode.Backspace, edit: deleteMarkupBackward, handler: 'deleteLeft' },
 ];
@@ -133,22 +132,21 @@ function commandFor(editor: monaco.editor.IStandaloneCodeEditor, edit: MarkdownE
 }
 
 /**
- * `editor.addCommand` の第 3 引数（precondition）。指定しないと検索ボックスの入力まで横取りする（#54）。
+ * `editor.addCommand` の第 3 引数（precondition）。指定しないと検索ボックスの入力まで横取りする。
  *
  * `addCommand` は既定で無条件（どこにフォーカスがあっても発火）になる。
- * Find ウィジェットの入力欄は `#mx-editor` の中にある別の `<textarea>` であり、本文の入力面ではない（`open-search.ts` の但し書きと同じ理由）。
+ * Find ウィジェットの入力欄は `#mx-editor` の中にある別の `<textarea>` であり、本文の入力面ではない。
  * 条件を付けないと、ウィジェットの中で `Backspace` を押しても文字は削除されず、本文が削除される。
  *
  * Monaco 自身の `deleteLeft` などはこの区別を `textInputFocus`（`_editor.hasTextFocus()`）で行っている。
- * `editorTextFocus` はほぼ同じ判定であり、こちらの一覧に揃えてある。
+ * `editorTextFocus` はほぼ同じ判定である。
  */
 const EDITOR_TEXT_FOCUS = 'editorTextFocus';
 
 /**
  * キーを登録する。`mountEditor` から 1 回だけ呼ぶ。
  *
- * `addKeybindingRules` はグローバル（エディターごとではない）だが、
- * エディターは 1 つしか作らないので問題にならない（`editor.ts`）。
+ * `addKeybindingRules` はグローバル（エディターごとではない）だが、エディターは 1 つしか作らないので問題にならない（`editor.ts`）。
  */
 export function installEditorKeymap(editor: monaco.editor.IStandaloneCodeEditor): void {
   monaco.editor.addKeybindingRules(REMOVED.map(({ keybinding }) => ({ keybinding, command: null })));

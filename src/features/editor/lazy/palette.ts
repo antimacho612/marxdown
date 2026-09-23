@@ -1,11 +1,11 @@
 /**
- * 選ばれている配色をエディター面へ効かせる（`editor` チャンク / ADR-0014）。
+ * 選ばれている配色をエディター面へ適用する（`editor` チャンク / ADR-0014）。
  *
- * `theme.ts` は面に効いているトークンを Monaco へ写す係で、そのトークンを用意するのがここである。
+ * `theme.ts` は面に適用されているトークンを Monaco へ反映する役割であり、そのトークンを用意するのがここである。
  * 順序に意味がある。注入してからでないと `applyEditorTheme()` は既定のトークンを読む。
  *
  * 属性（`data-mx-editor-theme`）を付けるのは `main` 側（`features/settings/appearance.ts`）で、起動直後から付いている。
- * 属性に意味を与える規則だけが遅れて届く形になっているが、`#mx-editor` は Monaco がマウントされるまで空であるため、その間に見えるものは無い。
+ * 属性に対応する CSS 規則だけが遅れて読み込まれるが、`#mx-editor` は Monaco がマウントされるまで空であるため、その間に見えるものは無い。
  * プレビュー側は起動直後から見えているため経路が違う（`features/theme/index.ts`）。
  */
 import { settingsStore } from '@/features/settings';
@@ -27,7 +27,7 @@ let applied: string | null = null;
  * カタログを読み込み、`themes/` の変更を購読する。マウント時に 1 回だけ呼ぶ。
  *
  * 読み込めた時点で `reapply` を呼び直す。
- * 呼び出し側（`editor.ts`）はマウント直後にも当てているが、そのときはまだ組み込みの配色が存在しない。
+ * 呼び出し側（`editor.ts`）はマウント直後にも適用しているが、そのときはまだ組み込みの配色が存在しない。
  */
 export async function installEditorPalette(reapply: () => void): Promise<void> {
   catalog = await loadThemeCatalog();
@@ -43,7 +43,7 @@ export async function installEditorPalette(reapply: () => void): Promise<void> {
 }
 
 /**
- * 設定で選ばれている配色を当てる。カタログがまだ無ければ何もしない。
+ * 設定で選ばれている配色を適用する。カタログがまだ無ければ何もしない。
  *
  * 同期的に完了する。呼び出し側は続けて `applyEditorTheme()` を呼んでよい。
  */

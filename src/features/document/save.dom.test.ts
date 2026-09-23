@@ -3,10 +3,10 @@
  * 保存経路の回帰テスト（F-EDIT-02, 03, 14 / N-REL-01）。
  *
  * バイト列の正しさは Rust 側の担当（`src-tauri/src/document/`）で、UI からの通し確認は E2E の担当である（`e2e/`）。
- * この層が担うのは間の組み立てで、本文とメタ情報から `WriteRequest` を組む（EOL / BOM / encoding を落とさないか）ことと、`SaveResult` を画面の言葉と次の状態に変換する（mtime を更新し忘れないか）ことである。
+ * この層が担うのは間の組み立てで、本文とメタ情報から `WriteRequest` を組む（EOL / BOM / encoding が欠けないか）ことと、`SaveResult` を画面の言葉と次の状態に変換する（mtime を更新し忘れないか）ことである。
  *
  * `mtime` の更新漏れは画面に出ない。
- * 2 回目の保存で初めて「別のプロセスが変更しています」として現れ、そのときには原因が遠い。
+ * 2 回目の保存で初めて「別のプロセスが変更しています」として現れ、そのときには症状から原因を辿りにくい。
  * ここで固定しておく。
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -19,8 +19,7 @@ import { resetDocumentText, setDocumentText } from './text';
 const openPath = vi.fn((_path: string) => Promise.resolve({ parseMs: 0, paintMs: 0, chunks: 1 }));
 
 /**
- * 開く経路はモックする。**ここで見たいのは保存の組み立て**であって、
- * パースと描画ではない（そちらは `open.dom.test.ts` の担当）。
+ * 開く経路はモックする。ここで見たいのは保存の組み立てであって、パースと描画ではない（そちらは `open.dom.test.ts` の担当）。
  */
 vi.mock('./open', () => ({
   openPath: (path: string) => openPath(path),
@@ -80,7 +79,7 @@ beforeEach(() => {
 
 describe('WriteRequest の組み立て (F-EDIT-14)', () => {
   it('読み込み時の EOL / BOM / エンコーディングをそのまま返す', async () => {
-    // ここを落とすと、保存した瞬間に触っていない行まで差分になる（N-CMP-03）。
+    // ここが欠けると、保存した瞬間に触っていない行まで差分になる（N-CMP-03）。
     setDocumentText('本文\n');
     await saveCurrent();
 
@@ -101,8 +100,8 @@ describe('WriteRequest の組み立て (F-EDIT-14)', () => {
     await saveCurrent();
 
     expect(writes[0]?.eol).toBe('lf');
-    // **ディスクの姿も新しいほうへ動かす。** ここを直さないと、保存の直後に
-    // 希望が落ちた瞬間、ステータスバーの表示が CRLF へ戻る。
+    // ディスク上の状態も新しいほうへ更新する。
+    // ここを直さないと、保存の直後に変換の指定が破棄された時点で、ステータスバーの表示が CRLF へ戻る。
     expect(documentStore.meta?.eol).toBe('lf');
     expect(documentStore.eolOverride).toBeNull();
     expect(documentStore.isDirty).toBe(false);
@@ -230,7 +229,7 @@ describe('名前を付けて保存 (F-EDIT-02)', () => {
 
   /**
    * 無題の文書（`Ctrl+N` / `document/new.ts`）には保存先が無い。
-   * **`Ctrl+S` が名前を訊く**のが、どのエディターでも同じ振る舞いである（Familiar）。
+   * `Ctrl+S` が名前を訊くのが、どのエディターでも同じ振る舞いである（Familiar）。
    */
   it('まだ保存していない文書では、Ctrl+S が名前を訊きに行く', async () => {
     documentStore.meta = { ...META, path: null, mtimeMs: 0, size: 0 };
@@ -240,7 +239,7 @@ describe('名前を付けて保存 (F-EDIT-02)', () => {
     expect(await saveCurrent()).toBe(true);
 
     expect(writes[0]?.path).toBe('C:/notes/新規.md');
-    // 新規作成として書く。**既存ファイルを選んだ場合は衝突として返ってくる。**
+    // 新規作成として書く。既存ファイルを選んだ場合は衝突として返ってくる。
     expect(writes[0]?.expectedMtimeMs).toBeNull();
     expect(writes[0]?.content).toBe('打った本文\n');
   });

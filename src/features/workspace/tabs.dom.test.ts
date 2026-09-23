@@ -88,7 +88,7 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-/** ルーンの `$state` フィールドを列挙する。`store.test.ts` と同じ見張り方。 */
+/** ルーンの `$state` フィールドを列挙する。`store.test.ts` と同じ検査方法。 */
 function tabKeys(tab: Tab): string[] {
   return Object.getOwnPropertyNames(tab);
 }
@@ -121,7 +121,7 @@ describe('本文の持ち方', () => {
     await openPath('C:/work/a.md');
     const active = tabsStore.active;
 
-    // ここに本文が生えたら、1 打鍵ごとに巨大な文字列がリアクティビティを通過する。
+    // ここに本文が入ると、1 打鍵ごとに巨大な文字列がリアクティビティを通過する。
     expect(active?.text).toBeNull();
     expect(tabKeys(active as Tab).toSorted()).toEqual(['eolOverride', 'id', 'meta', 'scrollTop', 'text', 'textDirty']);
     expect(active?.meta).not.toHaveProperty('content');
@@ -158,7 +158,7 @@ describe('切り替え', () => {
     expect(await activateTab(first)).toBe(true);
     expect(documentStore.meta?.path).toBe('C:/work/a.md');
     expect(documentStore.isDirty).toBe(true);
-    // 戻したぶんは表示側が真実になるので、タブは抱え続けない
+    // 戻した分は表示側が真実になるため、タブは保持し続けない
     expect(tabsStore.active?.text).toBeNull();
   });
 
@@ -172,7 +172,7 @@ describe('切り替え', () => {
 
     expect(documentStore.eolOverride).toBe('crlf');
     expect(isTabDirty(tabsStore.active as Tab)).toBe(true);
-    // 本文は触っていない。合成して立てると、EOL を戻してもダーティが残る
+    // 本文は変更していない。合成した値でダーティにすると、EOL を戻してもダーティが残る
     expect(tabsStore.active?.textDirty).toBe(false);
   });
 
@@ -201,7 +201,7 @@ describe('切り替え', () => {
     await openPath('C:/work/a.md');
     const first = tabsStore.activeId ?? 0;
     const preview = document.querySelector<HTMLElement>('#mx-preview');
-    // jsdom は要素に高さを持たないため、代入できる形にして位置だけを見る
+    // jsdom は要素に高さを持たないため、代入できる形にして位置だけを検証する
     Object.defineProperty(preview, 'scrollTop', { value: 120, writable: true });
 
     await openInNewTab(payload('C:/work/b.md'));
@@ -420,7 +420,7 @@ describe('並べ替え (F-NAV-02)', () => {
   });
 });
 
-describe('外部で削除・リネームされたタブ (#106)', () => {
+describe('外部で削除・リネームされたタブ', () => {
   it('切り替えようとしたら畳んで、表示中の文書はそのままにする', async () => {
     await openPath('C:/work/a.md');
     const first = tabsStore.activeId ?? 0;

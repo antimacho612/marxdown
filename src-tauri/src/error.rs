@@ -1,12 +1,12 @@
 //! コマンド境界のエラー型。
 //!
-//! 02.architecture/README.md 原則 C に従い、Rust 側は「速いこと」だけを担当する。
-//! エラーもフロントエンドが分岐できる最小限の種別に留める。
-//! ユーザー向けの文言生成は TypeScript 側（`src/i18n/ja.ts`）に置く。
+//! 種別はフロントエンドが分岐できる最小限に留める（02.architecture/01-principles.md 原則 C）。
+//! ユーザー向けの文言は TypeScript 側（`src/i18n/ja.ts`）が作る。
 
 use serde::Serialize;
 
-/// フロントへ返すエラー。`kind` で分岐し、`message` は開発者向けの詳細。
+/// フロントへ返すエラー。
+/// `kind` で分岐し、`message` は開発者向けの詳細。
 #[derive(Debug, thiserror::Error)]
 pub enum CoreError {
     #[error("ファイルが見つからない: {0}")]
@@ -21,10 +21,10 @@ pub enum CoreError {
     #[error("ファイルが大きすぎる: {path} ({size} bytes)")]
     TooLarge { path: String, size: u64 },
 
-    /// テキストとして解釈できないファイル（N-REL-03）。
+    /// テキストとして解釈できないファイル。
     ///
-    /// 大きすぎるわけではないので [`Self::TooLarge`] とは分ける。
-    /// 前者は開くのを諦めてもらう他ないが、こちらは OS の既定アプリへ渡せば用が足りる（F-VIEW-06）。
+    /// [`Self::TooLarge`] とは対処が違うため分ける。
+    /// こちらは OS の既定アプリで開ける。
     #[error("テキストとして読めない: {0}")]
     Binary(String),
 
@@ -46,11 +46,13 @@ pub enum CoreError {
 }
 
 impl CoreError {
-    /// 検証済みの解決先。プレースホルダに実際のパスを出すために使う（OQ-17）。
+    /// 検証済みの解決先。
+    /// 画像のプレースホルダに実際のパスを出すために使う。
     ///
-    /// [`Self::OutOfScope`] だけが持つ。`message` から切り出すと、文言を変えた瞬間に壊れる。
+    /// [`Self::OutOfScope`] だけが持つ。
+    /// `message` から切り出すと、文言を変えたときに取り出せなくなる。
     /// symlink を解決した後のパスであり、ドキュメントに書かれた文字列ではない。
-    /// 何を許可しようとしているのかを見せるには、解決後のほうでなければ意味がない。
+    /// 何を許可しようとしているのかを示すには、解決後のパスでなければならない。
     pub fn path(&self) -> Option<&str> {
         match self {
             Self::OutOfScope(path) => Some(path),
@@ -97,5 +99,6 @@ impl Serialize for CoreError {
     }
 }
 
-/// コマンド境界の `Result`。エラー側は必ず [`CoreError`] にする。
+/// コマンド境界の `Result`。
+/// エラー側は必ず [`CoreError`] にする。
 pub type CoreResult<T> = Result<T, CoreError>;

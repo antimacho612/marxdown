@@ -1,7 +1,7 @@
 //! ドキュメントの読み書き。
 //!
 //! 02.architecture/04-rust-responsibilities.md §2 / §3。
-//! `tauri-plugin-fs` を使わず自作しているのは、EOL / BOM / mtime / 原子性の制御が要件だからである（F-EDIT-14 / N-REL-01 / N-CMP-03 / 04.tech-stack/06-rust.md §3）。
+//! `tauri-plugin-fs` を使わず自作しているのは、EOL / BOM / mtime / 原子性の制御が要件だからである（F-EDIT-14 / N-REL-01 / N-CMP-03 / 04.tech-stack/06-rust.md §4）。
 
 pub mod atomic;
 pub mod encoding;
@@ -92,7 +92,7 @@ pub enum SaveResult {
 /// パスを正規化する。symlink も解決する。
 ///
 /// Windows の `std::fs::canonicalize` は `\\?\C:\...` を返し、表示にも比較にも使えない。
-/// `dunce` で通常形式に戻す（04.tech-stack/06-rust.md §2）。
+/// `dunce` で通常形式に戻す（04.tech-stack/06-rust.md §7）。
 ///
 /// 存在しないパスは canonicalize できないため、親ディレクトリだけ解決して結合する。
 pub fn canonicalize(path: &Path) -> CoreResult<PathBuf> {
@@ -146,7 +146,7 @@ pub fn read(path: &Path, forced: Option<Encoding>) -> CoreResult<DocumentPayload
         });
     }
 
-    // 先頭だけ先に読んでバイナリを弾く（N-REL-03）。
+    // 先頭だけ先に読んでバイナリを除外する（N-REL-03）。
     //
     // 全体を読んでから判定すると、書庫や画像でも一度は 64MB を確保することになる。
     // さらに UTF-8 として不正なバイト列は `encoding::detect` の推定が全バイトを走査し、その結果を U+FFFD だらけの巨大な文字列へ展開したうえでフロントの Markdown パーサへ渡ることになる。
@@ -229,14 +229,13 @@ pub fn write(req: &WriteRequest) -> CoreResult<SaveResult> {
 mod tests {
     use super::*;
 
-    /// **フロントとの対応表を固定する**（`src/platform/types.ts`）。
+    /// フロントとの対応表を固定する（`src/platform/types.ts`）。
     ///
     /// serde の `rename_all` は enum ではバリアント名しか変えない。
-    /// 構造体と同じつもりで書くと、フィールドが snake_case のまま送られ、
-    /// フロント側の `mtimeMs` / `diskMtimeMs` が `undefined` になる。
+    /// 構造体と同じつもりで書くと、フィールドが snake_case のまま送られ、フロント側の `mtimeMs` / `diskMtimeMs` が `undefined` になる。
     ///
-    /// **この壊れ方は 1 回目の保存では表に出ない。** 2 回目で
-    /// 「別のプロセスが変更しています」として現れるため、原因が遠い。
+    /// この壊れ方は 1 回目の保存では表に出ない。
+    /// 2 回目で「別のプロセスが変更しています」として現れるため、症状から原因を辿りにくい。
     #[test]
     fn serializes_fields_in_camel_case() {
         let saved = serde_json::to_value(SaveResult::Saved {
@@ -287,8 +286,8 @@ mod tests {
 
     /// エンコーディングの再解釈（03.ux-spec/07-status-and-notifications.md §3）。
     ///
-    /// 推定は当てにいかない。**指定したエンコーディングで読み、そう名乗る。**
-    /// 名乗りが変わらないと、次の保存が推定側のエンコーディングで書き戻してしまう。
+    /// 推定は使わない。指定したエンコーディングで読み、メタ情報もそのエンコーディングにする。
+    /// メタ情報が変わらないと、次の保存が推定側のエンコーディングで書き戻してしまう。
     #[test]
     fn reading_with_a_forced_encoding_reports_that_encoding() {
         let dir = temp_dir("forced");
@@ -388,9 +387,9 @@ mod tests {
         std::fs::remove_dir_all(&dir).ok();
     }
 
-    /// N-REL-03。**バイナリはデコードの前に弾く。**
+    /// N-REL-03。バイナリはデコードの前に除外する。
     ///
-    /// 通していた頃は、推定・デコード・Markdown のパースが順に全バイトへ走り、数十 MB のファイルで UI が数秒止まっていた。
+    /// 通すと、推定・デコード・Markdown のパースが順に全バイトに対して実行され、数十 MB のファイルで UI が数秒止まる。
     #[test]
     fn reading_a_binary_file_is_rejected() {
         let dir = temp_dir("binary");
@@ -410,7 +409,7 @@ mod tests {
         std::fs::remove_dir_all(&dir).ok();
     }
 
-    /// BOM 付き UTF-16 は本文に NUL を含む。バイナリ判定に巻き込まれると、読めていたファイルが読めなくなる。
+    /// BOM 付き UTF-16 は本文に NUL を含む。バイナリと判定されると、読めるはずのファイルが読めなくなる。
     #[test]
     fn utf16_with_a_bom_is_still_readable() {
         let dir = temp_dir("utf16");

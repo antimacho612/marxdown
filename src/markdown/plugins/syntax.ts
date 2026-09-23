@@ -4,13 +4,12 @@
  * どれも既定 OFF である。
  * 標準的でない記法が意図せず発火して本文が壊れるほうが、ユーザーの認知負荷が高い（Design Brief Principle 3）。
  *
- * **ON になっているものだけを動的 import する。**
+ * ON になっているものだけを動的 import する。
  * 静的に import すると、7 つとも既定 OFF のまま pipeline チャンク（クリティカルパス）に載る。
- * 1 つあたりは小さいが、M4 着手時点の残余は 23.64KB しかない（06.roadmap/m4-markdown.md §1.2）。
+ * 1 つあたりは小さいが、critical path の残余は小さい（05.performance-budget/06-decision-flow.md）。
  *
  * 読み込みは `loadSyntax` が行い、`buildSyntax` は読み込み済みのものを返すだけである。
- * `pipeline.ts` の `render` / `renderChunks` を同期のまま保つための分割で、
- * 呼び出し側（`markdown/parser.ts`）が描画の前に `loadSyntax` を待つ。
+ * `pipeline.ts` の `render` / `renderChunks` を同期のまま保つための分割で、呼び出し側（`markdown/parser.ts`）が描画の前に `loadSyntax` を待つ。
  */
 import type { MarkdownIt } from 'markdown-it';
 
@@ -40,8 +39,7 @@ export type SyntaxName = (typeof SYNTAX_NAMES)[number];
  *
  * 型を持たないパッケージの宣言は `vendor.d.ts` にある。
  *
- * 戻り値を `unknown` にしてあるのは、`markdown-it-multimd-table` だけが自前の型を同梱しており、
- * そちらが `md` を markdown-it の default export（呼び出し可能なクラス）として宣言しているためである。
+ * 戻り値を `unknown` にしてあるのは、`markdown-it-multimd-table` だけが自前の型を同梱しており、そちらが `md` を markdown-it の default export（呼び出し可能なクラス）として宣言しているためである。
  * こちらの `MarkdownIt`（インスタンスの型）と名前が一致せず、渡すものは同じなのに代入できない。
  * 全部を同じ扱いにして、`md.use` に渡すところで 1 度だけ揃える。
  */
@@ -85,8 +83,8 @@ export async function loadSyntax(names: readonly string[]): Promise<void> {
 /**
  * 読み込み済みのプラグインを `md.use` する。
  *
- * 読み込みが済んでいないものは黙って飛ばす。
- * 記法が 1 つ効かないことと、本文が描画されないこととでは、後者のほうがはるかに悪い。
+ * 読み込みが済んでいないものは通知せずに対象外にする。
+ * 記法が 1 つ適用されないことと、本文が描画されないこととでは、後者のほうがはるかに悪い。
  */
 export function useSyntax(md: MarkdownIt, names: readonly string[]): void {
   for (const name of names) {
@@ -96,7 +94,7 @@ export function useSyntax(md: MarkdownIt, names: readonly string[]): void {
   }
 }
 
-/** テスト用。読み込み済みの一覧を捨てる。 */
+/** テスト用。読み込み済みの一覧を破棄する。 */
 export function resetSyntax(): void {
   loaded.clear();
 }

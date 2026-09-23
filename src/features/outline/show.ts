@@ -12,7 +12,7 @@ import { openRightPane } from '@/features/panes';
 let focusOutline: (() => void) | null = null;
 
 /**
- * `Outline.svelte` が自分のフォーカス手段を登録する口。
+ * `Outline.svelte` が自分のフォーカス手段を登録する関数。
  * ペインを閉じる（＝コンポーネントが消える）ときに `null` を渡す。
  */
 export function registerOutlineFocus(focus: (() => void) | null): void {

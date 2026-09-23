@@ -1,8 +1,7 @@
 <!--
   Welcome 画面（F-OPEN-03 / F-OPEN-09 / 03.ux-spec/08-empty-states.md §1）。
 
-  履歴は Rust 側の永続化ストアから来るので、実アプリで「空の状態」を見るには
-  `store.json` を消すしかない。ここでは `loaders` でストアに直接入れる。
+  履歴は Rust 側の永続化ストアから来るので、実アプリで「空の状態」を見るには `store.json` を消すしかない。ここでは `loaders` でストアに直接入れる。
 -->
 <script module lang="ts">
   import { defineMeta } from '@storybook/addon-svelte-csf';
@@ -19,7 +18,7 @@
   /**
    * ストアはモジュールの singleton なので、story ごとに入れ直す。
    *
-   * `loaders` を使うのは、**描画より前に走る唯一のフック**だから。
+   * `loaders` を使うのは、描画より前に実行される唯一のフックだからである。
    * テンプレートの中で代入すると、描画中に状態を書き換えることになる。
    */
   function withRecent(paths: string[]) {
@@ -41,15 +40,16 @@
 <Story name="履歴なし" loaders={[withRecent([])]} />
 
 <!--
-  一覧に出すのは 6 件まで（`RECENT_SHOWN`）。ストアがそれ以上持っていても
-  伸びないことを確認する story。伸びた瞬間に Welcome は「履歴ビューア」になる。
+  一覧に出すのは 6 件まで（`RECENT_SHOWN`）。
+  ストアがそれ以上持っていても伸びないことを確認する story である。
+  一覧が伸びると、Welcome が履歴の一覧という別の役割を持つことになる。
 -->
 <Story
   name="履歴が上限を超えている"
   loaders={[withRecent(Array.from({ length: 12 }, (_, i) => `C:\\Users\\me\\notes\\note-${String(i + 1)}.md`))]}
 />
 
-<!-- 深いパスが省略記号で潰れ、末尾（＝現在地）が残ることの確認。 -->
+<!-- 深いパスが省略記号で短縮され、末尾（＝現在地）が残ることの確認。 -->
 <Story
   name="長いパス"
   loaders={[

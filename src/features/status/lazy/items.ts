@@ -26,8 +26,8 @@ export interface StatusMenuItem {
 /**
  * 表示モードの選択肢（03.ux-spec/02-view-modes.md §1）。
  *
- * WYSIWYG は並べない。
- * 実装は M5 であり、操作しても何も起きない項目を作らない（`cycleMode` が順送りの並びから外しているのと同じ判断）。
+ * WYSIWYG は未実装であるため並べない。
+ * 操作しても何も起きない項目を作らない（`cycleMode` が順送りの並びから外しているのと同じ判断）。
  */
 const MODES: readonly ViewMode[] = ['preview', 'edit', 'split'];
 
@@ -75,7 +75,7 @@ function modeItems(): StatusMenuItem[] {
  * 表示倍率の選択肢（F-VIEW-11）。並びは `Ctrl+=` / `Ctrl+-` の刻みと同じである（`features/preview/zoom.ts`）。
  *
  * 現在値が刻みと一致しないときは、どの行にも印が付かない。
- * 一致しない値になるのは設定ファイルを手で編集した場合に限られ、印を近い値へ寄せると実際の倍率と表示がずれる。
+ * 一致しない値になるのは設定ファイルを手で編集した場合に限られ、印を近い値に付けると実際の倍率と表示がずれる。
  */
 function zoomItems(): StatusMenuItem[] {
   return ZOOM_STEPS.map((zoom) => ({

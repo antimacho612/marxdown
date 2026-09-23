@@ -5,7 +5,7 @@
  * このモジュールは `main` チャンクにあるためエディターを直接 import せず、行番号だけを扱うインタフェース `EditorScrollPort` を受け取る（座標計算はエンジン固有の `features/editor/lazy/scroll-port.ts` に置く）。
  * 行あたりの高さが要素ごとに違うため、`data-line` を持つ要素の間を線形補間する（§3）。
  *
- * 片方を動かすと相手の `scroll` が飛んでまた動くという循環が起きるため、これを防ぐために主導権は最後に操作した側が持ち、動かされた側からの同期を短時間停止する（§2）。
+ * 片方を動かすと相手の `scroll` が発火してまた動くという循環が起きるため、これを防ぐために主導権は最後に操作した側が持ち、動かされた側からの同期を短時間停止する（§2）。
  */
 import { viewStore } from './store.svelte';
 
@@ -32,7 +32,7 @@ export interface EditorScrollPort {
 }
 
 /**
- * 動かされた側を黙らせておく時間。
+ * 動かされた側からの同期を止めておく時間。
  *
  * 短すぎると循環的な同期が発生し、長すぎると反対側を操作しても即座に反映されない。
  * 慣性スクロールが停止するまでの実測値（Windows のホイール）に合わせてある。
@@ -55,10 +55,9 @@ let active: Sync | null = null;
 /**
  * エディター側のインタフェース。マウントされている間は常に保持する（スクロール同期の有無とは別に管理する）。
  *
- * 以前はここが `active`（Split のあいだだけ在るもの）の中に居たため、Edit ではジャンプの飛び先が無くアウトラインの見出しを押しても何も起きなかった（#59）。
- * 同期とジャンプは別の機能で、ジャンプはエディターが載っていれば成立する。
+ * 同期とジャンプは別の機能で、ジャンプはエディターがマウントされていれば成立する。
  *
- * 登録するのは `mountEditor`、外すのはエディターを破棄するとき（M3 / N-PERF-06）。
+ * 登録するのは `mountEditor` である。
  */
 let port: EditorScrollPort | null = null;
 
@@ -80,7 +79,7 @@ let leaderUntil = 0;
  * 主導権をエディター側へ移し、プレビューからの同期を短時間止める。
  *
  * プレビューを機械的に動かす側が、その `scroll` で主導権を奪われないために呼ぶ。
- * 再描画でスクロール位置を当て直す動き（`document/live.ts`）は利用者の操作ではなく、主導しているのは打鍵しているエディターである。
+ * 再描画でスクロール位置を再設定する動き（`document/live.ts`）は利用者の操作ではなく、主導しているのは打鍵しているエディターである。
  */
 export function takeEditorLead(): void {
   leader = 'editor';
@@ -145,8 +144,7 @@ export function stopScrollSync(): void {
  * 反対側が主導している間は false。
  * 動かされた側の `scroll` をそこで止めることで、循環を断つ。
  *
- * 同期が OFF（`viewStore.scrollSync`）なら常に false。§2 のとおり、
- * OFF でもジャンプ（明示的な操作）は効く — あちらはこの関数を通らない。
+ * 同期が OFF（`viewStore.scrollSync`）なら常に false。§2 のとおり、OFF でもジャンプ（明示的な操作）は有効であり、ジャンプはこの関数を通らない。
  */
 function take(side: 'editor' | 'preview'): boolean {
   if (!viewStore.scrollSync) return false;
@@ -184,7 +182,7 @@ function anchorsOf(preview: HTMLElement): Anchor[] {
 /**
  * 行番号 `line` に対応するプレビュー上の位置を、前後のアンカーから補間する。
  *
- * アンカーが 1 つも無い（本文が空 / まだ描かれていない）場合は `null`。
+ * アンカーが 1 つも無い（本文が空 / まだ描画されていない）場合は `null`。
  */
 function topForLine(anchors: Anchor[], line: number): number | null {
   if (anchors.length === 0) return null;
@@ -257,7 +255,7 @@ function lineAtEvent(event: MouseEvent): number | null {
 }
 
 /**
- * プレビューの位置からエディターの行へ飛ぶ（プレビューのダブルクリック / §3）。
+ * プレビューの位置からエディターの行へ移動する（プレビューのダブルクリック / §3）。
  *
  * 同期が無効でも、Split でなくても動作する。
  * §2 の但し書きのとおり、これは明示的な操作である。
@@ -275,9 +273,9 @@ export function jumpToEditorLine(line: number, options: { focus?: boolean } = {}
 }
 
 /**
- * エディターの行からプレビューの位置へ飛ぶ（アウトラインからのジャンプ / §3）。
+ * エディターの行からプレビューの位置へ移動する（アウトラインからのジャンプ / §3）。
  *
- * 同期が OFF でも効く理由は上と同じ。
+ * 同期が OFF でも有効な理由は上と同じ。
  */
 export function jumpToPreviewLine(line: number): void {
   const preview = active?.preview;

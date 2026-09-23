@@ -20,7 +20,7 @@ describe('getPlatform', () => {
   });
 
   it('web 実装が Platform インタフェースを満たす', () => {
-    // メソッドが 1 つでも欠けると、dev:web で実行時に落ちる
+    // メソッドが 1 つでも欠けると、dev:web で実行時に失敗する
     const required: (keyof Platform)[] = [
       'kind',
       'getBootstrap',

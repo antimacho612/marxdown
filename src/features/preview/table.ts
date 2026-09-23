@@ -7,8 +7,7 @@
  * 収まる表まで張り出させると、2 列の表が画面の端から端まで伸びて、かえって読みにくくなる。
  *
  * 横に収まった表は、見出し行を `position: sticky` にする（`data-mx-fits`）。
- * sticky はスクロール容器の縦方向のスクロール量を基準に位置が決まるため、
- * 横スクロールする表では包む要素自身が基準になり、見出しが固定されない。
+ * sticky はスクロール容器の縦方向のスクロール量を基準に位置が決まるため、横スクロールする表では包む要素自身が基準になり、見出しが固定されない。
  * 収まる表だけ包む要素をスクロール容器から外し、基準を `.mx-preview` に戻す。
  *
  * 測るのは幅が変わったときだけで、タイマーは持たない（N-PERF-05）。
@@ -32,8 +31,7 @@ function overflows(table: HTMLElement): boolean {
  * 表を測り直し、`data-mx-wide` / `data-mx-fits` / `data-mx-scrolls` を付け直す。
  *
  * 測る前はどれも付かない。
- * その状態を「横スクロールはできるが、端のフェードも sticky も無い」に割り当ててあり、
- * 測り終える前の 1 フレームで見た目が動かない。
+ * その状態を「横スクロールはできるが、端のフェードも sticky も無い」に割り当ててあり、測り終える前の 1 フレームで見た目が動かない。
  *
  * 読み取りと書き込みをまとめてあるのは、1 つ測るたびにレイアウトが再計算されるのを避けるため。
  * 表が 1 つも無ければ何もしない。
@@ -42,7 +40,7 @@ export function measureTables(container: HTMLElement): void {
   const tables = [...container.querySelectorAll<HTMLElement>('.mx-table')];
   if (tables.length === 0) return;
 
-  // 前回の結果を落としてから測る。幅が縮んだときに、張り出した状態のまま測ることになるのを避ける。
+  // 前回の結果を外してから測る。幅が縮んだときに、張り出した状態のまま測ることになるのを避ける。
   for (const table of tables) {
     delete table.dataset['mxWide'];
     delete table.dataset['mxFits'];

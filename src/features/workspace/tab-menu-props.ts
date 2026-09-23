@@ -11,12 +11,11 @@ export interface TabMenuProps {
   tabId: number;
   /** 見出しに出すファイル名。 */
   name: string;
-  /** 開く位置（ビューポート座標）。画面からはみ出す場合は本体側で寄せ直す。 */
+  /** 開く位置（ビューポート座標）。画面からはみ出す場合は本体側で位置を直す。 */
   x: number;
   y: number;
   /**
-   * 閉じる。`refocus` が false のときはタブへフォーカスを戻さない
-   * （項目を実行した直後は、関心が実行先へ移っているため）。
+   * 閉じる。`refocus` が false のときはタブへフォーカスを戻さない（項目を実行した直後は、関心が実行先へ移っているため）。
    */
   onclose: (refocus?: boolean) => void;
 }

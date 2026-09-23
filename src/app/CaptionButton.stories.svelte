@@ -1,9 +1,8 @@
 <!--
   ウィンドウ操作ボタン 1 つ。
 
-  実アプリでは常に右上の 3 つ組でしか出てこないので、単体の状態
-  （通常 / 閉じる / 外から与えたホバー）をここで比べる。
-  **閉じるだけホバーが赤い**のと、**幅が 46px 固定**であることが要点。
+  実アプリでは常に右上の 3 つ組でしか出てこないので、単体の状態（通常 / 閉じる / 外から与えたホバー）をここで比べる。
+  閉じるだけホバーが赤いのと、幅が 46px 固定であることが要点。
 -->
 <script module lang="ts">
   import { defineMeta } from '@storybook/addon-svelte-csf';
@@ -59,7 +58,7 @@
 
 <Story name="通常" template={one} />
 
-<!-- **ホバーしたときだけ赤くなる。** 置いてあるだけの状態では他と同じ色。 -->
+<!-- ホバーしたときだけ赤くなる。置いてあるだけの状態では他と同じ色。 -->
 {#snippet closing()}
   <div style={BAR}>
     <CaptionButton close label={ja.titlebar.close} onClick={() => {}} children={closeIcon} />
@@ -69,8 +68,7 @@
 <Story name="閉じる" template={closing} />
 
 <!--
-  外から与えたホバー。Snap Layouts の矩形には WebView のマウスイベントが
-  届かないので、実アプリではここが Rust 側からの通知で塗られる。
+  外から与えたホバー。Snap Layouts の矩形には WebView のマウスイベントが届かないので、実アプリではここが Rust 側からの通知で強調される。
 -->
 {#snippet hovered()}
   <div style={BAR}>
@@ -90,7 +88,7 @@
 
 <Story name="ボタン 3 つ" template={trio} />
 
-<!-- 最大化中。**名前も絵も入れ替わる**（片方だけだと読み上げがずれる）。 -->
+<!-- 最大化中。名前もアイコンも入れ替わる（片方だけだと読み上げと表示が一致しない）。 -->
 {#snippet maximizedTrio()}
   <div style={BAR}>
     <CaptionButton label={ja.titlebar.minimize} onClick={() => {}} children={minimize} />

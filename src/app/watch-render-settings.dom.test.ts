@@ -3,7 +3,7 @@
  * パースをやり直す条件（`watch-render-settings.svelte.ts`）。
  *
  * 見たいのは「描き直すべきときだけ描き直すこと」である。
- * `renderNow()` はプレビューの DOM を作り直すため、無関係な設定や同じ値での差し替えで走ると本文がその回数だけ再描画される。
+ * `renderNow()` はプレビューの DOM を作り直すため、無関係な設定や同じ値での差し替えで実行されると本文がその回数だけ再描画される。
  */
 import { flushSync } from 'svelte';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';

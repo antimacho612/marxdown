@@ -1,12 +1,11 @@
 import type { Preview } from '@storybook/svelte-vite';
 
 /**
- * アプリ本体と**同じ CSS** を読む。
+ * アプリ本体と同じ CSS を読む。
  *
  * Storybook 用にトークンを書き写すと、そこが二重管理になって必ずずれる。
- * `shell.css` まで読んでいるのは、クロームの grid（`grid-area`）が
- * そこにあるコンテナ側の定義に依存しているため。
- * `preview.css` は本文の既定スタイルであり、本文を含む story がこれを必要とする。
+ * `shell.css` まで読んでいるのは、クロームの grid（`grid-area`）がそこにあるコンテナ側の定義に依存しているため。
+ * `preview/preview.css` は本文の既定スタイルであり、本文を含む story がこれを必要とする。
  * セレクタは `.mx-preview` 配下に閉じているので、他の story には及ばない。
  * 配色（ADR-0014）は CSS ではなく `theme` チャンクが注入するため、ここでは読まない。
  */
@@ -21,8 +20,7 @@ import { registerAppCommands } from '../src/app/commands';
  * コマンドを登録する（`src/app/commands.ts`）。
  *
  * メニューは `CommandId` しか持たず、実体はレジストリから引く。
- * 登録しないと**ハンバーガーメニューの項目が 1 つも出ない**ので、
- * 実アプリの `bootstrap` にあたる仕事をここで 1 回だけ済ませる。
+ * 登録しないとハンバーガーメニューの項目が 1 つも出ないため、実アプリの `bootstrap` にあたる処理をここで 1 回だけ行う。
  *
  * キーは割り当てない（`installCommands` ではなくこちらを呼ぶ理由）。
  * Storybook で `Ctrl+F` を奪われると、story を探せなくなる。
@@ -39,8 +37,8 @@ const preview: Preview = {
   /**
    * ダークテーマの切り替え（ADR-0005）。
    *
-   * アプリでは Rust 側が起動前に `<html data-theme>` を打つ。ここでは
-   * ツールバーから同じ属性を切り替えて、両方の見え方を 1 つの画面で確認できるようにする。
+   * アプリでは Rust 側が起動前に `<html data-theme>` を設定する。
+   * ここではツールバーから同じ属性を切り替えて、両方の見え方を 1 つの画面で確認できるようにする。
    */
   globalTypes: {
     theme: {

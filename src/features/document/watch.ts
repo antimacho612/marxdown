@@ -2,7 +2,7 @@
  * 開いているファイルの外部変更を画面に反映する（F-EDIT-16 / N-REL-02）。
  *
  * 分岐はダーティかどうかだけである（02.architecture/08-state-management.md §3）。
- * Clean なら黙って読み直してステータスバーに出し、Dirty なら何もせず消えない通知バーで選ばせる（入力を失わないため）。
+ * Clean なら確認せずに読み直してステータスバーに出し、Dirty なら何もせず消えない通知バーで選ばせる（入力を失わないため）。
  * デバウンスと自己イベントの排除は Rust 側（`src-tauri/src/watch.rs`）が済ませており、ここに届くのは実体が変わったことが確定したイベントだけである。
  */
 import { ja } from '@/i18n/ja';
@@ -31,12 +31,12 @@ let missedChange = false;
 /**
  * 外部変更の購読を始める。起動時に 1 回だけ呼ぶ。
  *
- * IPC を伴う購読であるため、`ready()` の後に呼ぶこと（02.architecture/05-startup-sequence.md §1）。
+ * IPC を伴う購読であるため、`ready()` の後に呼ぶこと（02.architecture/05-startup-sequence.md §2）。
  * 監視の登録そのものは `open.ts` が開くたびに行う。
  */
 export function installFileWatch(): void {
   getPlatform().onFileChanged((change) => {
-    // 現在開いているファイル以外は無視する。
+    // 表示中のファイル以外は無視する。
     // 開き直した直後に、前のファイルのイベントが遅れて届くことがある。
     if (change.path !== documentStore.meta?.path) return;
 
@@ -60,9 +60,8 @@ export function installFileWatch(): void {
  * 編集中に外部変更が来たときの選択（03.ux-spec/07-status-and-notifications.md §2 の「選択」）。
  * 「ファイルが外部で変更されました」+ 再読み込み / 無視、を消えない通知として出す。
  *
- * 3 秒で消えると「気づかないまま古い内容を保存する」ことになり、
- * その保存は衝突として弾かれる（`save.ts`）。弾かれること自体は正しいが、
- * 変更があった事実は画面に残しておくほうが親切である。
+ * 3 秒で消えると「気づかないまま古い内容を保存する」ことになり、その保存は衝突として拒否される（`save.ts`）。
+ * 拒否されること自体は正しいが、変更があった事実は画面に残しておくほうが親切である。
  *
  * 「無視」を押してもダーティのままにする。
  * 保存すれば衝突が出て、そこでもう一度上書きか読み直しを選べる。

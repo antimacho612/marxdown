@@ -14,7 +14,7 @@ import type { DocumentMeta, DocumentPayload, Eol } from '@/platform';
  *
  * `path` が `null` なのは、まだ一度も保存していない文書だけである（`Ctrl+N` / `document/new.ts`）。
  * Rust から届く `DocumentMeta` は必ずパスを持つため、`null` を作れるのはフロント側の 1 か所のみである。
- * パスの有無で振る舞いが変わる場所（監視・履歴・相対パスの画像・保存先など）は「対応を忘れると静かに壊れる」側なので、`string | null` にすることで使う場所をコンパイル時に全部洗い出せるようにしてある。
+ * パスの有無で振る舞いが変わる場所（監視・履歴・相対パスの画像・保存先など）は「対応を忘れても表面に出ない形で壊れる」側なので、`string | null` にすることで使う場所をコンパイル時に全部洗い出せるようにしてある。
  */
 export type StoredMeta = Omit<DocumentMeta, 'path'> & { path: string | null };
 
@@ -22,11 +22,11 @@ export type StoredMeta = Omit<DocumentMeta, 'path'> & { path: string | null };
 export type StoredPayload = Omit<DocumentPayload, 'path'> & { path: string | null };
 
 /**
- * 本文を落としてメタ情報だけにする。
+ * 本文を除いてメタ情報だけにする。
  *
  * `StoredPayload` は `StoredMeta` を構造的に満たすため、そのまま代入しても型は通る。
  * ただし実行時には `content` が残り、ストアが本文を保持し続けることになる（ADR-0005）。
- * `huge.md` では 2MB がここに繋がったままになり、タブが入ると枚数ぶん積算する。
+ * `huge.md` では 2MB がここに残り、タブの枚数ぶん蓄積する。
  */
 export function toMeta(payload: StoredPayload): StoredMeta {
   const { path, eol, bom, encoding, mtimeMs, size, readonly } = payload;
@@ -57,10 +57,7 @@ export interface Notice {
 }
 
 /**
- * ステータスバーの一時メッセージが消えるまでの時間（03.ux-spec/07-status-and-notifications.md §2「3 秒で自動消滅」）。
- *
- * NOTE: §2 は情報を通知バーに出す前提で書かれているが、本文の上に重なるのが読書の妨げになるため、
- * 自動で消える情報だけステータスバーへ移した（issue #60）。消える時間は §2 のままである。
+ * ステータスバーの一時メッセージが消えるまでの時間（03.ux-spec/07-status-and-notifications.md §3.3）。
  */
 export const STATUS_MESSAGE_MS = 3000;
 
@@ -101,12 +98,12 @@ class DocumentStore {
    */
   cursor = $state<CursorPosition | null>(null);
   /**
-   * 保存するときに書き戻す EOL の希望（F-EDIT-14 / 03.ux-spec/07-status-and-notifications.md §3 の「クリックで EOL 変換」）。
+   * 保存するときに書き戻す EOL の指定（F-EDIT-14 / 03.ux-spec/07-status-and-notifications.md §3 の「クリックで EOL 変換」）。
    * `null` はディスクのまま。
    *
-   * `meta` はディスクの姿そのもの（`mtimeMs` で衝突を検知し、`readonly` で書き込み可否を判断する）であり、これから変えたい値を混ぜると意味が場所ごとに変わるため分けてある。
+   * `meta` はディスク上の状態そのもの（`mtimeMs` で衝突を検知し、`readonly` で書き込み可否を判断する）であり、これから変えたい値を混ぜると意味が場所ごとに変わるため分けてある。
    * 分けておくことで戻したことも表現できる。
-   * `LF → CRLF → LF` と押すとここが `null` に戻り、ダーティも自然に外れる（`document/eol.ts`）。
+   * `LF → CRLF → LF` と押すとここが `null` に戻り、ダーティも解除される（`document/eol.ts`）。
    */
   eolOverride = $state<Eol | null>(null);
 
@@ -134,7 +131,7 @@ class DocumentStore {
   }
 
   /**
-   * 代入するだけで自動消滅のタイマーが張り替わる。
+   * 代入するだけで自動消滅のタイマーが設定し直される。
    *
    * 個別の setter メソッドを置かずにアクセサにしているのは、メッセージを設定する経路を 1 本にするためである。
    * `store.statusMessage = x` 以外の入口を作ると、タイマーの設定が漏れた経路が生まれる。
@@ -162,7 +159,7 @@ class DocumentStore {
 /** ドキュメントの派生状態。モジュールの singleton として共有する。 */
 export const documentStore = new DocumentStore();
 
-/** ステータスバーに一時メッセージを出す。3 秒で自動的に消える（03.ux-spec/07-status-and-notifications.md §2）。 */
+/** ステータスバーに一時メッセージを出す。3 秒で自動的に消える（03.ux-spec/07-status-and-notifications.md §3.3）。 */
 export function notifyStatus(message: string): void {
   documentStore.statusMessage = message;
 }

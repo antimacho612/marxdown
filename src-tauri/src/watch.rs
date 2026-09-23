@@ -3,10 +3,8 @@
 //! 監視対象は開いているファイルと、`settings.json` と、配色のディレクトリ（`themes/`）だけである。
 //! ディレクトリ全体は監視しない（N-PERF-05）。
 //! 中心ユースケースは「LLM が書き換えたファイルを開いたまま閲覧する」ことであり、周辺のファイルが変わったかどうかは不要な情報でしかない。
-//! ファイルツリー（M3）が入ったら、開いているディレクトリの追加監視がここに載る。
-//! その時点でも「開いていないものは見ない」という方針は変えない。
 //!
-//! 監視しているファイルはアプリ自身も書き込む（設定 UI からの保存、M2 以降の本文保存）。
+//! 監視しているファイルはアプリ自身も書き込む（設定 UI からの保存、本文の保存）。
 //! そのため、書き込み直後のイベントをそのまま処理すると、保存するたびに再読み込みが発生してしまう。
 //! この自己イベントの除外は「最後に自分が把握しているファイルの状態」との照合として一般化してある（02.architecture/04-rust-responsibilities.md §4 の「直前に自分が書いた mtime との照合」）。
 //! 保存直後は `note_self_write` がこの状態を更新するため自己イベントは除外され、実体が変わっていないイベント（属性の変更、一時ファイル作成に伴う付随イベント）も同じ経路で除外される。
@@ -32,7 +30,7 @@ use crate::document;
 pub const EVENT_FILE_CHANGED: &str = "marxdown://file-changed";
 /// `settings.json` の外部変更（02.architecture/04-rust-responsibilities.md §5）。フロントは受け取ったら `read_settings` で読み直す。
 pub const EVENT_SETTINGS_CHANGED: &str = "marxdown://settings-changed";
-/// `themes/` の中身の変更（ADR-0014）。フロントは `list_user_themes` で読み直して当て直す。
+/// `themes/` の中身の変更（02.architecture/10-theming.md §3.4）。フロントは `list_user_themes` で読み直して適用し直す。
 pub const EVENT_THEMES_CHANGED: &str = "marxdown://themes-changed";
 
 /// 変更が落ち着いたと見なすまでの時間（02.architecture/04-rust-responsibilities.md §4）。
@@ -57,10 +55,10 @@ pub enum Role {
     Document,
     /// `settings.json`（02.architecture/04-rust-responsibilities.md §5）。
     Settings,
-    /// ユーザーが追加した配色（`themes/`。ADR-0014）。
+    /// ユーザーが追加した配色（`themes/`）。
     ///
-    /// **ここだけ対象がディレクトリである。**
-    /// 1 枚ごとに登録すると、後から置かれたファイルを拾えない。
+    /// ここだけ対象がディレクトリである。
+    /// 1 枚ごとに登録すると、後から置かれたファイルを検出できない。
     Themes,
 }
 
@@ -298,7 +296,7 @@ impl FileWatcher {
         };
 
         // ディレクトリはそれ自身を監視元にする（中身のイベントが届く）。
-        // ファイルは、まだ存在しないうちは親を見る（後から作られたときに拾うため）。
+        // ファイルは、まだ存在しないうちは親を見る（後から作られたときに検出するため）。
         let directory = key.is_dir();
         let root = if directory || key.is_file() {
             key.clone()
@@ -354,7 +352,7 @@ impl FileWatcher {
     /// 監視をやめる。
     ///
     /// 解除の経路は必ず用意しておく。
-    /// タブ（M3）が入ると開いた数だけ監視が積算し、常駐しているため解放されないまま残る（ADR-0004 / 02.architecture/04-rust-responsibilities.md §4）。
+    /// 常駐アプリであるため、解除しなかった監視はプロセスが終わるまで残る（ADR-0004 / 02.architecture/04-rust-responsibilities.md §4）。
     pub fn unwatch(&self, path: &Path) {
         let Ok(key) = document::canonicalize(path) else {
             return;
@@ -399,12 +397,12 @@ impl FileWatcher {
         }
     }
 
-    /// 「そのウィンドウがいま開いているドキュメント」を差し替える（02.architecture/04-rust-responsibilities.md §4「タブを閉じたらウォッチャを解除する」）。
+    /// そのウィンドウが表示しているドキュメントを差し替える（02.architecture/04-rust-responsibilities.md §4）。
     ///
     /// 1 つのウィンドウが表示しているドキュメントは 1 つだけである。
-    /// 前のファイルの監視をここで必ず解除することで、開き直すたびに監視が積み上がらない。
+    /// 前のドキュメントの監視をここで必ず解除することで、タブを切り替えるたびに監視が蓄積しない。
     ///
-    /// **解除するのはそのウィンドウが持っていた監視だけである**（F-OPEN-06）。
+    /// 解除するのはそのウィンドウが持っていた監視だけである（F-OPEN-06）。
     /// ウィンドウの区別なく解除すると、別のウィンドウでファイルを開いた時点でこちらの自動再読み込みが止まる。
     pub fn watch_document(&self, label: &str, path: &Path) -> bool {
         let keep = document::canonicalize(path).ok();
@@ -432,7 +430,7 @@ impl FileWatcher {
     /// 閉じたウィンドウが持っていたドキュメントの監視をすべて手放す。
     ///
     /// 常駐するアプリであるため、ウィンドウを閉じただけでは監視スレッドは止まらない（ADR-0004 / N-PERF-06）。
-    /// ここで解除しないと、ウィンドウを開き閉じした回数だけ監視が積み上がる。
+    /// ここで解除しないと、ウィンドウを開き閉じした回数だけ監視が増え続ける。
     pub fn release_window(&self, label: &str) {
         let owned = match self.registry.lock() {
             Ok(registry) => registry
@@ -448,7 +446,7 @@ impl FileWatcher {
         }
     }
 
-    /// そのウィンドウの分の記録を落とし、誰も必要としなくなったら監視を解除する。
+    /// そのウィンドウの分の記録を破棄し、誰も必要としなくなったら監視を解除する。
     fn release_key(&self, label: &str, key: &Path) {
         let abandoned = match self.registry.lock() {
             Ok(mut registry) => match registry.targets.get_mut(key) {
@@ -579,7 +577,7 @@ mod tests {
         std::fs::remove_dir_all(&d).ok();
     }
 
-    /// 親ディレクトリごと見ているときの巻き添え（`state.json` の保存など）を落とす。
+    /// 親ディレクトリごと見ているときに届く無関係なイベント（`state.json` の保存など）を除外する。
     #[test]
     fn an_event_for_an_unwatched_path_is_dropped() {
         let d = temp_dir("other");
@@ -605,7 +603,7 @@ mod tests {
     /// 同じフォルダーの 2 枚を開いたときの帰結。
     ///
     /// まだ無いファイルは親ディレクトリを見るため、監視元を共有することがある。
-    /// 共有しているので、**片方を外したときにもう片方まで落ちない**ことを台帳の側で担保する必要がある。
+    /// 共有しているので、片方を外したときにもう片方の監視まで解除されないことを台帳の側で担保する必要がある。
     #[test]
     fn two_targets_can_share_one_root() {
         let d = temp_dir("shared-root");
@@ -631,7 +629,7 @@ mod tests {
                 .insert(path.clone());
         }
 
-        // 後から作られたファイルも拾える（親ディレクトリを見ているため）。
+        // 後から作られたファイルも検出できる（親ディレクトリを見ているため）。
         std::fs::write(&second, "# 後から作られた").unwrap();
 
         let (role, change) = registry.decide(&second).expect("後から作られても拾う");

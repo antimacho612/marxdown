@@ -1,10 +1,9 @@
 <!--
   ステータスバーの押せる項目。
 
-  **押せるものだけがこの見た目になる**（03.ux-spec/07-status-and-notifications.md §3.1）。
-  並べた story に混ぜてある素の `<span>`（BOM・文字数）との差が、
-  そのまま「押せる / 押せない」の見分けになっている。
-  メニューを開く側は `aria-expanded="true"` のあいだ光ったままになる。
+  押せるものだけがこの見た目になる（03.ux-spec/07-status-and-notifications.md §3.1）。
+  並べた story に混ぜてある素の `<span>`（BOM・文字数）との差が、そのまま「押せる / 押せない」の見分けになっている。
+  メニューを開く側は `aria-expanded="true"` のあいだ強調されたままになる。
 -->
 <script module lang="ts">
   import { defineMeta } from '@storybook/addon-svelte-csf';
@@ -34,7 +33,7 @@
 
 <Story name="通常" template={one} />
 
-<!-- 選択肢を開いている間。**どこから開いたか**が分かるように光ったままにする。 -->
+<!-- 選択肢を開いている間。どこから開いたかが分かるように強調したままにする。 -->
 {#snippet expanded()}
   <div style={BAR}>
     <StatusBarButton title={ja.status.modeSwitch} aria-haspopup="menu" aria-expanded={true} onclick={() => {}}>
@@ -54,7 +53,7 @@
       {ja.status.encoding.utf8}
     </StatusBarButton>
     <StatusBarButton title={ja.status.eolConvert('crlf')} onclick={() => {}}>LF</StatusBarButton>
-    <!-- 押せない項目。**ボタンに見せない**（§3.1）。 -->
+    <!-- 押せない項目。ボタンに見せない（§3.1）。 -->
     <span>BOM</span>
     <span>{ja.status.chars(4210)}</span>
     <span style="flex: 1;"></span>

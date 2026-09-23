@@ -1,15 +1,14 @@
 /**
- * タブ（F-NAV-01, 02 / M3 Phase 2）。
+ * タブ（F-NAV-01, 02）。
  *
- * **ここでしか確かめられないのは 2 つ。**
+ * ここでしか確かめられないのは 2 つである。
  *
- * 1 つは argv 転送がタブを増やすこと。単一インスタンスの 2 回目の起動（`forwardOpen`）は
- * 本物のプロセスを立てないと再現できず、Vitest 側はプラットフォームをモックしている。
+ * 1 つは argv 転送がタブを増やすこと。
+ * 単一インスタンスの 2 回目の起動（`forwardOpen`）は実際のプロセスを起動しないと再現できず、Vitest 側はプラットフォームをモックしている。
  *
- * もう 1 つはキーの取り合いである。`Ctrl+W` はブラウザではウィンドウを閉じるキー、
- * `Ctrl+Tab` はフォーカス移動のキーで、どちらも既定動作を止めないと窓ごと消える。
- * アプリのグローバルキーとエディターのキーバインドが同じキーを取り合っていないことは、
- * 本物のキーイベントを流さないと確かめられない（`e2e/README.md`）。
+ * もう 1 つはキーの競合である。
+ * `Ctrl+W` はブラウザではウィンドウを閉じるキー、`Ctrl+Tab` はフォーカス移動のキーで、どちらも既定動作を止めないとウィンドウごと閉じる。
+ * アプリのグローバルキーとエディターのキーバインドが同じキーを奪い合っていないことは、実際のキーイベントを流さないと確かめられない（`e2e/README.md`）。
  */
 import { mkdirSync } from 'node:fs';
 import path from 'node:path';
@@ -22,7 +21,7 @@ import { WORK_DIR, WORK_DOC, writeFile } from '../helpers/fixtures';
 /**
  * もう 1 枚開くための別ファイル。作業ファイルと同じ場所に置く。
  *
- * `onPrepare` が作り直すのは `doc.md` の 1 枚だけなので（`helpers/fixtures.ts`）、こちらはこの spec が作る。
+ * `beforeSession` が作り直すのは `doc.md` の 1 枚だけなので（`helpers/fixtures.ts`）、こちらはこの spec が作る。
  */
 const SECOND_DOC = WORK_DOC.replace('doc.md', 'second.md');
 
@@ -32,7 +31,7 @@ const SECOND_DOC = WORK_DOC.replace('doc.md', 'second.md');
  */
 const NESTED_DOC = path.join(WORK_DIR, 'nested', 'buried.md');
 
-/** タブの枚数。1 枚でもタブは出る（issue #145）。 */
+/** タブの枚数。1 枚でもタブは表示される。 */
 async function tabCount(): Promise<number> {
   return browser.execute(() => document.querySelectorAll('.mx-tab').length);
 }
@@ -84,7 +83,7 @@ async function statusBarText(): Promise<string> {
   return browser.execute(() => document.querySelector('.mx-statusbar')?.textContent ?? '');
 }
 
-/** ステータスバーに出ているフルパス（issue #145）。無題の文書では項目ごと無いので空になる。 */
+/** ステータスバーに出ているフルパス。無題の文書では項目ごと無いので空になる。 */
 async function statusBarPath(): Promise<string> {
   return browser.execute(() => document.querySelector('.mx-statusbar__path')?.textContent ?? '');
 }
@@ -96,13 +95,13 @@ describe('タブ', () => {
   });
 
   it('1 枚でもタブを出す', async () => {
-    // 03.ux-spec/01-screen-layout.md §1（issue #145）。枚数で表示が切り替わらない。
+    // 03.ux-spec/01-screen-layout.md §1。枚数で表示が切り替わらない。
     expect(await tabNames()).toEqual(['doc.md']);
     expect(await activeTabName()).toBe('doc.md');
   });
 
   it('フルパスはステータスバーに出る', async () => {
-    // 03.ux-spec/07-status-and-notifications.md §3（issue #145）。
+    // 03.ux-spec/07-status-and-notifications.md §3。
     // タブが持つのはファイル名だけで、どの場所のファイルかはここにしか無い。
     expect(await statusBarPath()).toBe(WORK_DOC);
   });
@@ -150,7 +149,7 @@ describe('タブ', () => {
       timeout: 10_000,
       timeoutMsg: 'Ctrl+W で閉じられなかった',
     });
-    // 窓は生きている（ブラウザ既定の「ウィンドウを閉じる」を止められている）。
+    // ウィンドウは閉じていない（ブラウザ既定の「ウィンドウを閉じる」を止められている）。
     expect(await activeTabName()).toBe('second.md');
   });
 
@@ -166,11 +165,11 @@ describe('タブ', () => {
 });
 
 /**
- * タブごとの Undo（M3 Phase 2b）。
+ * タブごとの Undo。
  *
- * **エディターが 1 つのモデルを使い回していると、ここで前の文書の本文が編集面へ入る。**
+ * エディターが 1 つのモデルを使い回していると、ここで前の文書の本文が編集面へ入る。
  * そのまま保存すればファイル全体が別物になる（N-CMP-03）。
- * モデルはタブごとに分かれている必要があり、それを確かめられるのは本物の Monaco だけである。
+ * モデルはタブごとに分かれている必要があり、それを確かめられるのは実際の Monaco だけである。
  */
 describe('タブごとの Undo', () => {
   it('別のタブで Undo しても、他のファイルの本文が入らない', async () => {
@@ -207,15 +206,14 @@ describe('タブごとの Undo', () => {
 });
 
 /**
- * 並べ替え（F-NAV-02 / M3 Phase 2c）。
+ * 並べ替え（F-NAV-02）。
  *
- * **ポインタで掴んで動かす経路は、本物のイベントでしか通らない。**
- * HTML5 の drag イベントは使えず（`disable_drag_drop_handler()` を呼べないため）、
- * ここで確かめているのは「ポインタの捕捉と、並びの差し替えが実機で成立すること」である。
+ * ポインタでドラッグする経路は、実際のイベントでしか検証できない。
+ * HTML5 の drag イベントは使えず（`disable_drag_drop_handler()` を呼べないため）、ここで確かめているのは「ポインタの捕捉と、並びの差し替えが実機で成立すること」である。
  */
 describe('タブの並べ替え', () => {
   it('押せば、そのタブが表示される', async () => {
-    // 並べ替えを入れたことで、押したときの経路がポインタイベントに変わっている。
+    // 並べ替えのため、押したときの経路はポインタイベントを通る。
     const names = await tabNames();
     const current = await activeTabName();
     const other = names.findIndex((name) => name !== current);
@@ -256,10 +254,10 @@ describe('タブの並べ替え', () => {
 });
 
 /**
- * コマンドパレット（`Ctrl+Shift+P` / F-NAV-06 / M3 Phase 4）。
+ * コマンドパレット（`Ctrl+Shift+P` / F-NAV-06）。
  *
- * **ここでしか確かめられないのは 2 つ。** 遅延チャンク（`palette-*.js`）が本物のビルドで載ること、
- * `Ctrl+Shift+P` が WebView 既定の動作に取られていないことである。
+ * ここでしか確かめられないのは 2 つである。
+ * 遅延チャンク（`palette-*.js`）が実際のビルドで読み込まれること、`Ctrl+Shift+P` が WebView 既定の動作に奪われていないことである。
  */
 describe('コマンドパレット', () => {
   it('Ctrl+Shift+P で開き、コマンドが並ぶ', async () => {
@@ -276,7 +274,7 @@ describe('コマンドパレット', () => {
 
   it('打つと絞り込まれ、Enter で実行される', async () => {
     // 「拡大」を絞り込んで実行する。倍率はステータスバーに出るので、外から結果が見える。
-    // 倍率は `state.json` に保存されるため、絶対値ではなく**変わったこと**を見る。
+    // 倍率は `state.json` に保存されるため、絶対値ではなく変わったことを見る。
     const before = await statusBarText();
 
     await browser.keys('拡大');
@@ -304,14 +302,14 @@ describe('コマンドパレット', () => {
 });
 
 /**
- * ファイルツリー（F-NAV-03 / M3 Phase 5b）。
+ * ファイルツリー（F-NAV-03）。
  *
- * **ここでしか確かめられないのは Rust の `list_dir` を通す経路である。**
+ * ここでしか確かめられないのは Rust の `list_dir` を通す経路である。
  * Vitest 側はプラットフォームをモックしており、スコープ検証（N-SEC-05）も除外も通っていない。
  */
 describe('ファイルツリー', () => {
   it('レフトペインを開くと、開いているファイルの隣が並ぶ', async () => {
-    // **開閉は `state.json` に永続化される**（03.ux-spec/06-panes.md §3）。
+    // 開閉は `state.json` に永続化される（03.ux-spec/06-panes.md §3）。
     // 前回の実行で開いたままのことがあるため、トグルではなく「閉じていたら開く」にする。
     await openLeftPane();
 
@@ -323,7 +321,7 @@ describe('ファイルツリー', () => {
       { timeout: 20_000, timeoutMsg: 'ファイルツリーが出なかった' },
     );
 
-    // 作業ディレクトリのファイルが並ぶ（`onPrepare` が作る `doc.md` と、この spec が作った `second.md`）。
+    // 作業ディレクトリのファイルが並ぶ（`beforeSession` が作る `doc.md` と、この spec が作った `second.md`）。
     const names = await treeNames();
     expect(names).toContain('second.md');
   });
@@ -336,7 +334,7 @@ describe('ファイルツリー', () => {
       if (item instanceof HTMLElement) item.click();
     });
 
-    // 枚数ではなく**表示中のタブ**が変わるのを待つ。
+    // 枚数ではなく表示中のタブが変わるのを待つ。
     // 枚数は既に条件を満たしていることがあり、その場合は読み込みを待たずに次へ進んでしまう。
     await browser.waitUntil(
       async () => {
@@ -359,11 +357,11 @@ describe('ファイルツリー', () => {
 });
 
 /**
- * クイックオープン（`Ctrl+P` / F-NAV-05 / M3 Phase 6）。
+ * クイックオープン（`Ctrl+P` / F-NAV-05）。
  *
- * **ここでしか確かめられないのは Rust の `list_files` を通す経路である。**
+ * ここでしか確かめられないのは Rust の `list_files` を通す経路である。
  * 再帰・除外・スコープ検証（N-SEC-05）は Vitest 側のモックでは通らない。
- * `Ctrl+P` が WebView 既定の印刷に取られていないことも、本物のキーでしか見えない。
+ * `Ctrl+P` が WebView 既定の印刷に奪われていないことも、実際のキーでしか確認できない。
  */
 describe('クイックオープン', () => {
   before(() => {

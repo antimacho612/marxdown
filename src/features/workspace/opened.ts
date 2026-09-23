@@ -14,7 +14,7 @@ export function workspaceOpenerHooks(): Pick<OpenerConfig, 'onOpened' | 'onMissi
   return {
     onOpened: (meta, { remember }) => {
       adoptOpened(meta);
-      // 無題の文書（`Ctrl+N`）は積む対象が無い。
+      // 無題の文書（`Ctrl+N`）には記録するパスが無い。
       if (remember && meta.path !== null) void rememberRecent(meta.path);
     },
     onMissing: (path) => void forgetRecent(path),

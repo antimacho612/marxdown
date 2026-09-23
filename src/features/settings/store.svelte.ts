@@ -48,7 +48,7 @@ export function installSettingsWatch(): void {
 }
 
 /**
- * `settings.json` を読み直して全体を当て直す（§5）。
+ * `settings.json` を読み直して全体を再適用する（§5）。
  *
  * 差分適用にはしない。
  * 設定は 1KB 未満であり、部分更新の一貫性を保つより全体を読み直すほうがコストが低い。
@@ -66,7 +66,7 @@ export async function refreshSettings(): Promise<void> {
     return;
   }
 
-  // 除外の glob は Rust 側で当たるため、変わったかどうかはこちらで見比べるしかない（#146）。
+  // 除外の glob は Rust 側で適用するため、変わったかどうかはこちらで比較するしかない。
   const excludeChanged = !sameStrings(settingsStore.values['explorer.exclude'], loaded.values['explorer.exclude']);
 
   // 外部エディターでの編集も、設定 UI からの変更と同じ経路を通って表示に反映される。

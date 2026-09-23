@@ -5,7 +5,7 @@
  * `features/editor/lazy/keymap.ts` が `Ctrl+F` を Monaco から解除しているのはこのためである（解除しないと Edit で二重に開く）。
  *
  * Split では両方見えるため `viewStore.mode` では判定できず、フォーカスのある側を探す（03.ux-spec/04-keybindings.md §4。既定はエディター検索）。
- * プレビュー検索の `F3`/`Escape` はグローバルに効き続けるため、開くほうがもう片方を閉じて同時進行を防ぐ。
+ * プレビュー検索の `F3`/`Escape` はグローバルに有効なままであるため、開くほうがもう片方を閉じて同時進行を防ぐ。
  * `Ctrl+H`（置換）は Edit と Split のみで、Preview では書き換える経路が無いため何もしない。
  */
 import { closeEditorSearchLazily, openEditorSearchLazily } from '@/features/editor';
@@ -26,8 +26,7 @@ let closePreview: (() => void) | null = null;
  * エディター検索を開いたことがあるか。
  *
  * `editor` チャンクを読み込ませないための判定に使う。
- * 閉じる処理を実行するのは開いたことがある場合だけで、そうしないと Preview だけで表示している起動の初回 `Ctrl+F` でエディターが読み込まれる
- * （`closePreview` が `null` のときに何もしないのと同じ理由）。
+ * 閉じる処理を実行するのは開いたことがある場合だけで、そうしないと Preview だけで表示している起動の初回 `Ctrl+F` でエディターが読み込まれる（`closePreview` が `null` のときに何もしないのと同じ理由）。
  *
  * `Escape` で閉じた場合はこのフラグが立ったままになるが、その状態の `closeFindWidget` は precondition により実行されないだけで影響はない。
  */

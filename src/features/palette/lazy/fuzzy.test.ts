@@ -47,7 +47,7 @@ describe('見出しのあいまい検索 (Ctrl+Shift+O)', () => {
   });
 });
 
-describe('照合用の正規化 (#104)', () => {
+describe('照合用の正規化', () => {
   it('ひらがなでカタカナに当たる', () => {
     expect(fuzzyScore('ファイルを開く', 'ふぁいる')).not.toBeNull();
     expect(fuzzyScore('コールド起動', 'こーるど')).not.toBeNull();
@@ -72,7 +72,7 @@ describe('照合用の正規化 (#104)', () => {
   });
 });
 
-describe('複数のキーでの照合 (#104)', () => {
+describe('複数のキーでの照合', () => {
   interface Entry {
     label: string;
     keywords: string;
@@ -82,8 +82,7 @@ describe('複数のキーでの照合 (#104)', () => {
    * ラベルと英語キーワードの組（コマンドパレットが渡す形）。
    *
    * 順位の検証だけは、ラベルにも英語を含む組を使う。
-   * 実際のラベルは日本語しか無いため（`i18n/ja.ts`）、同じクエリが両方のキーに当たる場面を
-   * 実在のコマンドでは作れない。
+   * 実際のラベルは日本語しか無いため（`i18n/ja.ts`）、同じクエリが両方のキーに一致する場面を実在のコマンドでは作れない。
    */
   const COMMANDS: Entry[] = [
     { label: 'ファイルを開く', keywords: 'open file document' },
@@ -107,7 +106,7 @@ describe('複数のキーでの照合 (#104)', () => {
       { label: 'Mermaid を再描画', keywords: 'mermaid diagram render' },
     ];
 
-    // `mer` はラベル（2 件目）と別名（1 件目の markdown）の両方に当たる。
+    // `mer` はラベル（2 件目）と別名（1 件目の markdown）の両方に一致する。
     expect(fuzzyFilter(mixed, 'mer', keysOf).map((entry) => entry.label)).toEqual([
       'Mermaid を再描画',
       'テーブルを整形',

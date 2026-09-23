@@ -62,10 +62,10 @@ pub fn resolve_within(roots: &[PathBuf], candidate: &Path) -> CoreResult<PathBuf
     Err(CoreError::OutOfScope(resolved.display().to_string()))
 }
 
-/// `candidate` を正規化し、その**親ディレクトリ**が `dirs` のいずれかと一致することを検証する。
+/// `candidate` を正規化し、その親ディレクトリが `dirs` のいずれかと一致することを検証する。
 ///
-/// [`resolve_within`] と違い**再帰しない**。`dirs` の直下にあるものだけを通す。
-/// スコープ外の画像を 1 クリックで許可する導線（OQ-17）がこれを使う。
+/// [`resolve_within`] と違い再帰しない。`dirs` の直下にあるものだけを通す。
+/// スコープ外の画像を 1 クリックで許可する導線（02.architecture/09-security.md §3）がこれを使う。
 /// 許可したのが `C:\work\assets` なら、`C:\work\assets\sub\x.png` は通らない。
 ///
 /// 再帰しないことが防御の要である。
@@ -116,7 +116,7 @@ mod tests {
             assert!(is_within(&p(r"C:\work\docs"), &p(r"C:\work\docs")));
         }
 
-        /// prefix 比較で通ってしまう典型例。コンポーネント比較なら弾ける。
+        /// prefix 比較で通ってしまう典型例。コンポーネント比較なら除外できる。
         #[test]
         fn a_sibling_with_a_shared_prefix_is_rejected() {
             assert!(!is_within(
@@ -183,7 +183,7 @@ mod tests {
         std::fs::remove_dir_all(&dir).ok();
     }
 
-    /// 許可した 1 ディレクトリの直下だけが通る（OQ-17 の「再帰しない」）。
+    /// 許可した 1 ディレクトリの直下だけが通る（再帰しない）。
     #[test]
     fn allowing_one_directory_does_not_open_its_subdirectories() {
         let base = std::env::temp_dir().join(format!("marxdown-scope-flat-{}", std::process::id()));

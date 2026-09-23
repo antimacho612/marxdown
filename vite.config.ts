@@ -9,9 +9,8 @@ const host = process.env.TAURI_DEV_HOST;
 /**
  * Mermaid だけが引くパッケージ（F-VIEW-12 / `chunkFileNames` の `isVendorOnly` 判定）。
  *
- * ここに無いパッケージが Mermaid の依存に増えても、そのぶんが `shared-*` に落ちて
- * critical path の実測が跳ねるだけであり、起動時に読み込まれるものは変わらない。
- * **数字が跳ねたらこの一覧を疑うこと。**
+ * ここに無いパッケージが Mermaid の依存に増えても、その分が `shared-*` として扱われて critical path の計測値が増えるだけであり、起動時に読み込まれるものは変わらない。
+ * 数値が急に増えたらこの一覧を確認すること。
  *
  * `dompurify` と `katex` は Mermaid も引くが、こちらも直接使うため入れていない。
  */
@@ -47,11 +46,10 @@ const MERMAID_PACKAGES = [
  * KaTeX のフォント参照を woff2 だけに削る（F-VIEW-13）。
  *
  * `katex.min.css` の `@font-face` は woff2 / woff / ttf の 3 形式を並べる。
- * 対象は WebView2 Evergreen と WKWebView だけなので（`tsconfig.json` の `target` と同じ理由）、
- * 残り 2 形式は表示を何も変えないままインストーラを 1MB 近く太らせる。
+ * 対象は WebView2 Evergreen と WKWebView だけなので（`tsconfig.json` の `target` と同じ理由）、残り 2 形式は表示を何も変えないままインストーラを 1MB 近く大きくする。
  *
  * 一致しなかった場合は 3 形式がそのまま同梱される。
- * KaTeX 側の書き方が変わっても、フォントが引けなくなる側には倒れない。
+ * KaTeX 側の書き方が変わっても、フォントを読み込めなくなることはない。
  */
 function katexWoff2Only(): Plugin {
   return {
@@ -68,8 +66,8 @@ function katexWoff2Only(): Plugin {
 }
 
 /**
- * チャンク境界は 02.architecture.md §5.3 の表がそのまま仕様になっている。
- * `main` + `shared` + `pipeline` がクリティカルパスであり、size-limit の監視対象。
+ * チャンク境界は 02.architecture/05-startup-sequence.md §4 の表がそのまま仕様になっている。
+ * `main` + `shared` + `pipeline` + アプリの CSS がクリティカルパスであり、size-limit の検証対象である。
  */
 export default defineConfig(({ mode }) => ({
   plugins: [
@@ -93,9 +91,9 @@ export default defineConfig(({ mode }) => ({
      * フォントは必ずファイルとして出す。
      *
      * 既定では小さいアセットが `data:` URI として CSS に埋め込まれる。
-     * CSP の `font-src` は `'self'` だけなので、埋め込まれたフォントは実行時に弾かれ、その face だけ描画に使われない。
-     * KaTeX の `KaTeX_Size3-Regular.woff2` が実際にこれに該当した。
-     * CSP に `data:` を足す側では直さない。
+     * CSP の `font-src` は `'self'` だけなので、埋め込まれたフォントは実行時に拒否され、その face だけ描画に使われない。
+     * KaTeX の `KaTeX_Size3-Regular.woff2` がこれに該当する。
+     * CSP に `data:` を追加して対応することはしない。
      */
     assetsInlineLimit(filePath) {
       return /\.(?:woff2?|ttf|otf|eot)$/i.test(filePath) ? false : undefined;
@@ -109,7 +107,7 @@ export default defineConfig(({ mode }) => ({
          * highlight.js の言語定義には `hljs-` を冠する。
          *
          * 1 言語 1 チャンクという分割そのものは Vite の自動分割の結果であって、`manualChunks` でまとめてはいけない。
-         * まとめると TypeScript のドキュメントを開いただけで Java や SQL の文法まで落ちてくる。
+         * まとめると TypeScript のドキュメントを開いただけで Java や SQL の文法まで読み込まれる。
          * ここでやっているのは名前付けだけで、名前が揃っていないと size-limit からハイライト一式を 1 つの予算として指せない。
          */
         chunkFileNames(chunk) {
@@ -121,8 +119,8 @@ export default defineConfig(({ mode }) => ({
            * ハンバーガーメニューの中身。
            *
            * 分割そのものは動的 import の結果であって、ここでやっているのは名前付けだけ（hljs と同じ）。
-           * `manualChunks` で 'menu' に寄せてはいけない。
-           * `main` と共有しているモジュール（`open.ts` / `zoom.ts` など）まで menu チャンク側へ引き寄せられ、`main` がそれを静的 import する形になって、遅延どころか起動時に読み込まれるチャンクになる。
+           * `manualChunks` で 'menu' にまとめてはいけない。
+           * `main` と共有しているモジュール（`open.ts` / `zoom.ts` など）まで menu チャンク側へ移動し、`main` がそれを静的 import する形になって、遅延どころか起動時に読み込まれるチャンクになる。
            * 名前を固定しているのは size-limit から名指しするため。
            */
           const isMenu = /[\\/]src[\\/]features[\\/]menu[\\/]/.test(chunk.facadeModuleId ?? '');
@@ -142,13 +140,13 @@ export default defineConfig(({ mode }) => ({
           if (isSettingsSample) return 'assets/sample-[hash].js';
 
           /*
-           * エディターの配色 50 枚。入口を持つが、判定は palette と同じ形にしてある。
+           * 配色 50 枚（`theme` チャンク）。入口を持つが、判定は palette と同じ形にしてある。
            *
-           * `features/editor/lazy/palette.ts` と設定 UI の `ThemeField.svelte` の 2 か所から動的 import されるため、Rollup は共有チャンクとして切り出す。
+           * `features/theme/index.ts` の `loadThemeCatalog` と設定 UI の `ThemeField.svelte` の 2 か所から動的 import されるため、Rollup は共有チャンクとして切り出す。
            * そのチャンクが `facadeModuleId` を持つとは限らない。
-           * 名前が付かないと下の `shared-*` に落ち、起動時に読み込まれないのに critical path が数えてしまう。
+           * 名前が付かないと下の `shared-*` として扱われ、起動時に読み込まれないのに critical path に数えられる。
            * `isEditor` / `isSettings` より前に置くこと。
-           * どちらの判定も `facadeModuleId` のパスを見るだけなので、配色のチャンクが先にどちらかへ吸われることはないが、`features/theme/` を `features/editor/lazy/` の下へ移すと editor チャンク （予算の対象外 / 850KB）に紛れて、50 枚ぶんの実サイズが見えなくなる。
+           * どちらの判定も `facadeModuleId` のパスを見るだけなので、配色のチャンクが先にどちらかに含まれることはないが、`features/theme/` を `features/editor/lazy/` の下へ移すと editor チャンク（予算の対象外）に含まれて、50 枚ぶんの実サイズが見えなくなる。
            */
           const modules = chunk.moduleIds ?? [];
           const isThemeOnly =
@@ -160,7 +158,7 @@ export default defineConfig(({ mode }) => ({
            *
            * `src/features/settings/` には `main` 側のモジュール（`store.svelte.ts` / `appearance.ts` / `format.ts` / `open-settings.ts`）も同居している。
            * ここで名前が付くのは動的 import の入口（`lazy/panel.ts`）から始まるチャンクだけで、`main` が静的に import しているものは `main` に残る。
-           * `manualChunks` で寄せると、その境界が壊れる。
+           * `manualChunks` でまとめると、その境界が壊れる。
            */
           const isSettings = /[\\/]src[\\/]features[\\/]settings[\\/]/.test(chunk.facadeModuleId ?? '');
           if (isSettings) return 'assets/settings-[hash].js';
@@ -175,15 +173,15 @@ export default defineConfig(({ mode }) => ({
           if (isOutlineJump) return 'assets/outline-[hash].js';
 
           /*
-           * パレットの器。入口を持たないチャンクなので、判定が他と違う。
+           * パレットの外枠。入口を持たないチャンクなので、判定が他と違う。
            *
-           * コマンドパレットと見出しジャンプの 2 つが同じ器を使うため、Vite は共有部分を独立したチャンクへ切り出す。
+           * コマンドパレット・クイックオープン・見出しジャンプが同じ外枠を使うため、Vite は共有部分を独立したチャンクへ切り出す。
            * そのチャンクには入口が無く `facadeModuleId` も無い。
-           * 名前が付かないと `shared-*` に落ち、size-limit の critical path が拾ってしまう。
-           * 起動時には読み込まれないのに予算を食う形になる。
+           * 名前が付かないと `shared-*` として扱われ、size-limit の critical path に数えられる。
+           * 起動時には読み込まれないのに予算を消費する形になる。
            *
-           * そこで、含まれるモジュールが全部 `features/palette/lazy/` のものであるときだけ名前を付ける。
-           * `manualChunks` で寄せるのとは違い、分割そのものには手を出していない（menu と同じ方針）。
+           * そこで、含まれるモジュールがすべて `features/palette/lazy/` のものであるときだけ名前を付ける。
+           * `manualChunks` でまとめるのとは違い、分割そのものには手を出していない（menu と同じ方針）。
            */
           const isPaletteOnly =
             modules.length > 0 && modules.every((id) => /[\\/]src[\\/]features[\\/]palette[\\/]lazy[\\/]/.test(id));
@@ -209,11 +207,9 @@ export default defineConfig(({ mode }) => ({
           /*
            * Monaco の実体。ここも名前付けだけである。
            *
-           * 以前は `manualChunks` で 1 つの `editor` チャンクへ寄せていたが、
-           * それが起動を遅くしていた。 まとめた結果、Vite が注入する動的 import の
-           * ヘルパ（`__vitePreload`）がその巨大なチャンクに同居し、`main` がヘルパを
-           * 静的に import することになる。754KB が `index.html` の `modulepreload` に出て、
-           * 起動時の評価対象へ入っていた（M3 Phase 8 で実測 / measurements/03-cold-start.md）。
+           * `manualChunks` で 1 つのチャンクへまとめてはいけない。
+           * まとめると、Vite が注入する動的 import のヘルパ（`__vitePreload`）がその巨大なチャンクに同居し、`main` がヘルパを静的に import することになる。
+           * その結果、Monaco の実体が `index.html` の `modulepreload` に出て、起動時の評価対象に入る（measurements/03-cold-start.md）。
            *
            * 分割は Rollup に任せ、Monaco だけで構成されたチャンクに名前を付ける。
            * size-limit が 1 つの予算として指せる状態は保たれる。
@@ -224,8 +220,7 @@ export default defineConfig(({ mode }) => ({
           /*
            * 入力レスポンスの計測。他と同じく名前付けだけ。
            *
-           * 名前を固定しているのは size-limit から名指しするためで、「計測の道具がクリティカルパスに載っていないこと」を予算として見張る。
-           * 比較のためだけの経路が本命の予算を食った件と同じ事故を繰り返さないための番人。
+           * 名前を固定しているのは size-limit から名指しするためで、「計測の道具がクリティカルパスに含まれていないこと」を予算として検証する。
            */
           const isBench = /[\\/]src[\\/]features[\\/]bench[\\/]/.test(chunk.facadeModuleId ?? '');
           if (isBench) return 'assets/bench-[hash].js';
@@ -238,28 +233,10 @@ export default defineConfig(({ mode }) => ({
           if (isPipeline) return 'assets/pipeline-[hash].js';
 
           /*
-           * 共有チャンク（facade を持たない = 動的 import の入口ではない）。
-           *
-           * 遅延チャンクの枚数がある数を超えると、rolldown は `main` と遅延チャンクの両方から参照されるモジュール（Svelte ランタイム / `i18n/ja.ts` / ストア）を別のチャンクへ切り出す。
-           *
-           * 切り出されても `main` が静的に import するので、起動時に必ず読まれる。
-           * つまりこれはクリティカルパスの一部であり、予算の外に出してはいけない。
-           * 名前は切り出し元のモジュール（`ja` など）から付くのでリファクタのたびに変わる。
-           * size-limit から名指しできるよう、ここで固定する。
-           *
-           * 遅延チャンク同士だけが共有するチャンクもここに落ちる。そちらは起動時に
-           * 読まれないので予算に対して過大評価になるが、取りこぼすより安全な側に倒す。
-           */
-          //
-          // `manualChunks` で名前を付けたもの（`editor`）は facade を持たないが、
-          // 意図して分けた遅延チャンクなのでここに落としてはいけない。
-          /*
            * KaTeX の実体。Monaco と同じ理由で名前付けだけである。
            *
-           * `preview/lazy/math.ts` から動的 import しているが、74.2KB あるため
-           * rolldown が KaTeX だけのチャンクへ切り出すことがある。そのチャンクは
-           * facade を持たないので、名前を付けないと下の `shared-*` に落ち、
-           * size-limit の critical path が数えてしまう。
+           * `preview/lazy/math.ts` から動的 import しているが、大きいため rolldown が KaTeX だけのチャンクへ切り出すことがある。
+           * そのチャンクは facade を持たないので、名前を付けないと下の `shared-*` として扱われ、size-limit の critical path に数えられる。
            */
           const isKatexOnly = modules.length > 0 && modules.every((id) => id.includes('node_modules/katex'));
           if (isKatexOnly) return 'assets/math-[hash].js';
@@ -267,16 +244,13 @@ export default defineConfig(({ mode }) => ({
           /*
            * Mermaid の依存グラフ。ここも名前付けだけである。
            *
-           * Mermaid は cytoscape / d3 / dagre / roughjs など 100 枚近いチャンクに割れ、
-           * そのほとんどが facade を持たない。名前を付けないと全部が下の `shared-*` に落ち、
-           * size-limit の critical path が 480KB ぶん多く数える。
-           * 起動時に実際に読み込まれるものは何も変わっていない（`index.html` の modulepreload は 12 枚のまま）。
+           * Mermaid は cytoscape / d3 / dagre / roughjs など 100 枚近いチャンクに分かれ、そのほとんどが facade を持たない。
+           * 名前を付けないとすべてが下の `shared-*` として扱われ、size-limit の critical path が約 480KB 多く数える。
+           * 起動時に実際に読み込まれるもの（`index.html` の modulepreload）は変わらない。
            *
-           * 判定は「node_modules だけで構成され、かつ Mermaid しか引かないパッケージを含む」。
-           * `dompurify` と `katex` は Mermaid も引くがこちらも直接使うため、
-           * 「アプリのパッケージを含まない」という条件では拾えない。
-           * それらが同居したチャンクは遅延側にしか現れず（`index.html` に載らない）、
-           * `main` は自分のぶんを別のチャンクで持っている。
+           * 判定は「node_modules だけで構成され、かつ Mermaid しか使わないパッケージを含む」。
+           * `dompurify` と `katex` は Mermaid も使うがこちらも直接使うため、「アプリのパッケージを含まない」という条件では判定できない。
+           * それらが同居したチャンクは遅延側にしか現れず（`index.html` に含まれない）、`main` は自分の分を別のチャンクで持っている。
            */
           const isVendorOnly = modules.length > 0 && modules.every((id) => id.includes('node_modules'));
           if (
@@ -286,8 +260,21 @@ export default defineConfig(({ mode }) => ({
             return 'assets/mermaid-[hash].js';
           }
 
+          /*
+           * 共有チャンク（facade を持たない = 動的 import の入口ではない）。
+           *
+           * 遅延チャンクの枚数がある数を超えると、rolldown は `main` と遅延チャンクの両方から参照されるモジュール（Svelte ランタイム / `i18n/ja.ts` / ストア）を別のチャンクへ切り出す。
+           *
+           * 切り出されても `main` が静的に import するので、起動時に必ず読まれる。
+           * つまりこれはクリティカルパスの一部であり、予算の外に出してはいけない。
+           * 名前は切り出し元のモジュール（`ja` など）から付くのでリファクタのたびに変わる。
+           * size-limit から名指しできるよう、ここで固定する。
+           *
+           * 遅延チャンク同士だけが共有するチャンクもここに含まれる。
+           * そちらは起動時に読まれないので予算に対して過大評価になるが、見落とすより安全な側を選ぶ。
+           */
           const hasFacade = chunk.facadeModuleId !== null && chunk.facadeModuleId !== undefined;
-          if (!hasFacade && chunk.name !== 'editor') {
+          if (!hasFacade) {
             return 'assets/shared-[hash].js';
           }
 

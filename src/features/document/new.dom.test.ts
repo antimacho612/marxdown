@@ -3,7 +3,7 @@
  * 新規ファイル（`Ctrl+N` / 03.ux-spec/04-keybindings.md §3 / `document/new.ts`）。
  *
  * 見たいのは「パスが無いこと」の波及である。
- * 無題の文書は、対応を忘れると静かに壊れる場所を 4 つ持っている（最近開いたファイルに積むと開き直せない項目が残る、戻る/進むで戻った先に本文が無い、ファイル監視が存在しないパスを見に行く、保存先が決まらない）。
+ * 無題の文書は、対応を忘れると表面に出ない形で壊れる場所を 4 つ持っている（最近開いたファイルに加えると開き直せない項目が残る、戻る/進むで戻った先に本文が無い、ファイル監視が存在しないパスを見に行く、保存先が決まらない）。
  * どれも画面には何も出ない形で壊れるため、ここで固定しておく。
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -76,7 +76,7 @@ describe('新規ファイル', () => {
     expect(documentStore.meta?.encoding).toBe('utf8');
     expect(documentStore.meta?.eol).toBe('lf');
     expect(documentStore.meta?.bom).toBe(false);
-    // 作った直後は未保存の変更が無い。**打って初めてダーティになる。**
+    // 作った直後は未保存の変更が無い。打って初めてダーティになる。
     expect(documentStore.isDirty).toBe(false);
   });
 
@@ -88,7 +88,7 @@ describe('新規ファイル', () => {
   });
 
   it('新しいタブとして開く。いまの文書は残る', async () => {
-    // 置き換えないので、未保存の確認も通らない（M3 Phase 2b）。
+    // 置き換えないので、未保存の確認も通らない。
     await openUntitledTab();
     setDirty(true);
 

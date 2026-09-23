@@ -17,8 +17,7 @@ describe('表（F-VIEW-01 / plugins/table.ts）', () => {
   });
 
   /**
-   * GFM の `---:` を markdown-it は `style="text-align:right"` で出力するが、
-   * `markdown/sanitize.ts` が `style` を落とすため、属性へ移さないと揃えが反映されない。
+   * GFM の `---:` を markdown-it は `style="text-align:right"` で出力するが、`markdown/sanitize.ts` が `style` を除去するため、属性へ移さないと揃えが反映されない。
    */
   it('揃えの指定を style から data-mx-align へ移す', () => {
     const { html } = render('| 左 | 中 | 右 |\n| :-- | :-: | --: |\n| a | b | c |\n');
@@ -32,7 +31,7 @@ describe('表（F-VIEW-01 / plugins/table.ts）', () => {
   it('数値だけの列を右寄せにする', () => {
     const { html } = render('| 名前 | 件数 |\n| --- | --- |\n| a | 1,234 |\n| b | 56 |\n');
 
-    // 見出しも本文と同じ側へ寄せる。見出しだけ左に残ると列の境界が読めない。
+    // 見出しも本文と同じ側へ揃える。見出しだけ左に残ると列の境界が読めない。
     expect(html).toMatch(/<th data-mx-align="right" data-mx-num="">件数<\/th>/);
     expect(html).toMatch(/<td data-mx-align="right" data-mx-num="">1,234<\/td>/);
   });

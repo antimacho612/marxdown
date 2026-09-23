@@ -1,13 +1,11 @@
 // @vitest-environment jsdom
 /**
- * リストの継続入力・自動採番・記法の畳み込みの回帰テスト
- * （F-EDIT-09 の `Enter` / F-EDIT-10 / `enter.ts`）。
+ * リストの継続入力・自動採番・記法の一括削除の回帰テスト（F-EDIT-09 の `Enter` / F-EDIT-10 / `enter.ts`）。
  *
- * このテストは前は無かった。
- * CodeMirror では `@codemirror/lang-markdown` が持っていたので「自分で書いていないものをテストしない」と決めていたが、Monaco では自作なのでここで見る（[ADR-0009](../../../docs/adr/0009-editor-engine-monaco.md) の受け入れコスト 1）。
+ * Monaco は Markdown の継続入力を持たず、このアプリで実装しているためここで検証する（[ADR-0009](../../../docs/adr/0009-editor-engine-monaco.md) の受け入れコスト 1）。
  *
- * `Enter` と `Backspace` は本来別の意味を持つキーを横取りしているため、リストでない場所で握り潰すと、ただの改行と 1 文字削除ができなくなる。
- * `null`（＝手を引いた）が期待値になる場面があり、`run` は手を引いたときだけ `null` を返す（`keymap.ts` の `FALLTHROUGH`）。
+ * `Enter` と `Backspace` は本来別の意味を持つキーであり、リストでない場所で処理してしまうと通常の改行と 1 文字削除ができなくなる。
+ * `null`（処理しなかった）が期待値になる場面があるため、`run` は処理しなかったときだけ `null` を返す（`keymap.ts` の `FALLTHROUGH`）。
  */
 import { describe, expect, it } from 'vitest';
 
@@ -21,13 +19,13 @@ describe('継続の組み立て (continuationOf)', () => {
     expect(continuationOf('> a')?.prefix).toBe('> ');
   });
 
-  /** F-EDIT-10。**次の番号を計算する**ので `onEnterRules` では書けない。 */
+  /** F-EDIT-10。次の番号を計算するので `onEnterRules` では書けない。 */
   it('番号付きリストは 1 つ進める', () => {
     expect(continuationOf('1. a')?.prefix).toBe('2. ');
     expect(continuationOf('  9) a')?.prefix).toBe('  10) ');
   });
 
-  /** **チェック済みの次はチェックしない。** 続きの項目まで済みで始まる理由が無い。 */
+  /** チェック済みの次はチェックしない。続きの項目まで済みで始まる理由が無い。 */
   it('タスクリストは未チェックで続ける', () => {
     expect(continuationOf('- [x] a')?.prefix).toBe('- [ ] ');
     expect(continuationOf('- [ ] a')?.prefix).toBe('- [ ] ');
@@ -50,15 +48,10 @@ describe('Enter で続ける (F-EDIT-09, 10)', () => {
   });
 
   /**
-   * **続きの項目は振り直さない**（`enter.ts` の但し書き）。
+   * 続きの項目は振り直さない（`enter.ts` の但し書き）。
    *
    * 触れば「編集していない箇所のバイト列が変わる」ことになり、N-CMP-03 に反する。
    * Markdown は `1.` が並んでいても正しく採番して描くので、実害も無い。
-   *
-   * CodeMirror では `@codemirror/lang-markdown` の `renumberList` が振り直していた。
-   * **依存が持っていた振る舞いであって、Marxdown が決めたことではない**
-   * （[ADR-0009](../../../docs/adr/0009-editor-engine-monaco.md)）。
-   * E2E がこの差で 1 本落ちたので、両方に留めてある。
    */
   it('続きの項目の番号は触らない (N-CMP-03)', () => {
     expect(run(continueList, '1. a|\n2. b')).toBe('1. a\n2. |\n2. b');
@@ -73,8 +66,8 @@ describe('Enter で続ける (F-EDIT-09, 10)', () => {
   });
 
   /**
-   * **記法だけの行で押したら、記法を消して終わる。** 空の項目を増やし続けるより、
-   * そこでリストを抜けたい場合がほとんどである（CommonMark 系で共通の挙動）。
+   * 記法だけの行で押したら、記法を消して終わる。
+   * 空の項目を増やし続けるより、そこでリストを抜けたい場合がほとんどである（CommonMark 系で共通の挙動）。
    */
   it('空の項目で押すとリストを抜ける', () => {
     expect(run(continueList, '- |')).toBe('|');
@@ -100,7 +93,7 @@ describe('Backspace で記法を畳む', () => {
     expect(run(deleteMarkupBackward, '- [ ] |a')).toBe('|a');
   });
 
-  /** **インデントは残す。** 消したいのは記法であって、入れ子の深さではない。 */
+  /** インデントは残す。消したいのは記法であって、入れ子の深さではない。 */
   it('入れ子ならインデントを残す', () => {
     expect(run(deleteMarkupBackward, '  - |a')).toBe('  |a');
   });

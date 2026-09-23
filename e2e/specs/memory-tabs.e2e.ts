@@ -1,9 +1,9 @@
 /**
- * タブの開閉とメモリ（N-PERF-06 / M3 Phase 3）。
+ * タブの開閉とメモリ（N-PERF-06）。
  *
- * **`memory.e2e.ts` とは別のセッションで走らせる。**
- * あちらは最後に `Memory.forciblyPurgeJavaScriptMemory` を呼んでおり、その後は
- * ページ側を読めない（`helpers/memory.ts`）。同じセッションに載せると、こちらが動かない。
+ * `memory.e2e.ts` とは別のセッションで実行する。
+ * あちらは最後に `Memory.forciblyPurgeJavaScriptMemory` を呼んでおり、その後はページ側を読めない（`helpers/memory.ts`）。
+ * 同じセッションで実行すると、こちらが動作しない。
  */
 import path from 'node:path';
 
@@ -27,9 +27,10 @@ const TINY = { file: path.join(FIXTURES, 'tiny.md'), heading: 'tiny.md — LLM �
 /**
  * 10 枚開いて全部閉じる（[05.performance-budget > operations §3](../../docs/05.performance-budget/05-operations.md)）。
  *
- * **判定には使えない。** WebDriver 経由の値は増分が信用できない（[measurements > caveats §3](../../docs/measurements/09-caveats.md)）。
- * ここで見るのは内訳である。JS ヒープ・DOM ノード・リスナが基準へ戻れば、こちら側の解放
- * （モデル・履歴・ウォッチャ）は効いていることになり、残りはアロケータの話になる。
+ * 判定には使えない。
+ * WebDriver 経由の値は増分が信用できない（[measurements > caveats §3](../../docs/measurements/09-caveats.md)）。
+ * ここで検証するのは内訳である。
+ * JS ヒープ・DOM ノード・リスナが基準へ戻れば、こちら側の解放（モデル・履歴・ウォッチャ）は機能していることになり、残りはアロケータ側の問題になる。
  * 総量の判定は手計測で行う（`scripts/measure-tabs.ps1`）。
  */
 describe('タブの開閉（N-PERF-06）', () => {
@@ -38,7 +39,7 @@ describe('タブの開閉（N-PERF-06）', () => {
   it('10 枚開いて全部閉じたときの内訳を記録する', async () => {
     const samples: MemorySample[] = [];
 
-    // 同じファイルは 2 枚のタブにならない（開いていれば切り替わる）ため、コピーを配る。
+    // 同じファイルは 2 枚のタブにならない（開いていれば切り替わる）ため、コピーを用意する。
     const copies = Array.from({ length: TABS }, (_, i) =>
       path.join(WORK_DIR, `tab-${String(i + 1).padStart(2, '0')}.md`),
     );
@@ -68,7 +69,7 @@ describe('タブの開閉（N-PERF-06）', () => {
     printReport(samples);
     writeReport(samples, { scenario: 'tabs', tabs: TABS }, 'memory-tabs.json');
 
-    // 解放できていれば、DOM もリスナも基準へ戻る。**総量は見ない**（判定は手計測）。
+    // 解放できていれば、DOM もリスナも基準へ戻る。総量は見ない（判定は手計測）。
     const baseline = samples[0];
     const after = samples[3];
     expect(after?.blinkNodes ?? 0).toBeLessThanOrEqual((baseline?.blinkNodes ?? 0) + 50);

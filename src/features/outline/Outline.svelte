@@ -41,7 +41,7 @@
   const depths = $derived(toDepths(items));
 
   /**
-   * 表示する見出しの最大階層（設定 #61）。
+   * 表示する見出しの最大階層（設定 `outline.maxDepth`）。
    *
    * `depths` ではなく `item.level`（`h1`〜`h6`）で比較する。
    * `depths` は文書ごとに最浅見出しを 0 とする相対値であり、同じ設定値でも文書によって切れる位置が変わってしまう。
@@ -56,11 +56,10 @@
   );
 
   /**
-   * 追う相手がプレビューではなくエディターか（#59）。
+   * 追従する対象がプレビューではなくエディターか。
    *
    * Edit では本文の面が `display: none` になっている。
-   * 非表示の要素では交差が発生しないため、`IntersectionObserver` から現在位置を得られない
-   * （`rootBounds` も `boundingClientRect` もすべて 0 で届き、すべての見出しが通過済みと判定される）。
+   * 非表示の要素では交差が発生しないため、`IntersectionObserver` から現在位置を得られない（`rootBounds` も `boundingClientRect` もすべて 0 で届き、すべての見出しが通過済みと判定される）。
    * 表示されているのはエディター側であるため、そちらのカーソル行から求める。
    */
   const followsCursor = $derived(viewStore.mode === 'edit');
@@ -71,8 +70,7 @@
   /**
    * 手で開閉したときの選択。`null` は「自動判断に任せる」。
    *
-   * 別のドキュメントを開いたら捨てる。見出しの数が変われば、
-   * 折りたたむべきかどうかの判断も変わる。
+   * 別のドキュメントを開いたら破棄する。見出しの数が変われば、折りたたむべきかどうかの判断も変わる。
    */
   let manualExpanded = $state<boolean | null>(null);
 
@@ -81,11 +79,11 @@
   let list: HTMLElement | null = $state(null);
   let section: HTMLElement | null = $state(null);
 
-  /** 最後に見たファイル。開き直し（`F5`）で手動の開閉を捨てないための目印。 */
+  /** 最後に見たファイル。開き直し（`F5`）で手動の開閉を破棄しないための目印。 */
   let seenPath: string | null = null;
 
   /**
-   * Tab の順路に載せる 1 項目（roving tabindex / WAI-ARIA の tree）。
+   * Tab の順路に置く 1 項目（roving tabindex / WAI-ARIA の tree）。
    *
    * 全項目を順路に置くと、見出しが数百個ある文書ではペインから抜けられなくなる。
    * 上下キーで動ける以上、順路に置くのは 1 つでよい。
@@ -93,7 +91,7 @@
    */
   let tabStop = $state<number | null>(null);
 
-  /** フォーカスが移ったら順路もそこへ移す。次に Tab で戻ったとき、離れた場所に着地しない。 */
+  /** フォーカスが移ったら順路もそこへ移す。次に Tab で戻ったとき、離れた場所へ移動しない。 */
   function onFocusIn(event: FocusEvent): void {
     const buttons = [...(list?.querySelectorAll<HTMLElement>('button') ?? [])];
     const index = buttons.indexOf(event.target as HTMLElement);
@@ -115,7 +113,7 @@
    * 閉じている間のコストは発生しない。
    */
   $effect(() => {
-    // `items` を読むこと自体が依存の宣言になる。別の本文になったら張り直す。
+    // `items` を読むこと自体が依存の宣言になる。別の本文になったら登録し直す。
     const total = items.length;
     // Edit ではプレビューが非表示であり、観測しても正しい結果が得られない。
     if (followsCursor) return;
@@ -129,7 +127,7 @@
       activeIndex = index;
     });
 
-    // 段階的描画で後から入るチャンクの見出しを拾う（`open.ts` が呼ぶ）。
+    // 段階的描画で後から入るチャンクの見出しを観測対象に加える（`open.ts` が呼ぶ）。
     registerOutlineRefresher(follower.refresh);
 
     return () => {
@@ -160,33 +158,31 @@
   $effect(() => {
     setOutlineOnScreen(true);
     // `untrack` を外さないこと。
-    // この先で `viewStore.mode` を読むため、そのまま呼ぶとモードを切り替えるたびにこの効果が再登録される
-    // （変化していない見出しのためにパースが 1 回実行されることになる）。
+    // この先で `viewStore.mode` を読むため、そのまま呼ぶとモードを切り替えるたびにこの effect が再登録される（変化していない見出しのためにパースが 1 回実行されることになる）。
     untrack(() => void refreshOutlineOnOpen());
     return () => setOutlineOnScreen(false);
   });
 
-  /** `Ctrl+Shift+U` の着地点（§4）。現在位置があればそこ、無ければ先頭。 */
+  /** `Ctrl+Shift+U` のフォーカス先（§4）。現在位置があればそこ、無ければ先頭。 */
   $effect(() => {
     registerOutlineFocus(() => {
       const target = list?.querySelector<HTMLElement>('[aria-current="true"]') ?? list?.querySelector('button');
       if (target) target.focus();
-      // 見出しが 1 つも無い / 折りたたまれている場合は、見出し行に着地させる。
-      // フォーカスが `<body>` へ落ちると、キーボードだけの人が現在地を見失う。
+      // 見出しが 1 つも無い / 折りたたまれている場合は、見出し行にフォーカスする。
+      // フォーカスが `<body>` へ移ると、キーボードだけの人が現在地を見失う。
       else section?.focus();
     });
     return () => registerOutlineFocus(null);
   });
 
   /**
-   * 現在位置に対応する行。深さで絞られて非表示になっている場合は、直近の可視な祖先を代わりに示す
-   * （VS Code のアウトラインで折りたたんだ節の親がハイライトされるのと同じ扱い）。
+   * 現在位置に対応する行。深さで絞られて非表示になっている場合は、直近の可視な祖先を代わりに示す（VS Code のアウトラインで折りたたんだ節の親がハイライトされるのと同じ扱い）。
    *
    * `rows` は文書の並び順を保っているので、`activeIndex` 以前で最後に見つかった行が祖先にあたる。
    */
   const highlightIndex = $derived(nearestVisibleIndex(rows, activeIndex));
 
-  /** 実際に順路へ載せる位置（`rows` 上の添字）。深さの設定で行が減っても範囲から出ないようにする。 */
+  /** 実際に順路へ置く位置（`rows` 上の添字）。深さの設定で行が減っても範囲から出ないようにする。 */
   const stopAt = $derived(
     rows.length === 0
       ? 0
@@ -210,7 +206,7 @@
     return found;
   }
 
-  /** 現在位置が動いたら、ペインの中でも見えるところへ寄せる。 */
+  /** 現在位置が動いたら、ペインの中でも見える位置までスクロールする。 */
   $effect(() => {
     if (highlightIndex < 0 || !expanded) return;
     const position = rows.findIndex((row) => row.index === highlightIndex);
@@ -294,8 +290,7 @@
     <p class="mx-outline__empty">{ja.outline.filtered}</p>
   {:else if expanded}
     <!--
-      `tabindex="-1"`: ツリー自身は Tab の順路に入らない。着地するのは
-      現在位置の項目（`registerOutlineFocus`）で、そこから上下キーで動く。
+      `tabindex="-1"`: ツリー自身は Tab の順路に入らない。フォーカスが移るのは現在位置の項目（`registerOutlineFocus`）で、そこから上下キーで動く。
     -->
     <div
       class="mx-outline__list"
@@ -437,15 +432,12 @@
     cursor: pointer;
 
     /*
-     * 見えていない項目のレイアウトと描画を飛ばす。
+     * 見えていない項目のレイアウトと描画を省略する。
      *
-     * `huge.md`（2MB / 見出し 1249 個）でペインを開いたときの強制レイアウトが
-     * 実測 25〜43ms から 10〜16ms に落ちる。仮想スクロールを持ち込まずに
-     * 長いリストを扱うための、CSS 1 行の代替（本文で仮想スクロールを
-     * 採用しないのと同じ判断 / 02.architecture/06-markdown-rendering-pipeline.md §4）。
+     * `huge.md`（2MB / 見出し 1249 個）でペインを開いたときの強制レイアウトが約 25〜43ms から 10〜16ms に短縮される。
+     * 仮想スクロールを持ち込まずに長いリストを扱うための、CSS 1 行の代替である（本文で仮想スクロールを採用しないのと同じ判断 / 02.architecture/06-markdown-rendering-pipeline.md §4）。
      *
-     * `contain-intrinsic-size` は実測の行高（約 19px）。これが無いと
-     * スクロールバーの長さが伸び縮みする。
+     * `contain-intrinsic-size` は実際の行高（約 19px）。これが無いとスクロールバーの長さが伸び縮みする。
      */
     content-visibility: auto;
     contain-intrinsic-size: auto 19px;
@@ -467,7 +459,7 @@
 
   /*
    * 現在位置は背景色ではなく左端の線で示す。
-   * 本文と同じ背景の上で塗りを使うと、ペイン全体の見た目が煩雑になる（Principle 2 / 情報密度は高く、静かに）。
+   * 本文と同じ背景の上で背景色を使うと、ペイン全体の見た目が煩雑になる（Principle 2 / 情報密度は高く、静かに）。
    */
   .mx-outline__list button[aria-current='true'] {
     box-shadow: var(--mx-current-marker);

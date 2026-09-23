@@ -3,8 +3,8 @@
  * 遅延チャンクでメニューが開かれるまでロードされない。
  *
  * 並べるのは `CommandId` とラベルの対応だけで、実行内容は知らない（実体の表は `app/commands.ts`）。
- * 以前は 8 つの feature を名指しで import していたが、この形なら M3 のコマンドパレットが同じ表を別の見せ方で並べるだけで済む。
- * `AppMenu.svelte` はこの配列を描くだけで項目を知らないため、項目を足すのは `MENU` への 1 行で終わる。
+ * コマンドパレットも同じ表を別の見せ方で並べている。
+ * `AppMenu.svelte` はこの配列を描くだけで項目を知らないため、項目を追加するのは `MENU` への 1 行で終わる。
  *
  * 押せない項目（例: ファイル未オープン時の再読み込み・倍率・検索）は存在ごと消す（Principle 3）。
  * 判定は `app/commands.ts` の `isListed` が唯一の根拠で、メニューとパレットで結論がずれない。
@@ -50,8 +50,9 @@ export interface MenuGroup {
 /**
  * 表に書く 1 行。`command` が押せる状態のときだけ `MenuAction` になる。
  *
- * **ラベルとキーは持たない。** どちらも `features/palette/lazy/catalog.ts` にあり、
- * メニューはそこから取る。同じ文言がメニューとパレットで 2 か所になると、片方だけ直る（M3 Phase 4）。
+ * ラベルとキーは持たない。
+ * どちらも `features/palette/lazy/catalog.ts` にあり、メニューはそこから取る。
+ * 同じ文言がメニューとパレットの 2 か所にあると、片方だけが修正される事態が起きる。
  */
 interface MenuEntry {
   /** `{#each}` のキー。`CommandId` をそのまま使わないのは、短いほうが読めるため。 */
@@ -84,7 +85,7 @@ const MENU: MenuSection[] = [
       // 並び順は Welcome 画面に揃える（03.ux-spec/08-empty-states.md §1 は「開く」の次に「新規」）。
       // 同じ 2 つが場所によって異なる順で並ぶと、位置で覚えられなくなる。
       { id: 'new', command: 'document.new' },
-      // 保存（F-EDIT-02）。キーの割り当てを確認できる場所が他に無い（コマンドパレットは M3）。
+      // 保存（F-EDIT-02）。
       { id: 'save', command: 'document.save' },
       { id: 'save-as', command: 'document.saveAs' },
       // 別ウィンドウで開く（F-OPEN-06）。ファイルを開く手段の並びに置く。
@@ -96,8 +97,6 @@ const MENU: MenuSection[] = [
   {
     id: 'history',
     // 戻る / 進む（F-NAV-07）。辿れるときにしか表示しない（`isListed`）。
-    // ここに置くのは、`Alt+←` の割り当てを確認できる場所が他に無いためである
-    // （コマンドパレットは M3 / 06.roadmap/m1.5-shell-and-settings.md §5）。
     entries: [
       { id: 'back', command: 'history.back' },
       { id: 'forward', command: 'history.forward' },
@@ -133,13 +132,13 @@ const MENU: MenuSection[] = [
   {
     id: 'app',
     entries: [
-      // コマンドパレット（F-NAV-06）。**ここが初学者の逃げ道である**（03.ux-spec/01-screen-layout.md §3）。
+      // コマンドパレット（F-NAV-06）。ここが初学者の逃げ道である（03.ux-spec/01-screen-layout.md §3）。
       // キーを知らない人がすべての機能へ辿り着ける経路は、メニューからパレットへ入る 2 手だけである。
       { id: 'palette', command: 'palette.open' },
       { id: 'settings', command: 'settings.open' },
       // 終了（ADR-0007 論点 3 の 3 経路のうちの 1 つ）。
       //
-      // `✕` がトレイ格納の意味になったため、この項目が必要になった。
+      // `✕` はトレイ格納の意味であるため、この項目が必要である。
       // ウィンドウの中から確実に終了できる場所が無いと、閉じても終了していないことに気づいた場合の操作先がトレイアイコンだけになる。
       // ハンバーガーメニューは §3 が示す「初学者の逃げ道」にあたり、この項目はその役割を担う。
       { id: 'quit', command: 'app.quit' },
@@ -150,8 +149,7 @@ const MENU: MenuSection[] = [
 /**
  * いま並べるべきものを組み立てる。
  *
- * ストア（`viewStore` / `recentStore`）を直接読む。呼び出し側で `$derived`
- * すれば、ファイルを開いた / 履歴が増えたときに自動で組み直される。
+ * ストア（`viewStore` / `recentStore`）を直接読む。呼び出し側で `$derived` すれば、ファイルを開いた / 履歴が増えたときに自動で組み直される。
  */
 export function buildMenu(): MenuGroup[] {
   const groups: MenuGroup[] = [];
@@ -175,8 +173,7 @@ export function buildMenu(): MenuGroup[] {
 /**
  * 表示できる形にする。ラベルとキーはカタログから取る（`features/palette/lazy/catalog.ts`）。
  *
- * カタログに無いコマンドは id をそのまま出す。**起こらないはずの事態を黙って通さない**ためで、
- * 追加したコマンドをカタログへ載せ忘れると、メニューにもパレットにも id が並んで気づく。
+ * カタログに無いコマンドは id をそのまま出す。起こらないはずの事態を黙って通さないためで、追加したコマンドをカタログへ載せ忘れると、メニューにもパレットにも id が並んで気づく。
  */
 function toAction(entry: MenuEntry): MenuAction {
   const found = commandEntry(entry.command);
