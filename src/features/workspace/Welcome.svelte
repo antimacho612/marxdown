@@ -74,10 +74,9 @@
                 <!--
                   `<bdi dir="ltr">` が要る。
                   容器が `direction: rtl`（頭を削るため）なので、パスの両端にある中立文字が bidi で並べ替わる。
-                  実測では `/virtual` が `virtual/`、`~/notes` が `notes/~`、`C:` が `:C` として表示されていた。
+                  分離しないと `/virtual` が `virtual/`、`~/notes` が `notes/~`、`C:` が `:C` として表示される。
 
-                  容器と `<bdi>` は分ける。同じ要素に置くと、著者スタイルの `direction: rtl` が
-                  属性由来の `ltr` に勝ち、分離が RTL 方向で解決されて元の症状に戻る。
+                  容器と `<bdi>` は分ける。同じ要素に置くと、著者スタイルの `direction: rtl` が属性由来の `ltr` より優先され、分離が RTL 方向で解決されて同じ並べ替えが起きる。
                 -->
                 <span class="mx-welcome__item-dir"><bdi dir="ltr">{split.dir}</bdi></span>
               </button>
@@ -98,15 +97,14 @@
    * 項目とショートカットが縦に揃わないと、一覧として読み取りにくい。
    *
    * 置き場所は `shell.css` の `.mx-over-main` が持つ。
-   * `grid-area: main` で指すと Split に割り当て先が無く、右下の暗黙セルへ落ちる。
+   * `grid-area: main` で指すと Split に割り当て先が無く、右下の暗黙のセルに配置される。
    */
   .mx-welcome {
     z-index: 5;
     display: grid;
     /*
      * `safe` を外さないこと。
-     * 中身が器より広いとき、素の `center` は左右へ均等にはみ出し、**先頭側は掴めなくなる**
-     * （スクロールは末尾側にしか伸びない）。
+     * 中身が器より広いとき、素の `center` は左右へ均等にはみ出し、先頭側へはスクロールできなくなる（スクロールは末尾側にしか伸びない）。
      */
     place-content: safe center;
     background: var(--mx-color-bg);
@@ -117,7 +115,7 @@
    * 幅は器（本文の列）に対して決める。
    *
    * `80vw` はビューポート基準なので、両ペインを開くと列の幅を大きく超える。
-   * 実測（820px / 両ペイン展開）で列は 340px しかなく、480px の板が左右へ溢れていた。
+   * 例えば幅 820px で両ペインを開くと列は 340px しかなく、480px のパネルが左右へはみ出す。
    */
   .mx-welcome__panel {
     display: flex;
@@ -196,7 +194,7 @@
     flex: none;
   }
 
-  /* 図記号は補助。名前より一段落として、行の頭で騒がせない。 */
+  /* 図記号は補助である。名前より一段淡くし、行の頭で目立たせない。 */
   .mx-welcome__item > :global(.mx-icon) {
     color: var(--mx-color-fg-subtle);
   }
@@ -205,7 +203,7 @@
     color: var(--mx-color-fg-muted);
   }
 
-  /* ディレクトリは補助情報。長いパスは頭を削って末尾（＝現在地）を残す */
+  /* ディレクトリは補助情報。長いパスは先頭を省略して末尾（＝現在地）を残す */
   .mx-welcome__item-dir {
     flex: 1;
     min-width: 0;

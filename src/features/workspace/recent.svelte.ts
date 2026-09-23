@@ -33,8 +33,7 @@ export async function rememberRecent(path: string): Promise<void> {
 /**
  * 履歴から外す。
  *
- * 開けなかったファイルに対して呼ぶ。消えたファイルを一覧に残し続けると、
- * 次の起動でも同じ失敗を踏むことになる。
+ * 開けなかったファイルに対して呼ぶ。消えたファイルを一覧に残し続けると、次の起動でも同じ失敗を繰り返すことになる。
  */
 export async function forgetRecent(path: string): Promise<void> {
   try {

@@ -3,8 +3,8 @@
 
   遅延チャンク側にある。ペインを開くまで読み込まない（`ExplorerBody.svelte`）。
 
-  いまはフィルターの 2 つだけだが、表示の更新などツリーへの操作もここに並べる。
-  ボタンの見た目は `mx-etoolbar__button` に集約してあり、増やすときは要素を足すだけでよい。
+  現在はフィルターの 2 つだけだが、表示の更新などツリーへの操作もここに並べる。
+  ボタンの見た目は `mx-etoolbar__button` に集約してあり、増やすときは要素を追加するだけでよい。
 
   文字ラベルは置かない。ペインは 180px まで狭くなるため、操作が増えた分だけ折り返しで縦に伸びる。
   代わりに、現在の状態をツールチップへ添える（`app/StatusBar.svelte` の `⇄` と同じ理由）。
@@ -16,26 +16,26 @@
   import { treeStore } from '../tree.svelte';
   import { filterStore } from './filter.svelte';
 
-  /** 拡張子フィルターが効いている間、Markdown フィルターは表示を変えない（`filter.svelte.ts`）。 */
+  /** 拡張子フィルターが有効な間、Markdown フィルターは表示を変えない（`filter.svelte.ts`）。 */
   const overridden = $derived(filterStore.extensions.length > 0);
 
   let row: HTMLElement | null = $state(null);
   let input: HTMLInputElement | null = $state(null);
   let extensionsButton: HTMLButtonElement | null = $state(null);
 
-  /** Tab の順路に載せるボタンの位置（roving tabindex）。 */
+  /** Tab の順路に置くボタンの位置（roving tabindex）。 */
   let stop = $state(0);
 
-  /** 開いた直後に入力欄へフォーカスする。開いてから自分で掴み直す操作を挟ませない。 */
+  /** 開いた直後に入力欄へフォーカスする。開いた後にもう一度クリックする操作を必要としない。 */
   $effect(() => {
     if (filterStore.extensionsOpen) input?.focus();
   });
 
   /**
-   * 順路に載せるボタンを 1 つに絞る（WAI-ARIA の toolbar）。
+   * 順路に置くボタンを 1 つに絞る（WAI-ARIA の toolbar）。
    *
    * 木も同じ規則で動いており（`FileTree.svelte`）、ペインの中で移動の仕方を変えない。
-   * 属性ではなく DOM 側で配るのは、ボタンを足すたびに添字を書き足さずに済ませるためである。
+   * 属性ではなく DOM 側で割り当てるのは、ボタンを追加するたびに添字を書き足さずに済ませるためである。
    */
   $effect(() => {
     for (const [index, item] of buttons().entries()) item.tabIndex = index === stop ? 0 : -1;
@@ -45,7 +45,7 @@
     return [...(row?.querySelectorAll<HTMLButtonElement>('.mx-etoolbar__button') ?? [])];
   }
 
-  /** 左右キーで移動する。`aria-disabled` のボタンも飛ばさない。効かない理由を読み取る手段が無くなる。 */
+  /** 左右キーで移動する。`aria-disabled` のボタンもスキップしない。スキップすると、機能しない理由を読み取る手段が無くなる。 */
   function onKeyDown(event: KeyboardEvent): void {
     const items = buttons();
     const from = items.indexOf(document.activeElement as HTMLButtonElement);
@@ -128,7 +128,7 @@
   >
     <!--
       押せなくするのではなく `aria-disabled` にしてある。
-      `disabled` はフォーカスを受けられなくなるため、キーボードだけでは効かない理由を読み取る手段が無くなる。
+      `disabled` はフォーカスを受けられなくなるため、キーボードだけでは機能しない理由を読み取る手段が無くなる。
     -->
     <button
       type="button"

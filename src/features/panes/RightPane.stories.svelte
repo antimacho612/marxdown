@@ -1,14 +1,14 @@
 <!--
   ライトペイン（03.ux-spec/06-panes.md §3）。
 
-  実アプリと同じ grid（`shell.css` の `grid-template-areas`）の中に置いて、
-  **本文とペインの取り合い**を見るための story。ここで確認できるのは 3 つ。
+  実アプリと同じ grid（`shell.css` の `grid-template-areas`）の中に置いて、本文とペインの幅の配分を確認するための story。
+  確認できるのは 3 つである。
 
   - 既定幅 240px でも本文が主役のままか（Principle 2）
   - 最小幅 180px / 最大幅まで広げたときの見え方
-  - 掴む場所（左端 5px）が本文のクリックを奪っていないか
+  - ドラッグ領域（左端 5px）が本文のクリックを妨げていないか
 
-  ドラッグは実際に効く。離した時点で `setPanes`（Storybook では何もしない実装）が呼ばれる。
+  ドラッグは実際に動作する。離した時点で `setPanes`（Storybook では何もしない実装）が呼ばれる。
 -->
 <script module lang="ts">
   import { defineMeta } from '@storybook/addon-svelte-csf';
@@ -63,7 +63,7 @@
         <h1>アーキテクチャ</h1>
         <p>ペインを開いても、画面の主役は本文のままであること。</p>
         <h2>レイヤー構成</h2>
-        <p>掴む場所はペインの内側にある。本文の右端をクリックしても掴まれない。</p>
+        <p>ドラッグ領域はペインの内側にある。本文の右端をクリックしてもドラッグは始まらない。</p>
         <h2>起動シーケンス</h2>
         <p>アウトラインの項目を押すと、この本文の見出しへ飛ぶ。</p>
         <h3>コールド起動</h3>
@@ -84,13 +84,13 @@
 <!-- 最小幅。長い見出しがどこで省略されるかを見る。 -->
 <Story name="最小幅 (180px)" loaders={[seed(PANE_WIDTH_MIN)]} template={stage} />
 
-<!-- 上限まで広げた状態。本文が潰れないための歯止め（`store.rs` と同じ値）。 -->
+<!-- 上限まで広げた状態。本文の領域を確保するための上限（`store.rs` と同じ値）。 -->
 <Story name="最大幅" loaders={[seed(PANE_WIDTH_MAX)]} template={stage} />
 
 <style>
   /*
    * 実アプリの body grid（`shell.css`）の代わり。
-   * **列の名前は同じ**にしてある。ここが実装とずれると、story だけ壊れる。
+   * 列の名前は同じにしてある。ここが実装とずれると、story の表示だけが崩れる。
    */
   .sb-shell {
     display: grid;

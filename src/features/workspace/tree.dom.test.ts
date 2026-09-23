@@ -1,9 +1,9 @@
 // @vitest-environment jsdom
 /**
- * ファイルツリーの状態（F-NAV-03 / M3 Phase 5b）。
+ * ファイルツリーの状態（F-NAV-03）。
  *
- * 見たいのは遅延展開である。開いたディレクトリだけを読み、閉じたら捨てる。
- * 常駐アプリなので、一度開いただけのディレクトリを抱え続けると枚数分だけ積算する（N-PERF-06）。
+ * 検証するのは遅延展開である。開いたディレクトリだけを読み、閉じたら破棄する。
+ * 常駐アプリであるため、一度開いただけのディレクトリを保持し続けるとメモリが増え続ける（N-PERF-06）。
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -83,7 +83,7 @@ describe('遅延展開', () => {
     await toggleDir('C:/work/docs');
 
     expect(treeStore.expanded).not.toContain('C:/work/docs');
-    // 抱え続けない（N-PERF-06）。開き直せば読み直す。
+    // 保持し続けない（N-PERF-06）。開き直せば読み直す。
     expect(treeStore.entries['C:/work/docs']).toBeUndefined();
   });
 
@@ -97,8 +97,8 @@ describe('遅延展開', () => {
 });
 
 /**
- * 除外の glob は Rust 側で当たる（`explorer.exclude` / #146）。
- * ここで見たいのは、設定が変わったときに木をどう読み直すかである。
+ * 除外の glob は Rust 側で適用する（`explorer.exclude`）。
+ * ここで検証するのは、設定が変わったときに木をどう読み直すかである。
  */
 describe('読み直し', () => {
   it('基点は Rust 側へ渡す。glob をどこからの相対として解釈するかが決まる', async () => {

@@ -2,7 +2,7 @@
  * ペインの開閉と幅（03.ux-spec/06-panes.md §3）。
  *
  * §4 はキーの意味を「ペイン（開閉する）」と「ビュー（出してフォーカスする）」の 2 系統に分けることを求めており、このモジュールは前者だけを持ち中身が何かは知らない（ビュー側は `features/outline/show.ts`）。
- * 開閉は倍率と同じく `initPanes` で bootstrap から同期的に当てる（後から当てると本文が一度全幅で描かれた後に幅が縮小して見える）。
+ * 開閉は倍率と同じく `initPanes` で bootstrap から同期的に適用する（後から適用すると本文が一度全幅で描画された後に幅が縮小して見える）。
  *
  * ADR-0005 が禁じるのは本文をリアクティブな状態に置くことで、数値 1 つは対象外である。
  * ドラッグ中は rAF で間引き、永続化は 400ms デバウンスで受ける。
@@ -109,8 +109,7 @@ export function clampPaneWidth(width: number): number {
  * 保存を遅らせる。
  * 1 回だけの `setTimeout` であり、ポーリングではない（05.performance-budget/04-targets.md §5）。
  *
- * 左右をまとめて送るのは、`state.json` に載る形と呼び出しの単位を合わせるためである。
- * 左（M3）の値は書き換えられないため、送り返しても内容は変わらない。
+ * 左右をまとめて送るのは、`state.json` に保存する形と呼び出しの単位を合わせるためである。
  */
 function schedulePersist(): void {
   if (persistTimer !== null) clearTimeout(persistTimer);

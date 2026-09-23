@@ -12,7 +12,7 @@ import type { Component } from 'svelte';
  *
  * 渡すのは `kind` だけで、項目の内容は遅延チャンク側に置く。
  * ラベルの一覧を props で渡すと、その配列を組み立てる側（ステータスバー、つまり `main`）にすべての文言が含まれる。
- * クリティカルパスに載せてよいのは、押せるボタンが 1 つあるという情報だけである。
+ * クリティカルパスに含めてよいのは、押せるボタンが 1 つあるという情報だけである。
  */
 export type StatusMenuKind = 'encoding' | 'mode' | 'zoom';
 
@@ -41,8 +41,7 @@ export interface StatusMenuProps {
   kind: StatusMenuKind;
   anchor: StatusMenuAnchor;
   /**
-   * 閉じる。`refocus` が false のときはボタンにフォーカスを戻さない
-   * （項目を実行した直後は、関心が実行先へ移っているため）。
+   * 閉じる。`refocus` が false のときはボタンにフォーカスを戻さない（項目を実行した直後は、関心が実行先へ移っているため）。
    */
   onclose: (refocus?: boolean) => void;
 }

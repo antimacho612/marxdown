@@ -1,9 +1,8 @@
 // @vitest-environment jsdom
 /**
- * フォルダを開く（F-NAV-03 / #102）。
+ * フォルダを開く（F-NAV-03）。
  *
- * 見たいのは「基点が決まるのはここを通ったときだけである」ことと、
- * 取り消したときに何も変わらないことである（#103 の裏返し）。
+ * 検証するのは「基点が決まるのはここを通ったときだけである」ことと、取り消したときに何も変わらないことである。
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 

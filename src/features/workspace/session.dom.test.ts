@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
 /**
- * 前回のタブの記録と復元（OQ-04 / M3 Phase 7）。
+ * 前回のタブの記録と復元（F-NAV-01 / 02.architecture/04-rust-responsibilities.md §5）。
  *
- * 見たいのは 2 つ。**並び順が戻ること**と、**覚えないものを覚えないこと**である。
+ * 検証するのは 2 つである。並び順が戻ることと、記録しないものを記録しないことである。
  * 引数があるときに復元しないという判断は Rust 側にあり（`bootstrap.rs`）、ここには届かない。
  */
 import { flushSync } from 'svelte';
@@ -126,7 +126,7 @@ describe('記録', () => {
 
     // タブは増えている。
     expect(tabsStore.tabs).toHaveLength(2);
-    // それでも記録は変わらない。新規ファイルは開き直せないので、載せても復元できない 1 枚が増えるだけである。
+    // それでも記録は変わらない。新規ファイルは開き直せないので、記録しても復元できない 1 枚が増えるだけである。
     expect(setSession).not.toHaveBeenCalled();
   });
 
