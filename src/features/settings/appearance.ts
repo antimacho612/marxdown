@@ -1,7 +1,7 @@
 /**
- * 設定を見た目に当てる（F-CONF-01 / F-CONF-04 / 02.architecture/10-theming.md §1）。
+ * 設定を見た目に適用する（F-CONF-01 / F-CONF-04 / 02.architecture/10-theming.md §1）。
  *
- * 設定 UI は遅延チャンクだが、`main` にはこのファイルとストアだけが残り、`:root` のカスタムプロパティを書き換えるだけの仕事をする。
+ * 設定 UI は遅延チャンクだが、`main` にはこのファイルとストアだけが残り、`:root` のカスタムプロパティを書き換える処理だけを行う。
  * `bootstrap.ts` の `initSettings` から本文描画より前に同期的に呼ぶ（後から適用すると、一度描画された内容が別の見た目に再描画される）。
  * 既定値と同じなら `removeProperty` して `tokens.css` と二重管理にせず、未設定時の見た目を保つ（F-CONF-02）。
  * 適用先はすべてトークン層で、`themes/` に置いた配色からも同じ変数として見える。
@@ -26,8 +26,8 @@ export function applyAppearance(values: Settings): void {
   applyPalette(document.querySelector(PREVIEW_ROOT), 'mxTheme', values['preview.theme']);
   applyPalette(document.querySelector(EDITOR_ROOT), 'mxEditorTheme', values['editor.theme']);
 
-  // 属性に意味を与える規則を用意する。
-  // プレビューは起動直後から見えている面であり、規則の用意までを設定の適用に含めないと、既定の配色で 1 フレーム描かれる。
+  // 属性に対応する規則を用意する。
+  // プレビューは起動直後から見えている面であり、規則の用意までを設定の適用に含めないと、既定の配色で 1 フレーム描画される。
   // エディター側は Monaco がマウントされたときに `features/editor/lazy/palette.ts` が行う。
   applyPreviewTheme(values['preview.theme']);
 
@@ -56,19 +56,19 @@ const PREVIEW_ROOT = '#mx-preview';
 const EDITOR_ROOT = '#mx-editor';
 
 /**
- * 配色を当てる（F-CONF-08 / ADR-0013 / ADR-0014）。
+ * 配色を適用する（F-CONF-08 / ADR-0013 / ADR-0014）。
  *
  * `:root` には付けない。クロームの配色はテーマの選択では変えない。
  * 付与先は面そのもの（`#mx-preview` / `#mx-editor`）であり、カスタムプロパティの継承で配下へ伝わる。
  *
- * 属性名が面ごとに違うのは、カタログを分けたことで id が重複するためである（ADR-0014 §3.3）。
+ * 属性名が面ごとに違うのは、カタログが共通で id も面の間で共通であるためである（ADR-0014 §3.3）。
  * 同じ属性名にすると、エディター側の `github` を選んだときに注入した規則が `#mx-preview` にも一致する。
  *
  * ここで行うのは属性の付与だけである。
  * 規則の用意は面ごとに経路が違うため、呼び出し側が続けて行う。
  *
  * `default` のときは属性ごと削除する。
- * `applyTheme` が `system` で属性を削除するのと同じ理由で、設定を変更していない状態の DOM を M2 と同一に保つ（F-CONF-02）。
+ * `applyTheme` が `system` で属性を削除するのと同じ理由で、設定を変更していない状態の DOM を変えない（F-CONF-02）。
  */
 function applyPalette(element: HTMLElement | null, attribute: 'mxTheme' | 'mxEditorTheme', palette: string): void {
   if (!element) return;

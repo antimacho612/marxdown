@@ -10,11 +10,10 @@ import type { DocumentMeta } from '@/platform';
 import { buildMenu, MENU_RECENT_SHOWN, type MenuGroup } from './items';
 
 /**
- * **実物の表を使う。**
+ * 実物の表を使う。
  *
- * メニューは `CommandId` しか持たず、何を並べるかは `app/commands.ts` の
- * `isListed` が決める（06.roadmap/m2-editor.md §1.2）。差し替えたダミーで試すと、
- * 「id は合っているのに実体が無い」という一番起きやすい壊れ方を見逃す。
+ * メニューは `CommandId` しか持たず、何を並べるかは `app/commands.ts` の `isListed` が決める。
+ * ダミーに差し替えると、「id は合っているのに実体が無い」という最も起きやすい不具合を見逃す。
  */
 let uninstall: () => void = () => {};
 
@@ -90,10 +89,10 @@ describe('ハンバーガーメニューの項目 (03.ux-spec/01-screen-layout.m
   });
 
   /**
-   * 検索は**どちらの面でも押せる**。探す対象が変わるだけで、
-   * 実体の振り分けは `features/mode/find.ts` が持つ（F-VIEW-10 / F-EDIT-05）。
+   * 検索はどちらの面でも押せる。探す対象が変わるだけで、実体の振り分けは `features/mode/find.ts` が持つ（F-VIEW-10 / F-EDIT-05）。
    *
-   * **ラベルは対象を言う。** Preview では「プレビュー内を検索」、Edit では「検索」。
+   * ラベルは対象を言う。
+   * Preview では「プレビュー内を検索」、Edit では「検索」。
    */
   it('検索のラベルは、いま見ている面で変わる', () => {
     documentStore.meta = META;
@@ -119,7 +118,7 @@ describe('ハンバーガーメニューの項目 (03.ux-spec/01-screen-layout.m
     expect(ids(buildMenu())).toContain('replace');
   });
 
-  /** 履歴が空でも見出しは出す。**項目ではなく 1 行の文**で埋める。 */
+  /** 履歴が空でも見出しは出す。項目ではなく 1 行の文で埋める。 */
   it('履歴が空のときは、押せない項目の代わりに文を出す', () => {
     const recent = group(buildMenu(), 'recent');
 
@@ -127,7 +126,7 @@ describe('ハンバーガーメニューの項目 (03.ux-spec/01-screen-layout.m
     expect(recent?.empty).toBeTruthy();
   });
 
-  /** ここが伸びると、メニューが「履歴ビューア」という別の道具に化ける。 */
+  /** ここが伸びると、メニューが履歴の一覧という別の役割を持つことになる。 */
   it('最近開いたファイルは上限までしか並べない', () => {
     recentStore.entries = Array.from({ length: MENU_RECENT_SHOWN + 5 }, (_, i) => ({
       path: `C:\\notes\\note-${String(i)}.md`,
@@ -149,9 +148,8 @@ describe('ハンバーガーメニューの項目 (03.ux-spec/01-screen-layout.m
   });
 
   /**
-   * ADR-0007 論点 3。**確実に終了できる導線を 3 つ用意する**という決定のうち、
-   * ウィンドウの中にある 1 つ。`✕` がトレイ格納の意味になったので、
-   * ここが消えると逃げ場がトレイアイコンだけになる。
+   * ADR-0007 論点 3。確実に終了できる導線を 3 つ用意するという決定のうち、ウィンドウの中にある 1 つ。
+   * `✕` はトレイ格納の意味であるため、ここが無いと終了の手段がトレイアイコンだけになる。
    */
   it('ファイルを開いていてもいなくても、終了できる', () => {
     expect(ids(buildMenu())).toContain('quit');
@@ -161,8 +159,7 @@ describe('ハンバーガーメニューの項目 (03.ux-spec/01-screen-layout.m
   });
 
   /**
-   * 後続の Phase（M3 でコマンドパレットへの登録）が項目を足す。
-   * `{#each}` のキーに使うので、重複すると描画が壊れる。
+   * `{#each}` のキーに使うため、重複すると描画が崩れる。
    */
   it('項目の id が重複しない', () => {
     documentStore.meta = META;

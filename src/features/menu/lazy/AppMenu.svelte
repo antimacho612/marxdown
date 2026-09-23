@@ -48,8 +48,7 @@
   });
 
   function activate(item: MenuAction): void {
-    // 先に閉じる。実行が非同期に終わるもの（ダイアログ・再読み込み）でも、
-    // 押した瞬間にメニューが消えるほうが「効いた」ことが伝わる（NoticeBar と同じ判断）。
+    // 先に閉じる。実行が非同期に終わるもの（ダイアログ・再読み込み）でも、押した瞬間にメニューが消えるほうが操作を受け付けたことが伝わる（NoticeBar と同じ判断）。
     onclose(false);
     item.run();
   }
@@ -57,7 +56,7 @@
   function onKeydown(event: KeyboardEvent): void {
     switch (event.key) {
       case 'Escape': {
-        // 検索パネルなど、グローバルに Escape を握っている機能へ渡さない。
+        // 検索パネルなど、グローバルに Escape を処理している機能へ渡さない。
         event.stopPropagation();
         onclose();
         break;
@@ -79,8 +78,7 @@
         break;
       }
       case 'Tab': {
-        // 閉じ込める。外へ出す実装だと、フォーカスが本文へ落ちたのに
-        // メニューが開いたまま残る状態が作れてしまう。
+        // 閉じ込める。外へ出す実装だと、フォーカスが本文へ移ったのにメニューが開いたまま残る状態が作れてしまう。
         move(event.shiftKey ? -1 : 1);
         break;
       }
@@ -132,8 +130,7 @@
           <span class="mx-menu__label">{item.label}</span>
           <!--
             容器と `<bdi>` を分ける。
-            `direction: rtl`（頭を削るため）と `dir="ltr"` を同じ要素に置くと、著者スタイルの `direction` が勝って
-            `<bdi>` の分離が RTL 方向で解決され、結局パスが並べ替わる（`workspace/Welcome.svelte` と同じ形）。
+            `direction: rtl`（先頭を省略するため）と `dir="ltr"` を同じ要素に置くと、著者スタイルの `direction` が優先されて `<bdi>` の分離が RTL 方向で解決され、結局パスが並べ替わる（`workspace/Welcome.svelte` と同じ形）。
           -->
           {#if item.detail}<span class="mx-menu__detail"><bdi dir="ltr">{item.detail}</bdi></span>{/if}
           {#if item.shortcut}
@@ -154,10 +151,9 @@
 
 <style>
   /*
-   * タイトルバー左端のボタンからぶら下がる。位置の基準は `.mx-menubutton`。
+   * タイトルバー左端のボタンの下に表示する。位置の基準は `.mx-menubutton`。
    *
-   * 幅は内容で決めず固定に近い値にしてある。開くたびに幅が変わると、
-   * 同じ項目が毎回違う場所に来て、位置で覚えられない。
+   * 幅は内容で決めず固定に近い値にしてある。開くたびに幅が変わると、同じ項目が毎回違う場所に来て、位置で覚えられない。
    */
   .mx-menu {
     position: absolute;
@@ -227,7 +223,7 @@
     text-overflow: ellipsis;
   }
 
-  /* ディレクトリは補助情報。長いパスは頭を削って末尾（＝現在地）を残す（Welcome と同じ）。 */
+  /* ディレクトリは補助情報。長いパスは先頭を省略して末尾（＝現在地）を残す（Welcome と同じ）。 */
   .mx-menu__detail {
     flex: 1;
     min-width: 0;
@@ -265,9 +261,7 @@
   /*
    * `:focus` であって `:focus-visible` ではない。
    *
-   * 項目は `tabindex="-1"` で、フォーカスが来るのはキーボード操作か
-   * スクリプトからの `focus()` に限られる。`:focus-visible` にすると
-   * `↓` で移動しているのに何も光らない状態が起きる。
+   * 項目は `tabindex="-1"` で、フォーカスが来るのはキーボード操作かスクリプトからの `focus()` に限られる。`:focus-visible` にすると `↓` で移動しているのに何も光らない状態が起きる。
    */
   .mx-menu__item:focus {
     outline: none;

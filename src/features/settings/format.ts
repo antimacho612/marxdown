@@ -3,11 +3,11 @@
  *
  * DOM には触らない。適用するのは `appearance.ts` と見本（`lazy/samples/`）である。
  * `@/platform` から値を取らないのは、見本のチャンクからこのモジュールを参照するためである。
- * 実行時の依存を持たせると `platform` の共有チャンクが分割し直され、クリティカルパスが太る（OQ-38）。
+ * 実行時の依存を持たせると `platform` の共有チャンクが分割し直され、クリティカルパスが増える。
  */
 
 /**
- * 見本に着せる配色（`data-mx-theme` / `data-mx-editor-theme` の値）。
+ * 見本に適用する配色（`data-mx-theme` / `data-mx-editor-theme` の値）。
  *
  * `default` のときは `undefined` を返し、属性を付けない（`appearance.ts` の `applyPalette` と同じ判断）。
  * 組み込みの列挙ではなく任意の文字列を取る（ADR-0014）。選択肢は `themes/` との合成であり、数え上げられない。

@@ -9,7 +9,7 @@ function root(): HTMLElement {
   return document.documentElement;
 }
 
-/** `:root` に**インラインで書かれた**カスタムプロパティの一覧。 */
+/** `:root` にインラインで書かれたカスタムプロパティの一覧。 */
 function written(): string[] {
   const style = root().style;
   return Array.from({ length: style.length }, (_, i) => style.item(i)).filter((name) => name.startsWith('--mx-'));
@@ -38,9 +38,8 @@ beforeEach(() => {
 
 describe('applyAppearance', () => {
   /**
-   * 06.roadmap/m1.5-shell-and-settings.md §3 の完了条件「設定を一度も開かない状態の見た目が M1 から
-   * 劣化していない」。**既定値を書き込む実装にすると、ここが黙って壊れる。**
-   * トークン層（`tokens.css`）と二重管理になり、片方だけ直した瞬間にずれる。
+   * F-CONF-02。設定を一度も変更していない状態では、トークン層（`tokens.css`）の値をそのまま使う。
+   * 既定値を書き込む実装にすると `tokens.css` と二重管理になり、片方だけ直した時点でずれる。
    */
   it('既定値なら、カスタムプロパティを 1 つも書かない', () => {
     applyAppearance(DEFAULT_SETTINGS);
@@ -59,7 +58,7 @@ describe('applyAppearance', () => {
     expect(root().dataset['theme']).toBeUndefined();
   });
 
-  /** OS 追従は `tokens.css` の `@media` が担当する。属性を**外す**のがその合図。 */
+  /** OS 追従は `tokens.css` の `@media` が担当する。属性を外すことで OS 追従になる。 */
   it('テーマを data-theme に当てる。system は属性ごと外す', () => {
     applyAppearance(withSettings({ theme: 'dark' }));
     expect(root().dataset['theme']).toBe('dark');
@@ -86,8 +85,8 @@ describe('applyAppearance', () => {
   });
 
   /**
-   * F-CONF-04。**指定されたフォントは既定スタックの前に足す。**
-   * 置き換えると、そのフォントに無い字の落とし先（混植スタック）が消える。
+   * F-CONF-04。指定されたフォントは既定スタックの前に追加する。
+   * 置き換えると、そのフォントに無い文字のフォールバック先（混植スタック）が無くなる。
    */
   it('フォントは既定スタックの先頭に足す', () => {
     applyAppearance(withSettings({ 'preview.codeFontFamily': 'BIZ UD Gothic', 'preview.fontFamily': 'Noto Sans JP' }));
@@ -102,7 +101,7 @@ describe('applyAppearance', () => {
     expect(written()).toEqual([]);
   });
 
-  /** Rust 側が潰し損ねた値（手書きの settings.json）でもレイアウトを壊さない。 */
+  /** Rust 側で丸められなかった値（手書きの settings.json）でもレイアウトを壊さない。 */
   it('範囲外の数値は潰してから当てる', () => {
     applyAppearance(withSettings({ 'preview.maxWidth': 100_000 }));
 
@@ -126,8 +125,7 @@ describe('clampSetting (src-tauri/src/settings/schema.rs と揃える)', () => {
 /**
  * 配色（F-CONF-08 / ADR-0013 / ADR-0014）。
  *
- * 見張るのは 4 つ。**面ごとに独立していること**、**属性名が面ごとに違うこと**、
- * **既定では属性が付かないこと**、**`:root` には決して付かないこと**（クロームの配色をテーマで動かさない）。
+ * 検証するのは 4 つである。面ごとに独立していること、属性名が面ごとに違うこと、既定では属性が付かないこと、`:root` には決して付かないこと（クロームの配色をテーマで動かさない）。
  */
 describe('applyPalette (ADR-0013 / ADR-0014)', () => {
   it('既定では属性を付けない', () => {
@@ -145,10 +143,10 @@ describe('applyPalette (ADR-0013 / ADR-0014)', () => {
   });
 
   /**
-   * **属性名を分けてあること**（ADR-0014 §3.3）。
+   * 属性名を分けてあること（ADR-0014 §3.3）。
    *
-   * カタログが別なのに id は重なる。同じ属性名だと、エディター用に注入した規則が
-   * `#mx-preview` にも一致し、本文の配色が選択と食い違う。
+   * カタログは共通であり、id も面の間で共通である。
+   * 同じ属性名だと、エディター用に注入した規則が `#mx-preview` にも一致し、本文の配色が選択と食い違う。
    */
   it('エディター側は本文と違う属性を使う', () => {
     applyAppearance(withSettings({ 'preview.theme': 'github', 'editor.theme': 'github' }));
@@ -157,7 +155,7 @@ describe('applyPalette (ADR-0013 / ADR-0014)', () => {
     expect(surface('mx-preview').dataset['mxEditorTheme'], 'その逆も').toBeUndefined();
   });
 
-  /** 組み込みに無い綴りも既定へ落とさず属性に載せる（ADR-0014）。 */
+  /** 組み込みに無い綴りも既定に置き換えず属性に設定する（ADR-0014）。 */
   it('知らない綴りもそのまま属性になる', () => {
     applyAppearance(withSettings({ 'editor.theme': 'my-own-theme' }));
 
@@ -172,8 +170,8 @@ describe('applyPalette (ADR-0013 / ADR-0014)', () => {
   });
 
   /**
-   * **クロームの配色はテーマで動かさない**（ADR-0013）。
-   * `:root` に付いた瞬間、タイトルバーもステータスバーも通知バーも巻き込まれる。
+   * クロームの配色はテーマで動かさない（ADR-0013）。
+   * `:root` に付けると、タイトルバーもステータスバーも通知バーも配色が変わる。
    */
   it(':root には決して付けない', () => {
     applyAppearance(withSettings({ 'preview.theme': 'github', 'editor.theme': 'github' }));
@@ -182,7 +180,7 @@ describe('applyPalette (ADR-0013 / ADR-0014)', () => {
     expect(root().dataset['mxEditorTheme']).toBeUndefined();
   });
 
-  /** 面がまだ無い経路（テストの一部）で落ちないこと。 */
+  /** 面がまだ無い経路（テストの一部）で例外にならないこと。 */
   it('面が無ければ何もしない', () => {
     document.body.replaceChildren();
 
@@ -210,7 +208,7 @@ describe('applyTableStyle (preview.tableStyle)', () => {
     expect(surface('mx-preview').dataset['mxTableStyle']).toBeUndefined();
   });
 
-  /** 配色と同じく、クロームは巻き込まない（ADR-0013）。 */
+  /** 配色と同じく、クロームには適用しない（ADR-0013）。 */
   it(':root には付けない', () => {
     applyAppearance(withSettings({ 'preview.tableStyle': 'grid' }));
 

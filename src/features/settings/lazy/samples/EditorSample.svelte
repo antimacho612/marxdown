@@ -18,7 +18,7 @@
   interface Props {
     /** `editor.theme` の値そのまま。組み込みの id か `themes/` のファイル名（ADR-0014）。 */
     palette: string;
-    /** `editor.fontFamily` の値そのまま。空欄なら既定のコードフォントに落ちる。 */
+    /** `editor.fontFamily` の値そのまま。空欄なら既定のコードフォントを使う。 */
     fontFamily: string;
     fontSize: number;
     lineHeight: number;

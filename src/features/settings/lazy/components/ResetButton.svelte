@@ -31,7 +31,7 @@
 </button>
 
 <style>
-  /* 正方形にして、コントロール列の左辺を揃える基準にする（`Field.svelte` の `__reset-slot` と同じ幅）。 */
+  /* 正方形にして、コントロール列の左端を揃える基準にする（`Field.svelte` の `__reset-slot` と同じ幅）。 */
   .mx-settings__reset {
     flex: none;
     inline-size: var(--mx-control-height);

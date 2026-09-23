@@ -46,7 +46,7 @@
   </div>
 
   <div class="mx-settings__control">
-    <!-- 「既定に戻す」の場所。ここには無いが、他の項目とコントロールの左辺を揃えるために空けておく（`Field.svelte`）。 -->
+    <!-- 「既定に戻す」の場所。ここには無いが、他の項目とコントロールの左端を揃えるために空けておく（`Field.svelte`）。 -->
     <span class="mx-settings__reset-slot" aria-hidden="true"></span>
 
     <div class="mx-settings__choices">

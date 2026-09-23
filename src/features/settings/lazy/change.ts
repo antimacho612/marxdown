@@ -2,9 +2,9 @@
  * 設定 UI からの変更（F-CONF-05 / 02.architecture/04-rust-responsibilities.md §5）。
  * 遅延チャンク側にあり、`main` には見た目適用（`appearance.ts`）とストアだけが残る。
  *
- * 見た目は即座に当て、保存はデバウンスする（`zoom.ts` と同じ）。
+ * 見た目は即座に適用し、保存はデバウンスする（`zoom.ts` と同じ）。
  * 1 文字ごとに `settings.json` を書かないためである。
- * 書き戻しの結果を待たずに楽観的にストアへ入れるのは、Rust 側も同じ範囲（`SETTINGS_SCHEMA`）で潰すため返り値が一致するからである。
+ * 書き戻しの結果を待たずに楽観的にストアへ入れるのは、Rust 側も同じ範囲（`SETTINGS_SCHEMA`）で丸めるため返り値が一致するからである。
  */
 import { describeOpenError, documentStore } from '@/features/document';
 import { reloadTree } from '@/features/workspace';
@@ -53,7 +53,7 @@ export function changeSetting<K extends keyof Settings>(key: K, value: Settings[
   schedulePersist();
 }
 
-/** 見た目に当てる値を決める。`null`（既定に戻す）は既定値そのもの。 */
+/** 見た目に適用する値を決める。`null`（既定に戻す）は既定値そのもの。 */
 function resolve<K extends keyof Settings>(key: K, value: Settings[K] | null): Settings[K] {
   if (value === null) return DEFAULT_SETTINGS[key];
   if (isNumericKey(key) && typeof value === 'number') {
@@ -92,7 +92,7 @@ async function persist(): Promise<void> {
   settingsStore.values = saved;
   applyAppearance(saved);
 
-  // 除外の glob が変わったらファイルツリーを読み直す（#146）。
+  // 除外の glob が変わったらファイルツリーを読み直す。
   // `changeSetting` ではなくここで行うのは、打鍵のたびに木を読み直さないためである。
   // 保存はデバウンスされており、入力が止まってから 1 回だけ通る。
   if ('explorer.exclude' in patch) void reloadTree();

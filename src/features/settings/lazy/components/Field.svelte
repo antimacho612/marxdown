@@ -40,7 +40,7 @@
   <div class="mx-settings__control">
     <!--
       「既定に戻す」の場所は、ボタンが無い項目でも空けておく。
-      詰めると、リセットのある項目と無い項目でコントロールの左辺がずれる。
+      詰めると、リセットのある項目と無い項目でコントロールの左端がずれる。
     -->
     {#if onReset}
       <ResetButton onClick={onReset} />
@@ -58,8 +58,7 @@
     display: grid;
     /*
      * コントロール列の幅を固定する。
-     * 部品の自然幅に任せると、select(224px) / 入力(154px) / 数値(88px) / トグル(40px) で
-     * 左辺が 180px の幅にわたってぶれ、上から下へ読むときに揃える辺が無くなる。
+     * 部品の自然幅に任せると、select(224px) / 入力(154px) / 数値(88px) / トグル(40px) で左端が 180px の幅にわたってずれ、上から下へ読むときに揃える辺が無くなる。
      */
     grid-template-columns: 1fr var(--mx-control-column);
     align-items: start;

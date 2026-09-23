@@ -18,8 +18,7 @@ describe('formatFontFamily', () => {
   });
 
   /**
-   * `settings.json` は手で書ける。**検証されていない文字列**が
-   * `font-family` の宣言に入る経路なので、包めない文字を含む名前は捨てる。
+   * `settings.json` は手で書ける。検証されていない文字列が `font-family` の宣言に入る経路なので、引用符で囲えない文字を含む名前は除外する。
    */
   it('宣言を抜け出せる文字を含む名前は捨てる', () => {
     expect(formatFontFamily('Meiryo"; color: red; x: "')).toBeNull();
