@@ -9,8 +9,7 @@ export default defineConfig({
 
   resolve: {
     alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },
-    // Svelte はブラウザ版とサーバ版で実装が分かれる。テストは常にブラウザ版を使う
-    // （サーバ版のルーンは値を更新しない）。
+    // Svelte はブラウザ版とサーバ版で実装が分かれる。テストは常にブラウザ版を使う（サーバ版のルーンは値を更新しない）。
     conditions: ['browser'],
   },
   test: {

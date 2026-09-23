@@ -166,7 +166,7 @@ export default tseslint.config(
     languageOptions: { globals: { ...globals.node } },
     rules: {
       'no-console': 'off',
-      // 計測スクリプトは1 回ずつ順番に実行しないと正式な計測にならないため。
+      // 計測スクリプトは 1 回ずつ順番に実行しないと正式な計測にならないため。
       'no-await-in-loop': 'off',
       'import-x/no-unassigned-import': 'off',
     },
@@ -178,7 +178,6 @@ export default tseslint.config(
   },
 
   {
-    //
     files: [
       // CSS の副作用インポートのため
       'src/main.ts',

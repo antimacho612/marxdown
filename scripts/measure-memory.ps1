@@ -3,11 +3,9 @@
   Marxdown のメモリ使用量を測る（05.performance-budget/05-operations.md §3）。
 
 .DESCRIPTION
-  Tauri アプリは複数プロセス（メイン + WebView2 のブローカ/レンダラ）に分かれるため、
-  **プロセスツリー全体の合計**で測る必要がある。
+  Tauri アプリは複数プロセス（メイン + WebView2 のブローカ/レンダラ）に分かれるため、プロセスツリー全体の合計で測る必要がある。
 
-  単一インスタンス常駐を前提とするため、重視するのは瞬間値ではなく
-  「開いて閉じた後」に戻るかどうか（N-PERF-06）。
+  単一インスタンス常駐を前提とするため、重視するのは瞬間値ではなく「開いて閉じた後」に戻るかどうかである（N-PERF-06）。
 
 .EXAMPLE
   # 起動中のアプリを 1 回測る
@@ -44,9 +42,8 @@ function Get-MarxdownMemory {
       ForEach-Object { $_.ProcessId }
   )
 
-  # 05.performance-budget/04-targets.md §4 が指定するのは **Private Working Set**。
-  # WorkingSet64 は WebView2 の共有 DLL を各プロセスで重複計上するため、
-  # 実際の 3 倍近い値になり判定に使えない。
+  # 05.performance-budget/04-targets.md §4 が指定するのは Private Working Set である。
+  # WorkingSet64 は WebView2 の共有 DLL を各プロセスで重複計上するため、実際の 3 倍近い値になり判定に使えない。
   $ids = @($main.Id) + $webviewIds
   $mainMB = 0.0
   $webviewMB = 0.0
