@@ -93,12 +93,9 @@
 
   /*
    * 一覧の「現在の項目」の印。
-   *
-   * アウトライン・メニュー・パレット・タブが同じ意味を別々の見た目で表していたため、1 つに決めてある。
-   * 縦に並ぶ一覧は先頭側、横に並ぶ一覧（タブ）は上端に線を引く。
    */
   --mx-current-marker: inset 2px 0 0 var(--mx-color-accent);
-  --mx-current-marker-block: inset 0 2px 0 0 var(--mx-color-accent);
+  --mx-current-marker-block: inset 0 -2px 0 0 var(--mx-color-accent);
 
   /* ========== 色（ライト） ========== */
   --mx-color-bg: #ffffff;
