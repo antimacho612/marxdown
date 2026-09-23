@@ -16,6 +16,7 @@
   import { isMarkdownPath } from '@/lib/path';
   import type { DirEntry } from '@/platform';
 
+  import { openPathInSatellite } from '../new-window';
   import { registerExplorerFocus } from '../show-explorer';
   import { openPathInNewTab } from '../tabs.svelte';
   import { toggleDir, treeStore } from '../tree.svelte';
@@ -49,9 +50,22 @@
     return () => registerExplorerFocus(null);
   });
 
-  function open(entry: DirEntry): void {
+  /**
+   * 開く。`Shift+Click` はサテライトウィンドウで開く（F-OPEN-06）。
+   *
+   * ブラウザの慣習に合わせてある（`Shift+Click` が新しいウィンドウ）。
+   * `Ctrl+Click`（新しいタブ）は割り当てない。
+   * 既定が既に新しいタブであるうえ、リンクを新しいタブで開くかどうかは未決である（OQ-41）。
+   *
+   * ディレクトリには効果がない。ファイルツリーの基点はウィンドウごとに 1 つであり、枝の開閉は別ウィンドウと関係がない。
+   */
+  function open(entry: DirEntry, event: MouseEvent): void {
     if (entry.dir) {
       void toggleDir(entry.path);
+      return;
+    }
+    if (event.shiftKey) {
+      void openPathInSatellite(entry.path);
       return;
     }
     void openPathInNewTab(entry.path);
@@ -73,7 +87,7 @@
           class:mx-tree__item--dim={!entry.dir && !isMarkdownPath(entry.name)}
           style:padding-inline-start="calc(var(--mx-space-2) + {depth * 12}px)"
           title={entry.path}
-          onclick={() => open(entry)}
+          onclick={(event) => open(entry, event)}
         >
           <span class="mx-tree__mark" aria-hidden="true">{entry.dir ? (expanded ? '▾' : '▸') : ''}</span>
           <span class="mx-tree__name">{entry.name}</span>

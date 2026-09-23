@@ -47,6 +47,8 @@ export type CommandId =
   | 'tab.reopen'
   | 'tab.select'
   | 'view.cycleMode'
+  | 'window.new'
+  | 'window.moveTab'
   | 'view.toggleScrollSync'
   | 'view.toggleSplit'
   | 'view.togglePreview';

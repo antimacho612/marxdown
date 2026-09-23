@@ -24,6 +24,8 @@ function stateKeys(): string[] {
 function bootstrapWith(settings: Partial<Bootstrap>): Bootstrap {
   return {
     version: 1,
+    role: 'main',
+    transfer: null,
     document: null,
     documentError: null,
     mode: null,

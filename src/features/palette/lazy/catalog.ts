@@ -44,6 +44,9 @@ export const COMMAND_CATALOG: CommandEntry[] = [
   { id: 'document.saveAs', label: ja.menu.saveAs, shortcut: 'Ctrl+Shift+S' },
   { id: 'document.toggleEol', label: ja.menu.toggleEol },
 
+  { id: 'window.new', label: ja.menu.newWindow, shortcut: 'Ctrl+Alt+N' },
+  { id: 'window.moveTab', label: ja.menu.moveToNewWindow },
+
   { id: 'tab.close', label: ja.tab.closeCurrent, shortcut: 'Ctrl+W' },
   { id: 'tab.next', label: ja.tab.next, shortcut: 'Ctrl+Tab' },
   { id: 'tab.previous', label: ja.tab.previous, shortcut: 'Ctrl+Shift+Tab' },

@@ -85,6 +85,8 @@ export const ja = {
     reopen: '閉じたタブを開き直す',
     /** タブを閉じる `✕`。読み上げと `title` に使う。 */
     close: (name: string) => `${name} を閉じる`,
+    /** タブの右クリックメニュー。読み上げ名に使う。 */
+    menu: (name: string) => `${name} の操作`,
   },
   titlebar: {
     menu: 'メニュー',
@@ -111,6 +113,10 @@ export const ja = {
     open: 'ファイルを開く',
     /** フォルダを開く（`Ctrl+Alt+O`）。ファイルツリーの基点を決める（F-NAV-03）。 */
     openFolder: 'フォルダを開く',
+    /** 空の新しいウィンドウ（`Ctrl+Alt+N` / F-OPEN-06）。 */
+    newWindow: '新しいウィンドウ',
+    /** いま見ているタブを別ウィンドウへ移す（F-OPEN-06）。 */
+    moveToNewWindow: '別ウィンドウで開く',
     save: '保存',
     saveAs: '名前を付けて保存',
     /**
@@ -199,6 +205,19 @@ export const ja = {
   history: {
     back: '戻る',
     forward: '進む',
+  },
+  /** 別ウィンドウで開く（F-OPEN-06）。 */
+  window: {
+    /**
+     * 未保存のタブは移せない（N-REL-01）。
+     *
+     * 本文は Monaco の `ITextModel` にあり、別ウィンドウへ渡す経路が無い（ADR-0005）。
+     * 渡せるのはパスだけであるため、保存していない内容は移した先に現れない。
+     */
+    dirtyTab: '保存してから別ウィンドウで開いてください。',
+    /** 無題の文書（`Ctrl+N`）にはパスが無く、移した先で開き直せない。 */
+    untitledTab: '保存していない文書は別ウィンドウで開けません。',
+    failed: '新しいウィンドウを開けませんでした',
   },
   open: {
     reloaded: '再読み込みしました',

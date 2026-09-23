@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { registerAppCommands } from '@/app/commands';
 import { documentStore } from '@/features/document';
-import { viewStore } from '@/features/view';
+import { initWindowRole, viewStore } from '@/features/view';
 import { recentStore } from '@/features/workspace';
 import type { DocumentMeta } from '@/platform';
 
@@ -41,6 +41,7 @@ function label(groups: MenuGroup[], itemId: string): string | undefined {
 }
 
 beforeEach(() => {
+  initWindowRole({ role: 'main' });
   documentStore.meta = null;
   recentStore.entries = [];
   viewStore.mode = 'preview';
@@ -60,7 +61,8 @@ describe('ハンバーガーメニューの項目 (03.ux-spec/01-screen-layout.m
     const groups = buildMenu();
 
     // 「新規ファイル」「設定」「終了」は文書に依存しないので、ここでも押せる。
-    expect(ids(groups)).toEqual(['open', 'open-folder', 'new', 'palette', 'settings', 'quit']);
+    // 新しいウィンドウは文書に依存しない（空のウィンドウが開く）。タブを移す操作は開いているときだけ。
+    expect(ids(groups)).toEqual(['open', 'open-folder', 'new', 'new-window', 'palette', 'settings', 'quit']);
     expect(group(groups, 'document')).toBeUndefined();
     expect(group(groups, 'zoom')).toBeUndefined();
   });
@@ -74,6 +76,8 @@ describe('ハンバーガーメニューの項目 (03.ux-spec/01-screen-layout.m
       'new',
       'save',
       'save-as',
+      'new-window',
+      'move-to-new-window',
       'mode',
       'split',
       'reload',
@@ -87,6 +91,23 @@ describe('ハンバーガーメニューの項目 (03.ux-spec/01-screen-layout.m
       'settings',
       'quit',
     ]);
+  });
+
+  /**
+   * サテライトはタブと本文だけを持つ（F-OPEN-06 / 決定 8）。
+   * ファイルツリーもペインも無い窓に、それを開閉する項目を並べない（Principle 3）。
+   */
+  it('サテライトでは、ペインとファイルツリーの項目を並べない (F-OPEN-06)', () => {
+    documentStore.meta = META;
+    initWindowRole({ role: 'satellite' });
+
+    const ids = new Set(buildMenu().flatMap((g) => g.items.map((i) => i.id)));
+
+    expect(ids.has('open-folder')).toBe(false);
+    expect(ids.has('outline')).toBe(false);
+    // 文書に対する操作は残る。サテライトでも読み書きはできる。
+    expect(ids.has('save')).toBe(true);
+    expect(ids.has('move-to-new-window')).toBe(true);
   });
 
   /**

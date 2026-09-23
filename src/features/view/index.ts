@@ -12,4 +12,5 @@ export { default as SplitDivider } from './SplitDivider.svelte';
 export { attachEditorScrollPort, jumpToEditorLine, startScrollSync, stopScrollSync } from './scroll-sync';
 export type { EditorScrollPort } from './scroll-sync';
 export { initSplit } from './split';
+export { initWindowRole, isSatellite, windowRole } from './role';
 export { viewStore } from './store.svelte';

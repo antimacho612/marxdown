@@ -2,8 +2,11 @@
   タブストリップ（F-NAV-01, 02 / 03.ux-spec/01-screen-layout.md §2）。
   タイトルバーの中央領域（`TitleBar.svelte` の `center`）に差し込まれる。
 
-  **2 枚以上のときしか描かれない。** 出し分けは差し込む側（`app/App.svelte`）が行う。
+  **主ウィンドウでは 2 枚以上のときしか描かれない。** 出し分けは差し込む側（`app/App.svelte`）が行う。
   1 枚のときはタイトルバーが既定のファイル名表示のままであり、この経路を通らない（§1「タブも 1 枚のうちは出さない」）。
+  サテライト（F-OPEN-06）だけは 1 枚でも描く。その窓に何が入っているかを示すものが他に無いためである。
+
+  窓の外へ落とすと、そのタブはサテライトへ切り離される（F-OPEN-06 / `release`）。
 
   タブそのものはボタンで構成する。
   タイトルバーは `data-tauri-drag-region="deep"` でネイティブドラッグを掴む領域だが、`<button>` は自動的に除外されるため、タブを押しても窓が動かない。
@@ -16,10 +19,20 @@
   import { ja } from '@/i18n/ja';
   import { splitPath } from '@/lib/path';
 
+  import { moveTabToSatellite } from './new-window';
   import { activateTab, closeTab, isTabDirty, moveTab, tabMeta, tabsStore, type Tab } from './tabs.svelte';
 
   /** 並べ替えと判断するまでの移動量（px）。押し込みの手ぶれで並びが変わらないようにする。 */
   const DRAG_THRESHOLD = 6;
+
+  /**
+   * 切り離した窓を、落とした位置からずらす量（CSS px）。
+   *
+   * 落とした点を窓の左上にすると、掴んでいたタブが窓の外に出た位置に現れる。
+   * タイトルバーの中にカーソルが乗るぶんだけ戻すと、掴んだものがそこに置かれたように見える。
+   */
+  const DETACH_OFFSET_X = 48;
+  const DETACH_OFFSET_Y = 12;
 
   let strip: HTMLElement | undefined = $state();
 
@@ -52,7 +65,25 @@
     if (dragging === null) return;
     if (!moved && Math.abs(event.clientX - startX) < DRAG_THRESHOLD) return;
     moved = true;
+    // 窓の外へ出ている間は並べ替えない。
+    // 出た先には落とす位置が無く、戻ってきたときに並びが変わっているほうが分かりにくい。
+    if (outside(event)) return;
     moveTab(dragging, indexAt(event.clientX));
+  }
+
+  /**
+   * ポインタがこのウィンドウの外か（F-OPEN-06 / タブのドラッグアウト）。
+   *
+   * 比べるのはスクリーン座標である。
+   * `screenX` / `screenY` は本文の描画領域（ビューポート）の左上を基準にした座標系と同じ単位で、表示倍率（`--mx-zoom`）は CSS 変数であってページのズームではないため影響しない。
+   */
+  function outside(event: PointerEvent): boolean {
+    return (
+      event.screenX < globalThis.screenX ||
+      event.screenY < globalThis.screenY ||
+      event.screenX > globalThis.screenX + globalThis.innerWidth ||
+      event.screenY > globalThis.screenY + globalThis.innerHeight
+    );
   }
 
   /**
@@ -61,13 +92,28 @@
    * 切り替えは `click` に任せる。ポインタで処理してしまうと、`<button>` を
    * キーボード（Enter / Space）で押したときに何も起きなくなる。
    * `moved` は残す。直後に来る `click` を握り潰す判断に使う。
+   *
+   * 窓の外で離した場合は、そのタブをサテライトへ切り離す（F-OPEN-06）。
+   * ポインタを捕捉してあるため、窓の外へ出た後もこのイベントは届く。
    */
   function release(event: PointerEvent): void {
     if (dragging === null) return;
+
+    const id = dragging;
+    // 窓の外で離したら切り離す（F-OPEN-06）。掴んで動かしていない押下は対象にしない。
+    const detach = moved && outside(event);
+
     if (event.currentTarget instanceof HTMLElement && event.currentTarget.hasPointerCapture(event.pointerId)) {
       event.currentTarget.releasePointerCapture(event.pointerId);
     }
     dragging = null;
+
+    if (detach) {
+      void moveTabToSatellite(id, {
+        x: event.screenX - DETACH_OFFSET_X,
+        y: event.screenY - DETACH_OFFSET_Y,
+      });
+    }
   }
 
   /**
@@ -110,6 +156,42 @@
     const path = tabMeta(tab).path;
     return path === null ? ja.titlebar.untitled : splitPath(path).name;
   }
+
+  /** 右クリックメニューを開いているか。閉じているあいだはチャンクも取得しない。 */
+  let menuOpen = $state(false);
+
+  /**
+   * メニューの対象。**閉じるときに `null` へ戻さない。**
+   *
+   * 戻すと、`{#if}` が解体されるより先に props が読み直され、`target.tabId` が `null` に対する参照になって落ちる。
+   * 開いているかどうかは `menuOpen` だけが表しており、閉じた後に残る値は次に開いたときに上書きされる。
+   *
+   * 押した位置を覚えるのは、メニューをそこへ出すためである。
+   * キーボード（`Shift+F10` / メニューキー）で開いた場合はブラウザがタブの矩形を座標として渡す。
+   */
+  let menuTarget = $state<{ tabId: number; name: string; x: number; y: number } | null>(null);
+
+  /** メニューを閉じたときにフォーカスを戻す先。 */
+  let menuOpener: HTMLElement | null = null;
+
+  function openMenu(event: MouseEvent, tab: Tab): void {
+    event.preventDefault();
+    menuOpener = event.currentTarget instanceof HTMLElement ? event.currentTarget : null;
+    menuTarget = { tabId: tab.id, name: nameOf(tab), x: event.clientX, y: event.clientY };
+    menuOpen = true;
+  }
+
+  /**
+   * 閉じる。既定ではタブへフォーカスを戻す。
+   *
+   * 戻さないと、`Esc` で閉じた時点でフォーカスが `<body>` へ移り、キーボード操作での現在位置が分からなくなる
+   * （`app/MenuButton.svelte` と同じ判断）。
+   */
+  function closeMenu(refocus = true): void {
+    menuOpen = false;
+    if (refocus) menuOpener?.focus();
+    menuOpener = null;
+  }
 </script>
 
 <div class="mx-tabs" role="tablist" aria-label={ja.tab.list} bind:this={strip}>
@@ -124,6 +206,7 @@
         aria-selected={active}
         title={tabMeta(tab).path ?? name}
         onclick={() => activate(tab)}
+        oncontextmenu={(event) => openMenu(event, tab)}
         onpointerdown={(event) => grab(event, tab)}
         onpointermove={drag}
         onpointerup={release}
@@ -146,6 +229,17 @@
     </div>
   {/each}
 </div>
+
+<!--
+  中身は右クリックされるまでロードしない（`Explorer.svelte` のファイルツリーと同じ形）。
+  取得が終わるまでは何も描かない。待っている 1 フレームに枠だけが出るほうが、位置がずれて見える。
+-->
+{#if menuOpen && menuTarget}
+  {@const target = menuTarget}
+  {#await import('./lazy/TabMenu.svelte') then { default: TabMenu }}
+    <TabMenu tabId={target.tabId} name={target.name} x={target.x} y={target.y} onclose={closeMenu} />
+  {/await}
+{/if}
 
 <style>
   /*

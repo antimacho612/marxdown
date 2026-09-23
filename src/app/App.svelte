@@ -8,7 +8,7 @@
   import { documentStore } from '@/features/document';
   import { Outline } from '@/features/outline';
   import { LeftPane, RightPane } from '@/features/panes';
-  import { SplitDivider, viewStore } from '@/features/view';
+  import { isSatellite, SplitDivider, viewStore } from '@/features/view';
   import { Explorer, tabsStore, TabStrip, Welcome } from '@/features/workspace';
 
   import NoticeBar from './NoticeBar.svelte';
@@ -27,13 +27,21 @@
   <TabStrip />
 {/snippet}
 
-<TitleBar center={tabsStore.tabs.length > 1 ? tabs : undefined} />
+<!--
+  サテライト（F-OPEN-06）ではタブが 1 枚でもタブストリップを出す。
+  ファイル名の表示に落とすと、その窓に何が入っているかを示すものがタイトルバーから消え、タブを掴んで戻す手がかりも無くなる。
+-->
+<TitleBar center={isSatellite() || tabsStore.tabs.length > 1 ? tabs : undefined} />
 
 {#if documentStore.notice}
   <NoticeBar notice={documentStore.notice} />
 {/if}
 
-{#if !meta}
+<!--
+  Welcome 画面はサテライトには出さない。
+  タブが 0 枚になったサテライトは窓ごと閉じる（`features/workspace/tabs.svelte.ts`）ため、空の状態が画面に残ることがない。
+-->
+{#if !meta && !isSatellite()}
   <Welcome />
 {/if}
 
@@ -51,7 +59,7 @@
   レフトペイン（03.ux-spec/06-panes.md §1 / F-NAV-04）。ライトペインと同じ扱いで、開いていなければ要素ごと無い。
   中身はファイルツリー（F-NAV-03）。本体は遅延チャンクにあり、ペインを開くまで読み込まない（`Explorer.svelte`）。
 -->
-{#if viewStore.panes.left.open}
+{#if viewStore.panes.left.open && !isSatellite()}
   <LeftPane>
     <Explorer />
   </LeftPane>
@@ -67,7 +75,7 @@
   中身を決めるのはこの位置であり、`RightPane` は枠と幅だけを持つ（`RightPane.svelte`）。
   M3 でアウトラインを左へ移す場合も、変更するのはこの受け渡しだけになる。
 -->
-{#if viewStore.panes.right.open}
+{#if viewStore.panes.right.open && !isSatellite()}
   <RightPane>
     <Outline />
   </RightPane>
