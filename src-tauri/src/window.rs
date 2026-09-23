@@ -45,7 +45,7 @@ const MIN_VISIBLE: f64 = 80.0;
 /// 追加ウィンドウを元のウィンドウからずらす量（論理 px）。
 ///
 /// 完全に重ねると、開いた本人に新しいウィンドウが出たことが伝わらない。
-/// タイトルバーの高さ（30px）より少し小さくして、下のウィンドウのタイトルバーが掴める状態を残す。
+/// タイトルバーの高さ（30px）より少し小さくして、下のウィンドウのタイトルバーをドラッグできる状態を残す。
 const CASCADE_OFFSET: f64 = 28.0;
 
 /// ウィンドウを生成する。`visible: false` の状態で返る。
@@ -54,7 +54,7 @@ const CASCADE_OFFSET: f64 = 28.0;
 /// `restore` がモニタ外を指している場合は破棄し、中央に既定サイズで生成する。
 ///
 /// 起動時の 1 枚目と、サテライト（F-OPEN-06 / `crate::open_satellite`）が同じ経路を通る。
-/// サテライトでは `restore` に [`cascade_from`] の結果か、タブを落とした位置から作った矩形を渡す。
+/// サテライトでは `restore` に [`cascade_from`] の結果か、タブをドロップした位置から作った矩形を渡す。
 /// `label` は `main` または `main-*` でなければならない（`capabilities/default.json` が許可している形）。
 pub fn create(
     app: &tauri::AppHandle,
@@ -162,7 +162,7 @@ fn is_on_some_monitor(app: &tauri::AppHandle, state: &WindowState) -> bool {
 /// `capture` が返すのは最大化後の矩形であり、それをずらすと画面からはみ出した「ほぼ全画面だが最大化ではない」ウィンドウになる。
 /// その場合は既定サイズで中央に出すほうが扱いやすい。
 ///
-/// モニタからはみ出す位置になっても、ここでは弾かない。
+/// モニタからはみ出す位置になっても、ここでは除外しない。
 /// 採否は [`create`] が `is_on_some_monitor` で判定し、外れていれば中央の既定サイズへ倒す。
 pub fn cascade_from<R: tauri::Runtime>(source: &WebviewWindow<R>) -> Option<WindowState> {
     let base = capture(source)?;

@@ -157,7 +157,7 @@ export async function startup(renderShell: () => void): Promise<void> {
     renderShell();
   };
 
-  // サテライトへ移された本文（F-OPEN-06 / 決定 1）。
+  // サテライトへ移された本文（F-OPEN-06 / ADR-0016 §3.4）。
   // 未保存のタブを移した場合だけ入り、ディスクではなく移した側から受け取る。
   const transferred = await resolveTransfer(bootstrap);
   const initial: StoredPayload | null = transferred
@@ -181,14 +181,14 @@ export async function startup(renderShell: () => void): Promise<void> {
     await openDocument(initial, {
       trace: true,
       betweenParseAndPaint: renderShellOnce,
-      // 移してきた文書は同じ位置から読み始められるようにする。最近開いたファイルにも積み直さない（移動であって「開いた」ではない）。
+      // 移してきた文書は同じ位置から読み始められるようにする。最近開いたファイルにも記録し直さない（移動であって「開いた」ではない）。
       ...(transferred && { restoreScroll: transferred.scrollTop, remember: false }),
     });
   } else {
     renderShellOnce();
   }
 
-  // 移してきた状態を戻す（F-OPEN-06 / 決定 1）。
+  // 移してきた状態を戻す（F-OPEN-06 / ADR-0016 §3.4）。
   //
   // `openDocument` はディスクと一致した状態から始める（`markClean`）ため、ダーティは開いた後に戻す。
   // EOL の希望を先に戻すのは、`setDirty` が合成後の値を出し直すためである（`features/workspace/tabs.svelte.ts` の `activateTab` と同じ順序）。
@@ -344,9 +344,10 @@ function installLinks(): void {
  * 載っていないのは 256KB を超えるファイルのときだけで、この場合だけ IPC 往復が 1 回増える（初期化スクリプトに埋め込むと、文字列化のコストが往復のコストを上回る）。
  */
 /**
- * サテライトへ移された本文を引き取る（F-OPEN-06 / 決定 1）。
+ * サテライトへ移された本文を引き取る（F-OPEN-06 / ADR-0016 §3.4）。
  *
- * **1 回しか取れない。** 取れなかった場合（起動が二重になった / 移す側が失敗した）は通常の起動として続ける。
+ * 1 回しか取れない。
+ * 取れなかった場合（起動が二重になった / 移す側が失敗した）は通常の起動として続ける。
  * ここで失敗しても、本文は移す側のウィンドウに残っている（移す側は閉じる前にこの受け渡しの成功を確かめている）。
  */
 async function resolveTransfer(bootstrap: Bootstrap | null): Promise<TabTransfer | null> {

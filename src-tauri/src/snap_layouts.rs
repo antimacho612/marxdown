@@ -230,10 +230,10 @@ pub fn prepare(app: &tauri::AppHandle, window: &WebviewWindow) {
     });
 }
 
-/// 閉じたウィンドウの受け皿を落とす。
+/// 閉じたウィンドウの受け皿を解放する。
 ///
 /// オーバーレイ自体は親ウィンドウと一緒に破棄され、`WM_NCDESTROY` がプロシージャ側の参照も解放する。
-/// ここで落とすのは表に残る `Arc` だけである。残すとウィンドウを開き閉じするたびに `WebviewWindow` の参照が積み上がる（N-PERF-06）。
+/// ここで解放するのは表に残る `Arc` だけである。残すとウィンドウを開き閉じするたびに `WebviewWindow` の参照が増え続ける（N-PERF-06）。
 pub fn forget(app: &tauri::AppHandle, label: &str) {
     let Some(targets) = tauri::Manager::try_state::<SnapTargets>(app) else {
         return;

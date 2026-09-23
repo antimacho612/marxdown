@@ -253,15 +253,14 @@ export async function activateTab(id: number): Promise<boolean> {
 /** `closeTab` の振る舞いの差を表す。 */
 export interface CloseTabOptions {
   /**
-   * 未保存の変更を捨ててよいか尋ねるか。既定 true（F-EDIT-03）。
+   * 未保存の変更を破棄してよいか尋ねるか。既定 true（F-EDIT-03）。
    *
-   * false にするのは、**捨てるものが無い**ことが呼び出し側で分かっている場合だけである
-   * （`OpenOptions.confirm` と同じ判断）。
+   * false にするのは、破棄するものが無いことが呼び出し側で分かっている場合だけである（`OpenOptions.confirm` と同じ判断）。
    * サテライトへ本文ごと移す経路がこれにあたる。移した先に同じ内容が開いているため、ここで尋ねると同じものを 2 回確認することになる。
    */
   confirm?: boolean;
   /**
-   * 閉じたタブを「開き直せる」一覧に積むか。既定 true（`Ctrl+Shift+T`）。
+   * 閉じたタブを「開き直せる」一覧に加えるか。既定 true（`Ctrl+Shift+T`）。
    *
    * false にするのは、そのタブが消えたのではなく移動した場合である。
    * 別のウィンドウで開いているものを「閉じたタブ」として復活させると、同じファイルが 2 か所で開く。

@@ -28,9 +28,9 @@ pub enum ViewMode {
 pub struct CliArgs {
     /// 絶対パスに解決済み。存在確認はまだ行っていない。
     pub paths: Vec<PathBuf>,
-    /// `-n` / `--new-window`。**独立したプロセスで開く**（F-OPEN-06）。
+    /// `-n` / `--new-window`。独立したプロセスで開く（F-OPEN-06）。
     ///
-    /// 既に所有者が居る場合、このプロセスは single-instance プラグインを登録せず、argv も転送しない（`instance.rs`）。
+    /// 既に所有者がいる場合、このプロセスは single-instance プラグインを登録せず、argv も転送しない（`instance.rs`）。
     /// 同じプロセスの中に窓を増やすのはサテライト（`crate::open_satellite`）であり、こちらとは別の経路である。
     pub new_window: bool,
     pub mode: Option<ViewMode>,

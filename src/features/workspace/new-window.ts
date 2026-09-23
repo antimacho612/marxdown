@@ -20,7 +20,7 @@ import { getPlatform, type Eol, type ViewMode } from '@/platform';
 import { closeTab, isTabDirty, tabMeta, tabsStore } from './tabs.svelte';
 
 /**
- * 未保存のタブをサテライトへ渡すときの中身（F-OPEN-06 / 決定 1）。
+ * 未保存のタブをサテライトへ渡すときの中身（F-OPEN-06 / ADR-0016 §3.4）。
  *
  * Rust はこれを解釈せず、JSON 文字列のまま運ぶ（`state.rs` の `transfer`）。
  * 受け取り側は `app/bootstrap.ts` で 1 回だけ引き取る。
@@ -44,7 +44,7 @@ export async function openNewInstance(): Promise<boolean> {
 /**
  * パスをサテライトで開く（ファイルツリー / 本文中の相対リンクの `Shift+Click`）。
  *
- * いまのウィンドウのタブには手を触れない。
+ * いまのウィンドウのタブは変更しない。
  * 移動ではなく「もう 1 枚開く」操作であり、既に開いているファイルでもサテライトに現れる。
  *
  * 表示モードは引き継がない。
@@ -58,14 +58,13 @@ export async function openPathInSatellite(path: string): Promise<boolean> {
  * タブをサテライトへ移す。
  *
  * 移動であって複製ではない。
- * 同じファイルが 2 か所で開いていると、片方で編集して片方を保存したときにどちらが正しいのか決められなくなる
- * （`openPathInNewTab` が既存のタブへ切り替えるのと同じ理由）。
+ * 同じファイルが 2 か所で開いていると、片方で編集して片方を保存したときにどちらが正しいのか決められなくなる（`openPathInNewTab` が既存のタブへ切り替えるのと同じ理由）。
  *
  * サテライトが開けてから閉じる。
  * 逆にすると、ウィンドウの生成に失敗したときに行き先の無いままタブだけが消える。
  *
- * `position` はタブを窓の外へ落としたときに渡す（`TabStrip.svelte`）。
- * 落とした場所に出すことで、掴んで運んだものがそこに置かれたように見える。
+ * `position` はタブを窓の外へドロップしたときに渡す（`TabStrip.svelte`）。
+ * ドロップした場所に出すことで、ドラッグしたものがそこに置かれたように見える。
  */
 export async function moveTabToSatellite(id: number, position?: { x: number; y: number }): Promise<boolean> {
   const tab = tabsStore.tabs.find((t) => t.id === id);
@@ -75,7 +74,7 @@ export async function moveTabToSatellite(id: number, position?: { x: number; y: 
   const dirty = isTabDirty(tab);
 
   // ディスクと一致していて、開き直せるパスがあるなら、渡すのはパスだけで足りる。
-  // そのほうが移した先の最初の描画が速く、本文が 2 か所のメモリに載る瞬間も作らない。
+  // そのほうが移した先の最初の描画が速く、本文が 2 か所のメモリに存在する瞬間も作らない。
   if (!dirty && meta.path !== null) {
     // キーごと省く（`exactOptionalPropertyTypes` では `position: undefined` と「指定なし」が別物になる）。
     if (!(await spawnSatellite({ paths: [meta.path], mode: viewStore.mode, ...(position && { position }) })))
@@ -83,7 +82,7 @@ export async function moveTabToSatellite(id: number, position?: { x: number; y: 
     return closeTab(id, { remember: false });
   }
 
-  // 未保存、または無題の文書。パスだけでは中身が失われるため、本文ごと渡す（決定 1 / N-REL-01）。
+  // 未保存、または無題の文書。パスだけでは中身が失われるため、本文ごと渡す（ADR-0016 §3.4 / N-REL-01）。
   const text = textOf(tab.id, tab.text);
   if (text === null) {
     documentStore.notice = { level: 'warning', message: ja.window.textUnavailable };
@@ -109,7 +108,7 @@ export async function moveTabToSatellite(id: number, position?: { x: number; y: 
   if (!(await spawnSatellite({ transfer, mode: viewStore.mode, ...(position && { position }) }))) return false;
 
   // 移した先に同じ内容が開いている。ここで破棄の確認を出すと、同じものを 2 回尋ねることになる。
-  // 開き直せる一覧にも積まない。移動であって「閉じた」わけではない（`CloseTabOptions`）。
+  // 開き直せる一覧にも加えない。移動であって「閉じた」わけではない（`CloseTabOptions`）。
   return closeTab(id, { confirm: false, remember: false });
 }
 

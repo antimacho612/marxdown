@@ -113,7 +113,7 @@ pub fn target_window<R: tauri::Runtime>(app: &tauri::AppHandle<R>) -> String {
 /// ウィンドウを作る手順そのものは起動時の 1 枚目と同じ `window::create` である。
 /// 違うのは 2 点だけで、`CliArgs` を argv ではなく引数から組み立てることと、前回のタブを復元しないことである。
 ///
-/// **前回のタブ（`state.json` の `session`）は復元しない。**
+/// 前回のタブ（`state.json` の `session`）は復元しない。
 /// 復元は「引数なしで起動したとき」の振る舞いであり（`bootstrap::build`）、明示的に開いたウィンドウに前回の 8 枚が現れるのは意図と違う。
 /// セッションを空にしたストアを渡すことで、その分岐に入らないようにしてある。
 ///
@@ -151,7 +151,7 @@ pub fn open_satellite(
 
     // 開いたファイルの親ディレクトリをアセットの許可スコープに入れる（N-SEC-05）。
     //
-    // 起動時の 1 枚目と同じ手当てである（`run()` の `setup`）。
+    // 起動時の 1 枚目と同じ処理である（`run()` の `setup`）。
     // bootstrap で開いたドキュメントは `read_document` を経由しないため、ここで登録しないと相対パスの画像が 403 になる。
     let roots = payload
         .document
@@ -311,8 +311,8 @@ pub fn run() {
     // このプロセスが単一インスタンスの所有者になるか（F-OPEN-06 / `instance.rs`）。
     //
     // `--new-window` は「既存プロセスに相乗りしない」という指定である。
-    // 既に所有者が居るなら、single-instance プラグインを登録しないことで独立したプロセスとして起動する。
-    // 居なければ通常どおり登録して所有者になる。所有者不在のプロセスを作らないためである。
+    // 既に所有者がいるなら、single-instance プラグインを登録しないことで独立したプロセスとして起動する。
+    // いなければ通常どおり登録して所有者になる。所有者不在のプロセスを作らないためである。
     let standalone = args.new_window && instance::is_running(&context.config().identifier);
     let role = if standalone {
         state::InstanceRole::Standalone
@@ -501,10 +501,10 @@ pub fn run() {
                 return;
             }
 
-            // 閉じ終わったウィンドウの分の記録を落とす（N-PERF-06）。
+            // 閉じ終わったウィンドウの分の記録を破棄する（N-PERF-06）。
             //
             // 常駐するアプリであるため、ウィンドウを閉じてもプロセスは残る。
-            // ここで落とさないと、閉じたウィンドウのダーティが終了の確認に効き続け、監視と Snap Layouts の受け皿も積み上がる。
+            // ここで破棄しないと、閉じたウィンドウのダーティが終了の確認に影響し続け、監視と Snap Layouts の受け皿も増え続ける。
             if matches!(event, tauri::WindowEvent::Destroyed) {
                 let app = window.app_handle();
                 app.state::<state::AppState>().forget_window(&label);

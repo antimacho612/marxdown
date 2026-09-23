@@ -216,9 +216,9 @@ pub fn on_close_requested<R: Runtime>(app: &AppHandle<R>, label: &str) -> bool {
 
     // ここから下は「最後の 1 枚」である。閉じた先はトレイ格納か、プロセスの終了しかない。
 
-    // トレイに常駐するのは、所有者プロセスの主ウィンドウだけである（決定 3）。
+    // トレイに常駐するのは、所有者プロセスの主ウィンドウだけである（ADR-0016 §3.5）。
     // 独立プロセス（`--new-window`）とサテライトは常駐しない。
-    // 常駐させると、閉じたつもりのプロセスが積み上がり、トレイから戻したときに出てくる窓も一定しない。
+    // 常駐させると、閉じたつもりのプロセスが増え続け、トレイから戻したときに出てくる窓も一定しない。
     if owner && label == MAIN_LABEL && stashes_on_close(app) {
         // 初回だけ、`✕` の意味が変わることを説明する（論点 4）。
         //
@@ -240,8 +240,7 @@ pub fn on_close_requested<R: Runtime>(app: &AppHandle<R>, label: &str) -> bool {
     // 閉じたらプロセスが終わる。未保存があるなら必ず確認する（F-EDIT-03 / N-REL-01）。
     //
     // `✕` で閉じる経路にも確認が要る。
-    // トレイ常駐が既定であったうちは、閉じても本文はメモリに残っていたため確認が無くても何も失われなかった。
-    // 常駐しない窓が増えた以上（決定 3）、ここは `Ctrl+Q` と同じ扱いにする。
+    // トレイに常駐しない窓では閉じると本文が失われるため、ここは `Ctrl+Q` と同じ扱いにする（ADR-0016 §3.5）。
     let dirty = app
         .try_state::<AppState>()
         .map(|s| s.is_dirty())
@@ -278,8 +277,8 @@ fn close_one<R: Runtime>(app: &AppHandle<R>, label: &str) -> bool {
 /// 「保存して閉じる」がここで保存しないのも同じ理由である。
 /// 本文は Monaco の `ITextModel` にあり（ADR-0005）、保存できるのはフロントだけであるため、保存を依頼して戻る。
 ///
-/// 「保存せず閉じる」では先にダーティを落とす。
-/// 落とさずに `close()` を呼ぶと同じ確認へ戻ってきて、閉じられなくなる。
+/// 「保存せず閉じる」では先にダーティを解除する。
+/// 解除せずに `close()` を呼ぶと同じ確認へ戻ってきて、閉じられなくなる。
 fn ask_then_close<R: Runtime>(app: AppHandle<R>, label: String) {
     use tauri_plugin_dialog::{
         DialogExt, MessageDialogButtons, MessageDialogKind, MessageDialogResult,

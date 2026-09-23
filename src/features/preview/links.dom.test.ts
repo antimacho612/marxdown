@@ -14,7 +14,7 @@ const original = getPlatform();
  */
 const openPathSpy = vi.fn((_path: string, _options: { anchor?: string }) => Promise.resolve(null));
 
-/** 別ウィンドウで開く先（F-OPEN-06 / `Shift+Click`）。こちらも注入する手をそのまま覗く。 */
+/** 別ウィンドウで開く先（F-OPEN-06 / `Shift+Click`）。こちらも注入する関数をそのまま観測する。 */
 const openInNewWindowSpy = vi.fn((_path: string) => {});
 
 interface Spies {

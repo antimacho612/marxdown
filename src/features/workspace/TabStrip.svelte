@@ -2,7 +2,7 @@
 @component
 タブストリップ。
 
-タブを窓の外へ落とすと、そのタブはサテライトウィンドウへ切り離される（`release`）。
+タブを窓の外へドロップすると、そのタブはサテライトウィンドウへ切り離される（`release`）。
 
 @warning
 HTML5 の drag イベントは使えない。
@@ -21,10 +21,10 @@ HTML5 の drag イベントは使えない。
   const DRAG_THRESHOLD = 6;
 
   /**
-   * 切り離した窓を、落とした位置からずらす量（CSS px）。
+   * 切り離した窓を、ドロップした位置からずらす量（CSS px）。
    *
-   * 落とした点を窓の左上にすると、掴んでいたタブが窓の外に出た位置に現れる。
-   * タイトルバーの中にカーソルが乗るぶんだけ戻すと、掴んだものがそこに置かれたように見える。
+   * ドロップした点を窓の左上にすると、ドラッグしていたタブが窓の外に出た位置に現れる。
+   * タイトルバーの中にカーソルが乗るぶんだけ戻すと、ドラッグしたものがそこに置かれたように見える。
    */
   const DETACH_OFFSET_X = 48;
   const DETACH_OFFSET_Y = 12;
@@ -60,7 +60,7 @@ HTML5 の drag イベントは使えない。
     if (!moved && Math.abs(event.clientX - startX) < DRAG_THRESHOLD) return;
     moved = true;
     // 窓の外へ出ている間は並べ替えない。
-    // 出た先には落とす位置が無く、戻ってきたときに並びが変わっているほうが分かりにくい。
+    // 出た先にはドロップする位置が無く、戻ってきたときに並びが変わっているほうが分かりにくい。
     if (outside(event)) return;
     moveTab(dragging, indexAt(event.clientX));
   }
@@ -94,7 +94,7 @@ HTML5 の drag イベントは使えない。
     if (dragging === null) return;
 
     const id = dragging;
-    // 窓の外で離したら切り離す（F-OPEN-06）。掴んで動かしていない押下は対象にしない。
+    // 窓の外で離したら切り離す（F-OPEN-06）。ドラッグしていない押下は対象にしない。
     const detach = moved && outside(event);
 
     if (event.currentTarget instanceof HTMLElement && event.currentTarget.hasPointerCapture(event.pointerId)) {
@@ -198,7 +198,7 @@ HTML5 の drag イベントは使えない。
   let menuOpen = $state(false);
 
   /**
-   * メニューの対象。**閉じるときに `null` へ戻さない。**
+   * メニューの対象。閉じるときに `null` へ戻さない。
    *
    * 戻すと、`{#if}` が解体されるより先に props が読み直され、`target.tabId` が `null` に対する参照になって落ちる。
    * 開いているかどうかは `menuOpen` だけが表しており、閉じた後に残る値は次に開いたときに上書きされる。
@@ -221,8 +221,7 @@ HTML5 の drag イベントは使えない。
   /**
    * 閉じる。既定ではタブへフォーカスを戻す。
    *
-   * 戻さないと、`Esc` で閉じた時点でフォーカスが `<body>` へ移り、キーボード操作での現在位置が分からなくなる
-   * （`app/MenuButton.svelte` と同じ判断）。
+   * 戻さないと、`Esc` で閉じた時点でフォーカスが `<body>` へ移り、キーボード操作での現在位置が分からなくなる（`app/MenuButton.svelte` と同じ判断）。
    */
   function closeMenu(refocus = true): void {
     menuOpen = false;

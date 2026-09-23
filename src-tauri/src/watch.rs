@@ -430,7 +430,7 @@ impl FileWatcher {
     /// 閉じたウィンドウが持っていたドキュメントの監視をすべて手放す。
     ///
     /// 常駐するアプリであるため、ウィンドウを閉じただけでは監視スレッドは止まらない（ADR-0004 / N-PERF-06）。
-    /// ここで解除しないと、ウィンドウを開き閉じした回数だけ監視が積み上がる。
+    /// ここで解除しないと、ウィンドウを開き閉じした回数だけ監視が増え続ける。
     pub fn release_window(&self, label: &str) {
         let owned = match self.registry.lock() {
             Ok(registry) => registry
@@ -446,7 +446,7 @@ impl FileWatcher {
         }
     }
 
-    /// そのウィンドウの分の記録を落とし、誰も必要としなくなったら監視を解除する。
+    /// そのウィンドウの分の記録を破棄し、誰も必要としなくなったら監視を解除する。
     fn release_key(&self, label: &str, key: &Path) {
         let abandoned = match self.registry.lock() {
             Ok(mut registry) => match registry.targets.get_mut(key) {
