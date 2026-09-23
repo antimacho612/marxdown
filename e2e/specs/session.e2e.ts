@@ -1,10 +1,10 @@
 /**
- * セッション復元（OQ-04 の推奨 C / F-NAV-01 / M3 Phase 7）。
+ * セッション復元（F-NAV-01 / 02.architecture/04-rust-responsibilities.md §5）。
  *
- * **ここでしか確かめられないのは、引数なしの起動が前回のタブを開き直すことである。**
+ * ここでしか確かめられないのは、引数なしの起動が前回のタブを開き直すことである。
  * Vitest 側はプラットフォームをモックしており、`state.json` も CLI 引数も通っていない。
  *
- * 前回のタブは `beforeSession` が仕込む（`helpers/session.ts`）。
+ * 前回のタブは `beforeSession` が用意する（`helpers/session.ts`）。
  * アプリはセッションを張った時点で立ち上がっているため、spec の中では間に合わない。
  */
 import { Key } from 'webdriverio';
@@ -12,7 +12,7 @@ import { Key } from 'webdriverio';
 import { RESTORED_ACTIVE, RESTORED_FIRST, RESTORED_SECOND } from '../helpers/session';
 import { readSession } from '../helpers/store';
 
-/** タブの名前。1 枚のときはタブバー自体が無いので空になる。 */
+/** タブの名前。 */
 async function tabNames(): Promise<string[]> {
   return browser.execute(() =>
     [...document.querySelectorAll('.mx-tab__name')].map((element) => element.textContent ?? ''),
@@ -38,7 +38,7 @@ describe('前回のタブ', () => {
   });
 
   it('表示していたタブが選ばれている', async () => {
-    // 先頭ではない位置を仕込んである。並びと選択が別々に復元されることの確認。
+    // 先頭ではない位置を用意してある。並びと選択が別々に復元されることの確認。
     expect(RESTORED_ACTIVE).toBe(1);
     expect(await activeTabName()).toBe('restored-b.md');
   });

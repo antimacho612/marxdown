@@ -2,13 +2,14 @@
  * アプリの場所と、開いているインスタンスにファイルを開かせる手段。
  *
  * argv では渡さない。
- * `tauri:options.args` は `ms:edgeOptions.args` へそのまま流れ、msedgedriver が Chromium のスイッチとして解釈するため、実測（2026-08-30）では `args: ['C:\work\doc.md']` は argv に `"--c:\work\doc.md"`（`--` 前置 + 小文字化）として渡り、`args: ['--']` はセッション生成が "argument is empty" で失敗する。
+ * `tauri:options.args` は `ms:edgeOptions.args` へそのまま流れ、msedgedriver が Chromium のスイッチとして解釈する。
+ * そのため `args: ['C:\work\doc.md']` は argv に `"--c:\work\doc.md"`（`--` 前置 + 小文字化）として渡り、`args: ['--']` はセッション生成が "argument is empty" で失敗する。
  * つまりこの経路でファイルパスは渡せない。
  * ドライバ側の制約であり、`cli.rs` を変えても解決しない。
  *
  * 代わりに argv 転送を使う。
  * Marxdown は単一インスタンス（[ADR-0004](../../docs/adr/0004-process-model-and-cli.md)）で、2 回目以降の `marxdown foo.md` は新規プロセスを立てずに既存プロセスへ argv を転送する。
- * ドライバが起動した 1 つ目に対して、テストから 2 つ目を叩けばよい。
+ * ドライバが起動した 1 つ目に対して、テストから 2 つ目を起動すればよい。
  * テスト専用の裏口を製品コードに開けずに済むうえ、中心価値そのもの（Warm Start の経路）を毎回通ることになる。
  */
 import { spawn } from 'node:child_process';
@@ -22,17 +23,18 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 /**
  * テスト対象の実行ファイル。
  *
- * **`pnpm build:app` で作ったものを使う。** `cargo build --release` 単独だと
- * `dist/` が古いまま埋め込まれ、起動が固まる（measurements/09-caveats.md）。
+ * `pnpm build` で作ったものを使う。
+ * `cargo build --release` 単独だと `dist/` が古いまま埋め込まれ、起動が固まる（measurements/09-caveats.md）。
  */
 export const APP = path.resolve(here, '..', '..', 'src-tauri', 'target', 'release', 'marxdown.exe');
 
 /**
- * 起動中のインスタンスに `target` を開かせる。**低レベル。** 普段は `openViaForward` を使う。
+ * 起動中のインスタンスに `target` を開かせる。低レベル。
+ * 普段は `openViaForward` を使う。
  *
- * **待たない。** 転送側のプロセスがシェルを掴んだまま終わらない既知の問題があり
- * （[OQ-32](../../docs/07.open-questions/oq-32-cli-holds-shell.md)）、
- * 終了を待つと E2E ごと止まる。開けたかどうかは画面側で確かめる。
+ * 待たない。
+ * 転送側のプロセスがシェルを保持したまま終わらない既知の問題があり（[OQ-32](../../docs/07.open-questions/oq-32-cli-holds-shell.md)）、終了を待つと E2E ごと止まる。
+ * 開けたかどうかは画面側で確かめる。
  */
 export function forwardOpen(target: string): void {
   const child = spawn(APP, [target], { detached: true, stdio: 'ignore' });
@@ -68,12 +70,12 @@ async function documentAppeared(expected: string, timeout: number): Promise<bool
  * argv 転送でファイルを開き、本文が描かれるまで待つ。
  *
  * 再送するのは、転送は取りこぼされうるためである。
- * `bootstrap.ts` が `onOpenRequest` を購読するのは `ready()` の後で、それより前に届いた転送は聞く相手が居ないまま捨てられる。
+ * `bootstrap.ts` が `onOpenRequest` を購読するのは `ready()` の後で、それより前に届いた転送は受け取る側が無いまま破棄される。
  * シェルの描画（`waitForShell`）は `ready()` の手前なので、待っても十分ではない。
  *
  * 製品としては問題にならない。
- * 人が 2 つ目を叩くのは 1 つ目が画面に出た後だからで、ここだけが起動から数十 ms のうちに転送を投げる特殊な使い方になる。
- * 製品側に順序の保証を足すより、テスト側で再送するほうが釣り合う。
+ * 人が 2 つ目を起動するのは 1 つ目が画面に出た後だからで、ここだけが起動から数十 ms のうちに転送を投げる特殊な使い方になる。
+ * 製品側に順序の保証を追加するより、テスト側で再送するほうが妥当である。
  */
 export async function openViaForward(target: string, expected: string): Promise<void> {
   await waitForShell();
@@ -86,44 +88,34 @@ export async function openViaForward(target: string, expected: string): Promise<
   throw new Error(`argv 転送で "${target}" が開かなかった（3 回試行）`);
 }
 
-/* ------------------------------------------------------------------ */
-/* 編集と保存（M2 Phase 2）                                             */
-/* ------------------------------------------------------------------ */
-
-/** いまの表示モード（`features/view/mode.ts` が `<html>` に立てる）。 */
+/** いまの表示モード（`features/mode/mode.ts` が `<html>` に設定する）。 */
 export async function currentMode(): Promise<string> {
   return browser.execute(() => document.documentElement.dataset['mxMode'] ?? '');
 }
 
-/* ------------------------------------------------------------------ */
-/* エディターの DOM（エンジン固有）                                       */
-/* ------------------------------------------------------------------ */
-
 /**
- * エディターが吐く DOM を指すセレクタ。**エンジンの名前が書いてよいのはここだけ。**
+ * エディターが吐く DOM を指すセレクタ。エンジンの名前が書いてよいのはここだけ。
  *
- * spec 側に散ると、[ADR-0009](../../docs/adr/0009-editor-engine-monaco.md) の差し替えで 4 ファイルを同時に直すことになる。
- * この表 1 枚と、下の薄い関数群を書き換えれば済む状態にしてある。
- * CodeMirror → Monaco の張り替えで書き換えたのはこの範囲だけで、spec の期待値は 1 つも動かしていない。
+ * spec 側に散らばると、エンジンを差し替えたときに複数のファイルを同時に修正することになる。
+ * この表と、下の薄い関数群を書き換えれば済む状態にしてある（[ADR-0009](../../docs/adr/0009-editor-engine-monaco.md)）。
  *
  * すべて `#mx-editor` の内側に閉じる。
- * `.monaco-editor` はもう 1 つあり、はみ出すウィジェットの受け皿として `document.body` 直下にも同じクラスの要素を置いているため（`features/editor/editor.ts`）、素のクラス名で数えると載っていないのに 1 つあることになる。
+ * `.monaco-editor` はもう 1 つあり、はみ出すウィジェットの受け皿として `document.body` 直下にも同じクラスの要素を置いているため（`features/editor/lazy/editor.ts`）、素のクラス名で数えるとマウントされていないのに 1 つあることになる。
  *
- * `browser.execute` に渡す関数は文字列化されて向こう側で走るので、
- * **セレクタはクロージャで掴まず引数で渡す。**
+ * `browser.execute` に渡す関数は文字列化されてページ側で実行されるため、セレクタはクロージャで参照せず引数で渡す。
  */
 export const EDITOR_DOM = {
-  /** エディターの外枠。載っているかの判定に使う。 */
+  /** エディターの外枠。マウントされているかの判定に使う。 */
   root: '#mx-editor .monaco-editor',
   /** 編集面。クリックしてフォーカスを取る先。 */
   content: '#mx-editor .view-lines',
-  /** 1 行。**DOM の順は行の順ではない**（`editorText`）。 */
+  /** 1 行。DOM の順は行の順ではない（`editorText`）。 */
   line: '#mx-editor .view-line',
-  /** カーソル。どの行に居るかを位置で結ぶのに使う。 */
+  /** カーソル。どの行にあるかを位置で対応付けるのに使う。 */
   cursor: '#mx-editor .cursors-layer .cursor',
-  /** スクロールする中身。**位置は `style.top` に負で入る**（`editorScrollTop`）。 */
+  /** スクロールする中身。位置は `style.top` に負で入る（`editorScrollTop`）。 */
   linesContent: '#mx-editor .lines-content',
-  /** 検索・置換ウィジェット。**開いているときだけ `visible` が付く。** */
+  /** 検索・置換ウィジェット。開いているときだけ `visible` が付く。 */
   findWidget: '#mx-editor .find-widget.visible',
   /** 検索欄のまとまり。フォーカスがどちらの欄にあるかを見る。 */
   findPart: '.find-part',
@@ -131,15 +123,15 @@ export const EDITOR_DOM = {
   replacePart: '.replace-part',
 } as const;
 
-/** 載っているエディターの数。Preview だけで読んでいるときは 0。 */
+/** マウントされているエディターの数。Preview だけで読んでいるときは 0。 */
 export async function mountedEditorCount(): Promise<number> {
   return browser.execute((selector: string) => document.querySelectorAll(selector).length, EDITOR_DOM.root);
 }
 
-/** 遅延チャンクの取得と評価を待つ。**ここが失敗するなら分割が壊れている。** */
+/** 遅延チャンクの取得と評価を待つ。ここが失敗するなら分割が壊れている。 */
 export async function waitForEditorMounted(): Promise<void> {
   await browser.waitUntil(async () => (await mountedEditorCount()) === 1, {
-    // **Monaco は CodeMirror より待つ。** raw 3.0MB の評価が入る（ADR-0009 の根拠 2）。
+    // Monaco は raw 3.0MB の評価を伴うため長めに待つ（ADR-0009 の根拠 2）。
     timeout: 30_000,
     timeoutMsg: 'エディターが載らなかった',
   });
@@ -150,7 +142,7 @@ export async function focusEditorSurface(): Promise<void> {
   await $(EDITOR_DOM.content).click();
 }
 
-/** 編集面の素のテキスト。**行区切りは入らない**（載ったことの確認に使う）。 */
+/** 編集面の素のテキスト。行区切りは入らない（マウントされたことの確認に使う）。 */
 export async function editorContentText(): Promise<string> {
   return browser.execute(
     (selector: string) => (document.querySelector(selector)?.textContent ?? '').replaceAll('\u{A0}', ' '),
@@ -164,11 +156,10 @@ export async function editorContentText(): Promise<string> {
  * DOM の順に読んではいけない。
  * Monaco は行の要素を使い回すため、スクロールすると中身だけが差し替わるので `querySelectorAll` の順は画面の上から下の順とは限らない。
  * 位置（`style.top`）で並べ直す。
- * CodeMirror では DOM の順がそのまま行の順だったので、張り替えで中身が変わったのはこの関数である（返すものは変えていない）。
  *
  * 空白は元に戻す。
- * Monaco は空白を `&nbsp;`（U+00A0）で描くため、素の `textContent` で突き合わせると見た目が同じなのに一致しないという形で落ちる。
- * タブは `tabSize` ぶんの空白に展開して描かれるので元には戻せない（spec はタブを打たない。`Tab` が入れるのは空白 / `features/editor/list.ts`）。
+ * Monaco は空白を `&nbsp;`（U+00A0）で描くため、素の `textContent` で突き合わせると見た目が同じなのに一致しないという形で失敗する。
+ * タブは `tabSize` ぶんの空白に展開して描かれるので元には戻せない（spec はタブを打たない。`Tab` が入れるのは空白 / `features/editor/lazy/list.ts`）。
  *
  * 見えている行しか無い。
  * 仮想化されているので、長い本文では画面の外の行が入らない。
@@ -179,7 +170,7 @@ export async function editorText(): Promise<string> {
     (selector: string) =>
       [...document.querySelectorAll(selector)]
         .map((element) => ({
-          // eslint-disable-next-line unicorn/prefer-number-coercion -- `20px` の単位を落とすために必要
+          // eslint-disable-next-line unicorn/prefer-number-coercion -- `20px` の単位を除くために必要
           top: Number.parseFloat((element as HTMLElement).style.top) || 0,
           text: (element.textContent ?? '').replaceAll('\u{A0}', ' '),
         }))
@@ -193,9 +184,8 @@ export async function editorText(): Promise<string> {
 /**
  * カーソルがある行の文字列。
  *
- * **カーソルと行は位置で結ぶ。** Monaco の「現在行」は本文とは別の重ね描き
- * （`.view-overlays`）にあって文字列を持たない。どちらも同じ `style.top` を
- * 持つので、そこで突き合わせる。
+ * カーソルと行は位置で結ぶ。
+ * Monaco の「現在行」は本文とは別の重ね描き（`.view-overlays`）にあって文字列を持たない。どちらも同じ `style.top` を持つので、そこで突き合わせる。
  */
 export async function activeLineText(): Promise<string> {
   return browser.execute(
@@ -220,8 +210,8 @@ export async function isSearchPanelOpen(): Promise<boolean> {
 /**
  * 検索ウィジェットの、いまフォーカスがある欄。どちらでもなければ空文字。
  *
- * **`name` 属性では引けない。** Monaco の入力欄は素の `<input>` で、
- * 区別できるのは囲んでいるまとまり（`.find-part` / `.replace-part`）だけである。
+ * `name` 属性では引けない。
+ * Monaco の入力欄は素の `<input>` で、区別できるのは囲んでいるまとまり（`.find-part` / `.replace-part`）だけである。
  */
 export async function focusedFindField(): Promise<string> {
   return browser.execute(
@@ -238,12 +228,11 @@ export async function focusedFindField(): Promise<string> {
 }
 
 /**
- * エディターのスクロール位置。器が無ければ `-1`。
+ * エディターのスクロール位置。エディターが無ければ `-1`。
  *
- * **`scrollTop` では読めない。** Monaco の器は `overflow: hidden` で、
- * スクロールは中身を上へずらして表している
- * （`viewLines.js` の `_linesContent.setTop(-adjustedScrollTop)`）。
- * **符号を反転して読む。**
+ * `scrollTop` では読めない。
+ * Monaco のコンテナは `overflow: hidden` で、スクロールは中身を上へずらして表している（`viewLines.js` の `_linesContent.setTop(-adjustedScrollTop)`）。
+ * 符号を反転して読む。
  *
  * `adjusted` は桁が大きいとき（数百万 px）の丸め対策で、spec が扱う長さでは 0。
  */
@@ -251,20 +240,19 @@ export async function editorScrollTop(): Promise<number> {
   return browser.execute((selector: string) => {
     const element = document.querySelector(selector);
     if (!(element instanceof HTMLElement)) return -1;
-    // eslint-disable-next-line unicorn/prefer-number-coercion -- `-200px` の単位を落とすために必要
+    // eslint-disable-next-line unicorn/prefer-number-coercion -- `-200px` の単位を除くために必要
     return -(Number.parseFloat(element.style.top) || 0);
   }, EDITOR_DOM.linesContent);
 }
 
 /**
- * エディターを端まで動かす。**キーで動かす。**
+ * エディターを端まで動かす。キーで動かす。
  *
- * CodeMirror のときは器の `scrollTop` へ代入していたが、
- * **Monaco はその値を見ていない**（`editorScrollTop` の但し書き）。
- * 代入しても画面は動かず `onDidScrollChange` も飛ばないので、同期の検証にならない。
+ * コンテナの `scrollTop` へ代入しても、Monaco はその値を参照しない（`editorScrollTop` の但し書き）。
+ * 代入しても画面は動かず `onDidScrollChange` も発火しないため、同期の検証にならない。
  *
- * ここで見たいのは「動かしたら反対側が追随するか」であって「何 px 動いたか」では
- * ないので、端まで飛ばせば足りる。**本物の打鍵**なので、キーが届くことも同時に通る。
+ * 検証するのは「動かしたら反対側が追随するか」であって「何 px 動いたか」ではないため、端まで移動すれば足りる。
+ * 実際の打鍵であるため、キーが届くことも同時に検証できる。
  */
 export async function scrollEditorToEnd(): Promise<void> {
   await focusEditorSurface();
@@ -277,11 +265,7 @@ export async function scrollEditorToTop(): Promise<void> {
   await browser.keys([Key.Control, Key.Home]);
 }
 
-/* ------------------------------------------------------------------ */
-/* 編集の操作                                                          */
-/* ------------------------------------------------------------------ */
-
-/** Edit モードに入り、エディターが載るまで待つ。 */
+/** Edit モードに入り、エディターがマウントされるまで待つ。 */
 export async function enterEditMode(): Promise<void> {
   if ((await currentMode()) === 'edit') return;
 
@@ -293,19 +277,19 @@ export async function enterEditMode(): Promise<void> {
   await waitForEditorMounted();
 }
 
-/** エディターの末尾に文字を打つ。**実際のキー入力**で入れる（IME を除く本番の経路）。 */
+/** エディターの末尾に文字を打つ。実際のキー入力で入れる（IME を除く本番の経路）。 */
 export async function typeAtEnd(text: string): Promise<void> {
   await focusEditorSurface();
   await browser.keys([Key.Control, 'End']);
   await browser.keys(text);
 }
 
-/** 未保存の印（`●` / 03.ux-spec/07-status-and-notifications.md §1）が出ているか。タブは 1 枚でも出る（issue #145）。 */
+/** 未保存の印（`●` / 03.ux-spec/07-status-and-notifications.md §1）が出ているか。タブは 1 枚でも表示される。 */
 export async function isDirtyShown(): Promise<boolean> {
   return browser.execute(() => document.querySelector('.mx-tab__dirty') !== null);
 }
 
-/** 保存する。**印が消えるまで待つ**（保存できた唯一の見える合図）。 */
+/** 保存する。印が消えるまで待つ（保存できた唯一の見える合図）。 */
 export async function saveAndWaitClean(): Promise<void> {
   await browser.keys([Key.Control, 's']);
   await browser.waitUntil(async () => !(await isDirtyShown()), {
@@ -322,8 +306,7 @@ export async function noticeText(): Promise<string> {
 /**
  * 通知バーのボタンを文言で押す。
  *
- * WebdriverIO の `button=文言` セレクタは、このドライバでは
- * `invalid selector` で通らない。DOM 側で探して押す。
+ * WebdriverIO の `button=文言` セレクタは、このドライバでは `invalid selector` で通らない。DOM 側で探して押す。
  */
 export async function clickNoticeAction(label: string): Promise<void> {
   await browser.waitUntil(

@@ -1,9 +1,8 @@
 /**
  * アプリの永続化ストア（`state.json`）を E2E から用意する。
  *
- * **セッション復元（OQ-04）は起動時にしか効かない。** 前回のタブを再現するには、
- * アプリが立ち上がるより前に `state.json` を書いておく必要がある
- * （WebdriverIO では `beforeSession` がその位置になる）。
+ * セッション復元は起動時にしか行われない。
+ * 前回のタブを再現するには、アプリが立ち上がるより前に `state.json` を書いておく必要がある（WebdriverIO では `beforeSession` がその位置になる）。
  *
  * ストアはユーザーの成果物ではなくキャッシュであり、壊れていれば Rust 側が既定値へ戻す。
  * ここで書き換えて差し支えないのはそのためである。
@@ -53,7 +52,7 @@ function write(state: StateFile): void {
 }
 
 /**
- * 前回のタブを仕込む。**ファイルは実在していること**（Rust 側が読み込み時に落とす）。
+ * 前回のタブを用意する。ファイルは実在していること（Rust 側が読み込み時に除外する）。
  */
 export function seedSession(paths: string[], active: number): void {
   write({ ...read(), session: { paths, active } });
@@ -62,9 +61,9 @@ export function seedSession(paths: string[], active: number): void {
 /**
  * 記録を消す。
  *
- * **他の spec のために必ず呼ぶ。** 復元は引数なしの起動で効くが、E2E のアプリは
- * 引数なしで立ち上がって argv 転送で開く（`helpers/app.ts`）。前の実行の記録が
- * 残っていると、どの spec も 2 枚目のタブを抱えた状態から始まることになる。
+ * 他の spec のために必ず呼ぶ。
+ * 復元は引数なしの起動で行われるが、E2E のアプリは引数なしで立ち上がって argv 転送で開く（`helpers/app.ts`）。
+ * 前の実行の記録が残っていると、どの spec も 2 枚目のタブがある状態から始まることになる。
  */
 export function clearSession(): void {
   write({ ...read(), session: { paths: [], active: 0 } });

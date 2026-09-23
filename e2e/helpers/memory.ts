@@ -1,18 +1,14 @@
 /**
- * メモリの計測を E2E から駆動する（[OQ-18](../../docs/07.open-questions/oq-18-memory-not-released.md) / M3 Phase 0）。
+ * メモリの計測を E2E から駆動する（[measurements > memory](../../docs/measurements/06-memory.md)）。
  *
  * 手で測ると、`huge.md` を「描き切ってから」切り替えたのか「描画の途中で」切り替えたのかが記録に残らない。
- * この 2 つは別の話で、後者に該当する保持経路（`paint()` の打ち切り漏れ）は既に塞いである。
- * 前者を測るには段階的描画の完了を待つ必要があり、待つには機械で駆動するしかない。
+ * 段階的描画の完了を待ってから切り替えるには、機械で駆動する必要がある。
  *
  * 値は 3 種類を揃えて取る。
  * プロセスの Private Working Set だけでは、戻らない分が JS 側にあるのか Blink の DOM 側にあるのかを区別できない。
- *
- * | 観測 | 読み方 |
- * | --- | --- |
- * | GC 後にプロセスが戻る | 候補 1（未回収なだけ）で決着 |
- * | JS ヒープは戻るがプロセスが戻らない | JS 側ではない。Blink の DOM かアロケータ側 |
- * | GC 後も JS ヒープが戻らない | 候補 3（切り離された DOM の到達可能性）/ 4（`outline`）へ |
+ * GC 後にプロセスが戻れば未回収なだけである。
+ * JS ヒープは戻るがプロセスが戻らなければ、Blink の DOM かアロケータ側に残っている。
+ * GC 後も JS ヒープが戻らなければ、切り離された DOM が到達可能なまま残っている。
  */
 import { execFileSync } from 'node:child_process';
 import { mkdirSync, writeFileSync } from 'node:fs';
@@ -39,8 +35,8 @@ const REPORT_DIR = path.resolve(here, '..', '..', 'docs', 'measurements');
  * 既定の `performance.memory` は 100KB 単位に丸めた値を返し、更新間隔も長い。
  * 開いて閉じる数十秒のあいだ同じ数字が出続けるため、切り分けに使えない。
  *
- * `--js-flags=--expose-gc` は入れない。**渡しても効果が無い**（実測 2026-09-07）。
- * レンダラのコマンドラインには `--js-flags="--expose-gc"` が届いているのに `globalThis.gc` が生えない。
+ * `--js-flags=--expose-gc` は入れない。渡しても効果が無い。
+ * レンダラのコマンドラインには `--js-flags="--expose-gc"` が届いているのに `globalThis.gc` が定義されない。
  * 強制 GC は CDP（`forceGc`）で行う。
  */
 export const MEMORY_PROBE_BROWSER_ARGUMENTS = '--enable-precise-memory-info';
@@ -63,7 +59,7 @@ export interface MemorySample {
   domNodes: number | null;
   /** 本文の直下にあるブロックの数。段階的描画が終わったかの判定にも使う。 */
   contentBlocks: number | null;
-  /** レンダラが抱えている DOM ノードの総数。**切り離されたツリーもここには残る**（`domCounters`）。 */
+  /** レンダラが抱えている DOM ノードの総数。切り離されたツリーもここには残る（`domCounters`）。 */
   blinkNodes: number | null;
   blinkDocuments: number | null;
   jsEventListeners: number | null;
@@ -135,7 +131,7 @@ function toSample(label: string, page: PageMemory, counters: DomCounters): Memor
  * CDP を使うか。`MX_MEMORY_CDP=0` で切れる。
  *
  * 切れるようにしてあるのは、CDP そのものが計測を汚していないかを確かめるためである。
- * 実測（2026-09-07）では、CDP を使う計測だけが 1 往復あたり 20MB の線形増加を示し、ドライバを介さない手計測では 6 往復しても横ばいだった。
+ * CDP を使う計測では 1 往復あたり約 20MB の線形増加が現れ、ドライバを介さない手計測では現れない（[measurements > memory](../../docs/measurements/06-memory.md)）。
  */
 const USE_CDP = process.env['MX_MEMORY_CDP'] !== '0';
 
@@ -148,7 +144,7 @@ export async function sample(label: string): Promise<MemorySample> {
 const EMPTY_COUNTERS: DomCounters = { blinkNodes: null, blinkDocuments: null, jsEventListeners: null };
 
 /**
- * プロセスだけを測る。**`purgeJsMemory()` の後はこちらしか使えない**（同関数の但し書き）。
+ * プロセスだけを測る。`purgeJsMemory()` の後はこちらしか使えない（同関数の但し書き）。
  */
 export function sampleProcessOnly(label: string): MemorySample {
   return toSample(label, { jsHeapMB: null, jsHeapTotalMB: null, domNodes: null, contentBlocks: null }, EMPTY_COUNTERS);
@@ -176,8 +172,8 @@ async function cdp<T>(command: string, params: Record<string, unknown> = {}): Pr
  * レンダラが抱えている DOM の数（CDP `Memory.getDOMCounters`）。
  *
  * `performance.memory` では見えない。
- * DOM のノードは V8 ではなく Blink 側のヒープ（Oilpan）に載るため、切り離されたツリーを 1 か所から掴んでいても JS ヒープにはラッパー 1 個ぶんしか現れない。
- * 候補 3（切り離された DOM が到達可能なまま）を潰せるのはこの値だけである。
+ * DOM のノードは V8 ではなく Blink 側のヒープ（Oilpan）に置かれるため、切り離されたツリーを 1 か所から参照していても JS ヒープにはラッパー 1 個ぶんしか現れない。
+ * 切り離された DOM が到達可能なままかどうかを判定できるのはこの値だけである。
  */
 export async function domCounters(): Promise<DomCounters> {
   const counters = await cdp<{ documents: number; nodes: number; jsEventListeners: number }>('Memory.getDOMCounters');
@@ -191,7 +187,7 @@ export async function domCounters(): Promise<DomCounters> {
 /**
  * 強制 GC。
  *
- * `--js-flags=--expose-gc` では `gc()` が生えないため CDP を使う（`MEMORY_PROBE_BROWSER_ARGUMENTS`）。
+ * `--js-flags=--expose-gc` では `gc()` が定義されないため CDP を使う（`MEMORY_PROBE_BROWSER_ARGUMENTS`）。
  * 2 回呼ぶのは、1 回では弱参照の解放と、それによって到達不能になったものの回収が同じ回に入らないためである。
  */
 export async function forceGc(): Promise<void> {
@@ -205,7 +201,7 @@ export async function forceGc(): Promise<void> {
 /**
  * メモリ圧を通知する（CDP `Memory.simulatePressureNotification`）。
  *
- * Blink はこれを受けると各種キャッシュを捨て、PartitionAlloc の空きページを OS へ返す。
+ * Blink はこれを受けると各種キャッシュを破棄し、PartitionAlloc の空きページを OS へ返す。
  * GC でも DOM の数でも説明が付かないぶんが「解放済みだが返していないだけ」なのかは、これでしか分けられない。
  */
 export async function simulateMemoryPressure(): Promise<void> {
@@ -220,8 +216,8 @@ export async function simulateMemoryPressure(): Promise<void> {
  * GC で到達不能になっても、V8 と PartitionAlloc はページを手元に残すことがある。
  * これを呼ぶことで「解放されていない」と「OS へ返していないだけ」を分けられる。
  *
- * **呼んだ後はページ側を読めない。**
- * 実測（2026-09-07）では、このコマンドの後の `browser.execute` が返らなくなる（180 秒で bidi のタイムアウト）。
+ * 呼んだ後はページ側を読めない。
+ * このコマンドの後は `browser.execute` が返らなくなる（180 秒で bidi のタイムアウト）。
  * 本来はバックグラウンドのタブに対する操作であり、生きているページに使う前提のものではない。
  * 計測の最後に置き、以降は `sampleProcessOnly()` で測る。
  */

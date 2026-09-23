@@ -1,12 +1,12 @@
 /**
  * Split とスクロール同期（F-MODE-03, 05 / 03.ux-spec/03-split-mode.md）。
  *
- * 単体テストが 3 段で下を見ている（`scroll-sync.test.ts`: 補間の算数、`scroll-sync.dom.test.ts`: 配線＝主導権・ダブルクリック・開始と終了、`scroll-port.dom.test.ts`: 換算＝スクロール量 ⇄ 行番号）。
- * ここで見るのはその上に残る「実際に追随するか」で、本物のレイアウト（要素の高さが無いと data-line の位置が全部 0 になる）、本物の scroll イベント（ブラウザペインでは配送されないことがある、実測）、本物のキー配送（Ctrl+\ は配列によって届き方が変わる）の 3 つが同時に要る。
+ * 単体テストは 3 段で下位の層を検証している（`scroll-sync.test.ts`: 補間の計算、`scroll-sync.dom.test.ts`: 配線＝主導権・ダブルクリック・開始と終了、`scroll-port.dom.test.ts`: 換算＝スクロール量 ⇄ 行番号）。
+ * ここで検証するのはその上に残る「実際に追随するか」で、実際のレイアウト（要素の高さが無いと data-line の位置が全部 0 になる）、実際の scroll イベント（ブラウザペインでは配送されないことがある）、実際のキー配送（Ctrl+\ は配列によって届き方が変わる）の 3 つが同時に必要になる。
  *
- * 循環的な同期は「動いたこと」だけでは捕まらない。
+ * 循環的な同期は「動いたこと」だけでは検出できない。
  * 片方を動かすと相手が動き、それがまた片方を動かす。
- * 同期が効いていることと輪になっていないことは別の話なので、動かした側が動かされ返していないかを併せて見る。
+ * 同期が機能していることと循環していないことは別の問題であるため、動かした側が動かされ返していないかを併せて確認する。
  */
 import { Key } from 'webdriverio';
 
@@ -38,10 +38,9 @@ async function positions(): Promise<{ editor: number; preview: number }> {
 }
 
 /**
- * プレビューを動かす。**素の器なので代入で足りる**（`scroll` が飛ぶ）。
+ * プレビューを動かす。通常のスクロール要素なので代入で足りる（`scroll` が発火する）。
  *
- * エディター側は代入では動かない。Monaco の器は `overflow: hidden` で、
- * `scrollTop` を見ていないため（`helpers/app.ts` の `editorScrollTop`）。
+ * エディター側は代入では動かない。Monaco のコンテナは `overflow: hidden` で、`scrollTop` を参照していないため（`helpers/app.ts` の `editorScrollTop`）。
  * あちらは `scrollEditorToEnd` / `scrollEditorToTop` がキーで動かす。
  */
 async function scrollPreviewTo(top: number): Promise<void> {
@@ -51,7 +50,7 @@ async function scrollPreviewTo(top: number): Promise<void> {
   }, top);
 }
 
-/** 両方を先頭へ戻し、主導権が空くまで待つ。**どの検証もここから始める。** */
+/** 両方を先頭へ戻し、主導権が空くまで待つ。どの検証もここから始める。 */
 async function resetBoth(): Promise<void> {
   await scrollEditorToTop();
   await scrollPreviewTo(0);
@@ -82,8 +81,8 @@ async function waitForFollow(side: 'editor' | 'preview', from: number): Promise<
 /**
  * 本文を、行と高さの対応が崩れる形にしておく。
  *
- * **1 行の見出しと長いコードブロックが並んでいないと、補間が効いているか
- * 分からない。** 素直な段落だけの本文では、行を数えるだけの実装でも通ってしまう。
+ * 1 行の見出しと長いコードブロックが並んでいないと、補間が機能しているか分からない。
+ * 単純な段落だけの本文では、行を数えるだけの実装でも通ってしまう。
  */
 const DOC = ['# 見出し', '', '```', ...Array.from({ length: 60 }, (_, i) => `行 ${i + 1}`), '```', '', '終わり'].join(
   '\n',
@@ -116,9 +115,9 @@ describe('Split に入る (F-MODE-03)', () => {
   });
 
   /**
-   * **`calc(var(--x) * 1fr)` は通らない**（`styles/shell.css`）。
-   * 宣言ごと捨てられて列が `auto` に潰れるが、**見た目はそれらしく出る**ので
-   * 気づきにくい。比が本当に効いているかをここで固定する。
+   * `calc(var(--x) * 1fr)` は無効である（`styles/shell.css`）。
+   * 宣言ごと無視されて列が `auto` になるが、見た目はそれらしく表示されるため気づきにくい。
+   * 比が実際に反映されているかをここで固定する。
    */
   it('分割比が列幅に効いている', async () => {
     const ratio = await browser.execute(() => {
@@ -151,7 +150,7 @@ describe('スクロール同期 (F-MODE-05 / §2)', () => {
    * 循環的な同期が起きていないこと。
    * 動かした側が動かされ返すと、押した位置から離れていく（§2 の「主導権は最後に操作した側」）。
    *
-   * 位置を数値で指定できないため（キーで動かす）、追随したあとに動かした側が動いていないことで見る。
+   * 位置を数値で指定できないため（キーで動かす）、追随したあとに動かした側が動いていないことで確認する。
    */
   it('動かした側が動かされ返さない', async () => {
     await resetBoth();
@@ -195,8 +194,8 @@ describe('双方向ジャンプ (§3)', () => {
   /**
    * プレビューの要素をダブルクリック → エディターの該当行へ。
    *
-   * 最後の段落（`終わり`）を叩くと、コードブロックより後ろの行へ飛ぶ。
-   * **行を数えるだけの実装では、ここでコードブロックの中を指してしまう。**
+   * 最後の段落（`終わり`）をダブルクリックすると、コードブロックより後ろの行へ移動する。
+   * 行を数えるだけの実装では、ここでコードブロックの中を指してしまう。
    */
   it('プレビューをダブルクリックすると、エディターのその行へカーソルが移る', async () => {
     await resetBoth();
@@ -219,12 +218,12 @@ describe('双方向ジャンプ (§3)', () => {
 /**
  * Split の検索（[03.ux-spec > keybindings §4](../../docs/03.ux-spec/04-keybindings.md)）。
  *
- * **同じ `Ctrl+F` が、フォーカスのある側を探す。** Split でしか起きない分岐であり、
- * 振り分けそのものは `src/features/view/find.dom.test.ts` が見ている。
- * **ここで見るのは「キーが届いて、本当に開くもの / 閉じるものが入れ替わるか」だけ。**
+ * 同じ `Ctrl+F` が、フォーカスのある側を探す。
+ * Split でしか起きない分岐であり、振り分けそのものは `src/features/mode/find.dom.test.ts` が検証している。
+ * ここで検証するのは「キーが届いて、本当に開くもの / 閉じるものが入れ替わるか」だけである。
  */
 describe('Split の検索 (F-VIEW-10 / F-EDIT-05)', () => {
-  /** プレビュー内検索のパネルが出ているか。**エディターの外**にある。 */
+  /** プレビュー内検索のパネルが出ているか。エディターの外にある。 */
   async function isPreviewFindOpen(): Promise<boolean> {
     return browser.execute(() => document.querySelectorAll('.mx-search').length === 1);
   }
@@ -249,7 +248,8 @@ describe('Split の検索 (F-VIEW-10 / F-EDIT-05)', () => {
       timeoutMsg: 'プレビュー内検索が開かなかった',
     });
 
-    // **同時に開かない。** 開いたほうが、もう片方を閉じる。
+    // 同時に開かない。
+    // 開いたほうが、もう片方を閉じる。
     await browser.waitUntil(async () => !(await isSearchPanelOpen()), {
       timeout: 10_000,
       timeoutMsg: 'エディターの検索が閉じなかった',

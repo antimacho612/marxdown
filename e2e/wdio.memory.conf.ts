@@ -1,9 +1,9 @@
 /**
- * メモリ計測だけを走らせる設定（[OQ-18](../docs/07.open-questions/oq-18-memory-not-released.md) / M3 Phase 0）。
+ * メモリ計測だけを実行する設定（[measurements > memory](../docs/measurements/06-memory.md)）。
  *
  * `wdio.conf.ts` を継承し、対象の spec と WebView2 のスイッチだけを差し替える。
  * 分けているのは 2 つの理由による。
- * `gc()` を露出させた状態を他の 43 本に持ち込みたくないこと、および 1 本で数分かかるため `pnpm e2e` の所要時間に混ぜたくないこと。
+ * 計測用のスイッチを渡した状態を他の spec に持ち込みたくないこと、および 1 本で数分かかるため `pnpm e2e` の所要時間に混ぜたくないこと。
  */
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
