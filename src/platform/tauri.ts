@@ -34,6 +34,7 @@ const EVENT_SETTINGS_CHANGED = 'marxdown://settings-changed';
 const EVENT_TRAY_OPEN = 'marxdown://tray-open';
 const EVENT_TRAY_RESUME = 'marxdown://tray-resume';
 const EVENT_SAVE_AND_QUIT = 'marxdown://save-and-quit';
+const EVENT_SAVE_AND_CLOSE = 'marxdown://save-and-close';
 const EVENT_THEMES_CHANGED = 'marxdown://themes-changed';
 const EVENT_WINDOW_MAXIMIZED = 'marxdown://window-maximized';
 const EVENT_MAXIMIZE_HOVER = 'marxdown://maximize-hover';
@@ -214,6 +215,27 @@ export const tauriPlatform: Platform = {
     return invoke<void>('window_close');
   },
 
+  openSatellite(options = {}) {
+    return invoke<void>('open_satellite', {
+      paths: options.paths ?? [],
+      mode: options.mode ?? null,
+      transfer: options.transfer ?? null,
+      position: options.position ?? null,
+    });
+  },
+
+  stashTransfer(payload) {
+    return invoke<number>('stash_transfer', { payload });
+  },
+
+  takeTransfer(id) {
+    return invoke<string | null>('take_transfer', { id });
+  },
+
+  openNewInstance(options = {}) {
+    return invoke<void>('open_new_instance', { paths: options.paths ?? [] });
+  },
+
   quitApp() {
     return invoke<void>('app_quit');
   },
@@ -224,6 +246,10 @@ export const tauriPlatform: Platform = {
 
   onSaveAndQuit(handler) {
     return subscribe(() => listen(EVENT_SAVE_AND_QUIT, () => handler()));
+  },
+
+  onSaveAndClose(handler) {
+    return subscribe(() => listen(EVENT_SAVE_AND_CLOSE, () => handler()));
   },
 
   onTrayResume(handler) {

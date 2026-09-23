@@ -64,6 +64,11 @@ describe('getPlatform', () => {
       'revealInFileManager',
       'onOpenRequest',
       'onSaveAndQuit',
+      'onSaveAndClose',
+      'openSatellite',
+      'openNewInstance',
+      'stashTransfer',
+      'takeTransfer',
     ];
     for (const key of required) {
       expect(original[key], `web 実装に ${key} が無い`).toBeDefined();

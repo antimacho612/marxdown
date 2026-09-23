@@ -8,7 +8,12 @@
  * 覚えるのはパスと並び順だけである。
  * 未保存の本文は持たない。`state.json` がドキュメントの複製を抱えることになり、
  * 触っていないバイト列を保持しないという方針（N-CMP-03）とも噛み合わない。
+ *
+ * **覚えるのは主ウィンドウのタブだけである**（F-OPEN-06 / `Bootstrap.role`）。
+ * `state.json` はセッションを 1 組しか持たない。
+ * 別ウィンドウでも書くと、最後に操作したウィンドウの内容で上書きされ、次の起動で復元されるものが操作の順序で決まってしまう。
  */
+import { isSatellite } from '@/features/view';
 import { getPlatform } from '@/platform';
 
 import { openPathInNewTab, selectTabAt, tabMeta, tabsStore } from './tabs.svelte';
@@ -45,6 +50,10 @@ export async function restoreSession(paths: readonly string[], active: number): 
  * 並べ替えも掴んでいる間ではなく、離した時点で 1 回だけ動く（`moveTab`）。
  */
 export function watchSession(): () => void {
+  // サテライトでは何も書かない。解除の形だけ揃えて返す。
+  // 独立プロセスからの書き込みは Rust 側でも弾いているが（`store_set_session`）、無駄な IPC を出さないためにここでも見る。
+  if (isSatellite()) return noop;
+
   return $effect.root(() => {
     $effect(() => {
       const kept = tabsStore.tabs

@@ -24,6 +24,16 @@ use crate::themes::UserTheme;
 #[serde(rename_all = "camelCase")]
 pub struct Bootstrap {
     pub version: u32,
+    /// このウィンドウの役割（F-OPEN-06）。フロントはこれでシェルの描き分けを決める。
+    pub role: WindowRole,
+    /// 引き取るべき本文の ID（F-OPEN-06 / 決定 1）。
+    ///
+    /// 未保存のタブをサテライトへ移したときだけ入る。
+    /// フロントは `take_transfer` で 1 回だけ取りに行き、その内容で文書を開く。
+    ///
+    /// **本文そのものは載せない。**
+    /// 初期化スクリプトは文字列として WebView へ渡されるため、編集中の大きな文書を丸ごと書き出すと、本文を埋め込まない 256KB の閾値を設けた意味が無くなる。
+    pub transfer: Option<u64>,
     /// 初期ドキュメント。引数なし起動（Welcome 画面）では `None`。
     pub document: Option<BootstrapDocument>,
     /// 読み込みに失敗した場合の理由。UI が通知バーに出す。
@@ -83,6 +93,20 @@ pub struct Bootstrap {
     /// ここに載せるのは、暗い配色を選んでいるときに既定の配色で初回フレームが描かれるのを防ぐためである。
     /// 載せるのは 1 枚だけである。全件を載せると、起動のたびに 100 枚ぶんの CSS を初期化スクリプトへ書き出すことになる。
     pub preview_theme: Option<UserTheme>,
+}
+
+/// ウィンドウの役割（F-OPEN-06）。対応するフロント側の型は `src/platform/types.ts` の `WindowRole`。
+///
+/// 1 つのプロセスの中で、`main` は 1 枚だけである。
+/// `--new-window` で開くのは別プロセスの `main` であり、同じプロセスに 2 枚目の `main` は生まれない。
+///
+/// `satellite` はタブと本文だけを持つウィンドウで、VS Code の切り離したエディターに相当する。
+/// ファイルツリー・アウトライン・ハンバーガーメニューを持たず、トレイにも常駐せず、前回のタブとしても覚えない。
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub enum WindowRole {
+    Main,
+    Satellite,
 }
 
 /// 起動時に開く 1 枚目のドキュメント。
@@ -172,6 +196,9 @@ pub fn build(
 
     Bootstrap {
         version: 1,
+        // 起動時の 1 枚目を既定にする。サテライトでは `crate::open_satellite` が置き換える。
+        role: WindowRole::Main,
+        transfer: None,
         document,
         document_error,
         mode: args.mode,

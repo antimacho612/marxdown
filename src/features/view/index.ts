@@ -18,4 +18,5 @@ export {
 } from './scroll-sync';
 export type { EditorScrollPort } from './scroll-sync';
 export { initSplit } from './split';
+export { initWindowRole, isSatellite, windowRole } from './role';
 export { viewStore } from './store.svelte';

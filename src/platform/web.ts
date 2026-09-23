@@ -24,6 +24,7 @@ import {
   type SaveResult,
   type SettingsProblem,
   type UserTheme,
+  type WindowRole,
   type WriteRequest,
 } from './types';
 
@@ -235,8 +236,14 @@ function initialBootstrap(): Bootstrap {
   // ブラウザだけで作り込めるようにするため。
   const empty = params.has('welcome');
 
+  // `?satellite` でサテライトのシェルを再現する（F-OPEN-06）。
+  // 実機ではタブを別ウィンドウへ移さないと現れない面であり、ブラウザだけで作り込めるようにしておく。
+  const role: WindowRole = params.has('satellite') ? 'satellite' : 'main';
+
   return {
     version: 1,
+    role,
+    transfer: null,
     document: empty
       ? null
       : {
@@ -573,6 +580,11 @@ export const webPlatform: Platform = {
     return () => {};
   },
 
+  onSaveAndClose() {
+    // ウィンドウを閉じる確認も同じ経路である（`close.rs`）。
+    return () => {};
+  },
+
   async watchPath() {
     // 仮想 FS はこのタブの中にしかなく、外部から書き換わることがない。
     // 監視の有無で Domain 層に分岐が増えないよう、インタフェースだけ揃えておく
@@ -629,6 +641,28 @@ export const webPlatform: Platform = {
   async toggleMaximizeWindow() {},
 
   async closeWindow() {},
+
+  // ブラウザのタブを勝手に増やさない。
+  // `window.open` は多くの環境でポップアップとして遮断され、遮断されなかった場合は別の仮想 FS を持つ独立したアプリが立ち上がる。
+  // どちらも `dev:web` で確かめたい内容ではない。
+  async openSatellite() {
+    console.info('[marxdown] openSatellite（ブラウザでは何も起きない）');
+  },
+
+  // 受け渡し箱はプロセス内の状態であり、ブラウザには移す先のウィンドウが無い。
+  // 預けたものが誰にも引き取られないだけなので、インタフェースだけ揃えておく。
+  async stashTransfer() {
+    return 0;
+  },
+
+  async takeTransfer() {
+    return null;
+  },
+
+  // ブラウザにはプロセスが無い。
+  async openNewInstance() {
+    console.info('[marxdown] openNewInstance（ブラウザでは何も起きない）');
+  },
 
   // ブラウザにはトレイもプロセスも無い。
   // 無視せずログへ出力するのは、`dev:web` で「終了」を押したときに何も起きない理由が分かるようにするためである。

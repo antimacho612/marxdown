@@ -70,6 +70,8 @@ export const ja = {
     reopen: '閉じたタブを開き直す',
     /** タブを閉じる `✕`。読み上げと `title` に使う。 */
     close: (name: string) => `${name} を閉じる`,
+    /** タブの右クリックメニュー。読み上げ名に使う。 */
+    menu: (name: string) => `${name} の操作`,
   },
 
   titlebar: {
@@ -85,6 +87,10 @@ export const ja = {
     new: '新規ファイル',
     open: 'ファイルを開く',
     openFolder: 'フォルダを開く',
+    /** 空の新しいウィンドウ（`Ctrl+Alt+N` / F-OPEN-06）。 */
+    newWindow: '新しいウィンドウ',
+    /** いま見ているタブを別ウィンドウへ移す（F-OPEN-06）。 */
+    moveToNewWindow: '別ウィンドウで開く',
     save: '保存',
     saveAs: '名前を付けて保存',
     toEdit: '編集する',
@@ -137,6 +143,13 @@ export const ja = {
   history: {
     back: '戻る',
     forward: '進む',
+  },
+
+  /** 別ウィンドウで開く（F-OPEN-06）。 */
+  window: {
+    /** 本文を取り出せなかったタブ。保存済みならパスだけで移せるため、保存を促す（N-REL-01）。 */
+    textUnavailable: '本文を取り出せませんでした。保存してから別ウィンドウで開いてください。',
+    failed: '新しいウィンドウを開けませんでした',
   },
 
   open: {

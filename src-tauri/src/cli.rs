@@ -12,7 +12,9 @@
 use std::path::{Path, PathBuf};
 
 /// 起動時の表示モード（F-MODE-01〜03）。
-#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
+///
+/// `Deserialize` も持つのは、フロントからサテライトを開くとき（`commands::open_satellite`）に引数として渡されるためである。
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum ViewMode {
     Preview,
@@ -26,6 +28,10 @@ pub enum ViewMode {
 pub struct CliArgs {
     /// 絶対パスに解決済み。存在確認はまだ行っていない。
     pub paths: Vec<PathBuf>,
+    /// `-n` / `--new-window`。**独立したプロセスで開く**（F-OPEN-06）。
+    ///
+    /// 既に所有者が居る場合、このプロセスは single-instance プラグインを登録せず、argv も転送しない（`instance.rs`）。
+    /// 同じプロセスの中に窓を増やすのはサテライト（`crate::open_satellite`）であり、こちらとは別の経路である。
     pub new_window: bool,
     pub mode: Option<ViewMode>,
     /// `--trace-startup <path>`。`nul` / `/dev/null` は「計測はするが書き出さない」。
@@ -57,7 +63,7 @@ USAGE:
     marxdown [OPTIONS] [FILE|DIR]...
 
 OPTIONS:
-    -n, --new-window           既存プロセスを使いつつ、新しいウィンドウで開く
+    -n, --new-window           既存プロセスに相乗りせず、新しいプロセスで開く
     -m, --mode <MODE>          起動時の表示モード: preview | edit | split
         --trace-startup <OUT>  起動計測を有効にし、JSON を OUT へ書き出す
                                OUT に nul を指定すると計測のみ行い書き出さない

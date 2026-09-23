@@ -12,8 +12,11 @@ import {
   openDocument,
   openPath,
   previewScrollTop,
+  saveThenCloseWindow,
   saveThenQuit,
+  setDirty,
   toggleTaskAtLine,
+  type StoredPayload,
 } from '@/features/document';
 import { mountEditorLazily, preloadEditor, setSplitSyncLazily } from '@/features/editor';
 import { configureHistory } from '@/features/history';
@@ -28,14 +31,16 @@ import {
   settingsStore,
 } from '@/features/settings';
 import { awaitPreviewTheme, enableThemeNotices, installPreviewThemeWatch, primePreviewTheme } from '@/features/theme';
-import { initSplit, viewStore } from '@/features/view';
+import { initSplit, initWindowRole, viewStore } from '@/features/view';
 import {
+  openPathInSatellite,
   openPathsInTabs,
   recentStore,
   restoreSession,
   setTreeRoot,
   watchSession,
   workspaceOpenerHooks,
+  type TabTransfer,
 } from '@/features/workspace';
 import { ja } from '@/i18n/ja';
 import { runCommand } from '@/lib/commands';
@@ -78,6 +83,10 @@ export async function startup(renderShell: () => void): Promise<void> {
   // ここから配色の適用までは、すべて本文を描くより前に適用する。
   // 後から適用すると、本文が描画された直後に見た目が変化する瞬間が生じる
   // （F-VIEW-11 / F-NAV-04 / 03.ux-spec/06-panes.md §3 / 02.architecture/04-rust-responsibilities.md §5）。
+  // シェルの描き分け（F-OPEN-06）。ペインや倍率と同じく、最初のフレームより前に決める。
+  // 後から当てると、サテライトが一度フルシェルとして描画されてからペインとメニューが消える。
+  initWindowRole(bootstrap);
+
   applyZoom(bootstrap?.zoom ?? 1, false);
   recentStore.entries = bootstrap?.recent ?? [];
 
@@ -152,7 +161,12 @@ export async function startup(renderShell: () => void): Promise<void> {
     renderShell();
   };
 
-  const initial = await resolveInitialDocument(bootstrap);
+  // サテライトへ移された本文（F-OPEN-06 / 決定 1）。
+  // 未保存のタブを移した場合だけ入り、ディスクではなく移した側から受け取る。
+  const transferred = await resolveTransfer(bootstrap);
+  const initial: StoredPayload | null = transferred
+    ? { ...transferred.meta, content: transferred.text }
+    : await resolveInitialDocument(bootstrap);
 
   // 組み込みの配色を選んでいる場合だけ、ここで `theme` チャンクの取得を待つ（ADR-0014）。
   // 取得は上の bootstrap の処理と重なっており、既定の配色（`default`）で起動した場合は解決済みの `Promise` が返る。
@@ -168,9 +182,23 @@ export async function startup(renderShell: () => void): Promise<void> {
   initMode(decideInitialMode(bootstrap, initial));
 
   if (initial) {
-    await openDocument(initial, { trace: true, betweenParseAndPaint: renderShellOnce });
+    await openDocument(initial, {
+      trace: true,
+      betweenParseAndPaint: renderShellOnce,
+      // 移してきた文書は同じ位置から読み始められるようにする。最近開いたファイルにも積み直さない（移動であって「開いた」ではない）。
+      ...(transferred && { restoreScroll: transferred.scrollTop, remember: false }),
+    });
   } else {
     renderShellOnce();
+  }
+
+  // 移してきた状態を戻す（F-OPEN-06 / 決定 1）。
+  //
+  // `openDocument` はディスクと一致した状態から始める（`markClean`）ため、ダーティは開いた後に戻す。
+  // EOL の希望を先に戻すのは、`setDirty` が合成後の値を出し直すためである（`features/workspace/tabs.svelte.ts` の `activateTab` と同じ順序）。
+  if (transferred) {
+    documentStore.eolOverride = transferred.eolOverride;
+    setDirty(transferred.dirty);
   }
 
   // 通知は本文を描いた後に出す。
@@ -306,6 +334,7 @@ function installLinks(): void {
   installLinkHandler(container, {
     currentPath: () => documentStore.meta?.path ?? '',
     open: (path, anchor) => void openPath(path, anchor === undefined ? {} : { anchor }),
+    openInNewWindow: (path) => void openPathInSatellite(path),
     notify: (notice) => {
       documentStore.notice = notice;
     },
@@ -322,6 +351,25 @@ function installLinks(): void {
  * 載っていないのは 256KB を超えるファイルのときだけで、この場合だけ IPC 往復が 1 回増える
  * （初期化スクリプトに埋め込むと、文字列化のコストが往復のコストを上回る）。
  */
+/**
+ * サテライトへ移された本文を引き取る（F-OPEN-06 / 決定 1）。
+ *
+ * **1 回しか取れない。** 取れなかった場合（起動が二重になった / 移す側が失敗した）は通常の起動として続ける。
+ * ここで失敗しても、本文は移す側のウィンドウに残っている（移す側は閉じる前にこの受け渡しの成功を確かめている）。
+ */
+async function resolveTransfer(bootstrap: Bootstrap | null): Promise<TabTransfer | null> {
+  const id = bootstrap?.transfer ?? null;
+  if (id === null) return null;
+
+  try {
+    const raw = await getPlatform().takeTransfer(id);
+    return raw === null ? null : (JSON.parse(raw) as TabTransfer);
+  } catch (e) {
+    documentStore.notice = { level: 'error', message: toMessage(e) };
+    return null;
+  }
+}
+
 async function resolveInitialDocument(bootstrap: Bootstrap | null): Promise<DocumentPayload | null> {
   const doc = bootstrap?.document ?? null;
 
@@ -394,8 +442,16 @@ function installTrayOpen(): void {
  * もう一度 `Ctrl+Q` を押せば同じ確認が表示される（N-REL-01）。
  */
 function installSaveAndQuit(): void {
-  getPlatform().onSaveAndQuit(() => {
+  const platform = getPlatform();
+
+  platform.onSaveAndQuit(() => {
     void saveThenQuit();
+  });
+
+  // ウィンドウを閉じる確認の「保存して閉じる」（F-OPEN-06）。
+  // 他にウィンドウが残っているときの `✕` だけがこちらへ来る。保存した後の行き先が違うだけで、事情は終了の場合と同じである。
+  platform.onSaveAndClose(() => {
+    void saveThenCloseWindow();
   });
 }
 
