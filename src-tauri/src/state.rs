@@ -1,6 +1,6 @@
 //! アプリケーション全体で共有する状態。
 //!
-//! 02.architecture/README.md 原則 C に従い、ここに置くのは Rust 側の処理に必要なものだけである。
+//! 02.architecture/01-principles.md 原則 C に従い、ここに置くのは Rust 側の処理に必要なものだけである。
 //! タブ・カーソル・設定などの UI 状態は TypeScript 側にある。
 
 use std::collections::HashMap;
@@ -16,16 +16,18 @@ use crate::settings::{Settings, SettingsLoad};
 use crate::store::{RecentEntry, StoreData};
 use crate::trace::Trace;
 
-/// アプリデータ領域（`%APPDATA%\com.antimacho612.marxdown\`）に置くもの（`state.json`: アプリが自動的に書く、`settings.json` / `themes/`: 人が書く（F-CONF-08 / ADR-0014））の場所（02.architecture/04-rust-responsibilities.md §5 / 02.architecture/10-theming.md §3）。
+/// アプリデータ領域（`%APPDATA%\com.antimacho612.marxdown\`）に置くものの場所（02.architecture/04-rust-responsibilities.md §5）。
+///
+/// `state.json` はアプリが自動的に書き、`settings.json` と `themes/` は人が書く。
 ///
 /// 1 つの構造体にまとめてある。
 /// どれも `identifier` から同じ規則で決まり、`AppState::new` に個別の `Option<PathBuf>` を並べると引数が際限なく増える。
-/// `None` は「置き場所が決まらなかった」ことを示し、その機能を諦める合図になる。
+/// `None` は「置き場所が決まらなかった」ことを示し、その機能を使わないという意味になる。
 #[derive(Debug, Clone, Default)]
 pub struct ConfigPaths {
     pub store: Option<PathBuf>,
     pub settings: Option<PathBuf>,
-    /// ユーザーが追加した配色の置き場所（`themes/`。ADR-0014）。
+    /// ユーザーが追加した配色の置き場所（`themes/`）。
     pub themes: Option<PathBuf>,
 }
 
@@ -33,7 +35,7 @@ pub struct ConfigPaths {
 pub struct AppState {
     pub args: CliArgs,
     pub trace: Trace,
-    /// 永続化ストア（最近開いたファイル / 表示倍率 / ウィンドウ状態）。
+    /// 永続化ストア（`state.json`）。
     /// 起動時に 1 回読み、変更のたびに書き戻す。
     store: Mutex<StoreData>,
     /// 設定ファイルたちの置き場所。
@@ -44,15 +46,14 @@ pub struct AppState {
     /// アセット参照を許可するディレクトリ（N-SEC-05）。
     /// 開いたドキュメントの親ディレクトリを追加していく。
     asset_roots: Mutex<Vec<PathBuf>>,
-    /// 利用者が 1 件ずつ許可した画像のディレクトリ（OQ-17）。
+    /// 利用者が 1 件ずつ許可した画像のディレクトリ（02.architecture/09-security.md §3）。
     ///
-    /// `asset_roots` と分けてある。こちらは**再帰しない**（直下だけ）うえ、
-    /// ファイルツリー（`list_dir` / `list_files`）からは辿れない。
+    /// `asset_roots` と分けてある。こちらは再帰しない（直下だけ）うえ、ファイルツリー（`list_dir` / `list_files`）からは辿れない。
     /// 画像 1 枚のために押したボタンで、フォルダが閲覧できるようになってはいけない。
     ///
     /// 永続化しない。誤って押した許可を次の起動へ持ち越さない。
     image_dirs: Mutex<Vec<PathBuf>>,
-    /// ウォーム起動（S6）の計測。argv 転送を受けた時刻を要求 ID ごとに保持する。
+    /// ウォーム起動の計測。argv 転送を受けた時刻を要求 ID ごとに保持する。
     warm: Mutex<HashMap<u64, Instant>>,
     warm_counter: AtomicU64,
     /// 最後にフロントへ知らせた「最大化されているか」。
@@ -87,7 +88,7 @@ impl AppState {
                 roots.push(parent.to_path_buf());
             }
         }
-        // `marxdown <dir>` で開いたフォルダも許可範囲に入れる（F-OPEN-02 / OQ-17）。
+        // `marxdown <dir>` で開いたフォルダも許可範囲に入れる（F-OPEN-02）。
         // ファイルツリーがそこを辿る以上、辿れる範囲と読める範囲は一致していなければならない。
         if let Some(root) = bootstrap.workspace_root.as_ref() {
             roots.push(PathBuf::from(root));
@@ -114,7 +115,7 @@ impl AppState {
     pub fn update_store<T>(&self, f: impl FnOnce(&mut StoreData) -> T) -> T {
         let (result, snapshot) = {
             let Ok(mut store) = self.store.lock() else {
-                // ロックが poisoned でも起動は止めない。永続化だけを諦める。
+                // ロックが poisoned でも起動は止めない。永続化だけを行わない。
                 return f(&mut StoreData::default());
             };
             let result = f(&mut store);
@@ -151,7 +152,7 @@ impl AppState {
         current.clone()
     }
 
-    /// 変更したキーだけを当てて書き戻す（02.architecture/04-rust-responsibilities.md §1 `write_settings`）。
+    /// 変更したキーだけを反映して書き戻す（02.architecture/04-rust-responsibilities.md §1 `write_settings`）。
     ///
     /// 壊れている間は拒否する（02.architecture/04-rust-responsibilities.md §5 の 3 番目）。
     /// これが無いと、ユーザーが修正している最中に設定 UI がファイルの内容を丸ごと消してしまう。
@@ -191,7 +192,7 @@ impl AppState {
             .unwrap_or(true)
     }
 
-    /// エクスプローラーから除外する glob（`explorer.exclude` / #146）。メモリ上の設定を見る。
+    /// エクスプローラーから除外する glob（`explorer.exclude`）。メモリ上の設定を見る。
     ///
     /// `closes_to_tray` と同じ理由でディスクを読み直さない。
     /// 外部エディターでの編集はファイル監視が既に取り込んでおり、一覧を開くたびにファイル I/O を挟む理由がない。
@@ -220,7 +221,7 @@ impl AppState {
         self.paths.settings.as_deref()
     }
 
-    /// ユーザーが追加した配色の置き場所（ADR-0014）。
+    /// ユーザーが追加した配色の置き場所。
     ///
     /// パスをフロントには渡さない。
     /// 開くのも読むのも Rust 側の 1 か所に閉じており、`open_settings_file` と同じ理由で、任意のパスを受け取る経路を作らずに済む。
@@ -230,7 +231,7 @@ impl AppState {
 
     /// argv 転送を受けた瞬間に呼ぶ。返した ID をフロントへ渡す。
     ///
-    /// これが 02.architecture/05-startup-sequence.md §2 のウォーム起動の起点（W0）。
+    /// これが 02.architecture/05-startup-sequence.md §3 のウォーム起動の起点（W0）。
     pub fn begin_warm(&self) -> u64 {
         let id = self.warm_counter.fetch_add(1, Ordering::Relaxed);
         if let Ok(mut w) = self.warm.lock() {
@@ -273,10 +274,9 @@ impl AppState {
         }
     }
 
-    /// 利用者が許可した画像のディレクトリを 1 件加える（OQ-17）。同じパスは重複させない。
+    /// 利用者が許可した画像のディレクトリを 1 件加える。同じパスは重複させない。
     ///
-    /// 効果はそのディレクトリの直下だけで、配下のディレクトリには及ばない
-    /// （検証は `scope::resolve_in_dirs`）。
+    /// 効果はそのディレクトリの直下だけで、配下のディレクトリには及ばない（検証は `scope::resolve_in_dirs`）。
     pub fn allow_image_dir(&self, dir: PathBuf) {
         if let Ok(mut dirs) = self.image_dirs.lock() {
             if !dirs.contains(&dir) {
@@ -337,7 +337,7 @@ mod tests {
         )
     }
 
-    /// 02.architecture/04-rust-responsibilities.md §5 の 3 番目。ユーザーが直している最中に設定 UI がファイルごと吹き飛ばさない。
+    /// 02.architecture/04-rust-responsibilities.md §5 の 3 番目。ユーザーが直している最中に設定 UI がファイルの内容を丸ごと消さない。
     #[test]
     fn writing_is_refused_while_the_settings_file_is_broken() {
         let d = temp_dir("refuse");
@@ -382,7 +382,7 @@ mod tests {
     }
 
     /// 02.architecture/04-rust-responsibilities.md §5「読めない内容に変わったときは既定値に戻さない」。
-    /// 編集途中の中間状態でテーマが飛ぶのを防ぐ。
+    /// 編集途中の中間状態でテーマが既定値に戻るのを防ぐ。
     #[test]
     fn a_reload_of_a_broken_file_keeps_the_last_readable_values() {
         let d = temp_dir("reload");

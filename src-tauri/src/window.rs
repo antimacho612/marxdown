@@ -67,7 +67,7 @@ pub fn create(
         // ドラッグ＆ドロップはネイティブのハンドラに任せる（F-OPEN-08）。
         //
         // `disable_drag_drop_handler()` を呼んで HTML5 のドロップイベントで扱うと、WebView の `DataTransfer` がファイルの絶対パスを渡さない。
-        // パスが無いと最近開いたファイルにも積めず、相対パスの画像も解決できない（F-VIEW-08 / N-SEC-05）。
+        // パスが無いと最近開いたファイルにも記録できず、相対パスの画像も解決できない（F-VIEW-08 / N-SEC-05）。
         // Tauri のドラッグ＆ドロップイベントは実パスを渡す。
         .initialization_script(&script)
         // ナビゲーション禁止（N-SEC-04 / ADR-0006 の多層防御 Layer 2）。
@@ -112,7 +112,7 @@ pub fn create(
     let window = builder.build()?;
 
     // Chromium 既定のコンテキストメニューを抑止する（`webview.rs`）。
-    // ウィンドウは `visible: false` で生成されるため、ここで当てておけば表示されている間は一度も出ない。
+    // ウィンドウは `visible: false` で生成されるため、ここで設定しておけば表示されている間は一度も出ない。
     crate::webview::disable_default_context_menu(&window);
 
     spawn_show_fallback(app.clone(), label.to_string());
@@ -125,7 +125,7 @@ pub fn create(
 /// 論理ピクセルで保持している `WindowState`（`store.rs`）と比較する前に、モニタ側を論理ピクセルへ変換して揃える。
 fn is_on_some_monitor(app: &tauri::AppHandle, state: &WindowState) -> bool {
     let Ok(monitors) = app.available_monitors() else {
-        // モニタ情報が取れないなら復元を諦める。中央に出るほうが安全。
+        // モニタ情報が取れないなら復元しない。中央に出るほうが安全。
         return false;
     };
 
@@ -151,7 +151,7 @@ pub fn capture<R: tauri::Runtime>(window: &WebviewWindow<R>) -> Option<WindowSta
     let position = window.outer_position().ok()?.to_logical::<f64>(scale);
     let size = window.inner_size().ok()?.to_logical::<f64>(scale);
 
-    // 最小化中は位置が画面外の番兵値になる環境がある。保存すると次回復元に失敗するので捨てる。
+    // 最小化中は位置が画面外の番兵値になる環境がある。保存すると次回復元に失敗するので破棄する。
     if window.is_minimized().unwrap_or(false) {
         return None;
     }

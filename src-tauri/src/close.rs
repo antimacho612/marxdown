@@ -6,12 +6,11 @@
 //! `restore` は格納から戻す動作である。
 //! 別々の場所に書くと必ずずれるため、1 か所に集めてある（`open.ts` が 5 つの「開く」を 1 か所に集めているのと同じ理由）。
 //!
-//! 論点 11: ウィンドウ位置の保存は `CloseRequested` でのみ行っていた（F-CONF-10）。
-//! `✕` を横取りしても同じイベントは来るため、格納時は問題ない。
-//! しかし、トレイメニューや `Ctrl+Q` からの終了ではこのイベントが発火しない。
-//! 常駐アプリになると、最後に `✕` を押した時点の位置から更新されないままになる。
+//! ウィンドウ位置の保存（F-CONF-10）を `CloseRequested` だけに置くと、トレイメニューや `Ctrl+Q` からの終了では保存されない（論点 11）。
+//! これらの経路ではこのイベントが発火しないためである。
+//! 常駐アプリでは、最後に `✕` を押した時点の位置から更新されないままになる。
 //!
-//! [ADR-0007]: ../../docs.local/adr/0007-tray-residency.md
+//! [ADR-0007]: ../../docs/adr/0007-tray-residency.md
 
 use tauri::{AppHandle, Emitter, Manager, Runtime};
 
@@ -73,8 +72,7 @@ pub fn restore<R: Runtime>(app: &AppHandle<R>) {
     };
 
     // 既に表示されているなら復帰ではない。
-    // トレイメニューの「開く」はウィンドウが表示されたままでも押せるため、
-    // ここで除外しないと Tray Resume に 0ms 近い値が混ざって中央値が壊れる。
+    // トレイメニューの「開く」はウィンドウが表示されたままでも押せるため、ここで除外しないと Tray Resume に 0ms 近い値が混ざって中央値が意味を失う。
     let was_hidden = !window.is_visible().unwrap_or(true);
 
     // `show()` の前に呼ぶ。
@@ -112,7 +110,7 @@ pub fn quit<R: Runtime>(app: &AppHandle<R>) {
 /// 終了してよいか確かめてから終える（F-EDIT-03 / 03.ux-spec/07-status-and-notifications.md §1）。
 ///
 /// Rust 側で確認するのは、終了の導線が 3 つあり（論点 3）、トレイメニューからの終了はフロントを経由しないためである。
-/// 確認をフロントに置くと、その経路だけ未保存の内容を黙って捨てることになる。
+/// 確認をフロントに置くと、その経路だけ未保存の内容を通知なく破棄することになる。
 /// 3 経路が合流しているのはここであるため、確認もここに置く。
 /// ダーティかどうかはフロントが `set_dirty` で知らせてくる（`state.rs`）。
 ///
@@ -145,9 +143,8 @@ fn ask_then_quit<R: Runtime>(app: AppHandle<R>) {
         DialogExt, MessageDialogButtons, MessageDialogKind, MessageDialogResult,
     };
 
-    // `YesNoCancelCustom` はラベルをカスタムした時点で、結果は `Yes` / `No` ではなく
-    // 常に `Custom(ラベル文字列)` で返ってくる（tauri-plugin-dialog の仕様）。
-    // ラベルで判定しないと、どちらのボタンを押しても `_` に落ちて無反応になる。
+    // `YesNoCancelCustom` はラベルをカスタムした時点で、結果は `Yes` / `No` ではなく常に `Custom(ラベル文字列)` で返ってくる（tauri-plugin-dialog の仕様）。
+    // ラベルで判定しないと、どちらのボタンを押しても `_` に該当して何も起きない。
     const SAVE_AND_QUIT: &str = "保存して終了";
     const QUIT_WITHOUT_SAVING: &str = "保存せず終了";
 
@@ -177,7 +174,7 @@ fn ask_then_quit<R: Runtime>(app: AppHandle<R>) {
 /// ここで直接止めないのは、`CloseRequested` の `api` を持ち回すとこの関数がイベント型に依存し、テストから呼べなくなるためである。
 pub fn on_close_requested<R: Runtime>(app: &AppHandle<R>) -> bool {
     if !stashes_on_close(app) {
-        // `"exit"` 設定。保存だけしてそのまま閉じさせる（従来の挙動）。
+        // `"exit"` 設定。保存だけしてそのまま閉じさせる（OS の標準の挙動）。
         save_window_state(app);
         return false;
     }

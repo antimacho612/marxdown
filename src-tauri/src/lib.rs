@@ -1,6 +1,6 @@
 //! Marxdown Core (Rust)
 //!
-//! 責務は 02.architecture/README.md 原則 C の 3 つに限定する。
+//! 責務は 02.architecture/01-principles.md 原則 C の 3 つに限定する。
 //!
 //! - ファイル I/O（速く、安全に、原子的に）
 //! - OS 統合（CLI 引数、関連付け、単一インスタンス、ウィンドウ）
@@ -36,12 +36,12 @@ use tauri::{Emitter, Manager};
 
 /// 別インスタンスから転送された起動要求（ADR-0004）。
 ///
-/// 02.architecture/05-startup-sequence.md §2 のウォーム起動。
+/// 02.architecture/05-startup-sequence.md §3 のウォーム起動。
 /// この経路には WebView の初期化もバンドルの評価も Svelte のマウントも含まれない。
 #[derive(Debug, Clone, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct OpenRequest {
-    /// この要求の計測 ID。フロントは描画完了後に `warm_done` へ返す（S6）。
+    /// この要求の計測 ID。フロントは描画完了後に `warm_done` へ返す。
     pub request_id: u64,
     pub paths: Vec<String>,
     pub new_window: bool,
@@ -76,7 +76,7 @@ pub fn forward_open<R: tauri::Runtime>(app: &tauri::AppHandle<R>, paths: Vec<Str
 ///
 /// カスタムタイトルバーであるため、`□` と `❐` の描き分けはフロントが担当する。
 /// 変化したときだけ通知する。
-/// `Resized` はドラッグ中に毎フレーム発火するため、そのまま流すと不要な IPC が積み上がる。
+/// `Resized` はドラッグ中に毎フレーム発火するため、そのまま送ると不要な IPC が蓄積する。
 pub const EVENT_WINDOW_MAXIMIZED: &str = "marxdown://window-maximized";
 
 /// トレイメニューの「Marxdown を開く」。フロントの `openViaDialog` に載せる。
@@ -88,7 +88,7 @@ pub const EVENT_TRAY_OPEN: &str = "marxdown://tray-open";
 
 /// トレイから復帰した瞬間（ADR-0007「計測項目」の Tray Resume）。
 ///
-/// Warm Start（20.0ms）とは別の経路である。
+/// Warm Start とは別の経路である。
 /// Warm Start はウィンドウが可視のまま argv 転送を受けた場合の値で、こちらはサスペンドされた WebView が復帰して表示されるまでを測る。
 /// 同じ指標として比較すると判断を誤る。
 pub const EVENT_TRAY_RESUME: &str = "marxdown://tray-resume";
@@ -119,15 +119,13 @@ pub fn run() {
         return;
     }
 
-    // OQ-18 の切り分け用（`--gc-probe`）。
-    //
-    // 「`huge.md` を閉じてもメモリが解放されない」の候補 1 は「Blink / V8 が未回収なだけ」である。
-    // これを検証するには強制 GC の後で測定する必要があるが、既定の WebView2 に `gc()` は無い。
+    // `--gc-probe`: メモリ計測で強制 GC を使うための経路（05.performance-budget/05-operations.md §3）。
+    // 閉じた文書のメモリが解放されるかを確かめるには強制 GC の後で測る必要があるが、既定の WebView2 に `gc()` は無い。
     //
     // 既定では渡さない。
     // `--expose-gc` は本番で有効にする理由が無く、実行中のスクリプトから GC を呼べる経路を常設することになる。
     //
-    // ウィンドウ生成より前に置くこと。WebView2 は環境変数を初期化時に読む。
+    // WARNING: ウィンドウ生成より前に置くこと。WebView2 は環境変数を初期化時に読む。
     if args.gc_probe {
         std::env::set_var(
             "WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS",
@@ -148,12 +146,12 @@ pub fn run() {
     let restore_window = store_data.window;
 
     // 設定も同じ理由でここで読む。
-    // 表示に影響する値（テーマ / 本文幅 / フォント / 配色）は本文を描画するより前に適用されている必要があり、後から適用すると FOUC になる（02.architecture/05-startup-sequence.md §1 の判断基準）。
+    // 表示に影響する値（テーマ / 本文幅 / フォント / 配色）は本文を描画するより前に適用されている必要があり、後から適用すると FOUC になる（02.architecture/05-startup-sequence.md §2 の判断基準）。
     // 読むのは 1KB 未満のファイル 1 枚である。
     //
-    // 廃止したカスタム CSS（`preview.css` / `editor.css`）から `themes/` への移行（ADR-0014 §3.5）は設定を読むより前に行う。
-    // 常時適用だった 1 枚が選択制になるため、移行しただけでは配色が外れる。
-    // 既定のままであれば移行先を選んだ状態にして、見た目を変えずに引き継ぐ。
+    // 古いバージョンが使っていたカスタム CSS（`preview.css` / `editor.css`）を `themes/` へ移す。設定を読むより前に行う。
+    // 常時適用されていた 1 枚が選択制の配色になるため、移すだけでは配色が外れる。
+    // 設定が既定のままであれば移した先を選んだ状態にして、見た目を引き継ぐ。
     let migrated = themes::migrate_legacy_css(&context.config().identifier);
 
     let settings_path = settings::settings_path(&context.config().identifier);
@@ -169,20 +167,20 @@ pub fn run() {
             settings_data.values.editor_theme = themes::MIGRATED_EDITOR_ID.to_owned();
             changed = true;
         }
-        // 書けなくても続ける。この起動のあいだは移行先が当たり、次の起動で既定に戻るだけである。
+        // 書けなくても続ける。この起動のあいだは移した先が適用され、次の起動で既定に戻るだけである。
         if let (true, Some(path)) = (changed, settings_path.as_deref()) {
             let _ = settings::save(path, &settings_data.values);
         }
     }
 
-    // 配色の置き場所。ディレクトリが存在しないと、後から置かれたファイルを監視で拾えない。
+    // 配色の置き場所。ディレクトリが存在しないと、後から置かれたファイルを監視で検出できない。
     let themes_dir = themes::themes_dir(&context.config().identifier);
     if let Some(dir) = themes_dir.as_deref() {
         let _ = std::fs::create_dir_all(dir);
     }
 
     // プレビューで選ばれている 1 枚だけを bootstrap へ載せる（ADR-0014）。
-    // プレビューは起動直後から見えている面であり、後から当てると既定の配色で初回フレームが描かれる。
+    // プレビューは起動直後から見えている面であり、後から適用すると既定の配色で初回フレームが描かれる。
     // 読み取りは WebView 初期化と並行するため、クリティカルパスの時間は実質増えない（02.architecture/05-startup-sequence.md §1）。
     //
     // エディター側は載せない。
@@ -297,9 +295,7 @@ pub fn run() {
             let state = app.state::<state::AppState>();
             state.trace.mark("T2b", None);
 
-            // bootstrap で開いた初期ドキュメントは IPC（read_document）を経由しないため、
-            // ここで改めて Tauri 本体の asset プロトコルスコープに登録しないと
-            // 最初に開いたファイルの相対パス画像が 403 になる。
+            // bootstrap で開いた初期ドキュメントは IPC（read_document）を経由しないため、ここで改めて Tauri 本体の asset プロトコルスコープに登録しないと最初に開いたファイルの相対パス画像が 403 になる。
             for root in state.asset_roots() {
                 let _ = app.asset_protocol_scope().allow_directory(root, true);
             }
@@ -324,8 +320,7 @@ pub fn run() {
             #[cfg(not(windows))]
             let _ = main;
 
-            // 監視の登録は T3 の後。ここから先は「本文が読める」までの経路に載らない
-            // （02.architecture/05-startup-sequence.md §1 の判断基準: IPC を伴わず、遅れても最悪 300ms 反映が遅れるだけ）。
+            // 監視の登録は T3 の後。ここから先は「本文が読める」までの経路に載らない（02.architecture/05-startup-sequence.md §2 の判断基準: IPC を伴わず、遅れても最悪 300ms 反映が遅れるだけ）。
             //
             // 開いているドキュメントの登録はフロントが `watch_path` で行う。
             // `settings.json` だけは Rust 側で登録する。
@@ -334,7 +329,7 @@ pub fn run() {
                 app.state::<watch::FileWatcher>()
                     .watch(path, watch::Role::Settings);
             }
-            // 配色のディレクトリも同じ扱い（ADR-0014「外部エディターで編集されたら即反映」）。
+            // 配色のディレクトリも同じ扱い（02.architecture/10-theming.md §3.4）。
             // 中身が増減しても編集されても読み直す。
             if let Some(path) = state.themes_dir() {
                 app.state::<watch::FileWatcher>()
@@ -368,8 +363,8 @@ pub fn run() {
             // `✕` / `Alt+F4`（ADR-0007 論点 2）。
             //
             // 何が起きるかの判断は `close.rs` に集約してあり、ここでは中断するかどうかだけを扱う。
-            // ウィンドウ位置の保存（F-CONF-10）も `close.rs` へ移した。
-            // 格納でも終了でも保存が必要になり（論点 11）、このイベントだけに置いておけなくなったためである。
+            // ウィンドウ位置の保存（F-CONF-10）も `close.rs` が行う。
+            // 格納でも終了でも保存が必要であり（ADR-0007 論点 11）、このイベントだけでは足りないためである。
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {
                 if close::on_close_requested(window.app_handle()) {
                     api.prevent_close();

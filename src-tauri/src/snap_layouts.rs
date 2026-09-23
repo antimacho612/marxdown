@@ -5,20 +5,19 @@
 //! `Win+←` などキーボードによるスナップは装飾を切っても機能する（`WS_THICKFRAME` と `WS_MAXIMIZEBOX` が残るため）。
 //! ここで補うのはマウスでの Snap Layouts だけである。
 //!
-//! 最初の実装は親ウィンドウを `SetWindowSubclass` して `WM_NCHITTEST` に `HTMAXBUTTON` を返していたが、Microsoft の手順どおりのこの構成では機能しなかった（実測）。
-//! `SendMessage(hwnd, WM_NCHITTEST, ...)` で確かめると、親ウィンドウは最大化ボタンの上で正しく `HTMAXBUTTON`（9）を返していたが、それでもフライアウトは表示されない。
-//! 機能しない理由は、クライアント領域全体を WebView2 の子ウィンドウが覆っているためである。
+//! 親ウィンドウを `SetWindowSubclass` して `WM_NCHITTEST` に `HTMAXBUTTON` を返すだけでは、Microsoft の手順どおりでもフライアウトは表示されない。
+//! クライアント領域全体を WebView2 の子ウィンドウが覆っているためである。
 //! シェルがフライアウトの判定に使うのはカーソル直下の最も深いウィンドウのヒットテストであり、そこに位置するのは WebView2 の子（`HTCLIENT` を返す）である。
 //! 親が返す `HTMAXBUTTON` は自分あてのマウスメッセージの経路を変えるだけで、シェルの判定対象には含まれない。
 //!
-//! そこで最大化ボタンとぴったり重なる `WS_CHILD` を 1 枚作り、そのウィンドウ自身が `WM_NCHITTEST` に `HTMAXBUTTON` を返す形にした。
+//! HACK: 最大化ボタンとぴったり重なる `WS_CHILD` を 1 枚作り、そのウィンドウ自身が `WM_NCHITTEST` に `HTMAXBUTTON` を返す。
 //! これでカーソル直下の最も深いウィンドウが `HTMAXBUTTON` を返す状態になり、シェルがフライアウトを表示する。
-//! Tauri 界隈で動いている実装（`tauri-plugin-frame` / `tauri-plugin-decoration`）はいずれもこの形を採っている。
-//! tauri#4531 が `upstream` のまま閉じていないのも同じ理由である。
+//! Tauri 向けの既存実装（`tauri-plugin-frame` / `tauri-plugin-decoration`）も同じ形を採っている。
+//! Tauri 本体はこの経路を提供していない（tauri#4531）。
 //!
 //! このモジュールが無くても他の機能は全部動く。
 //! 失敗したら何もしないで戻る（`install` の返り値は無視してよい）。
-//! そのときに起きるのは「最大化ボタンにホバーしてもフライアウトが表示されない」ことだけで、ボタン自体はフロントの `<button>` として今までどおり押せる。
+//! そのときに起きるのは「最大化ボタンにホバーしてもフライアウトが表示されない」ことだけで、ボタン自体はフロントの `<button>` として通常どおり押せる。
 //!
 //! 実装の要点は次のとおりである。
 //! オーバーレイは矩形が届くまで表示しない（`WS_VISIBLE` を付けずに作成する。壊れたときの最悪の結果を「フライアウトが表示されない」に限定し、「見当違いの場所が押せなくなる」を防ぐため）。
@@ -28,7 +27,7 @@
 //!
 //! ホバー時の描画が自前で必要になるのは、オーバーレイが被った領域には WebView のマウスイベントが届かず、CSS の `:hover` が機能しなくなるためである。
 //! 最大化ボタンだけ反応しないのは目立つため、出入りしたときだけ `marxdown://maximize-hover` を送ってフロント側に描画させる。
-//! クリックも同じ理由で `onclick` が発火しない（キーボードからは今までどおり発火する）。
+//! クリックも同じ理由で `onclick` が発火しない（キーボードからは通常どおり発火する）。
 #![cfg(windows)]
 
 use std::ffi::c_void;
@@ -77,7 +76,7 @@ pub struct SnapTarget {
     rect: AtomicU64,
     hovered: AtomicBool,
     /// オーバーレイの上で押し下げたか。
-    /// 押した場所と離した場所が一致したときだけ最大化する（Windows の作法）。
+    /// 押した場所と離した場所が一致したときだけ最大化する（Windows の標準の挙動）。
     pressed: AtomicBool,
     /// オーバーレイを作り終えたか。
     /// 受け皿の生成（`prepare`）と作成（`install`）が別のタイミングであるため、状態の有無では代用できない。
@@ -207,9 +206,9 @@ pub fn prepare(app: &tauri::AppHandle, window: &WebviewWindow) {
 /// オーバーレイを作る。失敗しても呼び出し側で対処する必要はない。
 ///
 /// `setup()` から呼んではいけない。
-/// `hwnd()` はイベントループへ問い合わせるゲッターであり、ループが動き出す前は結果が返らない（実測で失敗した）。
+/// `hwnd()` はイベントループへ問い合わせるゲッターであり、ループが動き出す前は結果が返らない。
 /// `ready` コマンドの中、`show()` の後に呼ぶこと。
-/// ここで行うのは Win32 の呼び出し数回だけであり、本文が読める時点に間に合う必要もない（02.architecture/05-startup-sequence.md §1 の判断基準）。
+/// ここで行うのは Win32 の呼び出し数回だけであり、本文が読める時点に間に合う必要もない（02.architecture/05-startup-sequence.md §2 の判断基準）。
 pub fn install(app: &tauri::AppHandle) {
     let Some(state) = tauri::Manager::try_state::<Arc<SnapTarget>>(app) else {
         // `prepare` が呼ばれていない。
@@ -232,7 +231,7 @@ pub fn install(app: &tauri::AppHandle) {
 
     register_class();
 
-    // プロシージャへ渡す参照。オーバーレイの `WM_NCDESTROY` で `Arc::from_raw` して落とす。
+    // プロシージャへ渡す参照。オーバーレイの `WM_NCDESTROY` で `Arc::from_raw` して解放する。
     let raw = Arc::into_raw(Arc::clone(&target)) as *const c_void;
 
     // `WS_VISIBLE` を付けない。矩形が届いて `reposition` が呼ばれるまでは表示しない。
@@ -304,7 +303,7 @@ fn register_class() {
             cbSize: std::mem::size_of::<WNDCLASSEXW>() as u32,
             lpfnWndProc: Some(overlay_proc),
             hInstance: instance.into(),
-            // 背景ブラシがあると本文の描画が隠れるため、塗らせない。
+            // 背景ブラシがあると本文の描画が隠れるため、描画させない。
             hbrBackground: HBRUSH(unsafe { GetStockObject(NULL_BRUSH) }.0),
             lpszClassName: OVERLAY_CLASS,
             ..Default::default()
@@ -379,7 +378,7 @@ unsafe extern "system" fn overlay_proc(
             LRESULT(0)
         }
 
-        // 塗ると WebView が描いた最大化ボタンの表示が隠れるため、何もしない。
+        // 描画すると WebView が描いた最大化ボタンの表示が隠れるため、何もしない。
         WM_ERASEBKGND => LRESULT(1),
 
         WM_NCDESTROY => {

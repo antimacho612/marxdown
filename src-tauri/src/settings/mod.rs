@@ -12,7 +12,7 @@
 //! キーの形は VS Code と同じフラットなドット区切りである（F-CONF-06）。
 //! 素の JSON で、`version` は持たない。
 //! 破棄できないファイルに版管理は成立しないため、互換性はキー単位で保つ。
-//! 欠けているキーは既定値を使い、未知のキーは保持して書き戻す（旧バージョンで開いて保存したときに新しいキーが消えないようにする。手書きの実験的なキーも消さない）。
+//! 欠けているキーは既定値を使い、未知のキーは保持して書き戻す（古いバージョンで開いて保存したときに新しいキーが消えないようにする。手書きの実験的なキーも消さない）。
 
 mod schema;
 
@@ -68,7 +68,7 @@ pub fn load(path: Option<&Path>) -> SettingsLoad {
         Ok(text) => text,
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => return SettingsLoad::default(),
         // 読めない理由が「無い」以外なら、書けもしない可能性が高い。
-        // 既定値で動かしつつ、上書きは避ける側に倒す。
+        // 既定値で動かしつつ、上書きは避ける。
         Err(e) => return broken(path, e.to_string()),
     };
 
@@ -135,7 +135,7 @@ mod tests {
         std::fs::remove_dir_all(&d).ok();
     }
 
-    /// 02.architecture/04-rust-responsibilities.md §5 の中心。壊れたファイルは**読まないだけで、触らない**。
+    /// 02.architecture/04-rust-responsibilities.md §5 の中心。壊れたファイルは読まないだけで、触らない。
     #[test]
     fn a_corrupt_file_falls_back_to_defaults_without_touching_the_file() {
         let d = temp_dir("corrupt");
@@ -163,7 +163,7 @@ mod tests {
     }
 
     /// 02.architecture/04-rust-responsibilities.md §5「未知のキーは保持して書き戻す」。
-    /// 旧バージョンで開いて保存したときに、新しいキーが消えないようにする。
+    /// 古いバージョンで開いて保存したときに、新しいキーが消えないようにする。
     #[test]
     fn unknown_keys_survive_a_write() {
         let d = temp_dir("unknown");
