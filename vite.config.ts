@@ -274,7 +274,7 @@ export default defineConfig(({ mode }) => ({
            * そちらは起動時に読まれないので予算に対して過大評価になるが、見落とすより安全な側を選ぶ。
            */
           const hasFacade = chunk.facadeModuleId !== null && chunk.facadeModuleId !== undefined;
-          if (!hasFacade && chunk.name !== 'editor') {
+          if (!hasFacade) {
             return 'assets/shared-[hash].js';
           }
 
