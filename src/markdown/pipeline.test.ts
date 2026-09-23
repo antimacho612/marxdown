@@ -26,7 +26,7 @@ describe('CommonMark / GFM', () => {
   });
 
   it('既定では単独の改行を <br> にしない', () => {
-    // CommonMark 準拠。`preview.softBreak` を true にすると LLM 生成の折り返しが全部改行になる（#45）。
+    // CommonMark 準拠。`preview.softBreak` を true にすると LLM 生成の折り返しが全部改行になる。
     expect(render('a\nb').html).not.toContain('<br>');
   });
 
@@ -182,9 +182,8 @@ describe('OQ-27 で前倒した記法 (06.roadmap/m2-editor.md §1.4)', () => {
   });
 
   it('Alerts にも data-line が付く（スクロール同期の基盤）', () => {
-    // `alert_open` は `blockquote_open` を書き換えて作られるうえ、
-    // レンダラがトークンの属性を見ない。ここが落ちると Split の同期が
-    // アラートの上で飛ぶ（plugins/line-map.ts）。
+    // `alert_open` は `blockquote_open` を書き換えて作られるうえ、レンダラがトークンの属性を見ない。
+    // ここで `data-line` が欠けると、Split の同期がアラートの上で位置を失う（plugins/line-map.ts）。
     const { html } = render('段落\n\n> [!NOTE]\n> 本文\n');
     expect(html).toContain('<div data-line="2" class="markdown-alert');
   });
@@ -235,7 +234,7 @@ describe('OQ-27 で前倒した記法 (06.roadmap/m2-editor.md §1.4)', () => {
   });
 
   it('タスクリストの li にも data-line が残る', () => {
-    // プラグインは `list_item_open` の class を書き換える。data-line まで巻き添えにしていないことを見張る。
+    // プラグインは `list_item_open` の class を書き換える。data-line まで書き換えていないことを検証する。
     expect(render('- [ ] a\n').html).toContain('data-line="0"');
   });
 });
@@ -292,7 +291,7 @@ describe('数式のプレースホルダ (F-VIEW-13)', () => {
   });
 
   it('通貨の表記を数式にしない', () => {
-    // 終了記号の直前が空白であるか、直後が数字であるものを弾く。
+    // 終了記号の直前が空白であるか、直後が数字であるものを除外する。
     expect(render('$5 と $10 です').html).not.toContain('mx-math');
     expect(render('$5$10').html).not.toContain('mx-math');
   });
@@ -312,7 +311,7 @@ describe('数式のプレースホルダ (F-VIEW-13)', () => {
   });
 
   it('閉じていない $$ は本文のまま残す', () => {
-    // 末尾まで飲み込む実装にすると、記号を 1 つ書き損なっただけで以降の本文が消える。
+    // 末尾まで取り込む実装にすると、記号を 1 つ書き損なっただけで以降の本文が消える。
     const { html } = render('$$\na = b\n\n次の段落\n');
     expect(html).not.toContain('mx-math');
     expect(html).toContain('次の段落');

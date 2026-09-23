@@ -2,8 +2,7 @@
 /**
  * サニタイズの回帰テスト（ADR-0006 / N-SEC-01）。
  *
- * 中心ユースケースが「LLM が生成した、自分が書いていないファイルを開く」である以上、
- * ここは**攻撃者が書いた Markdown**を前提に書く。
+ * 中心ユースケースが「LLM が生成した、自分が書いていないファイルを開く」である以上、ここは攻撃者が書いた Markdown を前提に書く。
  */
 import { describe, expect, it } from 'vitest';
 
@@ -40,7 +39,7 @@ describe('スクリプト実行経路を塞ぐ', () => {
   });
 
   it('Markdown 記法の javascript: リンクはリンクにすらならない', () => {
-    // markdown-it 自身の validateLink が先に弾く（Layer 2）。
+    // markdown-it 自身の validateLink が先に除外する（Layer 2）。
     // 結果はリンクではなく素のテキストになる。
     const out = pipeline('[click](javascript:alert(1))');
     expect(out).not.toContain('<a');
@@ -113,7 +112,7 @@ describe('正当な内容は壊さない', () => {
     ['エンコード済み', 'img/%E3%81%82.png'],
   ])('相対パスの画像を残す: %s', (_name, href) => {
     // resolve_asset が後でスコープ検証する（N-SEC-05）。
-    // ここで落とすと、最も普通の書き方の画像が全部消える。
+    // ここで除去すると、最も普通の書き方の画像が全部消える。
     const out = pipeline(`![alt](${href})`);
     expect(out).toContain(href);
     expect(out).not.toContain('data-mx-blocked');
@@ -162,7 +161,7 @@ describe('リンクの後処理', () => {
   });
 
   it('落とした参照に痕跡を残す', () => {
-    // 黙って消すと「なぜ表示されないのか」が分からなくなる
+    // 痕跡を残さずに消すと「なぜ表示されないのか」が分からなくなる
     expect(pipeline('<img src="ftp://example.com/a.png">')).toContain('data-mx-blocked');
   });
 
@@ -173,8 +172,7 @@ describe('リンクの後処理', () => {
   });
 
   it('srcset の候補が全滅したら属性ごと落として痕跡を残す', () => {
-    // ftp: は DOMPurify 自身は落とさない（こちらの許可リストのほうが狭い）ため、
-    // フックまで値が届くことを確認できる
+    // ftp: は DOMPurify 自身は除去しない（こちらの許可リストのほうが狭い）ため、フックまで値が届くことを確認できる
     const out = pipeline('<img src="a.png" srcset="ftp://example.com/a.png 1x, ftp://example.com/b.png 2x">');
     expect(out).not.toContain('srcset=');
     expect(out).toContain('data-mx-blocked');
@@ -183,8 +181,7 @@ describe('リンクの後処理', () => {
 
 describe('input は 1 つも通さない (F-VIEW-01 / OQ-05)', () => {
   it('タスクリストのチェックボックスは span で出る', () => {
-    // OQ-05 で操作を許可した結果、`<input>` に例外を設ける理由が無くなった
-    // （`markdown/plugins/task-list.ts`）。
+    // タスクリストは `<input>` を出さないため、`<input>` に例外を設ける理由が無い（`markdown/plugins/task-list.ts`）。
     const out = pipeline('- [ ] 未完了\n- [x] 完了\n');
     expect(out).not.toContain('<input');
     expect(out).toContain('role="checkbox"');
@@ -205,7 +202,7 @@ describe('input は 1 つも通さない (F-VIEW-01 / OQ-05)', () => {
   });
 
   it('生 HTML の span は残るが、行が対応しなければ操作しても何も起きない', () => {
-    // 落とす理由が無い span を落とすと、本文の普通の記述まで消える。
+    // 除去する理由が無い span を除去すると、本文の普通の記述まで消える。
     // 押しても何も起きないことは `features/preview/task.ts` と `document/task.ts` が担保する。
     expect(pipeline('<span class="mx-task" role="checkbox"></span>')).toContain('mx-task');
   });

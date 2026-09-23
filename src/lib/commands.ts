@@ -1,10 +1,10 @@
 /**
- * コマンドレジストリ（06.roadmap/m2-editor.md §1.2）。
+ * コマンドレジストリ。
  *
  * 仕組みだけを持ち、どんなコマンドがあるかは知らない（`lib/` 共有層）。
- * 実体を並べた表は唯一の登録元 `app/commands.ts` にあり、呼ぶ側（`features/menu` / 将来のパレット）はこのモジュールを介すことで `app/` を import せずに済む。
+ * 実体を並べた表は唯一の登録元 `app/commands.ts` にあり、呼ぶ側（`features/menu` / `features/palette`）はこのモジュールを介すことで `app/` を import せずに済む。
  *
- * クリティカルパスに載るのは `id` と `run` の表だけである（§1.2 の制約）。
+ * クリティカルパスに載るのは `id` と `run` の表だけである。
  * ラベル等は呼び出し側の遅延チャンクに置く。
  */
 
@@ -63,15 +63,13 @@ export interface Command {
    */
   run: (target?: string) => void;
   /**
-   * 一覧（メニュー / 将来のパレット）に出すか。省略は「常に出す」。
+   * 一覧（メニュー / コマンドパレット）に出すか。省略は「常に出す」。
    *
    * 押しても何も起きない項目を並べないという判断（Principle 3）をここに集約する。
    * メニューもパレットも、この 1 つを見れば同じ結論になる。
    *
    * 実行そのものは妨げない。`runCommand` はこの値を参照しない。
    * キーバインドは一覧に出ていなくても動作する（`F5` は文書が無くても既定動作を止める必要がある）。
-   *
-   * TODO: 一覧とキーで判定を揃えるかどうかは UX の決定であり、M3 のパレット（F-NAV-06）で決める。
    */
   isListed?: () => boolean;
 }
@@ -97,8 +95,7 @@ export function registerCommands(commands: Command[]): () => void {
  * 実行する。登録が無ければ何もしない。
  *
  * `isListed` は参照しない（一覧に出ないコマンドもキーから呼べる）。
- * 何もしなかった場合も返り値は `undefined` のままで、呼び出し側（`bindKeys`）が `preventDefault()` する動作は変わらない
- * （`F5` を WebView へ渡さないという要件がこれに依存している）。
+ * 何もしなかった場合も返り値は `undefined` のままで、呼び出し側（`bindKeys`）が `preventDefault()` する動作は変わらない（`F5` を WebView へ渡さないという要件がこれに依存している）。
  */
 export function runCommand(id: CommandId, target?: string): void {
   registry.get(id)?.run(target);

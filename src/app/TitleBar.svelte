@@ -1,6 +1,6 @@
 <!--
   カスタムタイトルバー（03.ux-spec/01-screen-layout.md §1）。
-  `decorations: false`（`src-tauri/src/window.rs`）により、この 1 行が OS タイトルバーの代わりになる（06.roadmap/m1.5-shell-and-settings.md §2）。
+  `decorations: false`（`src-tauri/src/window.rs`）により、この 1 行が OS タイトルバーの代わりになる。
   中央領域は `center` スニペットとして外部に公開してあり、タブストリップはここへ差し込む（`shell.css` の grid は変更不要）。
   `data-tauri-drag-region="deep"` により、掴めばネイティブドラッグ、ダブルクリックで最大化になる（`<button>` は自動的に除外される）。
   ボタン以外の要素を含む開いたメニューパネルは `MenuButton.svelte` 側でドラッグ領域から除外している。
@@ -16,11 +16,10 @@
   interface Props {
     /**
      * 中央領域。タブストリップ（`features/workspace/TabStrip.svelte`）が入る。
-     * 1 枚でも差し込むため、渡されないのは 1 つも開いていないときだけである（issue #145）。
+     * 1 枚でも差し込むため、渡されないのは 1 つも開いていないときだけである。
      * そのときはアプリ名を表示する。
      *
-     * `undefined` を明示的に渡せる形にしてある。差し込む側は「1 枚でもあるか」で切り替えるため、
-     * 省略ではなく `undefined` の代入になる（`exactOptionalPropertyTypes`）。
+     * `undefined` を明示的に渡せる形にしてある。差し込む側は「1 枚でもあるか」で切り替えるため、省略ではなく `undefined` の代入になる（`exactOptionalPropertyTypes`）。
      */
     center?: Snippet | undefined;
   }

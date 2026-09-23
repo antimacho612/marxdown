@@ -1,11 +1,9 @@
 /**
- * 既定テーマのコントラスト比を機械的に見張る。
+ * 既定テーマのコントラスト比を機械的に検証する。
  *
- * 03.ux-spec/10-accessibility.md が「コントラスト比 4.5:1 以上（既定テーマ）」と定めているが、
- * 色を目視で足すと必ずどこかが落ちる。実際、`fg-subtle` はライトで 3.08:1 まで下がっていた。
+ * 03.ux-spec/10-accessibility.md が「コントラスト比 4.5:1 以上（既定テーマ）」と定めているが、色を目視で足すと必ずどこかが下回る。
  *
- * `tokens.css` を読んで実際の値を突き合わせる。JS 側に値を書き写すと二重管理になる
- * （Storybook が `tokens.css` をそのまま読んでいるのと同じ理由）。
+ * `tokens.css` を読んで実際の値を突き合わせる。JS 側に値を書き写すと二重管理になる（Storybook が `tokens.css` をそのまま読んでいるのと同じ理由）。
  */
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -61,7 +59,7 @@ function block(selector: string): string {
   return SOURCE.slice(open, SOURCE.indexOf('\n}', open));
 }
 
-/** 宣言ブロックから `--mx-color-*` を拾う。`var()` の別名は解決しない（実体だけを見る）。 */
+/** 宣言ブロックから `--mx-color-*` を取り出す。`var()` の別名は解決しない（実体だけを見る）。 */
 function colors(source: string): Map<string, string> {
   const found = new Map<string, string>();
   for (const [, name, value] of source.matchAll(/--mx-color-([\w-]+):\s*(#[0-9a-f]{6})\s*;/gi)) {
@@ -114,7 +112,7 @@ describe.each([
 });
 
 /**
- * `--mx-color-alert-*` の色相。`oklch(from var(--mx-color-accent) l c <色相>)` の形だけを拾う。
+ * `--mx-color-alert-*` の色相。`oklch(from var(--mx-color-accent) l c <色相>)` の形だけを対象にする。
  *
  * `note` は accent そのものなのでここには現れない（TEXT_PAIRS の `accent` on `bg` が見ている）。
  */
@@ -145,8 +143,7 @@ function toOklch(hex: string): { lightness: number; chroma: number } {
 /**
  * OKLCh を sRGB の 16 進表記へ。
  *
- * 色域外は素直に切り詰める。ブラウザは CSS Color 4 の色域圧縮を行うが、
- * ここで見たいのはコントラスト比であり、既定テーマの 4 色はどちらの方法でも同じ値になることを確かめてある。
+ * 色域外は素直に切り詰める。ブラウザは CSS Color 4 の色域圧縮を行うが、ここで見たいのはコントラスト比であり、既定テーマの 4 色はどちらの方法でも同じ値になることを確かめてある。
  */
 function fromOklch(lightness: number, chroma: number, hue: number): string {
   const radians = (hue * Math.PI) / 180;
@@ -177,7 +174,7 @@ describe.each([
   ['ダーク', DARK],
 ])('%s テーマの GitHub Alerts (ADR-0015)', (_name, theme) => {
   it('preview.css が 4 色の色相を宣言している', () => {
-    // 宣言の形が変わって正規表現が空振りすると、以下の検査が 0 件になって黙って通る。
+    // 宣言の形が変わって正規表現が一致しなくなると、以下の検査が 0 件になって失敗せずに通る。
     expect(ALERT_HUES.map(([name]) => name).toSorted()).toEqual(['caution', 'important', 'tip', 'warning']);
   });
 

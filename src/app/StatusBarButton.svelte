@@ -6,8 +6,7 @@
 押しても何も起きない項目はボタンとして表示しない（BOM・読み取り専用・カーソル位置・文字数は `<span>` のままにする）。
 
 見た目をこの 1 か所に閉じるための部品である。
-使う側が `StatusBar` と `StatusMenuButton` の 2 つに分かれているため、以前は `styles/shell.css` にグローバルなクラスとして置いてあった。
-部品にすることで、コンポーネント固有の CSS は `src/styles/` に置かないという方針（02.architecture/03-layers.md）に戻せる。
+使う側が `StatusBar` と `StatusMenuButton` の 2 つに分かれていても、コンポーネント固有の CSS を `src/styles/` に置かずに済む（02.architecture/03-layers.md §4）。
 
 属性はそのまま渡す。
 メニューを開く側は `aria-haspopup` / `aria-expanded` と `onkeydown` を、押すだけの側は `title` と `onclick` だけを渡す。
@@ -40,7 +39,7 @@
   /*
    * バーの高さいっぱいを取る（`align-self: stretch`）。
    *
-   * 字面ぶんの高さ（実測 14.8px）しか無いと、最大化したときに画面の下端が当たり判定にならない。
+   * 字面ぶんの高さ（約 15px）しか無いと、最大化したときに画面の下端が当たり判定にならない。
    * 端まで動かすだけで到達できることは、`app/CaptionButton.svelte` が右上で成立させているのと同じ話である。
    * 角丸を付けないのも同じ理由で、上下の端まで押せる面にする。
    */

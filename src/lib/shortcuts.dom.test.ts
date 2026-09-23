@@ -66,7 +66,7 @@ describe('bindKeys', () => {
   });
 
   it('CodeMirror の編集面（contenteditable）でも発火する', () => {
-    // ここが発火しないと、Edit モードで `Ctrl+S` も倍率も効かなくなる。
+    // ここが発火しないと、Edit モードで `Ctrl+S` も倍率も動作しなくなる。
     // エディターと取り合うキーは `features/editor/lazy/keymap.ts` の側で外してある。
     const run = vi.fn();
     bindKeys([{ key: 'Ctrl+S', run }]);

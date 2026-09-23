@@ -30,11 +30,10 @@ afterEach(() => {
 
 describe('コマンドレジストリ (06.roadmap/m2-editor.md §1.2)', () => {
   /**
-   * **2 つの表がずれていないこと。**
+   * 2 つの表がずれていないこと。
    *
-   * `key → id` と `id → run` を分けた以上、id を書き換えたときに片方だけ直す
-   * 事故が起きうる。型は `CommandId` までしか守ってくれない（存在しない id を
-   * キーに割り当てても、押したときに黙って何も起きないだけになる）。
+   * `key → id` と `id → run` を分けてあるため、id を書き換えたときに片方だけ直す漏れが起きうる。
+   * 型は `CommandId` までしか検査しない（存在しない id をキーに割り当てても、押したときに何も起きないだけになる）。
    */
   it('割り当てたキーの id は、すべて登録されている', () => {
     const unregistered = KEY_BINDINGS.filter((binding) => !hasCommand(binding.id));
@@ -50,7 +49,7 @@ describe('コマンドレジストリ (06.roadmap/m2-editor.md §1.2)', () => {
 
   /**
    * Principle 3「Simple Means Low Cognitive Load」。
-   * **判定の唯一の根拠がここにある**（メニューもパレットもこれを引く）。
+   * 判定の唯一の根拠がここにある（メニューもパレットもこれを引く）。
    */
   it('文書を開いていないと、文書に対するコマンドは一覧に出ない', () => {
     expect(isCommandListed('document.reload')).toBe(false);
@@ -73,8 +72,7 @@ describe('コマンドレジストリ (06.roadmap/m2-editor.md §1.2)', () => {
 
   /**
    * 一覧に出ていない＝実行できない、ではない（`lib/commands.ts` の `Command`）。
-   * `F5` は文書が無くても WebView へ渡さずに飲み込む必要があり、
-   * そのためには**押されたときに登録済みのコマンドへ届く**ことが要る。
+   * `F5` は文書が無くても WebView へ渡さずに飲み込む必要があり、そのためには押されたときに登録済みのコマンドへ届くことが要る。
    */
   it('一覧に出ないコマンドも、実行そのものは妨げられない', () => {
     expect(isCommandListed('document.reload')).toBe(false);

@@ -1,12 +1,12 @@
 /**
- * 「このアプリで何ができるか」の唯一の表（06.roadmap/m2-editor.md §1.2）。
+ * 「このアプリで何ができるか」の唯一の表。
  *
- * 以前はキーバインドとメニューに別々の一覧が存在していた。
- * ここへ集約した結果、`features/menu` は `runCommand(id)` だけを呼べばよくなり、feature 同士が互いの関数名を知らずに済む。
+ * キーバインド・メニュー・コマンドパレットはすべてこの表を参照する。
+ * そのため `features/menu` は `runCommand(id)` だけを呼べばよく、feature 同士が互いの関数名を知らずに済む。
  * 登録元がここ（`app/`）にあるのは、各 feature を把握してよい composition root だからである。
  *
- * クリティカルパスに載るのは `id → run` と `key → id` の 2 表のみである（§1.2 の制約）。
- * ラベルは遅延チャンク側（`features/menu/lazy/items.ts`）に置いてある。
+ * クリティカルパスに載るのは `id → run` と `key → id` の 2 表のみである。
+ * ラベルは遅延チャンク側（`features/palette/lazy/catalog.ts`）に置いてある。
  */
 import {
   documentStore,
@@ -59,13 +59,12 @@ function hasTabs(): boolean {
  */
 const COMMANDS: Command[] = [
   // 新規ファイル（`Ctrl+N` / 03.ux-spec/04-keybindings.md §3）。何も開いていなくても実行できる。
-  // **新しいタブで開く**（M3 Phase 2b）。いまの文書はタブとして残るため、破棄の確認は要らない。
+  // 新しいタブで開く。いまの文書はタブとして残るため、破棄の確認は要らない。
   { id: 'document.new', run: () => void newUntitled() },
 
   { id: 'document.open', run: () => void openViaDialogSafely() },
 
-  // フォルダを開く（`Ctrl+Alt+O` / F-NAV-03）。ファイルツリーの基点を決める唯一の操作である
-  // （`marxdown <dir>` を除く）。文書を開いていなくても実行できる。
+  // フォルダを開く（`Ctrl+Alt+O` / F-NAV-03）。ファイルツリーの基点を決める唯一の操作である（`marxdown <dir>` を除く）。文書を開いていなくても実行できる。
   { id: 'folder.open', run: () => void openFolderSafely() },
 
   // 一覧（メニュー）には出さない。
@@ -80,7 +79,8 @@ const COMMANDS: Command[] = [
   },
 
   // クイックオープン（`Ctrl+P` / F-NAV-05）。実体は遅延チャンクにある。
-  // **文書を開いていなくても実行できる。** 基点が無くても最近開いたファイルは並ぶ。
+  // 文書を開いていなくても実行できる。
+  // 基点が無くても最近開いたファイルは並ぶ。
   { id: 'document.quickOpen', run: () => void openQuickOpenLazily() },
 
   { id: 'document.reload', run: () => void reloadCurrent(), isListed: hasDocument },
@@ -96,7 +96,7 @@ const COMMANDS: Command[] = [
   { id: 'document.toggleEol', run: () => toggleEol(), isListed: hasDocument },
 
   // 戻る / 進む（F-NAV-07）。辿れるときにしか一覧に出さない。
-  // 履歴はタブごとに分かれている（M3 Phase 2b）。対象は表示中のタブである。
+  // 履歴はタブごとに分かれている。対象は表示中のタブである。
   { id: 'history.back', run: () => void goBack(tabsStore.activeId), isListed: () => canGoBack(tabsStore.activeId) },
   {
     id: 'history.forward',
@@ -117,7 +117,7 @@ const COMMANDS: Command[] = [
   { id: 'explorer.show', run: () => void showExplorer() },
 
   // 見出しへジャンプ（03.ux-spec/04-keybindings.md §3「移動」）。実体は遅延チャンクにある。
-  // コマンドパレット（`Ctrl+Shift+P` / M3）ではなく、見出し専用である。
+  // コマンドパレット（`Ctrl+Shift+P`）ではなく、見出し専用である。
   { id: 'outline.jump', run: () => void openJumpLazily(), isListed: hasDocument },
 
   // 表示モードの切り替え（F-MODE-03, 06 / 03.ux-spec/02-view-modes.md §2）。
@@ -165,7 +165,8 @@ const COMMANDS: Command[] = [
   { id: 'palette.open', run: () => void openCommandPaletteLazily() },
 
   // 指定行へ移動（`Ctrl+G`）。実体は Monaco の組み込みアクションである。
-  // **Preview では一覧に出さない。** 行番号が見えていない面に「指定行へ移動」を並べても選べない。
+  // Preview では一覧に出さない。
+  // 行番号が見えていない面に「指定行へ移動」を並べても選べない。
   {
     id: 'editor.gotoLine',
     run: () => void gotoLineLazily(),
@@ -182,10 +183,9 @@ const COMMANDS: Command[] = [
 
   // タブ（F-NAV-01, 02 / 03.ux-spec/04-keybindings.md §3）。
   //
-  // 閉じるのは表示中のタブである。対象を取らないのは、キーもメニューも「いま見ているもの」を指すためで、
-  // 個別のタブを閉じるのは `✕`（`TabStrip.svelte`）が直接呼ぶ。
+  // 閉じるのは表示中のタブである。対象を取らないのは、キーもメニューも「いま見ているもの」を指すためで、個別のタブを閉じるのは `✕`（`TabStrip.svelte`）が直接呼ぶ。
   { id: 'tab.close', run: () => void closeCurrentTab(), isListed: hasDocument },
-  // 切り替えは 2 枚以上のときだけ意味を持つ。1 枚のときはタブバーも出ていない。
+  // 切り替えは 2 枚以上のときだけ意味を持つ。
   { id: 'tab.next', run: () => void cycleTab(1), isListed: hasTabs },
   { id: 'tab.previous', run: () => void cycleTab(-1), isListed: hasTabs },
   // n 番目のタブ。一覧には出さない（`Ctrl+1`〜`Ctrl+9` を 9 行並べても読めない）。
@@ -232,10 +232,10 @@ const RELOAD_KEYS = ['F5', 'Ctrl+R', 'Ctrl+Shift+R', 'Ctrl+F5', 'Shift+F5'];
  * キーと id の対応（03.ux-spec/04-keybindings.md §3）。
  *
  * アプリ全体で効くものだけを並べる（プレビュー内検索の `F3`/`Escape` のように開いている間だけ効くキーは、その機能のモジュールが自分で `bindKeys` する）。
- * クリティカルパスに載ってよい唯一の形であり（06.roadmap/m2-editor.md §1.2）、キーバインド設定はこの表を差し替える形で入る。
+ * クリティカルパスに載ってよい唯一の形であり、キーバインドのカスタマイズ（F-CONF-09）はこの表を差し替える形で入る。
  *
- * ここに書いたキーはどこにフォーカスがあっても効く。
- * 以前は Edit モードで `whenEditing: true` を個別に足していたが、境界を「入力中かどうか」ではなく「どちらの表に書いてあるか」に変えたことで例外が無くなった。
+ * ここに書いたキーはどこにフォーカスがあっても有効である。
+ * 境界は「入力中かどうか」ではなく「どちらの表に書いてあるか」であり、モードごとの例外を持たない（03.ux-spec/04-keybindings.md §4）。
  * この表と `features/editor/lazy/keymap.ts`（本文編集用）は重ならないよう、`keymap.ts` 側が重複キーを外している。
  */
 export const KEY_BINDINGS: KeyBinding[] = [
@@ -261,7 +261,6 @@ export const KEY_BINDINGS: KeyBinding[] = [
   ...RELOAD_KEYS.map((key) => ({ key, id: 'document.reload' as const })),
 
   // VS Code と同じ `Ctrl+,`（Familiar）。
-  // 03.ux-spec/04-keybindings.md §3 の一覧には無く、設定 UI と一緒に追加したキーである。
   { key: 'Ctrl+,', id: 'settings.open' },
 
   // Preview ⇄ 直前の編集モード（03.ux-spec/02-view-modes.md §2 の「最も使うトグル」）。
@@ -269,7 +268,7 @@ export const KEY_BINDINGS: KeyBinding[] = [
 
   // Split（F-MODE-03 / 03.ux-spec/02-view-modes.md §2）。
   // `Ctrl+\` は VS Code の「エディターを分割」に対応する（Familiar）。
-  // `Ctrl+Shift+M` は表示モードの順送りで、`keymap.ts` が `vscodeKeymap` の同じキーを外してある（Phase 3）。
+  // `Ctrl+Shift+M` は表示モードの順送りである。
   { key: 'Ctrl+\\', id: 'view.toggleSplit' },
   { key: 'Ctrl+Shift+M', id: 'view.cycleMode' },
 
@@ -281,27 +280,25 @@ export const KEY_BINDINGS: KeyBinding[] = [
   { key: 'Ctrl+Shift+O', id: 'outline.jump' },
 
   // コマンドパレット（F-NAV-06）。
-  // `Ctrl+Shift+P` は WebView の開発者ツールには割り当たっていないが（そちらは `Ctrl+Shift+I`）、
-  // 既定動作を止めておく点は他のキーと同じ扱いにする。
+  // `Ctrl+Shift+P` は WebView の開発者ツールには割り当たっていないが（そちらは `Ctrl+Shift+I`）、既定動作を止めておく点は他のキーと同じ扱いにする。
   { key: 'Ctrl+Shift+P', id: 'palette.open' },
 
   // クイックオープン（F-NAV-05）。
   // `Ctrl+P` は WebView 自身の印刷に割り当たっているため、既定動作を止めること自体に意味がある。
   { key: 'Ctrl+P', id: 'document.quickOpen' },
 
-  // 指定行へ移動（`Ctrl+G`）。Monaco 側の同じキーは `keymap.ts` が剥がしている。
+  // 指定行へ移動（`Ctrl+G`）。Monaco 側の同じキーは `keymap.ts` が外している。
   { key: 'Ctrl+G', id: 'editor.gotoLine' },
 
   // 戻る / 進む（F-NAV-07）。
   // 相対リンクで辿った先から戻るための経路で、スクロール位置も一緒に復元する（`features/history/navigate.ts`）。
   //
-  // Windows のエディターでは `Alt+←` は未使用である（`vscodeKeymap` は `Mod-ArrowLeft` に単語移動を割り当てており、`Alt` 側は macOS のみ）。
+  // Monaco の Windows のキー割り当てでは `Alt+←` は未使用である（単語移動は `Ctrl+←` で、`Alt` 側は macOS のみ）。
   { key: 'Alt+ArrowLeft', id: 'history.back' },
   { key: 'Alt+ArrowRight', id: 'history.forward' },
 
   // 表示倍率（F-VIEW-11）。
-  // そのまま通した `Ctrl+=` / `Ctrl+-` は WebView 自身のズームとして処理されるため、アプリの倍率と二重に適用される
-  // （`lib/shortcuts.ts` の「既定動作を必ず止める」）。
+  // そのまま通した `Ctrl+=` / `Ctrl+-` は WebView 自身のズームとして処理されるため、アプリの倍率と二重に適用される（`lib/shortcuts.ts` の「既定動作を必ず止める」）。
   //
   // 倍率は表示中の面ではなく利用者ごとの表示設定であるため、どこにフォーカスがあっても動作するのが正しい（VS Code も同じ）。
   { key: 'Ctrl+=', id: 'preview.zoomIn' },
@@ -309,7 +306,7 @@ export const KEY_BINDINGS: KeyBinding[] = [
   { key: 'Ctrl+0', id: 'preview.zoomReset' },
 
   // 検索・置換（F-VIEW-10 / F-EDIT-05）。ここにあるのは開くキーだけである。
-  // 開いている間だけ有効な `F3` / `Escape` は、Preview では検索モジュールが自分で登録して自分で解除し、Edit では `keymap.ts` が scope 付きで保持する。
+  // 開いている間だけ有効な `F3` / `Escape` は、Preview では検索モジュールが自分で登録して自分で解除し、Edit では Monaco の検索ウィジェットが処理する。
   //
   // `Ctrl+F` は WebView 自身の検索にも割り当たっているため、既定動作を止めること自体に意味がある。
   // `Ctrl+H` が Preview では何もしないのに登録してあるのも同じ理由である。
@@ -334,21 +331,20 @@ export const KEY_BINDINGS: KeyBinding[] = [
 ];
 
 /**
+ * 登録してある id の一覧。
+ *
+ * コマンドパレットのカタログ（`features/palette/lazy/catalog.ts`）との突き合わせに使う。
+ * パレットは「すべての機能への到達手段」であり、載せ忘れは機能が埋もれることを意味するため、目視ではなく `catalog.test.ts` が機械的に検証する。
+ */
+export const COMMAND_IDS: CommandId[] = COMMANDS.map((command) => command.id);
+
+/**
  * コマンドだけを登録する。返り値を呼ぶと解除される。
  *
  * キーを割り当てない入口を分けてあるのは、Storybook がここだけを呼ぶためである。
  * メニューは id しか持たないため、登録が無いと項目が 1 つも表示されない。
  * 一方で Storybook でグローバルキーまで有効にすると、`Ctrl+F` がブラウザの検索ではなくアプリの検索を開いてしまう。
  */
-/**
- * 登録してある id の一覧。
- *
- * コマンドパレットのカタログ（`features/palette/lazy/catalog.ts`）との突き合わせに使う。
- * パレットは「すべての機能への到達手段」であり、載せ忘れは機能が埋もれることを意味するため、
- * 目視ではなく `catalog.test.ts` が機械で見張る。
- */
-export const COMMAND_IDS: CommandId[] = COMMANDS.map((command) => command.id);
-
 export function registerAppCommands(): () => void {
   return registerCommands(COMMANDS);
 }
@@ -378,8 +374,8 @@ export function installCommands(): () => void {
 /**
  * 無題の文書を新しいタブで開き、編集できるモードへ移す（`Ctrl+N`）。
  *
- * モードの切り替えをここで行うのは、`features/workspace` が表示モードを知らないためである
- * （以前は `configureNewDocument` で注入していた。組み立ては composition root の仕事なので、こちらへ寄せた）。
+ * モードの切り替えをここで行うのは、`features/workspace` が表示モードを知らないためである。
+ * 複数の feature をまたぐ組み立ては composition root の仕事である。
  */
 async function newUntitled(): Promise<void> {
   if (await openUntitledTab()) await setMode('edit');

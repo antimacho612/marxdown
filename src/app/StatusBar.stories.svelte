@@ -1,12 +1,10 @@
 <!--
   ステータスバー（03.ux-spec/07-status-and-notifications.md §3）。
 
-  出る項目はドキュメントのメタ情報で変わる。BOM 付き・CRLF・読み取り専用は
-  実ファイルを用意しないと見られないので、ここに並べておく。
+  出る項目はドキュメントのメタ情報で変わる。BOM 付き・CRLF・読み取り専用は実ファイルを用意しないと見られないので、ここに並べておく。
 
-  **フルパスの潰れ方もここでしか見られない**（issue #145）。
-  深いところに置いたファイルを実際に用意しなくても、ディレクトリ側だけが省略記号になり、
-  ファイル名と右端の倍率が残ることを確かめられる。
+  フルパスの省略のされ方もここでしか見られない。
+  深いところに置いたファイルを実際に用意しなくても、ディレクトリ側だけが省略記号になり、ファイル名と右端の倍率が残ることを確かめられる。
 -->
 <script module lang="ts">
   import { defineMeta } from '@storybook/addon-svelte-csf';
@@ -45,7 +43,7 @@
       viewStore.zoom = zoom;
       viewStore.mode = mode;
       // Preview では出ない（03.ux-spec/07-status-and-notifications.md §3）。
-      // **ストアは story をまたいで残る**ので、出さない story でも必ず入れ直す。
+      // ストアは story をまたいで残るので、出さない story でも必ず入れ直す。
       documentStore.cursor = mode === 'preview' ? null : { line: 42, column: 8 };
     };
   }
@@ -59,8 +57,7 @@
 <Story name="読み取り専用" loaders={[seed({ ...BASE, readonly: true })]} />
 
 <!--
-  Edit モード。**カーソル位置はここで初めて出る**（Preview では概念が無い /
-  03.ux-spec/07-status-and-notifications.md §3）。
+  Edit モード。カーソル位置はここで初めて出る（Preview では概念が無い / 03.ux-spec/07-status-and-notifications.md §3）。
 -->
 <Story name="Edit (カーソル位置)" loaders={[seed(BASE, 1, 'edit')]} />
 
@@ -71,13 +68,13 @@
 <Story name="ファイル未オープン" loaders={[seed(null)]} />
 
 <!--
-  一時メッセージ（issue #60）。左の項目を押し出さず、右端の倍率も残ることを確かめるのがこの story の目的である。
+  一時メッセージ。左の項目を押し出さず、右端の倍率も残ることを確かめるのがこの story の目的である。
   ストア側のタイマーで 3 秒後に消えるため、見るには story を開き直す。
 -->
 <Story name="一時メッセージ" loaders={[seed(BASE, 1, 'preview', '外部の変更を読み込みました')]} />
 
 <!--
-  深いパス（issue #145）。**ディレクトリ側だけが省略記号になり、ファイル名は残る。**
+  深いパス。ディレクトリ側だけが省略記号になり、ファイル名は残る。
   右端の倍率が画面外へ押し出されないことも、ここで見る。
 -->
 <Story

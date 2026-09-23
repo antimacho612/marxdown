@@ -23,8 +23,7 @@
 /*
  * `$$...$$` を段落の中に書いた場合。
  *
- * `<p>` の内側なので要素は `<span>` のままだが（`markdown/plugins/math.ts`）、
- * KaTeX が中に出す `.katex-display` はブロックである。span 側も合わせないと行の高さが崩れる。
+ * `<p>` の内側なので要素は `<span>` のままだが（`markdown/plugins/math.ts`）、KaTeX が中に出す `.katex-display` はブロックである。span 側も合わせないと行の高さが崩れる。
  */
 .mx-math[data-mx-math='inline-display'] {
   display: block;

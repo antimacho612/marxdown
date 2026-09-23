@@ -1,10 +1,10 @@
 /**
- * Markdown のパース窓口。
+ * Markdown のパースのインタフェース。
  *
- * かつては Worker で実行していたが、実測でその根拠（Split の入力レスポンス）が成り立たなかったため撤去した（ADR-0010 / measurements/11-input-response.md）。
+ * パースはメインスレッドで実行する（ADR-0010 / 02.architecture/06-markdown-rendering-pipeline.md §2）。
  *
  * `parse` は同期的に返せるが `Promise` を保っている。
- * 呼び出し側はパースを投げてから結果を待つ間にシェルを描く構造になっており（02.architecture/05-startup-sequence.md §1）、同期にするとこの並行処理が成立しなくなる。
+ * 呼び出し側はパースを開始してから結果を待つ間にシェルを描く構造になっており（02.architecture/05-startup-sequence.md §1）、同期にするとこの並行処理が成立しなくなる。
  *
  * `pipeline` を動的 import にしているのは遅延のためではなく、`main` チャンクの予算計測を実態に合わせるためである（size-limit のクリティカルパスに名指しで入っている）。
  */
@@ -14,7 +14,7 @@ import { DEFAULT_CHUNK_BLOCKS, DEFAULT_FIRST_CHUNK_BLOCKS, type ParseResult } fr
 export interface ParseOptions {
   firstChunkBlocks?: number;
   chunkBlocks?: number;
-  /** 単独の改行を `<br>` にするか（`preview.softBreak` / #45）。省略時は false。 */
+  /** 単独の改行を `<br>` にするか（`preview.softBreak`）。省略時は false。 */
   breaks?: boolean;
   /**
    * 有効にする追加記法（`markdown.*` / 04.tech-stack/04-markdown.md §3）。省略時は無し。
@@ -24,10 +24,10 @@ export interface ParseOptions {
   syntax?: readonly string[];
 }
 
-/** パースの窓口。実体は `createParser` が返す。 */
+/** パースのインタフェース。実体は `createParser` が返す。 */
 export interface MarkdownParser {
   parse(text: string, options?: ParseOptions): Promise<ParseResult>;
-  /** M3 でタブを閉じるときに呼ぶ（N-PERF-06）。いまは解放するものが無い。 */
+  /** 破棄する（N-PERF-06）。パーサは解放するものを持たないため、何もしない。 */
   dispose(): void;
 }
 

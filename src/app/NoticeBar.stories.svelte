@@ -1,8 +1,7 @@
 <!--
   通知バー（03.ux-spec/07-status-and-notifications.md §2）。
 
-  実アプリでこの 3 段階を並べて見るには、読み込み失敗・外部変更・CLI 引数の誤りを
-  それぞれ再現しないといけない。**Storybook を入れた理由がいちばん分かりやすいのがここ**。
+  実アプリでこの 3 段階を並べて見るには、読み込み失敗・外部変更・CLI 引数の誤りをそれぞれ再現しないといけない。Storybook を入れた理由がいちばん分かりやすいのがここ。
 -->
 <script module lang="ts">
   import { defineMeta } from '@storybook/addon-svelte-csf';
@@ -19,7 +18,7 @@
 
 <!--
   情報（`level: 'info'`）。選択肢を伴うものだけがここに残る（`features/preview/links.ts`）。
-  自動で消える情報はステータスバーへ移した（issue #60）。
+  自動で消える情報はステータスバーに出す（03.ux-spec/07-status-and-notifications.md §2.1）。
 -->
 <Story
   name="情報"
@@ -40,8 +39,7 @@
 <Story name="エラー" args={{ notice: { level: 'error', message: 'ファイルを開けませんでした: C:\\work\\a.md' } }} />
 
 <!--
-  操作が必要な通知。03.ux-spec/07-status-and-notifications.md §2 が「自動で消えるものと見分けられるように」と求めているので、
-  選択肢が枠付きで出ていることを目で確かめるのがこの story の目的。
+  操作が必要な通知。03.ux-spec/07-status-and-notifications.md §2 が「自動で消えるものと見分けられるように」と求めているので、選択肢が枠付きで出ていることを目で確かめるのがこの story の目的。
 -->
 <Story
   name="選択肢つき"

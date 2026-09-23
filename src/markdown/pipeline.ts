@@ -3,8 +3,6 @@
  *
  * この層は文字列の変換だけを行い、DOM には触れない（サニタイズは `paint.ts` が呼ぶ DOMPurify の担当 / ADR-0006）。
  * プラグイン構成は 04.tech-stack/04-markdown.md §2 の既定に従う。
- * 脚注・タスクリスト・GitHub Alerts は M4 から M2 へ前倒し済みである（OQ-27 / 06.roadmap/m2-editor.md §1.4）。
- * タスクリストは M4 でプレビュー上の操作を入れたため自作へ置き換えた（OQ-05 / `plugins/task-list.ts`）。
  *
  * `use` の順序は仕様であり、`lineMapPlugin` を最後に置くこと。
  * `md.renderer.rules[...]` をその時点の中身ごと包むため、先に置くと後続プラグインの代入で上書きされる。
@@ -38,16 +36,15 @@ export interface RenderResult {
  * 描画に影響するユーザー設定。
  *
  * ここに入るのは「CSS では表現できない、パースの結果そのものが変わるもの」だけである。
- * 文字サイズや配色はトークン層で当たるため、パイプラインは知らなくてよい。
+ * 文字サイズや配色はトークン層で適用されるため、パイプラインは知らなくてよい。
  */
 export interface RenderConfig {
-  /** 単独の改行を `<br>` にするか（`preview.softBreak` / #45）。 */
+  /** 単独の改行を `<br>` にするか（`preview.softBreak`）。 */
   breaks?: boolean;
   /**
    * 有効にする追加記法（`markdown.*` / 04.tech-stack/04-markdown.md §3）。
    *
-   * **実際に適用されるのは `loadSyntax` で読み込み済みのものだけである。**
-   * 読み込みは呼び出し側（`markdown/parser.ts`）が描画の前に待つ。
+   * 実際に適用されるのは `loadSyntax` で読み込み済みのものだけである。読み込みは呼び出し側（`markdown/parser.ts`）が描画の前に待つ。
    */
   syntax?: readonly string[];
 }
@@ -63,8 +60,8 @@ function configKey(config: RenderConfig): string {
 /**
  * markdown-it を組み立てる。`use` の順序は仕様である（モジュール冒頭を参照）。
  *
- * `breaks` はユーザー設定 `preview.softBreak`（#45）。既定は CommonMark 準拠の false で、
- * 単独の改行を `<br>` にしない。日本語文書では改行がそのまま反映されるほうを好む場合があるため選べるようにしてある。
+ * `breaks` はユーザー設定 `preview.softBreak`。既定は CommonMark 準拠の false で、単独の改行を `<br>` にしない。
+ * 日本語文書では改行がそのまま反映されるほうを好む場合があるため選べるようにしてある。
  */
 export function createMarkdownIt(config: RenderConfig = {}): MarkdownIt {
   const md = new MarkdownItCallable({
@@ -90,12 +87,11 @@ export function createMarkdownIt(config: RenderConfig = {}): MarkdownIt {
   md.use(footnote);
 
   // タスクリスト（F-VIEW-01 の GFM 相当）。`<input>` ではなく `role="checkbox"` の `<span>` を出す。
-  // プレビュー上でのチェックを許可すると決めた（OQ-05）ため、`markdown-it-task-lists` から自作へ置き換えてある。
-  // 理由は `plugins/task-list.ts` の冒頭にある。
+  // 自作である理由は `plugins/task-list.ts` の冒頭にある。
   md.use(taskListPlugin);
 
   // 数式（F-VIEW-13）。ここではプレースホルダを出すだけで、KaTeX は `features/preview/lazy/math.ts` が遅延ロードする。
-  // critical path の残余が 23.64KB しかないため、パーサ側のプラグインを載せる選択肢が無い（06.roadmap/m4-markdown.md §1.2）。
+  // パーサ側のプラグインを載せるほどの残余が critical path に無い（04.tech-stack/04-markdown.md §4）。
   md.use(mathPlugin);
 
   // Mermaid（F-VIEW-12）。`mermaid` フェンスの型を差し替えてプレースホルダにするだけで、描画は遅延チャンクが行う。
@@ -106,7 +102,7 @@ export function createMarkdownIt(config: RenderConfig = {}): MarkdownIt {
   // `multilineTables`（追加記法）が差し替えるのはブロックルールであり、ここが見るトークンの形は変わらない。
   md.use(tablePlugin);
 
-  // リンクのホバー時に行き先を表示する（#144）。オートリンク・linkify は対象外（`plugins/link-title.ts`）。
+  // リンクのホバー時に行き先を表示する。オートリンク・linkify は対象外（`plugins/link-title.ts`）。
   md.use(linkTitlePlugin);
 
   // 設定で有効化された追加記法（`markdown.*`）。既定では 1 つも入らない。
@@ -134,7 +130,7 @@ export function getMarkdownIt(config: RenderConfig = {}): MarkdownIt {
 }
 
 /**
- * キャッシュを捨てる。
+ * キャッシュを破棄する。
  *
  * 追加記法は非同期に読み込まれるため、読み込みが済んだ時点で組み立て直す必要がある。
  * 設定キーが同じでも、`useSyntax` が返すものが変わっているためキャッシュは使えない。

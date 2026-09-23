@@ -76,8 +76,7 @@ export async function startup(renderShell: () => void): Promise<void> {
   mark('T5', bootstrap?.document ? `${bootstrap.document.size} bytes` : 'no document');
 
   // ここから配色の適用までは、すべて本文を描くより前に適用する。
-  // 後から適用すると、本文が描画された直後に見た目が変化する瞬間が生じる
-  // （F-VIEW-11 / F-NAV-04 / 03.ux-spec/06-panes.md §3 / 02.architecture/04-rust-responsibilities.md §5）。
+  // 後から適用すると、本文が描画された直後に見た目が変化する瞬間が生じる（F-VIEW-11 / F-NAV-04 / 03.ux-spec/06-panes.md §3 / 02.architecture/04-rust-responsibilities.md §5）。
   applyZoom(bootstrap?.zoom ?? 1, false);
   recentStore.entries = bootstrap?.recent ?? [];
 
@@ -87,14 +86,13 @@ export async function startup(renderShell: () => void): Promise<void> {
   if (bootstrap?.workspaceRoot) void setTreeRoot(bootstrap.workspaceRoot);
 
   // 後から適用すると、本文が一度全幅で描画された後に幅が縮小して見える。
-  // ここで設定した値は、この下の `renderShell()` が描く最初のシェルに既に反映されている
-  // （シェルの描画は本文の paint より前 / `betweenParseAndPaint`）。
+  // ここで設定した値は、この下の `renderShell()` が描く最初のシェルに既に反映されている（シェルの描画は本文の paint より前 / `betweenParseAndPaint`）。
   initPanes(bootstrap);
   // 後から適用すると、`--mode split` で開いたときに 50:50 の状態が一度描画された後に分割比が変化して見える（03.ux-spec/03-split-mode.md §1）。
   initSplit(bootstrap);
 
-  // `themes/` から選ばれている 1 枚は bootstrap に同梱されて届く（ADR-0014）。
-  // 設定を当てるより前に渡しておくと、`initSettings` の中の配色の適用がそのまま同期的に完了する。
+  // `themes/` から選ばれている 1 枚は bootstrap に同梱されて届く（02.architecture/10-theming.md §3.3）。
+  // 設定を適用するより前に渡しておくと、`initSettings` の中の配色の適用がそのまま同期的に完了する。
   primePreviewTheme(bootstrap?.previewTheme ?? null);
 
   // bootstrap に丸ごと含まれているため IPC 往復は発生しない（02.architecture/05-startup-sequence.md §1）。
@@ -113,9 +111,8 @@ export async function startup(renderShell: () => void): Promise<void> {
 
   // 履歴を辿るときの開き直し（F-NAV-07）。引数の意味はここでしか決まらない。
   //
-  // 履歴を辿る移動そのものは履歴に積まない（積むと二度と抜け出せない）。
-  // 最近開いたファイル（F-OPEN-09）の順序は「最後に開いた順」であって
-  // 「最後に見た順」ではないので、戻っただけでは先頭に来ない。
+  // 履歴を辿る移動そのものは履歴に加えない（加えると、戻る操作が同じ 2 か所の往復になる）。
+  // 最近開いたファイル（F-OPEN-09）の順序は「最後に開いた順」であって「最後に見た順」ではないので、戻っただけでは先頭に来ない。
   configureHistory({
     scrollTop: previewScrollTop,
     reopen: async (path, scrollTop) =>
@@ -131,15 +128,14 @@ export async function startup(renderShell: () => void): Promise<void> {
   // キーバインドを後回しにすると、`extreme.md` のような重いファイルを描画している間 `Ctrl+O` が動作しない。
   // 描画の完了を待たずに別のファイルを開けることは、この経路で担保する。
   //
-  // どちらもリスナーの登録だけで IPC を伴わないため、クリティカルパスへの追加コストは無視できる
-  // （IPC を伴う購読は下の `ready()` の後に置いてある）。
+  // どちらもリスナーの登録だけで IPC を伴わないため、クリティカルパスへの追加コストは無視できる（IPC を伴う購読は下の `ready()` の後に置いてある）。
   //
   // コマンドの登録もここで行う。
   // メニューより先に済んでいる必要がある（`features/menu` は id しか持たず、実体はこの登録を参照する / `commands.ts`）。
   installLinks();
   installCommands();
 
-  // Ctrl + ホイールの倍率変更（issue #6）。
+  // Ctrl + ホイールの倍率変更。
   // キーバインドと同じ理由でここに置く。WebView 既定のページズームを塞ぐ側であり、本文を描くより前に登録する。
   installWheelZoom();
 
@@ -154,7 +150,7 @@ export async function startup(renderShell: () => void): Promise<void> {
 
   const initial = await resolveInitialDocument(bootstrap);
 
-  // 組み込みの配色を選んでいる場合だけ、ここで `theme` チャンクの取得を待つ（ADR-0014）。
+  // 組み込みの配色を選んでいる場合だけ、ここで `theme` チャンクの取得を待つ（02.architecture/10-theming.md §3.3）。
   // 取得は上の bootstrap の処理と重なっており、既定の配色（`default`）で起動した場合は解決済みの `Promise` が返る。
   // 待たずに描くと、暗い配色を選んでいる人の初回フレームが既定の配色で描かれる。
   await awaitPreviewTheme();
@@ -180,7 +176,7 @@ export async function startup(renderShell: () => void): Promise<void> {
   // 本文の描画とは独立した情報であるため、1 フレーム遅れて表示して差し支えない。
   reportStartupProblems(bootstrap);
 
-  // 配色を当てられなかった事実も同じ理由で本文の後に出す（`enableThemeNotices`）。
+  // 配色を適用できなかった事実も同じ理由で本文の後に出す（`enableThemeNotices`）。
   // 以降の変更（設定 UI / `themes/` の外部編集）は、その場で通知される。
   enableThemeNotices();
 
@@ -191,16 +187,14 @@ export async function startup(renderShell: () => void): Promise<void> {
   // 以降はウィンドウの表示後に実行する。
   // いずれも Rust 側への購読（IPC）を伴い、本文が読める時点に間に合っている必要がない。
   //
-  // ファイル監視の購読が遅れた場合の最悪の結果は、起動直後の数十 ms に発生した外部変更を検出できないことであり、`F5` で回復できる
-  // （02.architecture/05-startup-sequence.md §1 の判断基準）。
+  // ファイル監視の購読が遅れた場合の最悪の結果は、起動直後の数十 ms に発生した外部変更を検出できないことであり、`F5` で回復できる（02.architecture/05-startup-sequence.md §2 の判断基準）。
   //
   // 最大化状態の追従も同じ扱いである。
   // 遅れた場合の最悪の結果は、最大化して起動した直後の数十 ms だけボタンの表示が `□` のままになることで、次に状態が変われば解消する。
-  // 2 枚目以降のタブ（起動時の引数 / 前回のセッション）。
   //
-  // `ready()` の後に置く。本文が読める時点（T8）を、ファイル 20 枚の読み込みの後ろへ動かさない。
-  // 遅れた場合の最悪の結果は、起動直後の一瞬だけタブが 1 枚に見えることである
-  // （02.architecture/05-startup-sequence.md §1 の判断基準）。
+  // 2 枚目以降のタブ（起動時の引数 / 前回のセッション）も `ready()` の後に置く。
+  // 本文が読める時点（T8）を、ファイル 20 枚の読み込みの後ろへ動かさない。
+  // 遅れた場合の最悪の結果は、起動直後の一瞬だけタブが 1 枚に見えることである。
   void openRemainingTabs(bootstrap);
 
   installOpenRequestHandler();
@@ -211,29 +205,28 @@ export async function startup(renderShell: () => void): Promise<void> {
   installFileWatch();
   installSettingsWatch();
   installWindowState();
-  // パースの結果そのものを変える設定（`preview.softBreak` と `markdown.*`）に追従して本文を描き直す。
+  // パースの結果そのものを変える設定（`preview.softBreak` と `markdown.*`）に追従して本文を再描画する。
   installSoftBreakRerender();
-  // タブの変化を `state.json` へ書き続ける（OQ-04）。
+  // タブの変化を `state.json` へ書き続ける。
   // 復元より後に張る。復元そのものを 1 枚ずつ書き戻すことに意味がない。
   watchSession();
 
-  // Snap Layouts の初回報告（OQ-30）。ここより前に置いてはいけない。
+  // WARNING: Snap Layouts の初回報告。ここより前に置いてはいけない。
   //
-  // 矩形を測る `getBoundingClientRect()` は強制同期レイアウトであり、シェルを描画した直後に呼ぶとスタイル再計算とレイアウトが実行される（実測 32〜35ms）。
+  // 矩形を測る `getBoundingClientRect()` は強制同期レイアウトであり、シェルを描画した直後に呼ぶとスタイル再計算とレイアウトが実行される（32〜35ms / measurements/03-cold-start.md §5）。
   // その間はパース側のスクリプト評価も進まないため、シェルとパースを重ねるというこの経路の前提が成立しなくなる（`window.ts` の `trackSnapLayoutsTarget`）。
   //
   // 遅れた場合の最悪の結果は、起動直後の数十 ms だけフライアウトが表示されないことである。
-  // Windows へ応答する主体は `ready()` の中で登録されるため、ここでも取りこぼさない。
+  // Windows へ応答する主体は `ready()` の中で登録されるため、ここで報告しても応答は失われない。
   reportSnapLayoutsTarget();
 
   // エディター（F-EDIT-01）。`ready()` の後に実行する。
   //
   // `--mode edit` で起動した場合でも、本文が読める時点（T8）をチャンクの取得と評価の後ろへ動かさない。
-  // 遅れた場合の最悪の結果は、起動直後の一瞬だけ空のエディター面が表示されることであり、これは解消する
-  // （02.architecture/05-startup-sequence.md §1 の判断基準）。
+  // 遅れた場合の最悪の結果は、起動直後の一瞬だけ空のエディター面が表示されることであり、これは解消する（02.architecture/05-startup-sequence.md §2 の判断基準）。
   installInitialEditor();
 
-  // `themes/` の外部編集への追従（ADR-0014 §3.4）。
+  // `themes/` の外部編集への追従（02.architecture/10-theming.md §3.4）。
   // 既定の配色で起動した場合は `theme` チャンクを読まずに終わる。
   // 起動後に配色を選んだ場合は、その適用が同じ購読を張る。
   void installPreviewThemeWatch();
@@ -256,7 +249,7 @@ export async function startup(renderShell: () => void): Promise<void> {
  * 経路は 2 つあり、同時には起きない（Rust 側で `session` が入るのは引数が無いときだけである）。
  *
  * - `pendingPaths`: `marxdown a.md b.md` の 2 枚目以降
- * - `session`: 前回のタブ（[OQ-04](../../docs/07.open-questions/decided.md) の推奨 C）
+ * - `session`: 前回のタブ
  */
 async function openRemainingTabs(bootstrap: Bootstrap | null): Promise<void> {
   if (!bootstrap) return;
@@ -270,8 +263,8 @@ async function openRemainingTabs(bootstrap: Bootstrap | null): Promise<void> {
 
 /**
  * エディターを用意する。
- * 起動時のモードによって、載せるか温めるかが変わる。
- * `--mode edit` で起動した場合は画面がエディターを待っているのでその場で載せ、それ以外（既定の Preview）はアイドル時にチャンクだけを取得しておく。
+ * 起動時のモードによって、マウントするか事前に取得するだけかが変わる。
+ * `--mode edit` で起動した場合は画面がエディターを待っているのでその場でマウントし、それ以外（既定の Preview）はアイドル時にチャンクだけを取得しておく。
  *
  * 後者が `editor` チャンクのアイドルプリロードである。
  * マウントはしないため、`#mx-editor` は空のまま非表示になっている。
@@ -311,7 +304,7 @@ function installLinks(): void {
     },
   });
 
-  // プレビュー上のタスクリスト操作（OQ-05）。リンクと同じく逆向きの呼び出しをここで接続する。
+  // プレビュー上のタスクリスト操作。リンクと同じく逆向きの呼び出しをここで接続する。
   installTaskHandler(container, { toggle: toggleTaskAtLine });
 }
 
@@ -319,8 +312,7 @@ function installLinks(): void {
  * 起動時に開くべき本文を確定させる。
  *
  * 通常は bootstrap に本文ごと載っている。
- * 載っていないのは 256KB を超えるファイルのときだけで、この場合だけ IPC 往復が 1 回増える
- * （初期化スクリプトに埋め込むと、文字列化のコストが往復のコストを上回る）。
+ * 載っていないのは 256KB を超えるファイルのときだけで、この場合だけ IPC 往復が 1 回増える（初期化スクリプトに埋め込むと、文字列化のコストが往復のコストを上回る）。
  */
 async function resolveInitialDocument(bootstrap: Bootstrap | null): Promise<DocumentPayload | null> {
   const doc = bootstrap?.document ?? null;
@@ -356,7 +348,7 @@ function reportStartupProblems(bootstrap: Bootstrap | null): void {
     documentStore.notice = {
       level: 'error',
       message: describeError(e.kind, e.path, e.message),
-      // `marxdown foo.png` も逃げ道は同じにする（`openPath` の失敗時と揃える）。
+      // `marxdown foo.png` も既定アプリで開く経路を同じにする（`openPath` の失敗時と揃える）。
       ...(e.kind === 'binary' && { actions: externalOpenActions(e.path) }),
     };
   }
@@ -372,7 +364,7 @@ function reportStartupProblems(bootstrap: Bootstrap | null): void {
  * トレイメニューの「Marxdown を開く」（ADR-0007 論点 6）。
  *
  * ダイアログを Rust 側では表示しない。
- * `pick_file` は既にあるが、開いた結果の扱い（履歴に積む / 通知を出す / 相対パスの基準を差し替える）は `open.ts` に集約してある。
+ * `pick_file` は既にあるが、開いた結果の扱い（履歴に加える / 通知を出す / 相対パスの基準を差し替える）は `open.ts` に集約してある。
  * トレイから別経路で開くと、そこだけ処理が抜ける。
  *
  * 「最近開いたファイル」は argv 転送（`onOpenRequest`）に載せてあるため、ここは通らない。
@@ -402,9 +394,9 @@ function installSaveAndQuit(): void {
 /**
  * トレイからの復帰を計測する（ADR-0007「計測項目」/ 目標 120ms）。
  *
- * Warm Start（20.0ms）とは別の経路である。
+ * Warm Start とは別の経路である。
  * Warm Start はウィンドウが可視のまま argv 転送を受けた場合の値で、こちらはサスペンドされた WebView が復帰して表示されるまでを測る。
- * 06.roadmap/m1.5-shell-and-settings.md §3 の完了条件はこちらの経路を対象とする。
+ * 05.performance-budget/04-targets.md §1 の Tray Resume はこちらの経路を指す。
  *
  * 本文は既に描画されている（ウィンドウを破棄していないため再描画が不要）。
  * そのため読める状態の判定は 1 フレーム描画されたことで足り、開き直す経路と違ってパースも paint も挟まらない。
@@ -424,14 +416,13 @@ function installTrayResume(): void {
 /**
  * 別インスタンスからの起動要求（ウォーム起動 / ADR-0004）。
  *
- * この経路には WebView の初期化もバンドルの評価も Svelte のマウントも含まれず、必要なのはパースの実行だけである（02.architecture/05-startup-sequence.md §2）。
+ * この経路には WebView の初期化もバンドルの評価も Svelte のマウントも含まれず、必要なのはパースの実行だけである（02.architecture/05-startup-sequence.md §3）。
  *
- * **転送されたファイルはタブとして増やす**（M3 Phase 2）。
+ * 転送されたファイルはタブとして増やす。
  * 既に開いているファイルなら、そのタブへ切り替えるだけで開き直さない（`openPathInNewTab`）。
  *
  * 計測はウォーム起動の実測値として Rust へ返す。
- * 複数渡された場合も 1 回だけ返す。測っているのは「転送を受けてから読めるようになるまで」であり、
- * 転送 1 回に対して 1 つの値である。
+ * 複数渡された場合も 1 回だけ返す。測っているのは「転送を受けてから読めるようになるまで」であり、転送 1 回に対して 1 つの値である。
  */
 function installOpenRequestHandler(): void {
   const platform = getPlatform();
@@ -471,7 +462,7 @@ function installDragAndDrop(): void {
     delete root.dataset['mxDragover'];
     if (event.type !== 'drop') return;
 
-    // 落とされた数だけタブを開く（F-OPEN-08 / M3 Phase 2）。
+    // ドロップされた数だけタブを開く（F-OPEN-08）。
     void openPathsInTabs(event.paths);
   });
 }

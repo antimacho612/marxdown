@@ -1,10 +1,8 @@
 /**
  * `srcset` 属性（WHATWG の srcset 構文）の候補を 1 つずつ扱うための道具。
  *
- * 値は URL 1 個ではなく `URL 記述子, URL 記述子, ...` のリストであるため、
- * href/src と同じ 1 属性 1 URL の処理には乗らない。
- * `markdown/sanitize.ts`（許可判定）と `features/preview/enhance.ts`（パス解決）の
- * 両方が同じパースを必要とするため、ここへ共通化してある。
+ * 値は URL 1 個ではなく `URL 記述子, URL 記述子, ...` のリストであるため、href/src と同じ 1 属性 1 URL の処理には乗らない。
+ * `markdown/sanitize.ts`（許可判定）と `features/preview/enhance.ts`（パス解決）の両方が同じパースを必要とするため、ここへ共通化してある。
  */
 
 export interface SrcsetCandidate {
