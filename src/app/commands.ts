@@ -25,11 +25,13 @@ import { openCommandPaletteLazily, openQuickOpenLazily } from '@/features/palett
 import { toggleLeftPane, toggleRightPane } from '@/features/panes';
 import { zoomIn, zoomOut, zoomReset } from '@/features/preview';
 import { openSettingsLazily } from '@/features/settings';
-import { viewStore } from '@/features/view';
+import { isSatellite, viewStore } from '@/features/view';
 import {
   closeTab,
   cycleTab,
+  moveCurrentTabToSatellite,
   openFolderViaDialog,
+  openNewInstance,
   openUntitledTab,
   reopenClosedTab,
   selectTabAt,
@@ -44,6 +46,16 @@ import { getPlatform } from '@/platform';
 /** 文書を開いているか。開いていないと意味を持たないコマンドの一覧条件として使う。 */
 function hasDocument(): boolean {
   return documentStore.meta !== null;
+}
+
+/**
+ * ペインとファイルツリーを持つウィンドウか（F-OPEN-06 / 決定 8）。
+ *
+ * サテライトはタブと本文だけを持つ。
+ * 押しても何も起きない項目を並べない（Principle 3 / `hasDocument` と同じ判断）。
+ */
+function hasPanes(): boolean {
+  return !isSatellite();
 }
 
 /** タブが 2 枚以上あるか。切り替えは 1 枚では意味を持たない。 */
@@ -65,7 +77,15 @@ const COMMANDS: Command[] = [
   { id: 'document.open', run: () => void openViaDialogSafely() },
 
   // フォルダを開く（`Ctrl+Alt+O` / F-NAV-03）。ファイルツリーの基点を決める唯一の操作である（`marxdown <dir>` を除く）。文書を開いていなくても実行できる。
-  { id: 'folder.open', run: () => void openFolderSafely() },
+  { id: 'folder.open', run: () => void openFolderSafely(), isListed: hasPanes },
+
+  // 新しいウィンドウ（`Ctrl+Alt+N` / F-OPEN-06）。独立したプロセスが 1 つ増える。
+  // Explorer の「新規ウィンドウで開く」と同じ意味であり、状態を一切共有しない（ADR-0016）。
+  { id: 'window.new', run: () => void openNewInstance() },
+
+  // 表示中のタブをサテライトへ移す（F-OPEN-06）。
+  // キーは割り当てない。使用頻度が低く、覚えるキーを増やす利点がない（`document.toggleEol` と同じ判断）。
+  { id: 'window.moveTab', run: () => void moveCurrentTabToSatellite(), isListed: hasDocument },
 
   // 一覧（メニュー）には出さない。
   // 対象を指定して開く経路であり、「最近開いたファイル」の 1 件ごとがこれを呼ぶ。
@@ -110,11 +130,11 @@ const COMMANDS: Command[] = [
   //
   // 後者がトグルでないのは、アウトラインを見たいという意図に対して常に同じ結果を返すためである。
   // アウトラインを左ペインへ移しても意味が変わらない。
-  { id: 'pane.toggleLeft', run: () => toggleLeftPane(), isListed: hasDocument },
-  { id: 'pane.toggleRight', run: () => toggleRightPane(), isListed: hasDocument },
-  { id: 'outline.show', run: () => void showOutline() },
+  { id: 'pane.toggleLeft', run: () => toggleLeftPane(), isListed: () => hasDocument() && hasPanes() },
+  { id: 'pane.toggleRight', run: () => toggleRightPane(), isListed: () => hasDocument() && hasPanes() },
+  { id: 'outline.show', run: () => void showOutline(), isListed: hasPanes },
   // Explorer を出してフォーカスする（`Ctrl+Shift+E`）。`outline.show` と対になるビュー側のキーである。
-  { id: 'explorer.show', run: () => void showExplorer() },
+  { id: 'explorer.show', run: () => void showExplorer(), isListed: hasPanes },
 
   // 見出しへジャンプ（03.ux-spec/04-keybindings.md §3「移動」）。実体は遅延チャンクにある。
   // コマンドパレット（`Ctrl+Shift+P`）ではなく、見出し専用である。
@@ -246,6 +266,9 @@ export const KEY_BINDINGS: KeyBinding[] = [
   // フォルダを開く（03.ux-spec/04-keybindings.md §3）。
   // VS Code の `Ctrl+K Ctrl+O` に対応するが、和音は採らないため単打の空きキーへ移してある（§2）。
   { key: 'Ctrl+Alt+O', id: 'folder.open' },
+  // `Ctrl+Shift+N` は取らない。03.ux-spec/04-keybindings.md §5 が番号付きリストの切替に割り当てている。
+  // `Ctrl+N`（新規ファイル）の派生として `Ctrl+Alt+N` を使う（`Ctrl+O` と `Ctrl+Alt+O` の関係と同じ）。
+  { key: 'Ctrl+Alt+N', id: 'window.new' },
 
   // 保存（F-EDIT-02）。
   // そのまま通すと WebView 自身の「名前を付けて保存」が開き、アプリの本文と無関係な HTML が保存される。

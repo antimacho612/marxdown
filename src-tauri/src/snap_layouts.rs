@@ -30,9 +30,10 @@
 //! クリックも同じ理由で `onclick` が発火しない（キーボードからは通常どおり発火する）。
 #![cfg(windows)]
 
+use std::collections::HashMap;
 use std::ffi::c_void;
 use std::sync::atomic::{AtomicBool, AtomicIsize, AtomicU64, Ordering};
-use std::sync::{Arc, Once};
+use std::sync::{Arc, Mutex, Once};
 
 use tauri::{Emitter, WebviewWindow};
 use windows::core::{w, PCWSTR};
@@ -153,6 +154,9 @@ impl SnapTarget {
     }
 
     /// ホバー状態が変わったときだけフロントへ通知する。
+    ///
+    /// 宛先はこのオーバーレイが属するウィンドウ 1 枚に限る。
+    /// `emit` は全ウィンドウへ配るため、ウィンドウが複数あるときに使うと、ホバーしていない側の最大化ボタンまで反応する。
     fn set_hovered(&self, overlay: HWND, now: bool) {
         if self.hovered.swap(now, Ordering::Relaxed) == now {
             return;
@@ -160,7 +164,24 @@ impl SnapTarget {
         if now {
             track_leave(overlay);
         }
-        let _ = self.window.emit(EVENT_MAXIMIZE_HOVER, now);
+        let _ = self
+            .window
+            .emit_to(self.window.label(), EVENT_MAXIMIZE_HOVER, now);
+    }
+}
+
+/// ウィンドウごとの受け皿（F-OPEN-06）。
+///
+/// 1 つの `SnapTarget` をプロセスで共有することはできない。
+/// オーバーレイは親ウィンドウの子として作られるため、ウィンドウの枚数だけ必要になる。
+#[derive(Default)]
+struct SnapTargets(Mutex<HashMap<String, Arc<SnapTarget>>>);
+
+impl SnapTargets {
+    fn get(app: &tauri::AppHandle, label: &str) -> Option<Arc<SnapTarget>> {
+        let targets = tauri::Manager::try_state::<SnapTargets>(app)?;
+        let map = targets.0.lock().ok()?;
+        map.get(label).cloned()
     }
 }
 
@@ -186,12 +207,18 @@ fn track_leave(hwnd: HWND) {
 /// その 1 度を受け取れないと矩形は 0 のままになる。
 /// 受け皿だけならイベントループを必要としないため、先に用意しておけば取りこぼさない。
 pub fn prepare(app: &tauri::AppHandle, window: &WebviewWindow) {
-    if tauri::Manager::try_state::<Arc<SnapTarget>>(app).is_some() {
-        return;
+    if tauri::Manager::try_state::<SnapTargets>(app).is_none() {
+        tauri::Manager::manage(app, SnapTargets::default());
     }
 
-    tauri::Manager::manage(
-        app,
+    let Some(targets) = tauri::Manager::try_state::<SnapTargets>(app) else {
+        return;
+    };
+    let Ok(mut map) = targets.0.lock() else {
+        return;
+    };
+
+    map.entry(window.label().to_owned()).or_insert_with(|| {
         Arc::new(SnapTarget {
             rect: AtomicU64::new(0),
             hovered: AtomicBool::new(false),
@@ -199,8 +226,22 @@ pub fn prepare(app: &tauri::AppHandle, window: &WebviewWindow) {
             installed: AtomicBool::new(false),
             overlay: AtomicIsize::new(0),
             window: window.clone(),
-        }),
-    );
+        })
+    });
+}
+
+/// 閉じたウィンドウの受け皿を落とす。
+///
+/// オーバーレイ自体は親ウィンドウと一緒に破棄され、`WM_NCDESTROY` がプロシージャ側の参照も解放する。
+/// ここで落とすのは表に残る `Arc` だけである。残すとウィンドウを開き閉じするたびに `WebviewWindow` の参照が積み上がる（N-PERF-06）。
+pub fn forget(app: &tauri::AppHandle, label: &str) {
+    let Some(targets) = tauri::Manager::try_state::<SnapTargets>(app) else {
+        return;
+    };
+    let Ok(mut map) = targets.0.lock() else {
+        return;
+    };
+    map.remove(label);
 }
 
 /// オーバーレイを作る。失敗しても呼び出し側で対処する必要はない。
@@ -209,14 +250,13 @@ pub fn prepare(app: &tauri::AppHandle, window: &WebviewWindow) {
 /// `hwnd()` はイベントループへ問い合わせるゲッターであり、ループが動き出す前は結果が返らない。
 /// `ready` コマンドの中、`show()` の後に呼ぶこと。
 /// ここで行うのは Win32 の呼び出し数回だけであり、本文が読める時点に間に合う必要もない（02.architecture/05-startup-sequence.md §2 の判断基準）。
-pub fn install(app: &tauri::AppHandle) {
-    let Some(state) = tauri::Manager::try_state::<Arc<SnapTarget>>(app) else {
+pub fn install(app: &tauri::AppHandle, label: &str) {
+    let Some(target) = SnapTargets::get(app, label) else {
         // `prepare` が呼ばれていない。
         // ここで作るとそれまでに届いた矩形を破棄することになるため、何もせずに戻る。
-        eprintln!("[marxdown] Snap Layouts: 受け皿が無いので諦める");
+        eprintln!("[marxdown] Snap Layouts: 受け皿が無いので諦める（{label}）");
         return;
     };
-    let target = state.inner().clone();
 
     // 二重に作らない。作り直すと、前の参照が解放されずに残る。
     if target.installed.swap(true, Ordering::Relaxed) {
@@ -279,9 +319,9 @@ pub fn install(app: &tauri::AppHandle) {
 /// 最大化ボタンの矩形（CSS px）を覚える。フロントのレイアウトが変わるたびに呼ばれる。
 ///
 /// オーバーレイの作成前に届くのが通常の順序であり、取りこぼさないために `prepare` が受け皿を先に用意してある。
-pub fn set_target(app: &tauri::AppHandle, x: f64, y: f64, width: f64, height: f64) {
-    // `prepare` に失敗していれば `manage` されていない。この場合は何もしない。
-    let Some(target) = tauri::Manager::try_state::<Arc<SnapTarget>>(app) else {
+pub fn set_target(app: &tauri::AppHandle, label: &str, x: f64, y: f64, width: f64, height: f64) {
+    // `prepare` に失敗していれば表に無い。この場合は何もしない。
+    let Some(target) = SnapTargets::get(app, label) else {
         return;
     };
 

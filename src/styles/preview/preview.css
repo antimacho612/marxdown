@@ -169,19 +169,6 @@
   border-top: 1px solid var(--mx-color-border);
 }
 
-/*
- * インラインコードの文字色（ADR-0015）。
- * fg と accent の混色にしてあり、`theme/lazy/preset.ts` の TokenKey（18 個で固定）に新しいキーを足さずに 50 枚のプリセットへ反映される。
- * fg が主体なので、コントラスト比の保証はプリセットの fg 側にそのまま引き継がれる。
- *
- * WARNING: 宣言を `:root` へ移してはいけない。
- * カスタムプロパティの値に含まれる var() は宣言した要素で置換を終える。
- * 配色は `#mx-preview` に適用されるので、`:root` で宣言すると上書きされる前の accent と fg で確定し、どの配色でも既定の色のまま描かれる。
- */
-.mx-preview {
-  --mx-color-code-inline: color-mix(in srgb, var(--mx-color-fg) 65%, var(--mx-color-accent) 35%);
-}
-
 .mx-preview code {
   font-family: var(--mx-font-code);
   font-size: var(--mx-font-size-code);
@@ -192,8 +179,8 @@
 .mx-preview :not(pre) > code {
   padding: 0.15em 0.35em;
   border-radius: var(--mx-radius-sm);
-  background: var(--mx-color-bg-inset);
-  color: var(--mx-color-code-inline);
+  background: var(--mx-color-bg-subtle);
+  color: var(--mx-color-code-builtin);
 }
 
 /*
@@ -678,7 +665,9 @@
  * accent は面に対して読める濃さに選ばれているので、どの配色でもその面に合った濃さの 5 色になる。
  * プリセット（`theme/lazy/presets.ts`）にキーを足さないため、`theme` チャンクのサイズは変わらない。
  *
- * 宣言を面に置く理由はインラインコードの文字色と同じである（`--mx-color-code-inline` のコメント）。
+ * WARNING: 宣言を `:root` へ移してはいけない。
+ * カスタムプロパティの値に含まれる var() は宣言した要素で置換を終える。
+ * 配色は `#mx-preview` に適用されるので、`:root` で宣言すると上書きされる前の accent で確定し、どの配色でも既定の色のまま描かれる。
  */
 .mx-preview {
   --mx-color-alert-note: var(--mx-color-accent);

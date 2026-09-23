@@ -30,6 +30,13 @@ export interface LinkTargets {
   /** Markdown をアプリ内で開く。 */
   open: (path: string, anchor: string | undefined) => void;
   /**
+   * Markdown を別ウィンドウで開く（F-OPEN-06 / `Shift+Click`）。
+   *
+   * アンカーは渡さない。
+   * 起動時に開くファイルへ節を指定する経路が無く（`marxdown foo.md#section` は無い）、渡せるのはパスだけである。
+   */
+  openInNewWindow: (path: string) => void;
+  /**
    * 通知バーに出す。構造だけを `documentStore.notice` に合わせてある。
    * 渡す側の代入が型で検査されるため、食い違えば `bootstrap.ts` で型エラーになる。
    */
@@ -52,7 +59,6 @@ export function installLinkHandler(container: HTMLElement, next: LinkTargets): (
   targets = next;
 
   const onClick = (event: MouseEvent) => {
-    // 他のハンドラが既定動作を止めたクリックは扱わない。
     if (event.defaultPrevented) return;
 
     const anchor = (event.target as Element | null)?.closest('a');
@@ -65,14 +71,18 @@ export function installLinkHandler(container: HTMLElement, next: LinkTargets): (
     // 二重に判定するのは、DOMPurify の既定が変わった場合の影響を受けないためである。
     if (href === null || href === '') return;
 
-    handle(href, container);
+    // `Shift+Click` は別ウィンドウ（F-OPEN-06）。ブラウザの慣習に合わせてある。
+    //
+    // `Ctrl+Click`（新しいタブ）は割り当てない。リンクを新しいタブで開くかどうかは未決である（OQ-41）。
+    // ここで先に決めてしまうと、未決のまま既定の振る舞いが 1 つ増える。
+    handle(href, container, event.shiftKey);
   };
 
   container.addEventListener('click', onClick);
   return () => container.removeEventListener('click', onClick);
 }
 
-function handle(href: string, container: HTMLElement): void {
+function handle(href: string, container: HTMLElement, newWindow = false): void {
   // ページ内アンカー（F-VIEW-07）
   if (href.startsWith('#')) {
     scrollToAnchor(container, href.slice(1));
@@ -99,7 +109,8 @@ function handle(href: string, container: HTMLElement): void {
     // 付けたまま渡すと Rust 側で not-found になるため、開いた後のスクロール先として別に渡す（相互にリンクされた文書群では、節を指定するリンクが頻繁に現れる）。
     const [path, anchor] = splitFragment(resolved);
     // 相対パスの正規化は Rust 側（`read_document` の canonicalize）に任せる。
-    targets?.open(path, anchor);
+    if (newWindow) targets?.openInNewWindow(path);
+    else targets?.open(path, anchor);
     return;
   }
 

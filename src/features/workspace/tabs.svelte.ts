@@ -31,7 +31,8 @@ import {
   type StoredPayload,
 } from '@/features/document';
 import { dropHistory } from '@/features/history';
-import type { Eol } from '@/platform';
+import { isSatellite } from '@/features/view';
+import { getPlatform, type Eol } from '@/platform';
 
 /**
  * 1 枚のタブ。
@@ -249,6 +250,25 @@ export async function activateTab(id: number): Promise<boolean> {
   return true;
 }
 
+/** `closeTab` の振る舞いの差を表す。 */
+export interface CloseTabOptions {
+  /**
+   * 未保存の変更を捨ててよいか尋ねるか。既定 true（F-EDIT-03）。
+   *
+   * false にするのは、**捨てるものが無い**ことが呼び出し側で分かっている場合だけである
+   * （`OpenOptions.confirm` と同じ判断）。
+   * サテライトへ本文ごと移す経路がこれにあたる。移した先に同じ内容が開いているため、ここで尋ねると同じものを 2 回確認することになる。
+   */
+  confirm?: boolean;
+  /**
+   * 閉じたタブを「開き直せる」一覧に積むか。既定 true（`Ctrl+Shift+T`）。
+   *
+   * false にするのは、そのタブが消えたのではなく移動した場合である。
+   * 別のウィンドウで開いているものを「閉じたタブ」として復活させると、同じファイルが 2 か所で開く。
+   */
+  remember?: boolean;
+}
+
 /**
  * タブを閉じる（F-NAV-02 / `Ctrl+W`）。
  *
@@ -258,18 +278,18 @@ export async function activateTab(id: number): Promise<boolean> {
  * 最後の 1 枚を閉じると 0 枚になり、Welcome 画面へ戻る（`closeDocument`）。
  * プロセスは終わらない。`✕` が格納の意味になるトレイ常駐（ADR-0007）と揃えてある。
  */
-export async function closeTab(id: number): Promise<boolean> {
+export async function closeTab(id: number, options: CloseTabOptions = {}): Promise<boolean> {
   const index = tabsStore.tabs.findIndex((tab) => tab.id === id);
   const target = tabsStore.tabs[index];
   if (target === undefined) return false;
 
-  if (isTabDirty(target)) {
+  if (options.confirm !== false && isTabDirty(target)) {
     if (tabsStore.activeId !== id && !(await activateTab(id))) return false;
     if (!(await confirmDiscard())) return false;
   }
 
   const wasActive = tabsStore.activeId === id;
-  rememberClosed(target, index);
+  if (options.remember !== false) rememberClosed(target, index);
   tabsStore.tabs = tabsStore.tabs.filter((tab) => tab.id !== id);
 
   // そのタブのために保持しているものを解放する（N-PERF-06）。
@@ -286,6 +306,12 @@ export async function closeTab(id: number): Promise<boolean> {
   tabsStore.activeId = null;
 
   if (neighbor === undefined) {
+    // サテライトは空の状態を持たない（F-OPEN-06 / 決定）。
+    // タブと本文だけの窓であるため、中身が無くなったら窓ごと閉じる。Welcome 画面も出さない（`app/App.svelte`）。
+    if (isSatellite()) {
+      void getPlatform().closeWindow();
+      return true;
+    }
     closeDocument();
     return true;
   }

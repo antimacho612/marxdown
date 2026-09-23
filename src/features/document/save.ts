@@ -163,6 +163,19 @@ export async function saveThenQuit(): Promise<void> {
   await getPlatform().quitApp();
 }
 
+/**
+ * 「保存して閉じる」（F-OPEN-06 / `close.rs` の `ask_then_close`）。
+ *
+ * `saveThenQuit` と同じ構造で、保存した後の行き先だけが違う。
+ * 他にウィンドウが残っているときの `✕` がここへ来る。
+ * 保存に失敗した場合は閉じない（N-REL-01）。
+ */
+export async function saveThenCloseWindow(): Promise<void> {
+  const saved = await saveCurrent();
+  if (!saved) return;
+  await getPlatform().closeWindow();
+}
+
 /** 保存の失敗を通知に出すためのラッパー。メニューとキーの両方から呼ばれる。 */
 export async function saveSafely(): Promise<void> {
   try {

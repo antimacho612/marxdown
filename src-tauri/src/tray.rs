@@ -140,7 +140,11 @@ fn on_menu_event<R: Runtime>(app: &AppHandle<R>, event: MenuEvent) {
         // ウィンドウを先に復帰させてから、フロントの「開く」経路に載せる。
         // ダイアログの親になるウィンドウが隠れたままだと、ダイアログがタスクバーにも表示されず操作できなくなる。
         crate::close::restore(app);
-        let _ = app.emit_to(crate::window::MAIN_LABEL, crate::EVENT_TRAY_OPEN, ());
+        let _ = app.emit_to(
+            crate::target_window(app).as_str(),
+            crate::EVENT_TRAY_OPEN,
+            (),
+        );
         return;
     }
 

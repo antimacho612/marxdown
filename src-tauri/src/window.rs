@@ -42,10 +42,20 @@ pub const DEFAULT_HEIGHT: f64 = 720.0;
 /// ディスプレイ構成が変わった後の起動で最も起きやすい。
 const MIN_VISIBLE: f64 = 80.0;
 
+/// 追加ウィンドウを元のウィンドウからずらす量（論理 px）。
+///
+/// 完全に重ねると、開いた本人に新しいウィンドウが出たことが伝わらない。
+/// タイトルバーの高さ（30px）より少し小さくして、下のウィンドウのタイトルバーが掴める状態を残す。
+const CASCADE_OFFSET: f64 = 28.0;
+
 /// ウィンドウを生成する。`visible: false` の状態で返る。
 ///
 /// 表示するのは `ready` コマンド、または [`SHOW_FALLBACK_MS`] 経過後のフォールバックである。
 /// `restore` がモニタ外を指している場合は破棄し、中央に既定サイズで生成する。
+///
+/// 起動時の 1 枚目と、サテライト（F-OPEN-06 / `crate::open_satellite`）が同じ経路を通る。
+/// サテライトでは `restore` に [`cascade_from`] の結果か、タブを落とした位置から作った矩形を渡す。
+/// `label` は `main` または `main-*` でなければならない（`capabilities/default.json` が許可している形）。
 pub fn create(
     app: &tauri::AppHandle,
     label: &str,
@@ -93,8 +103,13 @@ pub fn create(
     let restore = restore.filter(|s| is_on_some_monitor(app, s));
     // T2c: ウィンドウ状態の復元判定が終わった時点。
     // `available_monitors()` は OS への問い合わせで、環境によっては速くない。
-    if let Some(state) = app.try_state::<crate::state::AppState>() {
-        state.trace.mark("T2c", None);
+    //
+    // 起動時の 1 枚目だけを打つ。
+    // 追加ウィンドウでも打つと、計測中に別ウィンドウを開いただけで同じ ID の点が 2 つ現れ、内訳が読めなくなる。
+    if label == MAIN_LABEL {
+        if let Some(state) = app.try_state::<crate::state::AppState>() {
+            state.trace.mark("T2c", None);
+        }
     }
 
     match restore {
@@ -138,6 +153,26 @@ fn is_on_some_monitor(app: &tauri::AppHandle, state: &WindowState) -> bool {
         let overlap_y = (state.y + state.height).min(pos.y + size.height) - state.y.max(pos.y);
 
         overlap_x >= MIN_VISIBLE && overlap_y >= MIN_VISIBLE
+    })
+}
+
+/// サテライト（F-OPEN-06）の初期矩形を、元のウィンドウから少しずらして作る。
+///
+/// 元が最大化されているときは `None` を返す。
+/// `capture` が返すのは最大化後の矩形であり、それをずらすと画面からはみ出した「ほぼ全画面だが最大化ではない」ウィンドウになる。
+/// その場合は既定サイズで中央に出すほうが扱いやすい。
+///
+/// モニタからはみ出す位置になっても、ここでは弾かない。
+/// 採否は [`create`] が `is_on_some_monitor` で判定し、外れていれば中央の既定サイズへ倒す。
+pub fn cascade_from<R: tauri::Runtime>(source: &WebviewWindow<R>) -> Option<WindowState> {
+    let base = capture(source)?;
+    if base.maximized {
+        return None;
+    }
+    Some(WindowState {
+        x: base.x + CASCADE_OFFSET,
+        y: base.y + CASCADE_OFFSET,
+        ..base
     })
 }
 

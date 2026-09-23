@@ -35,7 +35,7 @@ export {
   reloadCurrent,
   type OpenerConfig,
 } from './open';
-export { saveAsSafely, saveSafely, saveThenQuit } from './save';
+export { saveAsSafely, saveSafely, saveThenCloseWindow, saveThenQuit } from './save';
 export {
   documentStore,
   notifyStatus,

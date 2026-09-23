@@ -1,10 +1,14 @@
 //! `✕` を押したときに何が起きるか（[ADR-0007] 論点 1・2・4・7・9・11）。
 //!
-//! 「閉じる」には見た目が似ていて意味が違う 3 つがある。
+//! 「閉じる」には見た目が似ていて意味が違う 4 つがある。
+//! `close_one` はウィンドウを 1 枚だけ閉じる動作で、他のウィンドウが残っている場合はこれになる（F-OPEN-06）。
 //! `stash` はトレイへ格納する動作で、プロセスは生きたままウィンドウ状態を保存する。
 //! `quit` はプロセスを終える動作で、こちらもウィンドウ状態を保存する（論点 11）。
 //! `restore` は格納から戻す動作である。
 //! 別々の場所に書くと必ずずれるため、1 か所に集めてある（`open.ts` が 5 つの「開く」を 1 か所に集めているのと同じ理由）。
+//!
+//! 最後の 1 枚かどうかが分岐の起点である。
+//! 2 枚目以降の `✕` はそのウィンドウを閉じるだけで、トレイ格納にも終了にもならない。
 //!
 //! ウィンドウ位置の保存（F-CONF-10）を `CloseRequested` だけに置くと、トレイメニューや `Ctrl+Q` からの終了では保存されない（論点 11）。
 //! これらの経路ではこのイベントが発火しないためである。
@@ -53,10 +57,13 @@ fn save_window_state<R: Runtime>(app: &AppHandle<R>) {
 ///
 /// 順序が重要である。
 /// `hide()` より先にサスペンドしようとすると `ERROR_INVALID_STATE` で必ず失敗する（`webview.rs` の制約 1）。
-pub fn stash<R: Runtime>(app: &AppHandle<R>) {
+///
+/// 格納するのは最後に残った 1 枚である。
+/// 主ウィンドウを先に閉じていれば、それが追加ウィンドウであることもある（F-OPEN-06）。
+pub fn stash<R: Runtime>(app: &AppHandle<R>, label: &str) {
     save_window_state(app);
 
-    let Some(window) = app.get_webview_window(MAIN_LABEL) else {
+    let Some(window) = app.get_webview_window(label) else {
         return;
     };
     let _ = window.hide();
@@ -66,8 +73,12 @@ pub fn stash<R: Runtime>(app: &AppHandle<R>) {
 /// 格納から戻す（論点 6・10）。
 ///
 /// `unminimize` を挟むのは、最小化した状態でトレイから復帰させたときにタスクバーで最小化されたままになるためである。
+///
+/// 戻す先は「外から 1 枚開かせる」経路の宛先と同じウィンドウである（`crate::target_window`）。
+/// 転送されたファイルが現れるウィンドウと、前面に出るウィンドウが違ってはいけない。
 pub fn restore<R: Runtime>(app: &AppHandle<R>) {
-    let Some(window) = app.get_webview_window(MAIN_LABEL) else {
+    let label = crate::target_window(app);
+    let Some(window) = app.get_webview_window(&label) else {
         return;
     };
 
@@ -90,7 +101,7 @@ pub fn restore<R: Runtime>(app: &AppHandle<R>) {
     if was_hidden {
         if let Some(state) = app.try_state::<AppState>() {
             let id = state.begin_warm();
-            let _ = app.emit_to(MAIN_LABEL, crate::EVENT_TRAY_RESUME, id);
+            let _ = app.emit_to(label.as_str(), crate::EVENT_TRAY_RESUME, id);
         }
     }
 }
@@ -138,6 +149,10 @@ pub fn request_quit<R: Runtime>(app: &AppHandle<R>) {
 ///
 /// 保存に失敗したらダーティのままなので終了しない。
 /// これは N-REL-01（ユーザーが書いた内容を失わない）そのものであり、失敗を無視して終了する経路は用意しない。
+///
+/// 依頼するのは 1 枚ずつである（F-OPEN-06）。
+/// 複数のウィンドウがダーティなら、1 枚保存されるたびに `request_quit` へ戻ってきて次の 1 枚を尋ねる。
+/// まとめて依頼すると、保存の完了と `app_quit` の呼び出しが交錯し、同じ確認が二重に表示されうる。
 fn ask_then_quit<R: Runtime>(app: AppHandle<R>) {
     use tauri_plugin_dialog::{
         DialogExt, MessageDialogButtons, MessageDialogKind, MessageDialogResult,
@@ -147,6 +162,12 @@ fn ask_then_quit<R: Runtime>(app: AppHandle<R>) {
     // ラベルで判定しないと、どちらのボタンを押しても `_` に該当して何も起きない。
     const SAVE_AND_QUIT: &str = "保存して終了";
     const QUIT_WITHOUT_SAVING: &str = "保存せず終了";
+
+    // 保存を依頼する先。ダーティなウィンドウのうちの 1 枚。
+    let target = app
+        .try_state::<AppState>()
+        .and_then(|s| s.dirty_labels().into_iter().next())
+        .unwrap_or_else(|| MAIN_LABEL.to_owned());
 
     let handle = app.clone();
     app.dialog()
@@ -160,7 +181,11 @@ fn ask_then_quit<R: Runtime>(app: AppHandle<R>) {
         ))
         .show_with_result(move |result| match result {
             MessageDialogResult::Custom(label) if label == SAVE_AND_QUIT => {
-                let _ = handle.emit_to(MAIN_LABEL, crate::EVENT_SAVE_AND_QUIT, ());
+                // ダーティなウィンドウが前面にあるとは限らない。保存の前に見せる。
+                if let Some(window) = handle.get_webview_window(&target) {
+                    let _ = window.set_focus();
+                }
+                let _ = handle.emit_to(target.as_str(), crate::EVENT_SAVE_AND_QUIT, ());
             }
             MessageDialogResult::Custom(label) if label == QUIT_WITHOUT_SAVING => quit(&handle),
             // キャンセル / ダイアログを閉じた場合は何もしない。既定は終了しない側にする（N-REL-01）。
@@ -172,35 +197,129 @@ fn ask_then_quit<R: Runtime>(app: AppHandle<R>) {
 ///
 /// `true` を返したら呼び出し側が `prevent_close()` する。
 /// ここで直接止めないのは、`CloseRequested` の `api` を持ち回すとこの関数がイベント型に依存し、テストから呼べなくなるためである。
-pub fn on_close_requested<R: Runtime>(app: &AppHandle<R>) -> bool {
-    if !stashes_on_close(app) {
-        // `"exit"` 設定。保存だけしてそのまま閉じさせる（OS の標準の挙動）。
+pub fn on_close_requested<R: Runtime>(app: &AppHandle<R>, label: &str) -> bool {
+    let owner = app
+        .try_state::<AppState>()
+        .map(|s| s.owns_instance())
+        .unwrap_or(true);
+
+    // ウィンドウ位置を記録するのは、所有者プロセスの主ウィンドウの分だけである（F-CONF-10 / ADR-0016）。
+    // 追加ウィンドウは閉じたら消え、独立プロセスの矩形を書くと所有者側の値を上書きしてしまう。
+    if owner && label == MAIN_LABEL {
         save_window_state(app);
+    }
+
+    // 他にウィンドウが残っているなら、これは「閉じる」であって格納でも終了でもない（F-OPEN-06）。
+    if app.webview_windows().len() > 1 {
+        return close_one(app, label);
+    }
+
+    // ここから下は「最後の 1 枚」である。閉じた先はトレイ格納か、プロセスの終了しかない。
+
+    // トレイに常駐するのは、所有者プロセスの主ウィンドウだけである（決定 3）。
+    // 独立プロセス（`--new-window`）とサテライトは常駐しない。
+    // 常駐させると、閉じたつもりのプロセスが積み上がり、トレイから戻したときに出てくる窓も一定しない。
+    if owner && label == MAIN_LABEL && stashes_on_close(app) {
+        // 初回だけ、`✕` の意味が変わることを説明する（論点 4）。
+        //
+        // 03.ux-spec/07-status-and-notifications.md §2 は「モーダルはデータ消失の可能性がある場面だけ」としており、これはその例外にあたる。
+        // 生涯 1 回であることが許容の条件そのものなので、フラグは `state.json` に永続化する。
+        let first_time = app
+            .try_state::<AppState>()
+            .map(|s| !s.tray_intro_shown())
+            .unwrap_or(false);
+
+        if first_time {
+            ask_then_stash(app.clone(), label.to_owned());
+        } else {
+            stash(app, label);
+        }
+        return true;
+    }
+
+    // 閉じたらプロセスが終わる。未保存があるなら必ず確認する（F-EDIT-03 / N-REL-01）。
+    //
+    // `✕` で閉じる経路にも確認が要る。
+    // トレイ常駐が既定であったうちは、閉じても本文はメモリに残っていたため確認が無くても何も失われなかった。
+    // 常駐しない窓が増えた以上（決定 3）、ここは `Ctrl+Q` と同じ扱いにする。
+    let dirty = app
+        .try_state::<AppState>()
+        .map(|s| s.is_dirty())
+        .unwrap_or(false);
+
+    if dirty {
+        ask_then_quit(app.clone());
+        return true;
+    }
+    false
+}
+
+/// ウィンドウを 1 枚だけ閉じる（F-OPEN-06）。他のウィンドウが残っているときの `✕`。
+///
+/// プロセスは終わらないため、ここで見るのはそのウィンドウのダーティだけである。
+/// 他のウィンドウの未保存の変更は、そのウィンドウを閉じるときか終了するときに尋ねる。
+fn close_one<R: Runtime>(app: &AppHandle<R>, label: &str) -> bool {
+    let dirty = app
+        .try_state::<AppState>()
+        .map(|s| s.is_window_dirty(label))
+        .unwrap_or(false);
+
+    if !dirty {
         return false;
     }
 
-    // 初回だけ、`✕` の意味が変わることを説明する（論点 4）。
-    //
-    // 03.ux-spec/07-status-and-notifications.md §2 は「モーダルはデータ消失の可能性がある場面だけ」としており、これはその例外にあたる。
-    // 生涯 1 回であることが許容の条件そのものなので、フラグは `state.json` に永続化する。
-    let first_time = app
-        .try_state::<AppState>()
-        .map(|s| !s.tray_intro_shown())
-        .unwrap_or(false);
-
-    if first_time {
-        ask_then_stash(app.clone());
-    } else {
-        stash(app);
-    }
+    ask_then_close(app.clone(), label.to_owned());
     true
+}
+
+/// 「保存して閉じる / 保存せず閉じる / キャンセル」の 3 択。
+///
+/// 終了の確認（`ask_then_quit`）と同じ構造で、行き先だけが違う。
+/// 「保存して閉じる」がここで保存しないのも同じ理由である。
+/// 本文は Monaco の `ITextModel` にあり（ADR-0005）、保存できるのはフロントだけであるため、保存を依頼して戻る。
+///
+/// 「保存せず閉じる」では先にダーティを落とす。
+/// 落とさずに `close()` を呼ぶと同じ確認へ戻ってきて、閉じられなくなる。
+fn ask_then_close<R: Runtime>(app: AppHandle<R>, label: String) {
+    use tauri_plugin_dialog::{
+        DialogExt, MessageDialogButtons, MessageDialogKind, MessageDialogResult,
+    };
+
+    const SAVE_AND_CLOSE: &str = "保存して閉じる";
+    const CLOSE_WITHOUT_SAVING: &str = "保存せず閉じる";
+
+    let handle = app.clone();
+    app.dialog()
+        .message(DIRTY_MESSAGE)
+        .title("Marxdown")
+        .kind(MessageDialogKind::Warning)
+        .buttons(MessageDialogButtons::YesNoCancelCustom(
+            SAVE_AND_CLOSE.to_string(),
+            CLOSE_WITHOUT_SAVING.to_string(),
+            "キャンセル".to_string(),
+        ))
+        .show_with_result(move |result| match result {
+            MessageDialogResult::Custom(text) if text == SAVE_AND_CLOSE => {
+                let _ = handle.emit_to(label.as_str(), crate::EVENT_SAVE_AND_CLOSE, ());
+            }
+            MessageDialogResult::Custom(text) if text == CLOSE_WITHOUT_SAVING => {
+                if let Some(state) = handle.try_state::<AppState>() {
+                    state.set_dirty(&label, false);
+                }
+                if let Some(window) = handle.get_webview_window(&label) {
+                    let _ = window.close();
+                }
+            }
+            // キャンセル / ダイアログを閉じた場合は何もしない。既定は閉じない側にする（N-REL-01）。
+            _ => {}
+        });
 }
 
 /// 初回の確認ダイアログ（03.ux-spec/07-status-and-notifications.md §4 の文面）。
 ///
 /// 非同期で表示する。
 /// `CloseRequested` のハンドラの中で同期的にダイアログを表示すると、イベントループを塞いだまま入力を待つことになる。
-fn ask_then_stash<R: Runtime>(app: AppHandle<R>) {
+fn ask_then_stash<R: Runtime>(app: AppHandle<R>, label: String) {
     use tauri_plugin_dialog::{DialogExt, MessageDialogButtons, MessageDialogKind};
 
     // 答える前にもう一度 `✕` を押されても、ダイアログが重複して表示されないようにする。
@@ -222,7 +341,7 @@ fn ask_then_stash<R: Runtime>(app: AppHandle<R>) {
         ))
         .show(move |stash_it| {
             if stash_it {
-                stash(&handle);
+                stash(&handle, &label);
             } else {
                 quit(&handle);
             }

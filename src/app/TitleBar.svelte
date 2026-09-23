@@ -8,6 +8,7 @@
 <script lang="ts">
   import type { Snippet } from 'svelte';
 
+  import { isSatellite } from '@/features/view';
   import { ja } from '@/i18n/ja';
 
   import MenuButton from './MenuButton.svelte';
@@ -28,7 +29,13 @@
 </script>
 
 <header class="mx-titlebar" data-tauri-drag-region="deep">
-  <MenuButton />
+  <!--
+    サテライトにはハンバーガーメニューを置かない（F-OPEN-06 / 決定 8）。
+    並ぶ項目の多くがサテライトでは意味を持たず（フォルダを開く / ペインの開閉）、残りはキーとコマンドパレットから到達できる。
+  -->
+  {#if !isSatellite()}
+    <MenuButton />
+  {/if}
 
   <div class="mx-titlebar__center">
     {#if center}

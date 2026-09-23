@@ -5,7 +5,7 @@
 
 use std::collections::HashMap;
 use std::path::PathBuf;
-use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Mutex;
 use std::time::Instant;
 
@@ -29,6 +29,21 @@ pub struct ConfigPaths {
     pub settings: Option<PathBuf>,
     /// ユーザーが追加した配色の置き場所（`themes/`）。
     pub themes: Option<PathBuf>,
+}
+
+/// このプロセスが単一インスタンスの所有者かどうか（F-OPEN-06 / `instance.rs`）。
+///
+/// 所有者は `tauri-plugin-single-instance` を登録したプロセスで、argv 転送の受け先になる。
+/// `--new-window` で起動し、既に所有者が居た場合だけ `Standalone` になる。
+///
+/// 3 か所で意味を持つ。
+/// トレイに常駐するのは所有者だけであり（ADR-0007 / トレイアイコンがプロセスの数だけ並ばないようにする）、
+/// `state.json` のウィンドウ矩形とセッションを書くのも所有者だけであり（後勝ちで消えるのを防ぐ）、
+/// それ以外の書き込みは読み直してから行う。
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum InstanceRole {
+    Owner,
+    Standalone,
 }
 
 /// `manage` で 1 つだけ持つ共有状態。コマンドとウィンドウイベントの両方から参照する。
@@ -56,19 +71,50 @@ pub struct AppState {
     /// ウォーム起動の計測。argv 転送を受けた時刻を要求 ID ごとに保持する。
     warm: Mutex<HashMap<u64, Instant>>,
     warm_counter: AtomicU64,
-    /// 最後にフロントへ知らせた「最大化されているか」。
+    /// 最後にフロントへ知らせた「最大化されているか」。ウィンドウごとに持つ。
     ///
     /// `Resized` はドラッグ中に毎フレーム発火する。
     /// 変化したときだけイベントを出すために、直前の値をここに保持する。
-    maximized: AtomicBool,
-    /// 未保存の変更があるか（F-EDIT-03 / 03.ux-spec/07-status-and-notifications.md §1）。
+    ///
+    /// 1 つの値で共有してはいけない（F-OPEN-06）。
+    /// 別のウィンドウを最大化した時点で直前の値が書き換わり、こちらのウィンドウは次に変化しても「変化なし」と判定されてボタンの表示が取り残される。
+    maximized: Mutex<HashMap<String, bool>>,
+    /// 未保存の変更があるか（F-EDIT-03 / 03.ux-spec/07-status-and-notifications.md §1）。ウィンドウごとに持つ。
     ///
     /// 値の所有者はフロントである。
     /// ここに複製があるのは、終了の 3 経路（トレイメニュー / ハンバーガーメニュー / `Ctrl+Q`）が Rust 側で合流しており（`close.rs`）、トレイメニューからの終了がフロントを経由しないためである。
     /// 確認をフロントに置くと、その経路だけ確認せずに終了することになる。
     ///
     /// 更新は `false` と `true` の変わり目だけで、打鍵ごとの IPC にはならない（`features/document/save.ts`）。
-    dirty: AtomicBool,
+    ///
+    /// ウィンドウごとに分けるのは、プロセスの終了（どれか 1 つでもダーティなら確認する）と、
+    /// ウィンドウ 1 枚を閉じる操作（そのウィンドウだけを見る）で必要な答えが違うためである。
+    dirty: Mutex<HashMap<String, bool>>,
+    /// 最後にフォーカスされたウィンドウのラベル。
+    ///
+    /// 「外から 1 枚開かせる」経路（argv 転送 / トレイの最近開いたファイル）の宛先になる。
+    /// ウィンドウが 1 枚しかなかった頃は `MAIN_LABEL` 決め打ちでよかったが、複数あるときに主ウィンドウへ送ると、
+    /// ユーザーが見ている手前のウィンドウではない場所にタブが増える。
+    focused: Mutex<String>,
+    /// 追加ウィンドウのラベルに使う連番（`main-2`, `main-3`, ...）。
+    ///
+    /// 閉じたラベルは再利用しない。
+    /// 同じラベルのウィンドウを作り直すと、破棄の途中で届いたイベントが新しいウィンドウのものとして扱われうる。
+    window_counter: AtomicU64,
+    /// 単一インスタンスの所有者か（[`InstanceRole`]）。起動時に決まり、以後変わらない。
+    role: InstanceRole,
+    /// サテライトへ移すタブの本文（F-OPEN-06 / 決定 1）。
+    ///
+    /// 未保存のタブはパスだけでは渡せない。
+    /// 移す側が本文をここへ預け、新しいウィンドウが起動直後に 1 回だけ引き取る。
+    ///
+    /// **中身は解釈しない。** フロントが組み立てた JSON 文字列をそのまま運ぶだけである
+    /// （02.architecture/README.md 原則 C「Markdown の意味解釈は TypeScript 側」）。
+    ///
+    /// 1 件しか持たない。
+    /// 同時に 2 枚飛ばす操作が無いため、新しい転送で上書きし、引き取りで空にすれば取りこぼしも漏れも起きない。
+    transfer: Mutex<Option<(u64, String)>>,
+    transfer_counter: AtomicU64,
 }
 
 impl AppState {
@@ -81,6 +127,7 @@ impl AppState {
         store: StoreData,
         settings: SettingsLoad,
         paths: ConfigPaths,
+        role: InstanceRole,
     ) -> Self {
         let mut roots = Vec::new();
         if let Some(doc) = bootstrap.document.as_ref() {
@@ -103,26 +150,81 @@ impl AppState {
             image_dirs: Mutex::new(Vec::new()),
             warm: Mutex::new(HashMap::new()),
             warm_counter: AtomicU64::new(1),
-            maximized: AtomicBool::new(false),
-            dirty: AtomicBool::new(false),
+            maximized: Mutex::new(HashMap::new()),
+            dirty: Mutex::new(HashMap::new()),
+            focused: Mutex::new(crate::window::MAIN_LABEL.to_owned()),
+            window_counter: AtomicU64::new(1),
+            role,
+            transfer: Mutex::new(None),
+            transfer_counter: AtomicU64::new(1),
         }
+    }
+
+    /// 移す本文を預かる。引き取りに使う ID を返す（F-OPEN-06 / 決定 1）。
+    ///
+    /// 前の預かりものは捨てる。
+    /// 引き取られないまま残るのは、ウィンドウの生成に失敗した場合だけである。
+    /// その 1 件を次の転送まで抱えることになるが、次の転送で必ず置き換わる。
+    pub fn stash_transfer(&self, payload: String) -> u64 {
+        let id = self.transfer_counter.fetch_add(1, Ordering::Relaxed);
+        if let Ok(mut slot) = self.transfer.lock() {
+            *slot = Some((id, payload));
+        }
+        id
+    }
+
+    /// 預かった本文を引き取る。**1 回しか取れない。**
+    ///
+    /// ID が一致しなければ何も返さず、預かりものも消さない。
+    /// 起動が前後した場合に、別のウィンドウ宛ての本文を取ってしまわないようにする。
+    pub fn take_transfer(&self, id: u64) -> Option<String> {
+        let mut slot = self.transfer.lock().ok()?;
+        if slot.as_ref().is_some_and(|(stored, _)| *stored == id) {
+            return slot.take().map(|(_, payload)| payload);
+        }
+        None
+    }
+
+    /// 単一インスタンスの所有者か（F-OPEN-06）。
+    pub fn owns_instance(&self) -> bool {
+        self.role == InstanceRole::Owner
     }
 
     /// ストアを書き換えて永続化する。
     ///
     /// ロックを保持したままファイル I/O をしないよう、書き出す値を複製してから解放する。
     /// ストアの更新は最近開いたファイルに 1 件追加する程度の頻度であり、複製のコストよりロックの保持時間のほうが問題になる。
+    ///
+    /// 所有者でないプロセスは、書き換える前にディスクから読み直す（F-OPEN-06 / 決定 6）。
+    /// `state.json` は 1 枚しかなく、こちらが起動した後に所有者が書いた分はメモリ上の複製に反映されていない。
+    /// 読み直さずに書くと、最近開いたファイルを 1 件足すたびに所有者側の更新をまとめて消すことになる。
     pub fn update_store<T>(&self, f: impl FnOnce(&mut StoreData) -> T) -> T {
         let (result, snapshot) = {
             let Ok(mut store) = self.store.lock() else {
                 // ロックが poisoned でも起動は止めない。永続化だけを行わない。
                 return f(&mut StoreData::default());
             };
+            if self.role == InstanceRole::Standalone {
+                *store = crate::store::load(self.paths.store.as_deref());
+            }
             let result = f(&mut store);
             (result, store.clone())
         };
         crate::store::save(self.paths.store.as_deref(), &snapshot);
         result
+    }
+
+    /// ストアの複製。サテライトの bootstrap を組み立てるために使う（`crate::open_satellite`）。
+    pub fn store_snapshot(&self) -> StoreData {
+        self.store.lock().map(|s| s.clone()).unwrap_or_default()
+    }
+
+    /// メモリ上の設定の複製。ディスクは読まない。
+    ///
+    /// 追加ウィンドウの bootstrap に載せるために使う。
+    /// 外部エディターでの編集はファイル監視が既に取り込んでいるため、ここで読み直す理由がない（`close_behavior` と同じ判断）。
+    pub fn settings_snapshot(&self) -> SettingsLoad {
+        self.settings.lock().map(|s| s.clone()).unwrap_or_default()
     }
 
     /// 最近開いたファイルの一覧。ロックを取れない場合は空を返す。
@@ -246,23 +348,92 @@ impl AppState {
         Some(started.elapsed().as_secs_f64() * 1000.0)
     }
 
-    /// 最大化状態が変化していれば true を返し、新しい値を保持する。
+    /// そのウィンドウの最大化状態が変化していれば true を返し、新しい値を保持する。
     ///
     /// `WindowEvent::Resized` はウィンドウをドラッグしている間ずっと発火する。
     /// そのたびにイベントを出すと、フロントに不要な IPC が毎フレーム届く。
     /// 変化したときだけ通知する判定をここに閉じ込める。
-    pub fn note_maximized(&self, now: bool) -> bool {
-        self.maximized.swap(now, Ordering::Relaxed) != now
+    pub fn note_maximized(&self, label: &str, now: bool) -> bool {
+        let Ok(mut map) = self.maximized.lock() else {
+            // 判定できないなら通知する側に倒す。余分な IPC 1 回のほうが、ボタンの表示がずれたままになるより害が小さい。
+            return true;
+        };
+        map.insert(label.to_owned(), now) != Some(now)
     }
 
     /// 未保存の変更があるか（F-EDIT-03）。フロントが変わり目だけ知らせてくる。
-    pub fn set_dirty(&self, dirty: bool) {
-        self.dirty.store(dirty, Ordering::Relaxed);
+    pub fn set_dirty(&self, label: &str, dirty: bool) {
+        if let Ok(mut map) = self.dirty.lock() {
+            map.insert(label.to_owned(), dirty);
+        }
     }
 
-    /// 未保存の変更があるか。終了の確認（`close::request_quit`）の判断材料になる。
+    /// そのウィンドウに未保存の変更があるか。ウィンドウ 1 枚を閉じるときの判断材料になる。
+    pub fn is_window_dirty(&self, label: &str) -> bool {
+        self.dirty
+            .lock()
+            .map(|m| m.get(label).copied().unwrap_or(false))
+            .unwrap_or(false)
+    }
+
+    /// どれか 1 つでも未保存の変更があるか。終了の確認（`close::request_quit`）の判断材料になる。
     pub fn is_dirty(&self) -> bool {
-        self.dirty.load(Ordering::Relaxed)
+        self.dirty
+            .lock()
+            .map(|m| m.values().any(|d| *d))
+            .unwrap_or(false)
+    }
+
+    /// 未保存の変更を抱えているウィンドウのラベル。`close.rs` が保存を依頼する宛先になる。
+    pub fn dirty_labels(&self) -> Vec<String> {
+        self.dirty
+            .lock()
+            .map(|m| {
+                m.iter()
+                    .filter(|(_, dirty)| **dirty)
+                    .map(|(label, _)| label.clone())
+                    .collect()
+            })
+            .unwrap_or_default()
+    }
+
+    /// ウィンドウが閉じたら、そのウィンドウの分の記録を落とす。
+    ///
+    /// 残すと、閉じたウィンドウのダーティが `is_dirty()` に効き続けて終了できなくなる。
+    pub fn forget_window(&self, label: &str) {
+        if let Ok(mut map) = self.dirty.lock() {
+            map.remove(label);
+        }
+        if let Ok(mut map) = self.maximized.lock() {
+            map.remove(label);
+        }
+    }
+
+    /// 最後にフォーカスされたウィンドウを記録する。
+    pub fn note_focused(&self, label: &str) {
+        if let Ok(mut current) = self.focused.lock() {
+            *current = label.to_owned();
+        }
+    }
+
+    /// 「外から 1 枚開かせる」経路の宛先（argv 転送 / トレイ）。
+    ///
+    /// ここは記録を返すだけである。
+    /// そのウィンドウが既に閉じている可能性があるため、存在の確認は呼び出し側で行う（`crate::target_window`）。
+    pub fn focused_label(&self) -> String {
+        self.focused
+            .lock()
+            .map(|l| l.clone())
+            .unwrap_or_else(|_| crate::window::MAIN_LABEL.to_owned())
+    }
+
+    /// 次の追加ウィンドウのラベル（`main-2`, `main-3`, ...）。
+    ///
+    /// `main-*` は capabilities が許可している形である（`capabilities/default.json`）。
+    /// ここから外れたラベルを付けると、そのウィンドウからは IPC が 1 つも通らない。
+    pub fn next_window_label(&self) -> String {
+        let n = self.window_counter.fetch_add(1, Ordering::Relaxed) + 1;
+        format!("{}-{n}", crate::window::MAIN_LABEL)
     }
 
     /// アセット参照を許可するディレクトリを 1 件加える（N-SEC-05）。同じパスは重複させない。
@@ -334,6 +505,7 @@ mod tests {
                 settings: Some(path.to_path_buf()),
                 ..ConfigPaths::default()
             },
+            InstanceRole::Owner,
         )
     }
 
@@ -397,5 +569,109 @@ mod tests {
         assert_eq!(reloaded.values.theme, crate::settings::Theme::Dark);
         assert!(reloaded.broken.is_some());
         std::fs::remove_dir_all(&d).ok();
+    }
+
+    /// 設定ファイルを見ない検査のための `AppState`。
+    fn bare_state() -> AppState {
+        let trace = Trace::start(Instant::now());
+        let loaded = SettingsLoad::default();
+        let bootstrap = crate::bootstrap::build(
+            &CliArgs::default(),
+            &trace,
+            &StoreData::default(),
+            &loaded,
+            None,
+        );
+        AppState::new(
+            CliArgs::default(),
+            trace,
+            &bootstrap,
+            StoreData::default(),
+            loaded,
+            ConfigPaths::default(),
+            InstanceRole::Owner,
+        )
+    }
+
+    /// 終了の確認は全ウィンドウを見て、ウィンドウ 1 枚を閉じる判断はそのウィンドウだけを見る（F-OPEN-06 / `close.rs`）。
+    #[test]
+    fn dirty_is_tracked_per_window() {
+        let state = bare_state();
+
+        state.set_dirty("main", true);
+
+        assert!(
+            state.is_dirty(),
+            "どれか 1 つでもダーティなら終了時に確認する"
+        );
+        assert!(state.is_window_dirty("main"));
+        assert!(
+            !state.is_window_dirty("main-2"),
+            "別のウィンドウの未保存は、こちらを閉じる判断に影響しない"
+        );
+        assert_eq!(state.dirty_labels(), vec!["main".to_string()]);
+    }
+
+    /// 閉じたウィンドウのダーティが残ると、二度と終了できなくなる。
+    #[test]
+    fn a_closed_window_stops_blocking_quit() {
+        let state = bare_state();
+        state.set_dirty("main-2", true);
+
+        state.forget_window("main-2");
+
+        assert!(!state.is_dirty());
+        assert!(state.dirty_labels().is_empty());
+    }
+
+    /// 最大化の通知は変化したときだけ出す。判定がウィンドウごとに独立していないと、別のウィンドウの操作で取り残される。
+    #[test]
+    fn the_maximize_notice_is_decided_per_window() {
+        let state = bare_state();
+
+        assert!(state.note_maximized("main", true), "初回は変化として扱う");
+        assert!(!state.note_maximized("main", true), "同じ値なら通知しない");
+        assert!(
+            state.note_maximized("main-2", true),
+            "別のウィンドウの初回は、こちらの値に影響されない"
+        );
+    }
+
+    /// 受け渡し箱は 1 回しか取れない（F-OPEN-06 / 決定 1）。
+    /// 二度取れると、同じ未保存の本文が 2 つのウィンドウに現れる。
+    #[test]
+    fn a_transfer_can_only_be_taken_once() {
+        let state = bare_state();
+        let id = state.stash_transfer("{\"text\":\"hello\"}".to_owned());
+
+        assert_eq!(
+            state.take_transfer(id).as_deref(),
+            Some("{\"text\":\"hello\"}")
+        );
+        assert_eq!(state.take_transfer(id), None, "2 回目は空");
+    }
+
+    /// 起動が前後したときに、別のウィンドウ宛ての本文を取ってしまわない。
+    #[test]
+    fn a_transfer_is_not_handed_to_the_wrong_window() {
+        let state = bare_state();
+        let first = state.stash_transfer("最初".to_owned());
+        let second = state.stash_transfer("次".to_owned());
+
+        assert_eq!(state.take_transfer(first), None, "上書きされた分は取れない");
+        assert_eq!(state.take_transfer(second).as_deref(), Some("次"));
+    }
+
+    /// ラベルは capabilities が許可している `main-*` の形でなければ、そのウィンドウから IPC が 1 つも通らない。
+    #[test]
+    fn additional_windows_get_capability_matching_labels() {
+        let state = bare_state();
+
+        assert_eq!(state.next_window_label(), "main-2");
+        assert_eq!(
+            state.next_window_label(),
+            "main-3",
+            "閉じても番号は戻さない"
+        );
     }
 }

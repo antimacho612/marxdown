@@ -17,6 +17,14 @@ export type Encoding = 'utf8' | 'utf16-le' | 'utf16-be' | 'shift-jis' | 'euc-jp'
 export type ViewMode = 'preview' | 'edit' | 'split';
 
 /**
+ * ウィンドウの役割（F-OPEN-06）。`src-tauri/src/bootstrap.rs` の `WindowRole` と対応する。
+ *
+ * `main` はフルシェルのウィンドウで、1 プロセスに 1 枚しか無い。
+ * `satellite` はタブと本文だけを持つウィンドウで、ファイルツリー・アウトライン・ハンバーガーメニューを持たない。
+ */
+export type WindowRole = 'main' | 'satellite';
+
+/**
  * 未保存のまま別の文書へ移るかの答え（`src-tauri/src/commands.rs` の `DiscardChoice`）。
  *
  * 綴りは Rust 側の serde に合わせる。
@@ -213,6 +221,15 @@ export interface RecentEntry {
 /** `window.__MARXDOWN_BOOTSTRAP__` の中身。 */
 export interface Bootstrap {
   version: number;
+  /** このウィンドウの役割（F-OPEN-06）。シェルの描き分けと、前回のタブを覚えるかどうかが変わる。 */
+  role: WindowRole;
+  /**
+   * 引き取るべき本文の ID（F-OPEN-06）。未保存のタブをサテライトへ移したときだけ入る。
+   *
+   * `takeTransfer(id)` で 1 回だけ取りに行き、その内容で文書を開く。
+   * 本文そのものは bootstrap に載らない（大きな文書が初期化スクリプトへ丸ごと書き出されるのを避けるため）。
+   */
+  transfer: number | null;
   document: BootstrapDocument | null;
   documentError: BootstrapError | null;
   mode: ViewMode | null;
@@ -286,7 +303,6 @@ export interface OpenRequest {
   /** この要求の計測 ID。描画完了後に `warmDone` へ返す。 */
   requestId: number;
   paths: string[];
-  newWindow: boolean;
   mode: ViewMode | null;
   trace: boolean;
 }
@@ -519,6 +535,49 @@ export interface Platform {
    */
   closeWindow(): Promise<void>;
   /**
+   * サテライトウィンドウで開く（F-OPEN-06）。
+   *
+   * タブと本文だけを持つウィンドウを、**同じプロセスの中に** 1 枚増やす。
+   * 2 つ以上渡すと、1 枚目が表示され残りはタブとして開かれる（起動時の `marxdown a.md b.md` と同じ扱い）。
+   *
+   * ウィンドウは WebView ごと作られるため、タブを増やすのとは桁の違うコストがかかる（ADR-0004 の Option C の欠点そのもの）。
+   * 既定の導線はタブであり、これは明示的に選んだときだけ通る経路である。
+   */
+  openSatellite(options?: {
+    paths?: string[];
+    mode?: ViewMode;
+    transfer?: number;
+    /**
+     * 出す位置（論理ピクセルのスクリーン座標）。タブを窓の外へ落としたときだけ渡す。
+     * 省略すると、元のウィンドウから少しずらした位置に出る。
+     */
+    position?: { x: number; y: number };
+  }): Promise<void>;
+  /**
+   * サテライトへ移す本文を預ける（F-OPEN-06）。引き取りに使う ID を返す。
+   *
+   * 未保存のタブはパスだけでは渡せない。
+   * `payload` は呼び出し側が組み立てた JSON 文字列で、Rust は中身を解釈せず運ぶだけである。
+   *
+   * 預かりものは 1 件しか無い。次の `stashTransfer` で置き換わる。
+   */
+  stashTransfer(payload: string): Promise<number>;
+  /**
+   * 預けた本文を引き取る。**1 回しか取れない。**
+   *
+   * 取れなかった場合（既に引き取り済み / ID の不一致）は `null` が返る。
+   */
+  takeTransfer(id: number): Promise<string | null>;
+  /**
+   * 独立したプロセスで開く（F-OPEN-06）。
+   *
+   * 自分自身を `-n` 付きで起動する。開いた先はフルシェルの `main` を持つ別のインスタンスで、状態を一切共有しない。
+   * `paths` を省略すると引数なしの起動になる。
+   *
+   * 起動の完了は待たない。返った時点ではまだウィンドウは出ていない。
+   */
+  openNewInstance(options?: { paths?: string[] }): Promise<void>;
+  /**
    * Marxdown を終了する（ADR-0007 論点 3）。
    *
    * `closeWindow` とは別のメソッドである。
@@ -578,6 +637,13 @@ export interface Platform {
    * 失敗した場合はダーティのままなので終了しない（N-REL-01）。
    */
   onSaveAndQuit(handler: () => void): () => void;
+  /**
+   * ウィンドウを閉じる確認で「保存して閉じる」が選ばれたことを購読する（F-OPEN-06）。
+   *
+   * `onSaveAndQuit` と同じ構造で、保存した後の行き先だけが違う。
+   * 受け取ったら保存し、成功したらもう一度 `closeWindow()` を呼ぶ。
+   */
+  onSaveAndClose(handler: () => void): () => void;
   /**
    * トレイから復帰した瞬間を購読する（ADR-0007「計測項目」）。
    *

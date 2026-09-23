@@ -14,6 +14,9 @@ const original = getPlatform();
  */
 const openPathSpy = vi.fn((_path: string, _options: { anchor?: string }) => Promise.resolve(null));
 
+/** 別ウィンドウで開く先（F-OPEN-06 / `Shift+Click`）。こちらも注入する手をそのまま覗く。 */
+const openInNewWindowSpy = vi.fn((_path: string) => {});
+
 interface Spies {
   openExternal: ReturnType<typeof vi.fn>;
   openLocalFile: ReturnType<typeof vi.fn>;
@@ -38,12 +41,14 @@ beforeEach(() => {
   setPlatform({ ...original, ...spies } as Platform);
 
   openPathSpy.mockClear();
+  openInNewWindowSpy.mockClear();
   document.body.innerHTML = '<div id="mx-preview"></div>';
   container = document.querySelector('#mx-preview') as HTMLElement;
   // 実アプリで `bootstrap.ts` が繋ぐ配線を、ここでも同じ形で組み立てる。
   dispose = installLinkHandler(container, {
     currentPath: () => documentStore.meta?.path ?? '',
     open: (path, anchor) => void openPathSpy(path, anchor === undefined ? {} : { anchor }),
+    openInNewWindow: (path) => void openInNewWindowSpy(path),
     notify: (notice) => {
       documentStore.notice = notice;
     },
@@ -101,6 +106,35 @@ describe('リンククリックの分岐 (02.architecture/09-security.md §2)', 
     click('<a href="./other.md#section">other</a>');
 
     expect(openPathSpy).toHaveBeenCalledWith('C:\\work\\docs\\./other.md', { anchor: 'section' });
+  });
+
+  /** ブラウザの慣習に合わせた導線（F-OPEN-06）。既定の「同じタブで開く」は変えない。 */
+  it('Shift+Click は別ウィンドウで開く (F-OPEN-06)', () => {
+    container.innerHTML = '<a href="./other.md">other</a>';
+    container.querySelector('a')?.dispatchEvent(new MouseEvent('click', { bubbles: true, shiftKey: true }));
+
+    expect(openInNewWindowSpy).toHaveBeenCalledWith('C:\\work\\docs\\./other.md');
+    expect(openPathSpy).not.toHaveBeenCalled();
+  });
+
+  /**
+   * 別ウィンドウへ渡せるのはパスだけである。
+   * 起動時に開くファイルへ節を指定する経路が無く（`marxdown foo.md#section` は無い）、アンカーは落ちる。
+   */
+  it('Shift+Click ではアンカーを渡さない', () => {
+    container.innerHTML = '<a href="./other.md#section">other</a>';
+    container.querySelector('a')?.dispatchEvent(new MouseEvent('click', { bubbles: true, shiftKey: true }));
+
+    expect(openInNewWindowSpy).toHaveBeenCalledWith('C:\\work\\docs\\./other.md');
+  });
+
+  /** 外部リンクは `Shift` を押していても既定ブラウザである。窓を増やす対象は Markdown だけ（N-SEC-04）。 */
+  it('Shift+Click でも外部リンクは既定ブラウザに渡す', () => {
+    container.innerHTML = '<a href="https://example.com/x">x</a>';
+    container.querySelector('a')?.dispatchEvent(new MouseEvent('click', { bubbles: true, shiftKey: true }));
+
+    expect(spies.openExternal).toHaveBeenCalledWith('https://example.com/x');
+    expect(openInNewWindowSpy).not.toHaveBeenCalled();
   });
 
   it('Markdown 以外のローカルファイルは、確認してからでないと開かない (F-VIEW-06)', () => {

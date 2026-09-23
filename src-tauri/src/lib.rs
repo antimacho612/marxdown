@@ -17,6 +17,7 @@ pub mod dir;
 mod document;
 pub mod error;
 pub mod glob;
+pub mod instance;
 pub mod scope;
 pub mod settings;
 /// Windows の Snap Layouts。Windows 以外では空になる（ファイル冒頭の `#![cfg(windows)]`）。
@@ -30,6 +31,7 @@ pub mod watch;
 pub mod webview;
 pub mod window;
 
+use std::path::Path;
 use std::time::Instant;
 
 use tauri::{Emitter, Manager};
@@ -44,7 +46,6 @@ pub struct OpenRequest {
     /// この要求の計測 ID。フロントは描画完了後に `warm_done` へ返す。
     pub request_id: u64,
     pub paths: Vec<String>,
-    pub new_window: bool,
     pub mode: Option<cli::ViewMode>,
     /// 転送側が計測を要求していたか。ウォーム起動の計測に使う。
     pub trace: bool,
@@ -65,11 +66,115 @@ pub fn forward_open<R: tauri::Runtime>(app: &tauri::AppHandle<R>, paths: Vec<Str
     let request = OpenRequest {
         request_id: state.begin_warm(),
         paths,
-        new_window: false,
         mode: None,
         trace: false,
     };
-    let _ = app.emit_to(window::MAIN_LABEL, EVENT_OPEN_REQUEST, &request);
+    let _ = app.emit_to(target_window(app).as_str(), EVENT_OPEN_REQUEST, &request);
+}
+
+/// 「外から 1 枚開かせる」経路の宛先（F-OPEN-06）。
+///
+/// 最後にフォーカスされたウィンドウへ送る。
+/// 主ウィンドウ決め打ちにすると、ユーザーが見ている手前のウィンドウではない場所にタブが増える。
+///
+/// 記録しているウィンドウが既に閉じていれば、主ウィンドウ、それも無ければ残っている 1 枚へ倒す。
+/// 存在しないラベルを返してはいけない。
+/// トレイからの復帰（`close::restore`）もここを通るため、宛先が実在しないとトレイに格納したまま二度と出せなくなる。
+pub fn target_window<R: tauri::Runtime>(app: &tauri::AppHandle<R>) -> String {
+    let focused = app
+        .try_state::<state::AppState>()
+        .map(|s| s.focused_label())
+        .unwrap_or_else(|| window::MAIN_LABEL.to_owned());
+
+    if app.get_webview_window(&focused).is_some() {
+        return focused;
+    }
+    if app.get_webview_window(window::MAIN_LABEL).is_some() {
+        return window::MAIN_LABEL.to_owned();
+    }
+
+    // 残っている 1 枚。ラベル順で選ぶのは、複数残っている場合に毎回同じ結果を返すためである。
+    let mut labels = app.webview_windows().into_keys().collect::<Vec<_>>();
+    labels.sort_unstable();
+    labels
+        .into_iter()
+        .next()
+        .unwrap_or_else(|| window::MAIN_LABEL.to_owned())
+}
+
+/// サテライトウィンドウを 1 枚作る（F-OPEN-06 / ADR-0004「1 プロセスが複数ウィンドウを持てる」）。
+///
+/// 生成したウィンドウのラベルを返す。
+/// タブと本文だけを持つウィンドウで、ファイルツリーもアウトラインもハンバーガーメニューも持たない（[`bootstrap::WindowRole`]）。
+///
+/// 別プロセスで開く `--new-window` とは別物である。
+/// あちらは独立した `main` のウィンドウで、こちらは同じプロセスの中の従属した 1 枚である。
+///
+/// ウィンドウを作る手順そのものは起動時の 1 枚目と同じ `window::create` である。
+/// 違うのは 2 点だけで、`CliArgs` を argv ではなく引数から組み立てることと、前回のタブを復元しないことである。
+///
+/// **前回のタブ（`state.json` の `session`）は復元しない。**
+/// 復元は「引数なしで起動したとき」の振る舞いであり（`bootstrap::build`）、明示的に開いたウィンドウに前回の 8 枚が現れるのは意図と違う。
+/// セッションを空にしたストアを渡すことで、その分岐に入らないようにしてある。
+///
+/// ウィンドウ位置は保存しない（`close.rs` の `save_window_state`）。
+/// 覚えるのは主ウィンドウの分だけで、サテライトは閉じたら消える。
+pub fn open_satellite(
+    app: &tauri::AppHandle,
+    state: &state::AppState,
+    paths: Vec<String>,
+    mode: Option<cli::ViewMode>,
+    transfer: Option<u64>,
+    placement: Option<store::WindowState>,
+) -> tauri::Result<String> {
+    let args = cli::CliArgs {
+        paths: paths.iter().map(std::path::PathBuf::from).collect(),
+        mode,
+        ..cli::CliArgs::default()
+    };
+
+    let store = store::StoreData {
+        session: store::Session::default(),
+        ..state.store_snapshot()
+    };
+    let settings = state.settings_snapshot();
+    let preview_theme = themes::find(state.themes_dir(), &settings.values.preview_theme);
+
+    // 起動計測は 1 枚目だけを対象にするため、無効な計測を渡す（`commands::ready`）。
+    let trace = trace::Trace::start(Instant::now());
+    let mut payload = bootstrap::build(&args, &trace, &store, &settings, preview_theme);
+    payload.role = bootstrap::WindowRole::Satellite;
+    payload.transfer = transfer;
+
+    let label = state.next_window_label();
+    window::create(app, &label, &payload, placement)?;
+
+    // 開いたファイルの親ディレクトリをアセットの許可スコープに入れる（N-SEC-05）。
+    //
+    // 起動時の 1 枚目と同じ手当てである（`run()` の `setup`）。
+    // bootstrap で開いたドキュメントは `read_document` を経由しないため、ここで登録しないと相対パスの画像が 403 になる。
+    let roots = payload
+        .document
+        .as_ref()
+        .and_then(|d| {
+            std::path::Path::new(&d.meta.path)
+                .parent()
+                .map(Path::to_path_buf)
+        })
+        .into_iter()
+        .chain(
+            payload
+                .workspace_root
+                .as_ref()
+                .map(std::path::PathBuf::from),
+        );
+
+    for root in roots {
+        state.allow_asset_root(root.clone());
+        let _ = app.asset_protocol_scope().allow_directory(&root, true);
+    }
+
+    Ok(label)
 }
 
 /// 最大化状態が変わったことをフロントへ知らせる（ペイロードは `bool`）。
@@ -98,6 +203,12 @@ pub const EVENT_TRAY_RESUME: &str = "marxdown://tray-resume";
 /// 保存できるのはフロントだけである（本文は Monaco の `ITextModel` にある）。
 /// Rust は保存を依頼するだけで、成功したらフロントがもう一度終了を要求する。
 pub const EVENT_SAVE_AND_QUIT: &str = "marxdown://save-and-quit";
+
+/// ウィンドウを閉じる確認で「保存して閉じる」が選ばれた（F-OPEN-06 / `close.rs`）。
+///
+/// [`EVENT_SAVE_AND_QUIT`] と同じ構造で、保存した後の行き先だけが違う。
+/// フロントは保存に成功したらもう一度そのウィンドウを閉じる。
+pub const EVENT_SAVE_AND_CLOSE: &str = "marxdown://save-and-close";
 
 /// アプリケーションの入口。`main()` から 1 回だけ呼ぶ。
 ///
@@ -197,6 +308,18 @@ pub fn run() {
             .map(|d| format!("{} bytes, inlined={}", d.meta.size, d.content.is_some())),
     );
 
+    // このプロセスが単一インスタンスの所有者になるか（F-OPEN-06 / `instance.rs`）。
+    //
+    // `--new-window` は「既存プロセスに相乗りしない」という指定である。
+    // 既に所有者が居るなら、single-instance プラグインを登録しないことで独立したプロセスとして起動する。
+    // 居なければ通常どおり登録して所有者になる。所有者不在のプロセスを作らないためである。
+    let standalone = args.new_window && instance::is_running(&context.config().identifier);
+    let role = if standalone {
+        state::InstanceRole::Standalone
+    } else {
+        state::InstanceRole::Owner
+    };
+
     let state = state::AppState::new(
         args,
         trace,
@@ -208,6 +331,7 @@ pub fn run() {
             settings: settings_path,
             themes: themes_dir,
         },
+        role,
     );
 
     let mut builder = tauri::Builder::default();
@@ -215,7 +339,7 @@ pub fn run() {
     // 単一インスタンス化は他のどのプラグインよりも先に登録する必要がある。
     // 2 番目のプロセスは、ここでコールバックを実行したあと即座に終了する。
     #[cfg(desktop)]
-    {
+    if !standalone {
         builder = builder.plugin(tauri_plugin_single_instance::init(|app, argv, cwd| {
             // W0。argv 転送を受けた瞬間。ここから「本文が読める」までがウォーム起動。
             let request_id = app.state::<state::AppState>().begin_warm();
@@ -224,14 +348,17 @@ pub fn run() {
                 &argv.into_iter().skip(1).collect::<Vec<_>>(),
                 std::path::Path::new(&cwd),
             );
+            let paths = forwarded
+                .paths
+                .iter()
+                .map(|p| p.display().to_string())
+                .collect::<Vec<_>>();
+
+            // `--new-window` はここへ来ない（F-OPEN-06）。
+            // 転送元のプロセスが single-instance プラグインを登録しないため、そのまま独立したプロセスとして起動している。
             let request = OpenRequest {
                 request_id,
-                paths: forwarded
-                    .paths
-                    .iter()
-                    .map(|p| p.display().to_string())
-                    .collect(),
-                new_window: forwarded.new_window,
+                paths,
                 mode: forwarded.mode,
                 trace: forwarded.trace_startup.is_some(),
             };
@@ -240,7 +367,7 @@ pub fn run() {
             // トレイに格納されている場合もここを通る（ADR-0007 論点 10）。
             // `restore` がサスペンドの解除まで担当するため、格納中の `marxdown foo.md` を特別扱いしなくて済む。
             close::restore(app);
-            let _ = app.emit_to(window::MAIN_LABEL, EVENT_OPEN_REQUEST, &request);
+            let _ = app.emit_to(target_window(app).as_str(), EVENT_OPEN_REQUEST, &request);
         }));
     }
 
@@ -279,6 +406,10 @@ pub fn run() {
             commands::window_close,
             commands::window_is_maximized,
             commands::set_snap_layouts_target,
+            commands::open_satellite,
+            commands::open_new_instance,
+            commands::stash_transfer,
+            commands::take_transfer,
             commands::report_trace,
             commands::ready,
             commands::open_external,
@@ -343,20 +474,43 @@ pub fn run() {
         // 閉じる瞬間にだけ書く。
         // 移動・リサイズのたびに書くと、ウィンドウをドラッグしている間ずっとファイル I/O が発生する。
         .on_window_event(|window, event| {
-            if window.label() != window::MAIN_LABEL {
-                return;
-            }
+            let label = window.label().to_owned();
 
             // 最大化状態の変化をフロントへ通知する（ウィンドウ操作ボタンの表示）。
             //
             // ボタンを押したときだけでなく、`Win+↑` / ダブルクリック / 上端へのドラッグでも変化する。
             // 操作した側で状態を持たず OS の状態を唯一の情報源とすることで、経路が増えても表示がずれない。
             // 変化の判定は `AppState` が持つ。
+            //
+            // 宛先はこのウィンドウ 1 枚に限る（F-OPEN-06）。
+            // `emit` は全ウィンドウへ配るため、別のウィンドウのボタンまで `❐` に変わる。
             if matches!(event, tauri::WindowEvent::Resized(_)) {
                 let now = window.is_maximized().unwrap_or(false);
-                if window.state::<state::AppState>().note_maximized(now) {
-                    let _ = window.emit(EVENT_WINDOW_MAXIMIZED, now);
+                if window
+                    .state::<state::AppState>()
+                    .note_maximized(&label, now)
+                {
+                    let _ = window.emit_to(label.as_str(), EVENT_WINDOW_MAXIMIZED, now);
                 }
+                return;
+            }
+
+            // 「外から 1 枚開かせる」経路の宛先を更新する（`target_window`）。
+            if let tauri::WindowEvent::Focused(true) = event {
+                window.state::<state::AppState>().note_focused(&label);
+                return;
+            }
+
+            // 閉じ終わったウィンドウの分の記録を落とす（N-PERF-06）。
+            //
+            // 常駐するアプリであるため、ウィンドウを閉じてもプロセスは残る。
+            // ここで落とさないと、閉じたウィンドウのダーティが終了の確認に効き続け、監視と Snap Layouts の受け皿も積み上がる。
+            if matches!(event, tauri::WindowEvent::Destroyed) {
+                let app = window.app_handle();
+                app.state::<state::AppState>().forget_window(&label);
+                app.state::<watch::FileWatcher>().release_window(&label);
+                #[cfg(windows)]
+                snap_layouts::forget(app, &label);
                 return;
             }
 
@@ -366,7 +520,7 @@ pub fn run() {
             // ウィンドウ位置の保存（F-CONF-10）も `close.rs` が行う。
             // 格納でも終了でも保存が必要であり（ADR-0007 論点 11）、このイベントだけでは足りないためである。
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {
-                if close::on_close_requested(window.app_handle()) {
+                if close::on_close_requested(window.app_handle(), &label) {
                     api.prevent_close();
                 }
             }

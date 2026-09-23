@@ -13,6 +13,13 @@ export { registerExplorerFocus, showExplorer } from './show-explorer';
 export { resetSessionWatch, restoreSession, watchSession } from './session.svelte';
 export { default as TabStrip } from './TabStrip.svelte';
 export {
+  moveCurrentTabToSatellite,
+  moveTabToSatellite,
+  openNewInstance,
+  openPathInSatellite,
+  type TabTransfer,
+} from './new-window';
+export {
   activateTab,
   adoptOpened,
   closeTab,

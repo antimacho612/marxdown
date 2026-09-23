@@ -119,6 +119,13 @@ struct Target {
     seen: Option<Stamp>,
     /// 対象がディレクトリか（`Role::Themes`）。中身のパスが届く。
     directory: bool,
+    /// この対象を必要としているウィンドウのラベル（F-OPEN-06）。
+    ///
+    /// `Role::Document` でのみ使う。`settings.json` と `themes/` はウィンドウに属さないため空のままである。
+    ///
+    /// 集合で持つ必要がある。
+    /// 同じファイルを 2 つのウィンドウで開くと 1 つの対象を共有するため、片方が閉じただけで解除するともう片方の自動再読み込みが止まる。
+    owners: HashSet<String>,
 }
 
 /// 監視対象の台帳。Tauri に依存しない。
@@ -276,6 +283,14 @@ impl FileWatcher {
     /// ファイルがまだ存在しない場合は親ディレクトリを監視し、届いたイベントをパスで絞り込む。
     /// `settings.json` は最初の保存まで存在しないため、この扱いが無いと手で作成された時点を検出できない（02.architecture/04-rust-responsibilities.md §5）。
     pub fn watch(&self, path: &Path, role: Role) -> bool {
+        self.watch_for(path, role, None)
+    }
+
+    /// 監視を始め、必要としているウィンドウを記録する。
+    ///
+    /// `owner` を渡すのは `Role::Document` だけである（`watch_document`）。
+    /// 既に同じパスを見ている場合でも、記録だけは追加する。
+    fn watch_for(&self, path: &Path, role: Role, owner: Option<&str>) -> bool {
         let Ok(key) = document::canonicalize(path) else {
             return false;
         };
@@ -302,12 +317,13 @@ impl FileWatcher {
             return false;
         };
 
-        if registry
-            .targets
-            .get(&key)
-            .is_some_and(|t| t.role == role && t.root == root)
-        {
-            return true;
+        if let Some(target) = registry.targets.get_mut(&key) {
+            if target.role == role && target.root == root {
+                if let Some(owner) = owner {
+                    target.owners.insert(owner.to_owned());
+                }
+                return true;
+            }
         }
 
         // 同じ監視元に既にぶら下がっているなら、notify への登録は 1 回で足りる。
@@ -324,6 +340,9 @@ impl FileWatcher {
                 root: root.clone(),
                 seen,
                 directory,
+                owners: owner
+                    .map(|o| HashSet::from([o.to_owned()]))
+                    .unwrap_or_default(),
             },
         );
         registry.roots.entry(root).or_default().insert(key);
@@ -339,6 +358,16 @@ impl FileWatcher {
             return;
         };
         self.unwatch_key(&key);
+    }
+
+    /// そのウィンドウがそのパスを必要としなくなったことを伝える（タブを閉じたとき）。
+    ///
+    /// [`unwatch`](Self::unwatch) と違い、他のウィンドウが同じファイルを開いている間は監視を解除しない。
+    pub fn release(&self, label: &str, path: &Path) {
+        let Ok(key) = document::canonicalize(path) else {
+            return;
+        };
+        self.release_key(label, &key);
     }
 
     fn unwatch_key(&self, key: &Path) {
@@ -368,27 +397,70 @@ impl FileWatcher {
         }
     }
 
-    /// 監視するドキュメントを差し替える（02.architecture/04-rust-responsibilities.md §4）。
+    /// そのウィンドウが表示しているドキュメントを差し替える（02.architecture/04-rust-responsibilities.md §4）。
     ///
-    /// 監視するのは表示中のドキュメント 1 つだけである。
+    /// 1 つのウィンドウが表示しているドキュメントは 1 つだけである。
     /// 前のドキュメントの監視をここで必ず解除することで、タブを切り替えるたびに監視が蓄積しない。
-    pub fn watch_document(&self, path: &Path) -> bool {
+    ///
+    /// 解除するのはそのウィンドウが持っていた監視だけである（F-OPEN-06）。
+    /// ウィンドウの区別なく解除すると、別のウィンドウでファイルを開いた時点でこちらの自動再読み込みが止まる。
+    pub fn watch_document(&self, label: &str, path: &Path) -> bool {
         let keep = document::canonicalize(path).ok();
 
         let stale = match self.registry.lock() {
             Ok(registry) => registry
                 .targets
                 .iter()
-                .filter(|(p, t)| t.role == Role::Document && Some(*p) != keep.as_ref())
+                .filter(|(p, t)| {
+                    t.role == Role::Document
+                        && t.owners.contains(label)
+                        && Some(*p) != keep.as_ref()
+                })
                 .map(|(p, _)| p.clone())
                 .collect::<Vec<_>>(),
             Err(_) => return false,
         };
         for path in stale {
-            self.unwatch_key(&path);
+            self.release_key(label, &path);
         }
 
-        self.watch(path, Role::Document)
+        self.watch_for(path, Role::Document, Some(label))
+    }
+
+    /// 閉じたウィンドウが持っていたドキュメントの監視をすべて手放す。
+    ///
+    /// 常駐するアプリであるため、ウィンドウを閉じただけでは監視スレッドは止まらない（ADR-0004 / N-PERF-06）。
+    /// ここで解除しないと、ウィンドウを開き閉じした回数だけ監視が積み上がる。
+    pub fn release_window(&self, label: &str) {
+        let owned = match self.registry.lock() {
+            Ok(registry) => registry
+                .targets
+                .iter()
+                .filter(|(_, t)| t.role == Role::Document && t.owners.contains(label))
+                .map(|(p, _)| p.clone())
+                .collect::<Vec<_>>(),
+            Err(_) => return,
+        };
+        for path in owned {
+            self.release_key(label, &path);
+        }
+    }
+
+    /// そのウィンドウの分の記録を落とし、誰も必要としなくなったら監視を解除する。
+    fn release_key(&self, label: &str, key: &Path) {
+        let abandoned = match self.registry.lock() {
+            Ok(mut registry) => match registry.targets.get_mut(key) {
+                Some(target) => {
+                    target.owners.remove(label);
+                    target.owners.is_empty()
+                }
+                None => false,
+            },
+            Err(_) => false,
+        };
+        if abandoned {
+            self.unwatch_key(key);
+        }
     }
 
     /// 自分がファイルを書いた直後に呼ぶ（02.architecture/04-rust-responsibilities.md §4 の「直前の保存 mtime と照合」）。
@@ -432,6 +504,7 @@ mod tests {
                 root: key.clone(),
                 seen: stamp_of(&key),
                 directory: key.is_dir(),
+                owners: HashSet::new(),
             },
         );
         registry.roots.entry(key.clone()).or_default().insert(key);
@@ -546,6 +619,7 @@ mod tests {
                     root: d.clone(),
                     seen: stamp_of(path),
                     directory: false,
+                    owners: HashSet::new(),
                 },
             );
             registry

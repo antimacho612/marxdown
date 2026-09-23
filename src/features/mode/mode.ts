@@ -6,10 +6,10 @@
  * 表示の切り替えは `data-mx-mode` 属性で CSS が行い要素の付け外しはしない（エディターを破棄すると Undo 履歴が消え §4 に反する）。
  * `display: none` された要素は `scrollTop` を保てないため、非表示にする直前にスクロール位置を保存し、戻すときに再設定する。
  */
-import { cancelLiveRender, renderNow } from '@/features/document';
+import { cancelLiveRender, renderNow, type StoredMeta } from '@/features/document';
 import { mountEditorLazily, relayoutEditorLazily, setSplitSyncLazily } from '@/features/editor';
 import { viewStore } from '@/features/view';
-import type { Bootstrap, DocumentMeta, ViewMode } from '@/platform';
+import type { Bootstrap, ViewMode } from '@/platform';
 
 import { closePreviewFind } from './find';
 
@@ -43,7 +43,7 @@ let previewScroll = 0;
  * TODO: ファイル単位の記憶と設定キー `defaultMode` は未実装である。
  * 既定値が `"preview"` であるため、現状の結果は既定の Preview と同じになる。
  */
-export function decideInitialMode(bootstrap: Bootstrap | null, meta: DocumentMeta | null): ViewMode {
+export function decideInitialMode(bootstrap: Bootstrap | null, meta: StoredMeta | null): ViewMode {
   if (bootstrap?.mode) return bootstrap.mode;
   if (meta?.readonly === true) return 'preview';
   return 'preview';
