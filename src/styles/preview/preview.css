@@ -178,18 +178,6 @@
 
 /* ========== コード ========== */
 
-/*
- * インラインコードの文字色。fg と accent の混色にしてあり、`theme/lazy/preset.ts` の TokenKey（18 個で固定）に
- * 新しいキーを足さずに 50 枚のプリセットへ反映される。fg が主体なので、コントラスト比の保証はプリセットの fg 側にそのまま乗る。
- *
- * 宣言を `:root` ではなく面に置くのは、カスタムプロパティの値に含まれる var() が
- * 宣言した要素で置換を終えるためである。配色は `#mx-preview` に当たるので、`:root` で宣言すると
- * 上書きされる前の accent と fg が焼き付き、どの配色でも既定の色のまま描かれる（#142）。
- */
-.mx-preview {
-  --mx-color-code-inline: color-mix(in srgb, var(--mx-color-fg) 65%, var(--mx-color-accent) 35%);
-}
-
 .mx-preview code {
   font-family: var(--mx-font-code);
   font-size: var(--mx-font-size-code);
@@ -200,8 +188,8 @@
 .mx-preview :not(pre) > code {
   padding: 0.15em 0.35em;
   border-radius: var(--mx-radius-sm);
-  background: var(--mx-color-bg-inset);
-  color: var(--mx-color-code-inline);
+  background: var(--mx-color-bg-subtle);
+  color: var(--mx-color-code-builtin);
 }
 
 /*
