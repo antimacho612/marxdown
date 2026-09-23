@@ -207,7 +207,7 @@ flowchart LR
 /**
  * 実ファイルを仮想 FS に取り込み、仮想パスを返す。
  *
- * ブラウザは選ばれた / 落とされたファイルの絶対パスを渡さない。
+ * ブラウザは選ばれた / ドロップされたファイルの絶対パスを渡さない。
  * dev:web ではそれで構わないので、`/virtual/<名前>` を割り当てて中身だけ取り込む。
  */
 async function adoptFile(file: File): Promise<string | null> {

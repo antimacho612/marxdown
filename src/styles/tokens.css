@@ -117,7 +117,7 @@
   --mx-color-border: #d9dbe0;
   --mx-color-border-subtle: #e8eaee;
   --mx-color-accent: #3b5bdb;
-  /* アクセント面の押し込み。`opacity` で薄くすると下地が透け、載せた文字のコントラストが下がる。 */
+  /* アクセント面の押し込み。`opacity` で薄くすると下地が透け、上に置いた文字のコントラストが下がる。 */
   --mx-color-accent-hover: #3550c4;
   --mx-color-accent-active: #2f47ad;
   --mx-color-accent-fg: #ffffff;

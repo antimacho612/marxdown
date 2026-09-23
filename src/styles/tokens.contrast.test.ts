@@ -106,7 +106,7 @@ describe.each([
     expect(background, `--mx-color-${bg} が宣言されていない`).toBeDefined();
 
     const ratio = contrast(foreground!, background!);
-    // 落ちたときに直すべき値が分かるよう、実際の色と比率をメッセージに載せる。
+    // 失敗したときに直すべき値が分かるよう、実際の色と比率をメッセージに載せる。
     expect(ratio, `${foreground} on ${background} = ${ratio.toFixed(2)}:1`).toBeGreaterThanOrEqual(TEXT_MIN);
   });
 });

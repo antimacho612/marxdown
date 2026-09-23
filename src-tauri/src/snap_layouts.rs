@@ -212,7 +212,7 @@ pub fn prepare(app: &tauri::AppHandle, window: &WebviewWindow) {
 pub fn install(app: &tauri::AppHandle) {
     let Some(state) = tauri::Manager::try_state::<Arc<SnapTarget>>(app) else {
         // `prepare` が呼ばれていない。
-        // ここで作るとそれまでに届いた矩形を捨てることになるため、何もせずに戻る。
+        // ここで作るとそれまでに届いた矩形を破棄することになるため、何もせずに戻る。
         eprintln!("[marxdown] Snap Layouts: 受け皿が無いので諦める");
         return;
     };

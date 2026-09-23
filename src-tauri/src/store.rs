@@ -17,7 +17,7 @@ use serde::{Deserialize, Serialize};
 use crate::document::atomic;
 
 /// ストアの構造版。互換性のない変更をしたら上げる。
-/// 版が違うストアは読み捨てて既定値に戻す。
+/// 版が違うストアは内容を使わずに既定値に戻す。
 pub const STORE_VERSION: u32 = 1;
 
 /// 最近開いたファイルの保持数。
@@ -485,7 +485,7 @@ mod tests {
         std::fs::remove_dir_all(&d).ok();
     }
 
-    /// `trayIntroShown` を持たない古い `state.json` を読んでも、最近開いたファイルと倍率を捨てないこと。
+    /// `trayIntroShown` を持たない古い `state.json` を読んでも、最近開いたファイルと倍率を失わないこと。
     ///
     /// 版を上げるとここが壊れる。
     /// キー 1 つの追加に対して代償が大き過ぎるので、`#[serde(default)]` で受ける判断が正しいままであることを固定する。
