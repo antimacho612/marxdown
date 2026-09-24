@@ -71,6 +71,7 @@ export function createParser(): MarkdownParser {
       return {
         id,
         chunks: result.chunks,
+        blocks: result.blocks,
         outline: result.outline,
         frontMatter: result.frontMatter,
         parseMs,

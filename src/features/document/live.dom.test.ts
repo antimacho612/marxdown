@@ -1,10 +1,9 @@
 // @vitest-environment jsdom
 /**
- * Split の再描画でスクロール位置を保つこと（F-MODE-03）。
+ * Split の再描画でプレビューを動かさないこと（F-MODE-03 / #148 / #159）。
  *
- * 段階的描画（02.architecture/06-markdown-rendering-pipeline.md §4）では、最初のチャンクだけが同期的に入る。
- * その時点では scrollHeight が足りず、保持しておいた位置を代入しても上限で切り詰められる。
- * 何もしないと、長い文書ほど打鍵のたびにプレビューが先頭付近へ戻る。
+ * 作り直す方式では、段階的描画（02.architecture/06-markdown-rendering-pipeline.md §4）の途中で scrollHeight が足りず、スクロール位置が切り詰められていた。
+ * 長い文書ほど差が大きく、打鍵のたびにプレビューが先頭付近へ戻っていた。
  *
  * jsdom はレイアウトを持たないため、切り詰めは自前で再現する（`installScrollClamp`）。
  */
@@ -16,15 +15,21 @@ import type { DocumentMeta } from '@/platform';
 
 import { documentStore } from './store.svelte';
 
-const CHUNKS = 5;
-/** 1 チャンクぶんの高さ。実際の値に意味は無く、切り詰めが起きる関係だけを作る。 */
-const CHUNK_HEIGHT = 200;
+const BLOCKS = 5;
+/** 1 段落ぶんの高さ。実際の値に意味は無く、切り詰めが起きる関係だけを作る。 */
+const BLOCK_HEIGHT = 200;
 const VIEWPORT_HEIGHT = 100;
 
+/** 次のパースで返す段落の本文。 */
+let texts: string[] = [];
+
 function parsed(): ParseResult {
+  const blocks = texts.map((text, index) => `<p data-line="${index * 2}">${text}</p>\n`);
   return {
     id: 1,
-    chunks: Array.from({ length: CHUNKS }, (_, index) => `<p data-line="${index}">段落 ${index}</p>`),
+    // 段階的描画が起きるように、1 段落ずつのチャンクにする。
+    chunks: blocks,
+    blocks,
     outline: [],
     frontMatter: null,
     parseMs: 0.5,
@@ -38,6 +43,7 @@ vi.mock('./open', () => ({
 }));
 
 const { renderNow, resetLiveRender } = await import('./live');
+const { paint } = await import('@/features/preview');
 
 const META: DocumentMeta = {
   path: 'C:/notes/a.md',
@@ -49,9 +55,12 @@ const META: DocumentMeta = {
   readonly: false,
 };
 
+/** これまでに `scrollTop` が取った値。一度でも切り詰められたかを見る。 */
+let history: number[] = [];
+
 /**
  * `scrollTop` の代入を、いま DOM に入っている段落の数で切り詰める。
- * ブラウザが scrollHeight に対して行っていることを、チャンクの投入に合わせて再現する。
+ * ブラウザが scrollHeight に対して行っていることを再現する。
  */
 function installScrollClamp(container: HTMLElement): void {
   let value = 0;
@@ -59,22 +68,21 @@ function installScrollClamp(container: HTMLElement): void {
     configurable: true,
     get: () => value,
     set: (next: number) => {
-      const max = Math.max(0, container.querySelectorAll('p').length * CHUNK_HEIGHT - VIEWPORT_HEIGHT);
+      const max = Math.max(0, container.querySelectorAll('p').length * BLOCK_HEIGHT - VIEWPORT_HEIGHT);
       value = Math.max(0, Math.min(next, max));
+      history.push(value);
     },
   });
 }
 
-/**
- * 残りのチャンクを投入する idle を実行する。
- *
- * jsdom に `requestIdleCallback` は無く、`lib/idle.ts` は `setTimeout` で代替する。
- * その締切は `didTimeout` が真であるため、残りは 1 回で全部入る。
- */
+/** 残りのチャンクを投入する idle を回す（jsdom では `lib/idle.ts` の `setTimeout` による代替が動く）。 */
 async function flushIdle(): Promise<void> {
   await new Promise((resolve) => setTimeout(resolve, 0));
-  // 投入し終わってから実行される位置の再設定の分。
   await new Promise((resolve) => setTimeout(resolve, 0));
+}
+
+function paragraphs(): Element[] {
+  return [...container.querySelectorAll('p')];
 }
 
 let container: HTMLElement;
@@ -90,41 +98,44 @@ beforeEach(async () => {
   documentStore.meta = { ...META };
   viewStore.mode = 'split';
 
-  // 打鍵の前の状態。全チャンクが入っており、その高さぶんスクロールできる。
-  await renderNow();
-  await flushIdle();
+  // ファイルを開いた直後の状態。`open.ts` と同じく段階的描画で全段落が入っている。
+  texts = Array.from({ length: BLOCKS }, (_, index) => `段落 ${index}`);
+  const initial = parsed();
+  await paint(container, initial.chunks, initial.frontMatter, initial.blocks).done;
+  container.scrollTop = 700;
+  history = [];
 });
 
-describe('再描画とスクロール位置', () => {
-  it('段階的描画で切り詰められた位置を、全チャンクが入った後に当て直す', async () => {
-    container.scrollTop = 700;
-    expect(container.scrollTop).toBe(700);
+describe('再描画とスクロール位置 (#148 / #159)', () => {
+  it('文書の長さが変わらない入力では、スクロール位置が一度も変わらない', async () => {
+    texts[3] = '段落 3 を編集';
 
     await renderNow();
-    // 最初のチャンクしか入っていない時点では上限で切り詰められる。
-    expect(container.scrollTop).toBe(CHUNK_HEIGHT - VIEWPORT_HEIGHT);
-
     await flushIdle();
+
     expect(container.scrollTop).toBe(700);
+    expect(history.every((value) => value === 700)).toBe(true);
+    expect(paragraphs()[3]?.textContent).toBe('段落 3 を編集');
   });
 
-  it('待っている間に利用者がプレビューを動かしていたら、当て直さない', async () => {
-    container.scrollTop = 700;
+  it('変わっていない段落の要素は作り直さない', async () => {
+    const before = paragraphs();
+    texts[3] = '段落 3 を編集';
+
     await renderNow();
 
-    container.scrollTop = 50;
-    await flushIdle();
-
-    expect(container.scrollTop).toBe(50);
+    const after = paragraphs();
+    expect(after.filter((p, index) => p === before[index])).toHaveLength(BLOCKS - 1);
+    expect(after[3]).not.toBe(before[3]);
   });
 
-  it('切り詰められていなければ、そのままにする', async () => {
-    container.scrollTop = 50;
+  it('段落が増えても、表示している位置より上の要素は残る', async () => {
+    const before = paragraphs();
+    texts.push('段落 5');
 
     await renderNow();
-    expect(container.scrollTop).toBe(50);
 
-    await flushIdle();
-    expect(container.scrollTop).toBe(50);
+    expect(container.scrollTop).toBe(700);
+    expect(paragraphs().slice(0, BLOCKS)).toEqual(before);
   });
 });

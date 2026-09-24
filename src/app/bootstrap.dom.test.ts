@@ -33,6 +33,7 @@ vi.mock('@/markdown/parser', () => ({
       Promise.resolve({
         id: 1,
         chunks: [`<p>${String(text.length)}</p>`],
+        blocks: [`<p>${String(text.length)}</p>`],
         outline: [],
         frontMatter: null,
         parseMs: 0.1,

@@ -13,6 +13,11 @@ export interface ParseResult {
    * 割れない入力（10MB の単一コードフェンスなど）では要素 1 つになる。
    */
   chunks: string[];
+  /**
+   * 差分更新の単位で割った HTML（`renderChunks` の説明）。
+   * 連結すると `chunks` の連結と一致する。
+   */
+  blocks: string[];
   outline: OutlineItem[];
   frontMatter: string | null;
   /** パース所要時間（ms）。起動計測とベンチに使う。 */
@@ -24,3 +29,10 @@ export interface ParseResult {
 /** 段階的描画の既定値。最初のチャンクがおよそ 1 画面分になるように選ぶ。 */
 export const DEFAULT_FIRST_CHUNK_BLOCKS = 40;
 export const DEFAULT_CHUNK_BLOCKS = 200;
+
+/**
+ * `data-line` 属性を持つ開始タグで始まる HTML か。`ParseResult.blocks` の境界の判定に使う。
+ *
+ * 描画側（`features/preview/paint.ts`）は「トップレベルで `data-line` 属性を持つ要素」を境界とみなして DOM と `blocks` を対応付けるため、両者で同じ判定を使う。
+ */
+export const LINE_HEAD = /^<[a-z][^\s/>]*\s[^>]*?\bdata-line[\s=/>]/i;
