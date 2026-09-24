@@ -184,6 +184,10 @@ function buildTheme(): monaco.editor.IStandaloneThemeData {
       'scrollbarSlider.hoverBackground': readColor('--mx-color-border', '#d9dbe0'),
       'scrollbarSlider.activeBackground': readColor('--mx-color-border', '#d9dbe0'),
       'scrollbar.shadow': '#00000000',
+      // 見出しの固定表示（`options.ts` の `stickyScroll`）。
+      // 影は `scrollbar.shadow` から継承して透明になるため、境界線で本文と区別する。
+      'editorStickyScroll.border': readColor('--mx-color-border', '#d9dbe0'),
+      'editorStickyScrollHover.background': readColor('--mx-color-bg-hover', '#e3e6ea'),
       'editorBracketMatch.background': readColor('--mx-color-bg-hover', '#e3e6ea'),
       'editorBracketMatch.border': '#00000000',
       'editorIndentGuide.background1': readColor('--mx-color-border-subtle', '#e8eaee'),

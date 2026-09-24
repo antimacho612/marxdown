@@ -207,7 +207,7 @@ Rust 側も拒否するが、UI が「保存できたように見せる」のを
       .map((part) => part.trim())
       .filter((part) => part.length > 0);
 
-    if (key === 'explorer.exclude') {
+    if (key === 'explorer.exclude' || key === 'editor.wordSegmenterLocales') {
       changeSetting(key, parts);
       return parts.join(', ');
     }

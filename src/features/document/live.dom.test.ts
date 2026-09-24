@@ -10,6 +10,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { viewStore } from '@/features/view';
+import type { OutlineItem } from '@/markdown/plugins/line-map';
 import type { ParseResult } from '@/markdown/protocol';
 import type { DocumentMeta } from '@/platform';
 
@@ -22,6 +23,10 @@ const VIEWPORT_HEIGHT = 100;
 
 /** 次のパースで返す段落の本文。 */
 let texts: string[] = [];
+/** 次のパースで返す見出し。 */
+let headings: OutlineItem[] = [];
+/** パースした回数。 */
+let parses = 0;
 
 function parsed(): ParseResult {
   const blocks = texts.map((text, index) => `<p data-line="${index * 2}">${text}</p>\n`);
@@ -30,7 +35,7 @@ function parsed(): ParseResult {
     // 段階的描画が起きるように、1 段落ずつのチャンクにする。
     chunks: blocks,
     blocks,
-    outline: [],
+    outline: headings,
     frontMatter: null,
     parseMs: 0.5,
     textStats: { chars: 1, words: 1, readingMinutes: 1 },
@@ -38,11 +43,17 @@ function parsed(): ParseResult {
 }
 
 vi.mock('./open', () => ({
-  getParser: () => ({ parse: () => Promise.resolve(parsed()), dispose: () => {} }),
+  getParser: () => ({
+    parse: () => {
+      parses++;
+      return Promise.resolve(parsed());
+    },
+    dispose: () => {},
+  }),
   getParseOptions: () => ({ breaks: false, syntax: [] }),
 }));
 
-const { renderNow, resetLiveRender } = await import('./live');
+const { latestOutline, renderNow, resetLiveRender, scheduleLiveRender } = await import('./live');
 const { paint } = await import('@/features/preview');
 
 const META: DocumentMeta = {
@@ -104,6 +115,8 @@ beforeEach(async () => {
   await paint(container, initial.chunks, initial.frontMatter, initial.blocks).done;
   container.scrollTop = 700;
   history = [];
+  headings = [];
+  parses = 0;
 });
 
 describe('再描画とスクロール位置 (#148 / #159)', () => {
@@ -137,5 +150,67 @@ describe('再描画とスクロール位置 (#148 / #159)', () => {
 
     expect(container.scrollTop).toBe(700);
     expect(paragraphs().slice(0, BLOCKS)).toEqual(before);
+  });
+});
+
+/**
+ * 折りたたみが使う見出し（`features/editor/lazy/folding.ts`）。
+ *
+ * Edit でアウトラインを閉じているとパースしないため、見出しは打鍵のたびに古くなる。
+ * 折りたたみの範囲が本文とずれないよう、古いときだけ取り直す。
+ */
+describe('latestOutline', () => {
+  const HEADING: OutlineItem = { level: 1, text: 'A', line: 0, slug: 'a' };
+
+  it('Edit で本文が変わっていれば、パースし直した見出しを返す', async () => {
+    viewStore.mode = 'edit';
+    headings = [HEADING];
+
+    scheduleLiveRender();
+    const outline = await latestOutline();
+
+    expect(parses).toBe(1);
+    expect(outline).toEqual([HEADING]);
+  });
+
+  it('本文が変わっていなければパースしない', async () => {
+    viewStore.mode = 'edit';
+
+    await latestOutline();
+
+    expect(parses).toBe(0);
+  });
+
+  it('Split で予約中の再描画は前倒しし、2 回パースしない', async () => {
+    headings = [HEADING];
+
+    scheduleLiveRender();
+    const outline = await latestOutline();
+    await new Promise((resolve) => setTimeout(resolve, 200));
+
+    expect(parses).toBe(1);
+    expect(outline).toEqual([HEADING]);
+  });
+
+  it('実行中の再描画があれば、それを待つだけでパースし直さない', async () => {
+    viewStore.mode = 'edit';
+    headings = [HEADING];
+
+    scheduleLiveRender();
+    const running = renderNow();
+    const outline = await latestOutline();
+    await running;
+
+    expect(parses).toBe(1);
+    expect(outline).toEqual([HEADING]);
+  });
+
+  it('Preview ではパースしない', async () => {
+    viewStore.mode = 'preview';
+
+    scheduleLiveRender();
+    await latestOutline();
+
+    expect(parses).toBe(0);
   });
 });

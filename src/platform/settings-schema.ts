@@ -126,6 +126,8 @@ export const SETTINGS_SCHEMA = defineSettingsSchema({
    */
   'editor.rulers': { kind: 'number[]', default: [], min: 1, max: 500, maxLength: 8 },
   'editor.scrollBeyondLastLine': { kind: 'boolean', default: true },
+  /** 見出しを編集面の上端に固定する。固定する範囲は見出しの折りたたみと同じ（`features/editor/lazy/folding.ts`）。 */
+  'editor.stickyScroll.enabled': { kind: 'boolean', default: true },
   /**
    * エディターの配色（02.architecture/10-theming.md §3）。列挙ではなく文字列である。
    *
@@ -136,6 +138,13 @@ export const SETTINGS_SCHEMA = defineSettingsSchema({
    */
   'editor.theme': { kind: 'string', default: 'default' },
   'editor.tabSize': { kind: 'number', default: 2, min: 1, max: 8 },
+  /**
+   * 単語単位の移動・選択で、区切りを `Intl.Segmenter` で決めるロケール（BCP 47）。
+   *
+   * VS Code の既定は空だが、空のままでは日本語の文が句読点か空白まで 1 語として扱われる。
+   * UI が日本語のみであるため（OQ-11）、既定を `ja` にしてある。
+   */
+  'editor.wordSegmenterLocales': { kind: 'string[]', default: ['ja'], maxLength: 8, maxItemLength: 35 },
   /** 単語単位のカーソル移動（`ctrl + ←` / `ctrl + →`）で区切りとして扱う文字。既定値は VS Code と同じ。 */
   'editor.wordSeparators': { kind: 'string', default: '`~!@#$%^&*()-=+[{]}\\|;:\'",.<>/?' },
   'editor.wordWrap': {

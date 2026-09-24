@@ -15,6 +15,7 @@ export { ENCODINGS, reinterpret } from './encoding';
 export { effectiveEol, nextEol, toggleEol } from './eol';
 export {
   cancelLiveRender,
+  latestOutline,
   liveRenderDebug,
   observeLiveRender,
   refreshOutlineOnOpen,
