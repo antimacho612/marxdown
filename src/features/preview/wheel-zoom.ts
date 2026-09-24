@@ -8,9 +8,10 @@
 import { zoomIn, zoomOut } from './zoom';
 
 /**
- * 1 段階動かすのに必要な蓄積量。
- * 標準的なホイールの 1 ノッチが `deltaY` 100 で届くため、1 ノッチがちょうど 1 段階になる。
- * タッチパッドのピンチは 1 回あたりの値が小さく届き、何度か重ねて 1 段階になる。
+ * 1 段階動かすのに必要な蓄積量であり、1 イベントが一度に寄与できる量の上限でもある。
+ * 標準的なホイールの 1 ノッチは `deltaY` 100 で届くが、高解像度ホイールや一部のマウスドライバはこれを上回る値を 1 イベントで送ってくることがある。
+ * 上限を設けずに蓄積すると、1 ノッチの操作で複数段階が一度に進んでしまう。
+ * タッチパッドのピンチのように 1 回あたりの値が小さい入力は上限にかからず、何度か重ねて 1 段階になる。
  */
 const STEP_THRESHOLD = 100;
 
@@ -43,12 +44,15 @@ export function installWheelZoom(): () => void {
     const delta = normalize(event);
     if (delta === 0) return;
 
+    // 上限を超えたぶんは捨てる。捨てずに蓄積すると、大きな `deltaY` を送ってくる環境で 1 ノッチの操作が複数段階として処理される。
+    const clamped = Math.sign(delta) * Math.min(Math.abs(delta), STEP_THRESHOLD);
+
     // 向きが変わったら持ち越しを破棄する。
     // 残しておくと、押し戻す操作が逆向きの蓄積を打ち消してから反映され始め、最初の 1 ノッチが無反応になる。
-    if (Math.sign(delta) !== Math.sign(accumulated)) accumulated = 0;
-    accumulated += delta;
+    if (Math.sign(clamped) !== Math.sign(accumulated)) accumulated = 0;
+    accumulated += clamped;
 
-    // 1 イベントに複数段階ぶんの値が乗ることがあるため、消費しきるまで繰り返す。
+    // 前回までの持ち越しと今回のクランプ後の値を足しても 2 * STEP_THRESHOLD 未満のため、実際に進むのは高々 1 段階である。
     while (accumulated <= -STEP_THRESHOLD) {
       accumulated += STEP_THRESHOLD;
       zoomIn();

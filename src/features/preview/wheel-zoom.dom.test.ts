@@ -64,9 +64,14 @@ describe('Ctrl + ホイールの表示倍率 (F-VIEW-11)', () => {
     expect(viewStore.zoom).toBe(0.9);
   });
 
-  it('1 イベントに複数段階ぶん乗っていれば、その回数だけ動く', () => {
+  it('1 イベントの入力が大きくても、1 段階までしか進まない', () => {
+    // 高解像度ホイールや一部のマウスドライバは、1 ノッチを `deltaY` 100 より大きい値で送ってくる。
     wheel(-300);
-    expect(viewStore.zoom).toBe(1.5);
+    expect(viewStore.zoom).toBe(1.1);
+
+    // 上限を超えたぶんは捨てているため、次のノッチも改めて 1 段階だけ進む。
+    wheel(-300);
+    expect(viewStore.zoom).toBe(1.25);
   });
 
   it('行単位で届く値も段階に変換する', () => {
@@ -74,9 +79,9 @@ describe('Ctrl + ホイールの表示倍率 (F-VIEW-11)', () => {
     expect(viewStore.zoom).toBe(1.1);
   });
 
-  it('ページ単位で届く値も段階に変換する', () => {
+  it('ページ単位で届く値も、1 段階までしか進まない', () => {
     wheel(-1, { deltaMode: WheelEvent.DOM_DELTA_PAGE });
-    expect(viewStore.zoom).toBe(1.75);
+    expect(viewStore.zoom).toBe(1.1);
   });
 
   it('解除すると反応しなくなる', () => {
