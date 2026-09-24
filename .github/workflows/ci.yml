@@ -47,6 +47,13 @@ jobs:
       - name: ビルド
         run: pnpm exec vite build
 
+      # 依存を増やしたのに一覧を作り直していないと落ちる（docs/06.roadmap/m6-ship.md Phase 4.5）。
+      # クレートのライセンス文を読むため、先にソースを取得しておく。
+      - name: 第三者ライセンスの一覧
+        run: |
+          cargo fetch --locked --manifest-path src-tauri/Cargo.toml
+          node scripts/gen-third-party-notices.mjs --check
+
       # 予算超過はビルドを失敗させる（05.performance-budget/05-operations.md §1）。
       # 超えたときに上限を引き上げてはいけない。
       # 何かを遅延チャンクに追い出すか、依存を減らすか、機能を諦める。

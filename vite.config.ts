@@ -1,3 +1,5 @@
+import { mkdirSync, writeFileSync } from 'node:fs';
+import { dirname } from 'node:path';
 import { fileURLToPath, URL } from 'node:url';
 
 import { svelte } from '@sveltejs/vite-plugin-svelte';
@@ -65,6 +67,48 @@ function katexWoff2Only(): Plugin {
   };
 }
 
+/** バンドルに入った npm パッケージの一覧の書き出し先（`scripts/gen-third-party-notices.mjs` が読む）。 */
+const BUNDLED_PACKAGES_FILE = fileURLToPath(new URL('./node_modules/.tmp/bundled-packages.json', import.meta.url));
+
+/**
+ * バンドルに入った npm パッケージのディレクトリを記録する（第三者ライセンスの一覧 / docs/06.roadmap/m6-ship.md Phase 4.5）。
+ *
+ * package.json の `dependencies` からは求められない。
+ * Svelte のランタイムは devDependencies にありながらバンドルに入る。
+ * 書き出し先は `dist` の外にする。`dist` は exe に埋め込まれる。
+ */
+function recordBundledPackages(): Plugin {
+  const dirs = new Set<string>();
+  return {
+    name: 'marxdown:record-bundled-packages',
+    apply: 'build',
+    generateBundle(_options, bundle) {
+      for (const output of Object.values(bundle)) {
+        if (output.type !== 'chunk') continue;
+        for (const id of output.moduleIds) {
+          const dir = packageDirOf(id);
+          if (dir) dirs.add(dir);
+        }
+      }
+    },
+    closeBundle() {
+      mkdirSync(dirname(BUNDLED_PACKAGES_FILE), { recursive: true });
+      writeFileSync(BUNDLED_PACKAGES_FILE, JSON.stringify([...dirs].toSorted(), null, 2));
+    },
+  };
+}
+
+/** モジュール ID から、それを含む npm パッケージのディレクトリを返す。node_modules の外なら `null`。 */
+function packageDirOf(id: string): string | null {
+  const path = id.replace(/^\0/, '').replace(/\?.*$/, '').replaceAll('\\', '/');
+  const marker = '/node_modules/';
+  const at = path.lastIndexOf(marker);
+  if (at < 0) return null;
+  const rest = path.slice(at + marker.length).split('/');
+  const name = rest[0]?.startsWith('@') ? `${rest[0]}/${rest[1]}` : rest[0];
+  return name ? path.slice(0, at + marker.length) + name : null;
+}
+
 /**
  * チャンク境界は 02.architecture/05-startup-sequence.md §4 の表がそのまま仕様になっている。
  * `main` + `shared` + `pipeline` + アプリの CSS がクリティカルパスであり、size-limit の検証対象である。
@@ -73,6 +117,7 @@ export default defineConfig(({ mode }) => ({
   plugins: [
     svelte(),
     katexWoff2Only(),
+    recordBundledPackages(),
     ...(mode === 'analyze'
       ? [visualizer({ filename: 'dist/stats.html', gzipSize: true, brotliSize: true, open: false })]
       : []),

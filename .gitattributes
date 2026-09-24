@@ -2,3 +2,6 @@
 # cmd.exe は LF だけのバッチでラベルへのジャンプを誤ることがあり、sh は CR を含むと実行できない。
 src-tauri/windows/bin/marxdown.cmd text eol=crlf
 src-tauri/windows/bin/marxdown text eol=lf
+
+# 生成物を CI で再生成して比べる（scripts/gen-third-party-notices.mjs --check）。チェックアウトで CRLF に変わると一致しない。
+THIRD_PARTY_NOTICES.txt text eol=lf

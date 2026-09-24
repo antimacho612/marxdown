@@ -29,7 +29,9 @@
     "license": "MIT",
     "resources": {
       "windows/bin/marxdown.cmd": "bin/marxdown.cmd",
-      "windows/bin/marxdown": "bin/marxdown"
+      "windows/bin/marxdown": "bin/marxdown",
+      "../LICENSE": "LICENSE.txt",
+      "../THIRD_PARTY_NOTICES.txt": "THIRD_PARTY_NOTICES.txt"
     },
     "fileAssociations": [
       {
