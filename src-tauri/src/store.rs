@@ -305,6 +305,33 @@ pub fn config_dir(identifier: &str) -> Option<PathBuf> {
     Some(base?.join(identifier))
 }
 
+/// 古いバージョンの identifier。アプリのデータ置き場のフォルダー名がこれだった。
+const LEGACY_IDENTIFIER: &str = "com.antimacho612.marxdown";
+
+/// 古い identifier の名前のデータ置き場を、現在の identifier の名前へ移す。
+///
+/// 起動時に 1 回だけ、ストア・設定・配色のどれを読むよりも前に呼ぶ。
+/// 移し先が既にあれば何もしない。
+/// どちらの内容を残すべきかを判断する材料が無く、既に使われている側を上書きしないためである。
+/// 失敗しても起動は止めない。古いフォルダーが残って既定の設定で起動するだけで、書いた内容は失われない。
+///
+/// NOTE: `%LOCALAPPDATA%` 側は移さない。
+/// 置かれているのは WebView2 のキャッシュだけで、次の起動で作り直される。
+/// また、新しい名前のフォルダーは NSIS の既定のインストール先（`%LOCALAPPDATA%\Marxdown`）と同じフォルダーであり、常に存在している。
+pub fn migrate_legacy_dir(identifier: &str) {
+    if let (Some(from), Some(to)) = (config_dir(LEGACY_IDENTIFIER), config_dir(identifier)) {
+        move_dir(&from, &to);
+    }
+}
+
+/// [`migrate_legacy_dir`] の本体。移したときだけ `true` を返す。
+fn move_dir(from: &Path, to: &Path) -> bool {
+    if !from.is_dir() || to.exists() {
+        return false;
+    }
+    std::fs::rename(from, to).is_ok()
+}
+
 /// ストアを読む。失敗しても既定値を返す。
 pub fn load(path: Option<&Path>) -> StoreData {
     let Some(path) = path else {
@@ -352,6 +379,50 @@ mod tests {
         let d = std::env::temp_dir().join(format!("marxdown-store-{}-{}", tag, std::process::id()));
         std::fs::create_dir_all(&d).unwrap();
         d
+    }
+
+    #[test]
+    fn the_legacy_dir_is_moved_with_its_contents() {
+        let d = temp_dir("legacy-move");
+        let from = d.join(LEGACY_IDENTIFIER);
+        let to = d.join("Marxdown");
+        std::fs::create_dir_all(from.join("themes")).unwrap();
+        std::fs::write(from.join("settings.json"), "{}").unwrap();
+        std::fs::write(from.join("themes").join("mine.css"), "").unwrap();
+
+        assert!(move_dir(&from, &to));
+        assert!(!from.exists());
+        assert!(to.join("settings.json").is_file());
+        assert!(to.join("themes").join("mine.css").is_file());
+        std::fs::remove_dir_all(&d).ok();
+    }
+
+    #[test]
+    fn the_legacy_dir_does_not_overwrite_the_current_one() {
+        let d = temp_dir("legacy-keep");
+        let from = d.join(LEGACY_IDENTIFIER);
+        let to = d.join("Marxdown");
+        std::fs::create_dir_all(&from).unwrap();
+        std::fs::create_dir_all(&to).unwrap();
+        std::fs::write(from.join("settings.json"), "old").unwrap();
+        std::fs::write(to.join("settings.json"), "new").unwrap();
+
+        assert!(!move_dir(&from, &to));
+        assert_eq!(
+            std::fs::read_to_string(to.join("settings.json")).unwrap(),
+            "new"
+        );
+        assert!(from.join("settings.json").is_file(), "古い側も消さない");
+        std::fs::remove_dir_all(&d).ok();
+    }
+
+    #[test]
+    fn a_missing_legacy_dir_is_not_an_error() {
+        let d = temp_dir("legacy-none");
+        let to = d.join("Marxdown");
+        assert!(!move_dir(&d.join(LEGACY_IDENTIFIER), &to));
+        assert!(!to.exists());
+        std::fs::remove_dir_all(&d).ok();
     }
 
     #[test]

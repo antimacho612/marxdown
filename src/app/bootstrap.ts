@@ -14,7 +14,6 @@ import {
   previewScrollTop,
   saveThenCloseWindow,
   saveThenQuit,
-  setDirty,
   toggleTaskAtLine,
   type StoredPayload,
 } from '@/features/document';
@@ -35,9 +34,12 @@ import { initSplit, initWindowRole, viewStore } from '@/features/view';
 import {
   openPathInSatellite,
   openPathsInTabs,
+  receiveTabLazily,
   recentStore,
   restoreSession,
+  restoreTransferredState,
   setTreeRoot,
+  takeTabTransfer,
   watchSession,
   workspaceOpenerHooks,
   type TabTransfer,
@@ -188,14 +190,8 @@ export async function startup(renderShell: () => void): Promise<void> {
     renderShellOnce();
   }
 
-  // 移してきた状態を戻す（F-OPEN-06 / ADR-0016 §3.4）。
-  //
-  // `openDocument` はディスクと一致した状態から始める（`markClean`）ため、ダーティは開いた後に戻す。
-  // EOL の希望を先に戻すのは、`setDirty` が合成後の値を出し直すためである（`features/workspace/tabs.svelte.ts` の `activateTab` と同じ順序）。
-  if (transferred) {
-    documentStore.eolOverride = transferred.eolOverride;
-    setDirty(transferred.dirty);
-  }
+  // 移してきた状態を戻す（F-OPEN-06 / ADR-0016 §3.4）。開いた後でなければならない（`restoreTransferredState`）。
+  if (transferred) restoreTransferredState(transferred);
 
   // 通知は本文を描いた後に出す。
   // `openDocument` は描画に成功した時点で通知バーを閉じる（開けなかったことを知らせる通知を、開けた後も残さないため）。
@@ -226,6 +222,8 @@ export async function startup(renderShell: () => void): Promise<void> {
   void openRemainingTabs(bootstrap);
 
   installOpenRequestHandler();
+  // 別のウィンドウから移されてくるタブ（OQ-43）。受け取る処理は遅延チャンクにあり、初めて届いたときに読み込む。
+  getPlatform().onTabArrive((arrival) => void receiveTabLazily(arrival));
   installTrayOpen();
   installSaveAndQuit();
   installTrayResume();
@@ -338,31 +336,22 @@ function installLinks(): void {
 }
 
 /**
+ * サテライトへ移された本文を引き取る（F-OPEN-06 / ADR-0016 §3.4）。
+ *
+ * 1 回しか取れない。
+ * 取れなかった場合（起動が二重になった / 移す側が失敗した）は通常の起動として続ける。
+ */
+async function resolveTransfer(bootstrap: Bootstrap | null): Promise<TabTransfer | null> {
+  const id = bootstrap?.transfer ?? null;
+  return id === null ? null : takeTabTransfer(id);
+}
+
+/**
  * 起動時に開くべき本文を確定させる。
  *
  * 通常は bootstrap に本文ごと載っている。
  * 載っていないのは 256KB を超えるファイルのときだけで、この場合だけ IPC 往復が 1 回増える（初期化スクリプトに埋め込むと、文字列化のコストが往復のコストを上回る）。
  */
-/**
- * サテライトへ移された本文を引き取る（F-OPEN-06 / ADR-0016 §3.4）。
- *
- * 1 回しか取れない。
- * 取れなかった場合（起動が二重になった / 移す側が失敗した）は通常の起動として続ける。
- * ここで失敗しても、本文は移す側のウィンドウに残っている（移す側は閉じる前にこの受け渡しの成功を確かめている）。
- */
-async function resolveTransfer(bootstrap: Bootstrap | null): Promise<TabTransfer | null> {
-  const id = bootstrap?.transfer ?? null;
-  if (id === null) return null;
-
-  try {
-    const raw = await getPlatform().takeTransfer(id);
-    return raw === null ? null : (JSON.parse(raw) as TabTransfer);
-  } catch (e) {
-    documentStore.notice = { level: 'error', message: toMessage(e) };
-    return null;
-  }
-}
-
 async function resolveInitialDocument(bootstrap: Bootstrap | null): Promise<DocumentPayload | null> {
   const doc = bootstrap?.document ?? null;
 
@@ -502,7 +491,7 @@ function installOpenRequestHandler(): void {
 }
 
 /**
- * ウィンドウへのドラッグ＆ドロップ（F-OPEN-08）。
+ * ウィンドウへのドラッグ＆ドロップ（F-OPEN-08）と、他のウィンドウから引き出されたタブの表示（OQ-43）。
  *
  * ドロップ先の表示は `data-mx-dragover` 属性 1 つで表す。
  * Svelte を通さないのは、ドラッグ中に `over` が毎フレーム発火するためである（ADR-0005 と同じ判断）。
@@ -521,6 +510,13 @@ function installDragAndDrop(): void {
 
     // ドロップされた数だけタブを開く（F-OPEN-08）。
     void openPathsInTabs(event.paths);
+  });
+
+  // 他のウィンドウから引き出されたタブがこの上に来た（OQ-43）。
+  // 落とすとこのウィンドウのタブになる点はファイルのドロップと同じなので、同じ表示を使う。
+  getPlatform().onTabDragOver((over) => {
+    if (over) root.dataset['mxDragover'] = 'true';
+    else delete root.dataset['mxDragover'];
   });
 }
 

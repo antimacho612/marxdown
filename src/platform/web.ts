@@ -661,6 +661,29 @@ export const webPlatform: Platform = {
     console.info('[marxdown] openNewInstance（ブラウザでは何も起きない）');
   },
 
+  // ブラウザには渡す先のウィンドウが無い。
+  // 失敗させるのは、成功扱いにすると呼び出し側が元のタブを閉じてしまうためである。
+  async sendTabToWindow(target) {
+    throw { kind: 'not-found', message: target };
+  },
+
+  onTabArrive() {
+    return () => {};
+  },
+
+  // 窓の外にはブラウザのページを描けない。落とした先も常に「他のウィンドウではない」になる。
+  async beginTabDrag() {},
+
+  async moveTabDrag() {},
+
+  async endTabDrag() {
+    return null;
+  },
+
+  onTabDragOver() {
+    return () => {};
+  },
+
   // ブラウザにはトレイもプロセスも無い。
   // 無視せずログへ出力するのは、`dev:web` で「終了」を押したときに何も起きない理由が分かるようにするためである。
   async quitApp() {

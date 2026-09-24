@@ -15,6 +15,8 @@ pub mod close;
 pub mod commands;
 pub mod dir;
 mod document;
+/// タブのドラッグ中にカーソルへ追従する表示。Windows 以外では空になる（ファイル冒頭の `#![cfg(windows)]`）。
+pub mod drag_ghost;
 pub mod error;
 pub mod glob;
 pub mod instance;
@@ -24,6 +26,7 @@ pub mod settings;
 pub mod snap_layouts;
 pub mod state;
 pub mod store;
+pub mod tab_drag;
 pub mod themes;
 pub mod trace;
 pub mod tray;
@@ -180,6 +183,41 @@ pub fn open_satellite(
     Ok(label)
 }
 
+/// 別のウィンドウから移されてきたタブ（OQ-43）。
+///
+/// 中身はサテライトへ移すときと同じである（ADR-0016 §3.4）。
+/// ディスクと一致しているタブはパスだけ、未保存か無題のタブは受け渡し箱の ID だけを運ぶ。
+#[derive(Debug, Clone, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TabArrival {
+    pub paths: Vec<String>,
+    pub transfer: Option<u64>,
+}
+
+/// タブが移されてきたことを、移す先のウィンドウへ知らせるイベント（ペイロードは [`TabArrival`]）。
+pub const EVENT_TAB_ARRIVE: &str = "marxdown://tab-arrive";
+
+/// タブを既にあるウィンドウへ渡す（OQ-43）。
+///
+/// 渡す先がトレイに格納されている・最小化されている場合は、先に前面へ出す（`close::bring_forward`）。
+/// 出さないと、元のウィンドウからタブが消えるだけで、どこへ移ったのかが見えない。
+///
+/// 渡す先が無ければ何も送らずに `false` を返す。
+/// そのとき呼び出し側は元のタブを閉じてはいけない。
+pub fn send_tab<R: tauri::Runtime>(
+    app: &tauri::AppHandle<R>,
+    target: &str,
+    arrival: &TabArrival,
+) -> bool {
+    if app.get_webview_window(target).is_none() {
+        return false;
+    }
+    // 先に前面へ出す。
+    // トレイ格納中の WebView はサスペンドされており、復帰させないとイベントを受け取ってもスクリプトが動かない（`webview.rs`）。
+    close::bring_forward(app, target);
+    app.emit_to(target, EVENT_TAB_ARRIVE, arrival).is_ok()
+}
+
 /// 最大化状態が変わったことをフロントへ知らせる（ペイロードは `bool`）。
 ///
 /// カスタムタイトルバーであるため、`□` と `❐` の描き分けはフロントが担当する。
@@ -255,6 +293,7 @@ pub fn run() {
     // Context を先に作るのは、`identifier` からストアの置き場所を決めるためである。
     // `tauri::Manager::path()` は AppHandle 構築後にしか使えないが、ウィンドウ状態はウィンドウ生成の前に必要になる（window.rs）。
     let context = tauri::generate_context!();
+    store::migrate_legacy_dir(&context.config().identifier);
     let store_path = store::store_path(&context.config().identifier);
     let store_data = store::load(store_path.as_deref());
     let restore_window = store_data.window;
@@ -378,6 +417,7 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .manage(state)
+        .manage(tab_drag::TabDrag::default())
         .invoke_handler(tauri::generate_handler![
             commands::read_document,
             commands::write_document,
@@ -413,6 +453,10 @@ pub fn run() {
             commands::open_new_instance,
             commands::stash_transfer,
             commands::take_transfer,
+            commands::move_tab_to_window,
+            commands::tab_drag_begin,
+            commands::tab_drag_move,
+            commands::tab_drag_end,
             commands::report_trace,
             commands::ready,
             commands::open_external,
@@ -514,6 +558,12 @@ pub fn run() {
                 app.state::<watch::FileWatcher>().release_window(&label);
                 #[cfg(windows)]
                 snap_layouts::forget(app, &label);
+                // タブを引き出している途中で、引き出した側が閉じた。
+                // 表示を消す指示を送る側がもういないため、ここで消す。
+                if app.state::<tab_drag::TabDrag>().forget(&label) {
+                    #[cfg(windows)]
+                    let _ = app.run_on_main_thread(drag_ghost::hide);
+                }
                 return;
             }
 

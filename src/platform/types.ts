@@ -307,6 +307,30 @@ export interface OpenRequest {
   trace: boolean;
 }
 
+/** 主ウィンドウのラベル（`src-tauri/src/window.rs` の `MAIN_LABEL`）。プロセスごとに 1 枚だけある。 */
+export const MAIN_WINDOW = 'main';
+
+/**
+ * 別のウィンドウから移されてきたタブ（OQ-43）。
+ *
+ * どちらか一方だけが入る。
+ * ディスクと一致しているタブは `paths`、未保存か無題のタブは受け渡し箱の ID（`transfer`）で届く（ADR-0016 §3.4）。
+ */
+export interface TabArrival {
+  paths: string[];
+  transfer: number | null;
+}
+
+/** 色 1 つ（sRGB の 0〜255）。 */
+export type Rgb = [number, number, number];
+
+/** タブを窓の外へドラッグしている間、カーソルに追従する表示の中身。 */
+export interface TabDragGhost {
+  /** タブの名前。 */
+  label: string;
+  colors: { background: Rgb; foreground: Rgb; border: Rgb };
+}
+
 /** 計測点 1 つ。`atMs` は T0 からの経過ミリ秒。 */
 export interface TraceMark {
   id: string;
@@ -577,6 +601,39 @@ export interface Platform {
    * 起動の完了は待たない。返った時点ではまだウィンドウは出ていない。
    */
   openNewInstance(options?: { paths?: string[] }): Promise<void>;
+  /**
+   * タブを既にあるウィンドウへ移す（OQ-43）。
+   *
+   * 渡すものはサテライトへ移すときと同じで、`paths` か `transfer` のどちらか一方である。
+   * 渡す先が格納・最小化されていれば前面へ出してから届ける。
+   *
+   * 渡す先が無ければ失敗する。そのとき呼び出し側は元のタブを閉じてはいけない。
+   */
+  sendTabToWindow(target: string, handoff: { paths?: string[]; transfer?: number }): Promise<void>;
+  /** 別のウィンドウから移されてきたタブを受け取る。このウィンドウ宛てのものだけが届く。 */
+  onTabArrive(handler: (arrival: TabArrival) => void): () => void;
+  /**
+   * タブを窓の外へ引き出し始めた（OQ-43）。カーソルに追従する表示を出す。
+   *
+   * 表示できるのは Windows だけである。
+   * 他の OS では何も出ないが、落とした先の判定（`endTabDrag`）は同じように使える。
+   */
+  beginTabDrag(ghost: TabDragGhost): Promise<void>;
+  /** 窓の外でポインタが動いた。表示を追従させ、下にある他のウィンドウを強調させる。 */
+  moveTabDrag(): Promise<void>;
+  /**
+   * 引き出すのを終えた。表示を消し、カーソルの下にある他の Marxdown のウィンドウのラベルを返す。
+   *
+   * 他のウィンドウの上でなければ `null` を返す。
+   */
+  endTabDrag(): Promise<string | null>;
+  /**
+   * 他のウィンドウで引き出されたタブが、このウィンドウの上に来た / 離れた。
+   *
+   * 引き出している側がポインタを捕捉しているため、このウィンドウにはポインタイベントが届かない。
+   * 代わりに Rust がカーソルの位置から判定して知らせる。
+   */
+  onTabDragOver(handler: (over: boolean) => void): () => void;
   /**
    * Marxdown を終了する（ADR-0007 論点 3）。
    *
