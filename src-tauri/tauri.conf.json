@@ -26,6 +26,10 @@
     "targets": ["nsis"],
     "icon": ["icons/32x32.png", "icons/128x128.png", "icons/128x128@2x.png", "icons/icon.icns", "icons/icon.ico"],
     "copyright": "© 2026 antimacho612",
+    "resources": {
+      "windows/bin/marxdown.cmd": "bin/marxdown.cmd",
+      "windows/bin/marxdown": "bin/marxdown"
+    },
     "fileAssociations": [
       {
         "ext": ["md", "markdown"],

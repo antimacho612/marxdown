@@ -22,6 +22,15 @@ pub enum ViewMode {
     Split,
 }
 
+/// インストーラが呼ぶ PATH の操作（`path_env.rs` / F-OS-02）。
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PathOp {
+    /// `--add-to-path`
+    Add,
+    /// `--remove-from-path`
+    Remove,
+}
+
 /// 解析済みの起動引数。
 /// 不正な引数でも解析は失敗させず、`unknown` に加えて通知バーで知らせる。
 #[derive(Debug, Clone, Default)]
@@ -49,6 +58,11 @@ pub struct CliArgs {
     /// 閉じた文書のメモリが、到達可能な参照によって残っているのか、GC が未実行なだけなのかを切り分けるために使う。
     /// これが無いと DevTools から `gc()` を呼べない。
     pub gc_probe: bool,
+    /// `--add-to-path` / `--remove-from-path`。ウィンドウを作らずに PATH を更新して終了する。
+    ///
+    /// インストーラ専用（`windows/installer-hooks.nsh`）。
+    /// single-instance プラグインより前に処理するため、アプリが常駐していても argv は転送されない。
+    pub path_op: Option<PathOp>,
     pub show_help: bool,
     pub show_version: bool,
     /// 解析できなかった引数。警告として通知バーに出す。
@@ -74,6 +88,10 @@ OPTIONS:
 MEASUREMENT OPTIONS (計測用。開発ビルドでのみ意味を持つ):
         --gc-probe                              DevTools から gc() を呼べるようにする
         --bench-input <OUT>                     入力レスポンスを計測し JSON を OUT へ書き出して終了する
+
+INSTALLER OPTIONS (インストーラが使う):
+        --add-to-path          インストール先の bin をユーザーの PATH に追加して終了する
+        --remove-from-path     同じエントリをユーザーの PATH から削除して終了する
 ";
 
 /// `argv`（実行ファイル名を含まない）と `cwd` から引数を解析する。
@@ -124,6 +142,8 @@ pub fn parse(argv: &[String], cwd: &Path) -> CliArgs {
             "-n" | "--new-window" => args.new_window = true,
             "--exit-after-trace" => args.exit_after_trace = true,
             "--gc-probe" => args.gc_probe = true,
+            "--add-to-path" => args.path_op = Some(PathOp::Add),
+            "--remove-from-path" => args.path_op = Some(PathOp::Remove),
             "-m" | "--mode" => {
                 if let Some(v) = take_value!("--mode") {
                     match v.as_str() {
@@ -275,6 +295,19 @@ mod tests {
         ]);
         assert_eq!(a.unknown.len(), 4, "撤去したフラグは未知の引数として扱う");
         assert!(a.paths.is_empty());
+    }
+
+    /// インストーラ専用のフラグは、付けたときだけ有効になり、パスとしては扱わない。
+    #[test]
+    fn parses_path_operations_for_the_installer() {
+        assert_eq!(args(&["a.md"]).path_op, None);
+
+        let a = args(&["--add-to-path"]);
+        assert_eq!(a.path_op, Some(PathOp::Add));
+        assert!(a.paths.is_empty());
+        assert!(a.unknown.is_empty());
+
+        assert_eq!(args(&["--remove-from-path"]).path_op, Some(PathOp::Remove));
     }
 
     #[test]

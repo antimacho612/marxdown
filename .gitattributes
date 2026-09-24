@@ -1,0 +1,4 @@
+# CLI シムの改行コードを固定する（docs/04.tech-stack/09-tauri-config.md §2）。
+# cmd.exe は LF だけのバッチでラベルへのジャンプを誤ることがあり、sh は CR を含むと実行できない。
+src-tauri/windows/bin/marxdown.cmd text eol=crlf
+src-tauri/windows/bin/marxdown text eol=lf

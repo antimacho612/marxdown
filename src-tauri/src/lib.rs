@@ -20,6 +20,7 @@ pub mod drag_ghost;
 pub mod error;
 pub mod glob;
 pub mod instance;
+pub mod path_env;
 pub mod scope;
 pub mod settings;
 /// Windows の Snap Layouts。Windows 以外では空になる（ファイル冒頭の `#![cfg(windows)]`）。
@@ -269,6 +270,10 @@ pub fn run() {
     if args.show_version {
         println!("marxdown {}", env!("CARGO_PKG_VERSION"));
         return;
+    }
+    // インストーラが終了コードで成否を判定する（`windows/installer-hooks.nsh`）。
+    if let Some(op) = args.path_op {
+        std::process::exit(path_env::run(op));
     }
 
     // `--gc-probe`: メモリ計測で強制 GC を使うための経路（05.performance-budget/05-operations.md §3）。
