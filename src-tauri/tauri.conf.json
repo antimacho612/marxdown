@@ -25,13 +25,25 @@
     "publisher": "antimacho612",
     "targets": ["nsis"],
     "icon": ["icons/32x32.png", "icons/128x128.png", "icons/128x128@2x.png", "icons/icon.icns", "icons/icon.ico"],
+    "copyright": "© 2026 antimacho612",
     "fileAssociations": [
       {
         "ext": ["md", "markdown"],
-        "name": "Markdown",
-        "description": "Markdown Document",
+        "name": "Marxdown.Markdown",
+        "description": "Markdown ドキュメント",
         "role": "Editor"
       }
-    ]
+    ],
+    "windows": {
+      "webviewInstallMode": {
+        "type": "downloadBootstrapper",
+        "silent": true
+      },
+      "nsis": {
+        "installMode": "currentUser",
+        "languages": ["Japanese"],
+        "installerHooks": "windows/installer-hooks.nsh"
+      }
+    }
   }
 }
