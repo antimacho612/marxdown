@@ -27,6 +27,7 @@
 | `edit.e2e.ts` | 行操作・検索・置換・キーの衝突・Markdown 書式（F-EDIT-04〜10） |
 | `split.e2e.ts` | Split・スクロール同期・双方向ジャンプ・検索の振り分け（F-MODE-03, 05, 06） |
 | `tabs.e2e.ts` | タブ（F-NAV-01, 02）。**argv 転送がタブを増やすこと**と、`Ctrl+W` / `Ctrl+Tab` の競合 |
+| `satellite.e2e.ts` | タブをサテライトへ移しても、元のウィンドウの IPC と遅延チャンクの読み込みが止まらないこと（F-OPEN-06） |
 | `session.e2e.ts` | 引数なしの起動で前回のタブが開き直されること（F-NAV-01） |
 | `images.e2e.ts` | スコープ外の画像を許可する導線（N-SEC-05） |
 

@@ -119,6 +119,9 @@ pub fn target_window<R: tauri::Runtime>(app: &tauri::AppHandle<R>) -> String {
 ///
 /// ウィンドウ位置は保存しない（`close.rs` の `save_window_state`）。
 /// 覚えるのは主ウィンドウの分だけで、サテライトは閉じたら消える。
+///
+/// Windows では WebView2 のイベントハンドラの中から呼んではならない（`commands::open_satellite`）。
+/// 同期コマンドがこれにあたり、ウィンドウの生成がデッドロックする。
 pub fn open_satellite(
     app: &tauri::AppHandle,
     state: &state::AppState,
