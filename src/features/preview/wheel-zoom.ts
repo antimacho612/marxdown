@@ -27,6 +27,12 @@ let accumulated = 0;
  * `passive: false` で登録する。
  * WebView 自身のページズームを止めないと、クロームごと拡大された上に `--mx-zoom` が二重に掛かる。
  * 修飾なしのホイールは最初の分岐で抜けるため、通常のスクロールに加わるコストは判定 1 回で済む。
+ *
+ * `capture: true` も必須である。
+ * Monaco のスクロール可能要素は `scrollbar.alwaysConsumeMouseWheel`（既定 true）によりホイールイベントを常に消費し、
+ * バブリング前に `stopPropagation()` する。捕捉フェーズで window に登録しておけば、エディター側の処理より先に本関数が実行され、
+ * ここで呼ぶ `preventDefault()` を Monaco 側が見て（`defaultPrevented` を確認して）自身のスクロール処理を取りやめる。
+ * バブリングフェーズのままだと、エディター上の Ctrl + ホイールがここまで届かず、倍率もステータスバーの表示も変わらない。
  */
 export function installWheelZoom(): () => void {
   const onWheel = (event: WheelEvent) => {
@@ -53,9 +59,9 @@ export function installWheelZoom(): () => void {
     }
   };
 
-  globalThis.addEventListener('wheel', onWheel, { passive: false });
+  globalThis.addEventListener('wheel', onWheel, { capture: true, passive: false });
   return () => {
-    globalThis.removeEventListener('wheel', onWheel);
+    globalThis.removeEventListener('wheel', onWheel, { capture: true });
     accumulated = 0;
   };
 }
