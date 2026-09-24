@@ -86,4 +86,23 @@ describe('Ctrl + ホイールの表示倍率 (F-VIEW-11)', () => {
     wheel(-100);
     expect(viewStore.zoom).toBe(1);
   });
+
+  /**
+   * Monaco のスクロール可能要素は `scrollbar.alwaysConsumeMouseWheel`（既定 true）によりホイールイベントを
+   * バブリング前に `stopPropagation()` する（GitHub Issue #157）。
+   * 捕捉フェーズで登録していれば、その `stopPropagation()` より先に本関数が実行されるため影響を受けない。
+   */
+  it('子要素がバブリングを止めても反応する（エディター上のホイール）', () => {
+    const editorHost = document.createElement('div');
+    editorHost.addEventListener('wheel', (event) => event.stopPropagation(), { passive: true });
+    document.body.append(editorHost);
+
+    const event = new WheelEvent('wheel', { deltaY: -100, ctrlKey: true, cancelable: true });
+    editorHost.dispatchEvent(event);
+
+    expect(viewStore.zoom).toBe(1.1);
+    expect(event.defaultPrevented).toBe(true);
+
+    editorHost.remove();
+  });
 });
