@@ -30,7 +30,7 @@
   });
 
   const BROKEN = {
-    path: 'C:\\Users\\me\\AppData\\Roaming\\com.antimacho612.marxdown\\settings.json',
+    path: 'C:\\Users\\me\\AppData\\Roaming\\marxdown\\settings.json',
     message: 'expected `,` or `}` at line 3 column 1',
   };
 

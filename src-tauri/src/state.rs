@@ -16,7 +16,7 @@ use crate::settings::{Settings, SettingsLoad};
 use crate::store::{RecentEntry, StoreData};
 use crate::trace::Trace;
 
-/// アプリデータ領域（`%APPDATA%\com.antimacho612.marxdown\`）に置くものの場所（02.architecture/04-rust-responsibilities.md §5）。
+/// アプリデータ領域（`%APPDATA%\marxdown\`）に置くものの場所（02.architecture/04-rust-responsibilities.md §5）。
 ///
 /// `state.json` はアプリが自動的に書き、`settings.json` と `themes/` は人が書く。
 ///

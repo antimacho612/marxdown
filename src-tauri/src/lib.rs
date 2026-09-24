@@ -255,6 +255,7 @@ pub fn run() {
     // Context を先に作るのは、`identifier` からストアの置き場所を決めるためである。
     // `tauri::Manager::path()` は AppHandle 構築後にしか使えないが、ウィンドウ状態はウィンドウ生成の前に必要になる（window.rs）。
     let context = tauri::generate_context!();
+    store::migrate_legacy_dir(&context.config().identifier);
     let store_path = store::store_path(&context.config().identifier);
     let store_data = store::load(store_path.as_deref());
     let restore_window = store_data.window;
