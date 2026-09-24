@@ -215,6 +215,44 @@ describe('input は 1 つも通さない (F-VIEW-01)', () => {
   });
 });
 
+describe('本文中の style タグをプレビューへ閉じ込める (issue #161)', () => {
+  it('本文の style をプレビューの外へ流出させない', () => {
+    const out = pipeline('<style scoped>\nol { height: stretch; }\n</style>\n');
+    expect(out).toContain('@scope (#mx-preview)');
+    expect(out).toContain('ol { height: stretch; }');
+  });
+
+  it('文書の先頭に置いても消えない', () => {
+    // <style> が本文の先頭だと、DOMParser のフルドキュメント解析で head 側へ回されて消える（FORCE_BODY で防ぐ）。
+    const out = pipeline('<style>ol { color: red; }</style>\n\n見出し\n');
+    expect(out).toContain('@scope (#mx-preview)');
+    expect(out).toContain('ol { color: red; }');
+  });
+
+  it('波かっこを余分に閉じて範囲外へ出ようとしたものは丸ごと落とす', () => {
+    const out = pipeline('<style>}\nbody { display: none !important; }\n/*</style>\n');
+    expect(out).not.toContain('display: none');
+    expect(out).not.toContain('<style');
+  });
+
+  it('@scope の中に別の @scope を紛れ込ませて範囲を広げようとしたものは丸ごと落とす', () => {
+    const out = pipeline('<style>}\n@scope (*) { body { display: none; } }\n/*</style>\n');
+    expect(out).not.toContain('display: none');
+    expect(out).not.toContain('<style');
+  });
+
+  it('正当な入れ子（@media）は保持する', () => {
+    const out = pipeline('<style>@media (prefers-color-scheme: dark) { ol { color: white; } }</style>\n');
+    expect(out).toContain('@scope (#mx-preview)');
+    expect(out).toContain('@media (prefers-color-scheme: dark)');
+  });
+
+  it('複数の style タグをそれぞれ独立して包む', () => {
+    const out = pipeline('<style>ol { color: red; }</style>\n\n本文\n\n<style>ul { color: blue; }</style>\n');
+    expect(out.match(/@scope \(#mx-preview\)/g)).toHaveLength(2);
+  });
+});
+
 describe('GitHub 由来の拡張記法を壊さない', () => {
   it('GitHub Alerts を残す (F-VIEW-14)', () => {
     const out = pipeline('> [!NOTE]\n> 本文\n');

@@ -20,6 +20,7 @@ import { mermaidPlugin } from './plugins/mermaid';
 import { useSyntax } from './plugins/syntax';
 import { tablePlugin } from './plugins/table';
 import { taskListPlugin } from './plugins/task-list';
+import { LINE_HEAD } from './protocol';
 
 export { loadSyntax, SYNTAX_NAMES, type SyntaxName } from './plugins/syntax';
 
@@ -191,6 +192,10 @@ function shiftTokenLines(tokens: Token[], offset: number): void {
  *
  * トップレベルのブロック境界でのみ切る。要素の途中で切ると HTML が壊れる。
  * 最初のチャンクだけを同期的に DOM へ入れ、残りは `requestIdleCallback` で足す。
+ *
+ * `blocks` は Split の再描画で差分を取るための単位で、連結すると `chunks` の連結と一致する。
+ * `data-line` を持つ要素で始まらないブロック（生の HTML・脚注）は直前のブロックに連結する。
+ * DOM 側で境界を `data-line` から復元できるようにするためである。
  */
 export function renderChunks(
   text: string,
@@ -199,6 +204,7 @@ export function renderChunks(
   config: RenderConfig = {},
 ): {
   chunks: string[];
+  blocks: string[];
   outline: OutlineItem[];
   frontMatter: string | null;
 } {
@@ -210,9 +216,21 @@ export function renderChunks(
   if (bodyStartLine > 0) shiftTokenLines(tokens, bodyStartLine);
 
   const chunks: string[] = [];
+  const blocks: string[] = [];
+  /** 現在のチャンクに入るブロックの HTML。チャンクの区切りと `blocks` の区切りは一致しないため、別に持つ。 */
+  let pending: string[] = [];
   let start = 0;
-  let blocks = 0;
+  let count = 0;
   let limit = firstChunkBlocks;
+
+  const pushBlock = (end: number): void => {
+    const html = md.renderer.render(tokens.slice(start, end), md.options, env);
+    start = end;
+    pending.push(html);
+    const last = blocks.length - 1;
+    if (last >= 0 && !LINE_HEAD.test(html)) blocks[last] += html;
+    else blocks.push(html);
+  };
 
   // 脚注ブロック（`markdown-it-footnote` が末尾に追加する）より手前でしか分割しない。
   //
@@ -227,19 +245,19 @@ export function renderChunks(
     if (!token) continue;
     // level 0 かつ nesting が閉じた位置がトップレベルブロックの終端になる
     if (token.level === 0 && token.nesting <= 0) {
-      blocks++;
-      if (blocks >= limit) {
-        chunks.push(md.renderer.render(tokens.slice(start, i + 1), md.options, env));
-        start = i + 1;
-        blocks = 0;
+      pushBlock(i + 1);
+      count++;
+      if (count >= limit) {
+        chunks.push(pending.join(''));
+        pending = [];
+        count = 0;
         limit = chunkBlocks;
       }
     }
   }
 
-  if (start < tokens.length) {
-    chunks.push(md.renderer.render(tokens.slice(start), md.options, env));
-  }
+  if (start < tokens.length) pushBlock(tokens.length);
+  if (pending.length > 0) chunks.push(pending.join(''));
 
-  return { chunks, outline: extractOutline(tokens), frontMatter };
+  return { chunks, blocks, outline: extractOutline(tokens), frontMatter };
 }

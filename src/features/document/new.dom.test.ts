@@ -24,6 +24,7 @@ function fakeParser(): MarkdownParser {
       Promise.resolve({
         id: 1,
         chunks: [`<p>${text.length}</p>`],
+        blocks: [`<p>${text.length}</p>`],
         outline: [],
         frontMatter: null,
         parseMs: 0.1,

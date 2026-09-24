@@ -64,9 +64,14 @@ describe('Ctrl + ホイールの表示倍率 (F-VIEW-11)', () => {
     expect(viewStore.zoom).toBe(0.9);
   });
 
-  it('1 イベントに複数段階ぶん乗っていれば、その回数だけ動く', () => {
+  it('1 イベントの入力が大きくても、1 段階までしか進まない', () => {
+    // 高解像度ホイールや一部のマウスドライバは、1 ノッチを `deltaY` 100 より大きい値で送ってくる。
     wheel(-300);
-    expect(viewStore.zoom).toBe(1.5);
+    expect(viewStore.zoom).toBe(1.1);
+
+    // 上限を超えたぶんは捨てているため、次のノッチも改めて 1 段階だけ進む。
+    wheel(-300);
+    expect(viewStore.zoom).toBe(1.25);
   });
 
   it('行単位で届く値も段階に変換する', () => {
@@ -74,9 +79,9 @@ describe('Ctrl + ホイールの表示倍率 (F-VIEW-11)', () => {
     expect(viewStore.zoom).toBe(1.1);
   });
 
-  it('ページ単位で届く値も段階に変換する', () => {
+  it('ページ単位で届く値も、1 段階までしか進まない', () => {
     wheel(-1, { deltaMode: WheelEvent.DOM_DELTA_PAGE });
-    expect(viewStore.zoom).toBe(1.75);
+    expect(viewStore.zoom).toBe(1.1);
   });
 
   it('解除すると反応しなくなる', () => {
@@ -85,5 +90,24 @@ describe('Ctrl + ホイールの表示倍率 (F-VIEW-11)', () => {
 
     wheel(-100);
     expect(viewStore.zoom).toBe(1);
+  });
+
+  /**
+   * Monaco のスクロール可能要素は `scrollbar.alwaysConsumeMouseWheel`（既定 true）によりホイールイベントを
+   * バブリング前に `stopPropagation()` する（GitHub Issue #157）。
+   * 捕捉フェーズで登録していれば、その `stopPropagation()` より先に本関数が実行されるため影響を受けない。
+   */
+  it('子要素がバブリングを止めても反応する（エディター上のホイール）', () => {
+    const editorHost = document.createElement('div');
+    editorHost.addEventListener('wheel', (event) => event.stopPropagation(), { passive: true });
+    document.body.append(editorHost);
+
+    const event = new WheelEvent('wheel', { deltaY: -100, ctrlKey: true, cancelable: true });
+    editorHost.dispatchEvent(event);
+
+    expect(viewStore.zoom).toBe(1.1);
+    expect(event.defaultPrevented).toBe(true);
+
+    editorHost.remove();
   });
 });

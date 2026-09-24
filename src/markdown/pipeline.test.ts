@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { render, renderChunks, slugifyHeading } from './pipeline';
 import { splitFrontMatter } from './plugins/front-matter';
+import { LINE_HEAD } from './protocol';
 
 describe('CommonMark / GFM', () => {
   it('見出しと段落を描画する', () => {
@@ -151,6 +152,43 @@ describe('段階的描画のチャンク分割 (N-PERF-04)', () => {
 
   it('チャンク分割してもアウトラインは全体ぶん返る', () => {
     expect(renderChunks(many, 10, 50).outline).toHaveLength(120);
+  });
+});
+
+describe('差分更新の単位 (#159)', () => {
+  it('連結すると分割なしの結果と一致する', () => {
+    const text = '# a\n\nb\n\n```js\nc\n```\n\n- d\n- e\n\n> [!NOTE]\n> f\n';
+    const { blocks } = renderChunks(text, 1, 1);
+    expect(blocks).toHaveLength(5);
+    expect(blocks.join('')).toBe(render(text).html);
+  });
+
+  it('どのブロックも data-line を持つ要素で始まる', () => {
+    const { blocks } = renderChunks('# a\n\n```js\nb\n```\n\n$$\nc\n$$\n\n---\n', 1, 1);
+    expect(blocks.every((block) => LINE_HEAD.test(block))).toBe(true);
+  });
+
+  it('data-line を持たないブロック（生の HTML・脚注）は直前に連結する', () => {
+    const text = 'a[^1]\n\n<div>raw</div>\n\nb\n\n[^1]: note\n';
+    const { blocks } = renderChunks(text, 1, 1);
+    expect(blocks).toHaveLength(2);
+    expect(blocks[0]).toContain('<div>raw</div>');
+    expect(blocks[1]).toContain('<section class="footnotes">');
+    expect(blocks.join('')).toBe(render(text).html);
+  });
+
+  it('先頭が生の HTML なら、それが先頭のブロックになる', () => {
+    const { blocks } = renderChunks('<div>raw</div>\n\na\n', 1, 1);
+    expect(blocks).toHaveLength(2);
+    expect(LINE_HEAD.test(blocks[0] ?? '')).toBe(false);
+  });
+
+  it('行番号がずれても、data-line を除けば同じ文字列になる', () => {
+    const before = renderChunks('a\n\nb\n', 1, 1).blocks;
+    const after = renderChunks('a\n\n\n\nb\n', 1, 1).blocks;
+    const strip = (html: string | undefined): string => (html ?? '').replaceAll(/data-line="\d+"/g, '');
+    expect(after[1]).not.toBe(before[1]);
+    expect(strip(after[1])).toBe(strip(before[1]));
   });
 });
 

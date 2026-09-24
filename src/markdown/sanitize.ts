@@ -99,6 +99,9 @@ const CONFIG: Config = {
   // `button` 以降は仕様が要求していない追加分であり、本文に操作可能な部品を置かないための措置である。
   // `input` にも例外を設けない。タスクリストのチェックボックス（F-VIEW-01）は `<input>` ではなく `<span role="checkbox">` で出力する（`markdown/plugins/task-list.ts`）。
   // 生 HTML を書いたドキュメントが操作可能なフォーム部品を本文へ持ち込む経路は、これで閉じている。
+  //
+  // `style` は落とさない。Marp 用のスライド装飾など、埋め込む正当な用途があるためである（issue #161）。
+  // 素通しはせず、`scopeStyles` がプレビューの外へ及ばないよう包む。
   FORBID_TAGS: [
     'script',
     'iframe',
@@ -121,12 +124,81 @@ const CONFIG: Config = {
   // SVG は GitHub Alerts のアイコンと Mermaid が生成したものを通す必要がある
   USE_PROFILES: { html: true, svg: true, svgFilters: true },
   KEEP_CONTENT: true,
+  // `<style>` が本文の先頭に来ると、DOMParser によるフルドキュメント解析で `<head>` 側へ回されて消える（HTML5 のツリー構築アルゴリズムの仕様）。
+  // 本文の外へ流出こそしないが、位置によって効いたり消えたりするのは Marp 用途として使いものにならない。
+  // ダミー要素を先頭に足して常に「本文の中」から解析させることで、位置に依存しない挙動にする。
+  FORCE_BODY: true,
 };
+
+/**
+ * プレビューの外へ CSS を漏らさないためのスコープ選択子。
+ *
+ * `#mx-preview`（`index.html` / `paint.ts` の描画先）と一致させる。共有定数が無いのは、
+ * 他の参照箇所（`features/theme/inject.ts` など）も同様に文字列リテラルで持っているためである。
+ */
+const PREVIEW_SELECTOR = '#mx-preview';
+
+/**
+ * サニタイズ済み HTML 中の `<style>` の中身を、プレビューの外へ及ばないよう `@scope` で閉じ込める（issue #161）。
+ *
+ * CSS はカスケードに DOM 上の位置を問わないため、`<style>` タグを許可リストで素通しするだけでは
+ * 本文の外（アプリ全体）にも規則が効いてしまう。`@scope (#mx-preview)` で包み、
+ * `02.architecture/10-theming.md §3.4`（`features/theme/inject.ts`）と同じ「ブラウザに解釈させた結果だけを見る」手法で、
+ * 波かっこの数を細工して範囲外へ出ようとしたものを丸ごと落とす（`confine`）。
+ */
+function scopeStyles(html: string): string {
+  if (!html.includes('<style')) return html; // 大半の文書はここで終わる
+
+  const template = document.createElement('template');
+  template.innerHTML = html;
+
+  const styles = template.content.querySelectorAll('style');
+  if (styles.length === 0) return html;
+
+  for (const style of styles) {
+    const scoped = confine(style.textContent ?? '');
+    if (scoped === null) {
+      // 範囲外に出るものは残さない。部分的に適用された状態にすると、どこまでが効いているのか画面から読み取れない。
+      style.remove();
+    } else {
+      style.textContent = scoped;
+    }
+  }
+
+  // eslint-disable-next-line unicorn/prefer-dom-node-html-methods -- getHTML() は本稿執筆時点で jsdom が未実装で、dom.test.ts が動かなくなる
+  return template.innerHTML;
+}
+
+/**
+ * `css` を `@scope` で包み、生成された規則がその 1 つに収まっているかを検証する。
+ *
+ * 収まっていれば包んだ文字列を、波かっこの余分な閉じなどで範囲外に出ていれば `null` を返す。
+ * 字句解析で波かっこを数えようとすると CSS のパーサを再実装することになるため、
+ * 実際に `<style>` へ入れてブラウザに解釈させ、`CSSOM` 上の規則数と種類だけを見る。
+ */
+function confine(css: string): string | null {
+  const wrapped = `@scope (${PREVIEW_SELECTOR}) {\n${css}\n}`;
+
+  const probe = document.createElement('style');
+  probe.textContent = wrapped;
+  document.head.append(probe);
+  try {
+    const rules = probe.sheet?.cssRules;
+    if (!rules || rules.length !== 1) return null;
+
+    const rule = rules[0];
+    return rule instanceof CSSScopeRule && rule.start === PREVIEW_SELECTOR ? wrapped : null;
+  } catch {
+    return null;
+  } finally {
+    probe.remove();
+  }
+}
 
 /** パイプラインが生成した HTML 文字列をサニタイズする。DOM に入る HTML は必ずここを通す。 */
 export function sanitize(html: string): string {
   configure();
-  return DOMPurify.sanitize(html, CONFIG);
+  return scopeStyles(DOMPurify.sanitize(html, CONFIG));
 }
 
 /**
