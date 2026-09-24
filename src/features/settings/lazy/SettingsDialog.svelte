@@ -46,6 +46,7 @@ Rust 側も拒否するが、UI が「保存できたように見せる」のを
     ToggleField,
   } from './components';
   import { LAYOUT, type CategoryId, type FieldEntry } from './layout';
+  import { createRulerMemory, rulerColumn } from './rulers';
   import type SampleComponent from './samples/Sample.svelte';
 
   const { onclose }: { onclose: () => void } = $props();
@@ -157,7 +158,10 @@ Rust 側も拒否するが、UI が「保存できたように見せる」のを
    */
   function resetOf(key: SettingKey): (() => void) | undefined {
     if (!customized(key)) return undefined;
-    return () => changeSetting(key, null);
+    return () => {
+      if (key === 'editor.rulers') rulerMemory.forget();
+      changeSetting(key, null);
+    };
   }
 
   /** 表示条件を持たない項目は常に表示する。 */
@@ -195,6 +199,15 @@ Rust 側も拒否するが、UI が「保存できたように見せる」のを
   /** 並びの項目のキー。`layout.ts` で `list` を指定したものだけがここに入る。 */
   type ListKey = Extract<FieldEntry, { widget: 'list' }>['key'];
 
+  /** 縦罫線の色は画面に出さないため、桁を打ち直したときに引き継ぐ（`rulers.ts`）。 */
+  const rulerMemory = createRulerMemory();
+
+  /** 並びを入力欄の 1 行にする。縦罫線は桁だけを出す。 */
+  function listText(key: ListKey): string {
+    if (key === 'explorer.exclude' || key === 'editor.wordSegmenterLocales') return values[key].join(', ');
+    return values[key].map(rulerColumn).join(', ');
+  }
+
   /**
    * カンマ区切りの 1 行を並びとして解釈し、ストアへ反映する（`ListField.svelte`）。
    *
@@ -214,9 +227,9 @@ Rust 側も拒否するが、UI が「保存できたように見せる」のを
 
     // 縦罫線は数値の並びである。打っている途中（`80, ` の空欄や `8o` の打ち間違い）では適用しない。
     if (parts.some((part) => !/^\d+$/u.test(part))) return null;
-    const next = parts.map(Number);
-    changeSetting(key, next);
-    return next.join(', ');
+    const columns = parts.map(Number);
+    changeSetting(key, rulerMemory.restore(columns, values[key]));
+    return columns.join(', ');
   }
 </script>
 
@@ -330,7 +343,7 @@ Rust 側も拒否するが、UI が「保存できたように見せる」のを
       settingKey={entry.key}
       label={entry.label}
       {description}
-      value={values[entry.key].join(', ')}
+      value={listText(entry.key)}
       placeholder={entry.placeholder}
       inputmode={entry.key === 'editor.rulers' ? 'numeric' : 'text'}
       onInput={(raw) => onListInput(entry.key, raw)}

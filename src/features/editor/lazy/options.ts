@@ -8,7 +8,7 @@
  * 設定変化の購読（`watchEditorSettings`）はルーンを使うため `watch-settings.svelte.ts` に分けてあり、このファイルは素の `.ts` のまま Svelte も Monaco も通さずテストできる。
  */
 import { formatFontFamily, settingsStore } from '@/features/settings';
-import type { Settings } from '@/platform';
+import type { Ruler, Settings } from '@/platform';
 
 import type { monaco } from './monaco';
 import { readNumber, readValue } from './theme';
@@ -48,7 +48,7 @@ export function editorOptions(values: Settings): EditorOptions {
     guides: { indentation: values['editor.guides.indentation'] },
     bracketPairColorization: { enabled: values['editor.bracketPairColorization.enabled'] },
     minimap: { enabled: values['editor.minimap.enabled'] },
-    rulers: values['editor.rulers'],
+    rulers: values['editor.rulers'].map(toMonacoRuler),
     padding: { top: values['editor.padding.top'] },
 
     wordWrap,
@@ -97,6 +97,11 @@ function fontFamily(values: Settings): string {
   const family = formatFontFamily(values['editor.fontFamily']);
   if (family === null) return readValue('--mx-font-code');
   return `${family}, ${readValue('--mx-font-code-stack')}`;
+}
+
+/** Monaco の `IRulerOption` は `color` を省略できず、テーマの色を使うときは `null` を渡す。 */
+function toMonacoRuler(ruler: Ruler): number | monaco.editor.IRulerOption {
+  return typeof ruler === 'number' ? ruler : { column: ruler.column, color: ruler.color ?? null };
 }
 
 /** 現在の設定をエディターへ適用する。 */
