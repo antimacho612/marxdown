@@ -27,6 +27,7 @@
     "analyze": "vite build --mode analyze",
     "fixtures": "node scripts/gen-fixtures.mjs",
     "icons": "node scripts/build-icons.mjs",
+    "notices": "vite build && node scripts/gen-third-party-notices.mjs",
     "bench:boot": "node scripts/bench-startup.mjs",
     "bench:input": "node scripts/bench-input.mjs",
     "tauri": "tauri",
