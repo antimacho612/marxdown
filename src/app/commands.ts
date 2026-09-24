@@ -29,6 +29,7 @@ import { isSatellite, viewStore } from '@/features/view';
 import {
   closeTab,
   cycleTab,
+  moveCurrentTabToMainLazily,
   moveCurrentTabToSatellite,
   openFolderViaDialog,
   openNewInstance,
@@ -86,6 +87,14 @@ const COMMANDS: Command[] = [
   // 表示中のタブをサテライトへ移す（F-OPEN-06）。
   // キーは割り当てない。使用頻度が低く、覚えるキーを増やす利点がない（`document.toggleEol` と同じ判断）。
   { id: 'window.moveTab', run: () => void moveCurrentTabToSatellite(), isListed: hasDocument },
+
+  // 表示中のタブをメインウィンドウへ戻す（OQ-43）。サテライトの一覧にだけ出す。
+  // 実体は遅延チャンクにある。キーを割り当てない理由は `window.moveTab` と同じ。
+  {
+    id: 'window.moveTabToMain',
+    run: () => void moveCurrentTabToMainLazily(),
+    isListed: () => isSatellite() && hasDocument(),
+  },
 
   // 一覧（メニュー）には出さない。
   // 対象を指定して開く経路であり、「最近開いたファイル」の 1 件ごとがこれを呼ぶ。
