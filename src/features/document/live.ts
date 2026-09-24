@@ -200,7 +200,7 @@ async function renderOnce(): Promise<void> {
   // 保持しないと、入力を終えてから画面が変わるまでの時間が次の打鍵からの差になり、値が小さくなる（`huge.md` では負の値にもなる）。
   const scheduledFor = scheduledAt;
   const startedAt = observer ? performance.now() : 0;
-  // 本文を読む前に下ろす。パースの途中で打鍵があれば `scheduleLiveRender` がもう一度立てる。
+  // 本文を読む前に false にする。パースの途中で打鍵があれば `scheduleLiveRender` が再び true にする。
   outlineStale = false;
   try {
     const parsed = await parser.parse(getDocumentText(), getParseOptions());

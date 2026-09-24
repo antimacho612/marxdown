@@ -25,7 +25,7 @@ export function headingRanges(
   lineCount: number,
   isBlank: (line: number) => boolean,
 ): HeadingRange[] {
-  // 各見出しの範囲の最終行。閉じていない見出しを積んでおき、同じかそれより上の階層が現れたら閉じる。
+  // 各見出しの範囲の最終行。範囲が確定していない見出しをスタックに保持し、同じかそれより上の階層が現れた時点で確定させる。
   // 次の見出しの 0 始まりの行番号は、1 始まりで数えた直前の行と同じ値になる。
   const ends = Array.from({ length: items.length }, () => lineCount);
   const open: number[] = [];

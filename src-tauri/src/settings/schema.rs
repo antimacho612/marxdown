@@ -1020,11 +1020,11 @@ mod tests {
         );
         assert_eq!(
             s.editor_word_segmenter_locales[0], "ja",
-            "前後の空白は落とす"
+            "前後の空白は取り除く"
         );
         assert_eq!(
             s.editor_word_segmenter_locales[1], "x-0",
-            "記号を含むものと長すぎるものは落ちる"
+            "記号を含むものと長すぎるものは除外する"
         );
     }
 
