@@ -12,11 +12,14 @@
 <script lang="ts">
   import { onMount } from 'svelte';
 
+  import { isSatellite } from '@/features/view';
   import { ja } from '@/i18n/ja';
+  import { MAIN_WINDOW } from '@/platform';
 
   import { moveTabToSatellite } from '../new-window';
   import type { TabMenuProps } from '../tab-menu-props';
   import { closeTab } from '../tabs.svelte';
+  import { moveTabToWindow } from './handoff';
 
   const { tabId, name, x, y, onclose }: TabMenuProps = $props();
 
@@ -33,6 +36,10 @@
   let placed = $state<{ left: number; top: number } | null>(null);
 
   const items = [
+    // サテライトからは主ウィンドウへ戻せる（OQ-43）。ドラッグで戻す操作の、キーボードからの入口でもある。
+    ...(isSatellite()
+      ? [{ id: 'to-main', label: ja.menu.moveToMainWindow, run: () => void moveTabToWindow(tabId, MAIN_WINDOW) }]
+      : []),
     { id: 'new-window', label: ja.menu.moveToNewWindow, run: () => void moveTabToSatellite(tabId) },
     { id: 'close', label: ja.tab.closeCurrent, run: () => void closeTab(tabId) },
   ];

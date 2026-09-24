@@ -5,7 +5,7 @@
  * IPC 呼び出し回数は性能に直結する。
  */
 import { convertFileSrc, invoke } from '@tauri-apps/api/core';
-import { listen, type UnlistenFn } from '@tauri-apps/api/event';
+import { listen, type EventCallback, type UnlistenFn } from '@tauri-apps/api/event';
 import { getCurrentWebview } from '@tauri-apps/api/webview';
 
 import { MARKDOWN_EXTENSIONS } from '@/lib/path';
@@ -23,6 +23,7 @@ import type {
   RecentEntry,
   SaveResult,
   SettingsLoad,
+  TabArrival,
   TraceMark,
   UserTheme,
   WriteRequest,
@@ -38,6 +39,19 @@ const EVENT_SAVE_AND_CLOSE = 'marxdown://save-and-close';
 const EVENT_THEMES_CHANGED = 'marxdown://themes-changed';
 const EVENT_WINDOW_MAXIMIZED = 'marxdown://window-maximized';
 const EVENT_MAXIMIZE_HOVER = 'marxdown://maximize-hover';
+const EVENT_TAB_ARRIVE = 'marxdown://tab-arrive';
+const EVENT_TAB_DRAG_OVER = 'marxdown://tab-drag-over';
+
+/**
+ * このウィンドウ宛てのイベントだけを受け取る。
+ *
+ * `listen` の既定の宛先（`Any`）では、Rust が他のウィンドウ宛てに `emit_to` したイベントまで届く（Tauri の `match_any_or_filter`）。
+ * ウィンドウが複数あると、1 枚へ送った転送・保存・最大化の通知を全部のウィンドウが処理してしまう。
+ * 全体へ送る `emit`（ファイルの変更・設定の変更）は、ラベルを指定しても届く。
+ */
+function listenHere<T>(event: string, handler: EventCallback<T>): Promise<UnlistenFn> {
+  return listen<T>(event, handler, { target: getCurrentWebview().label });
+}
 
 /**
  * Tauri の購読 API を、同期的に解除関数を返す形に揃える。
@@ -174,7 +188,7 @@ export const tauriPlatform: Platform = {
   },
 
   onUserThemesChanged(handler) {
-    return subscribe(() => listen(EVENT_THEMES_CHANGED, () => handler()));
+    return subscribe(() => listenHere(EVENT_THEMES_CHANGED, () => handler()));
   },
 
   watchPath(path) {
@@ -186,11 +200,11 @@ export const tauriPlatform: Platform = {
   },
 
   onFileChanged(handler) {
-    return subscribe(() => listen<FileChange>(EVENT_FILE_CHANGED, (event) => handler(event.payload)));
+    return subscribe(() => listenHere<FileChange>(EVENT_FILE_CHANGED, (event) => handler(event.payload)));
   },
 
   onSettingsChanged(handler) {
-    return subscribe(() => listen(EVENT_SETTINGS_CHANGED, () => handler()));
+    return subscribe(() => listenHere(EVENT_SETTINGS_CHANGED, () => handler()));
   },
 
   onDragDrop(handler) {
@@ -236,24 +250,52 @@ export const tauriPlatform: Platform = {
     return invoke<void>('open_new_instance', { paths: options.paths ?? [] });
   },
 
+  sendTabToWindow(target, handoff) {
+    return invoke<void>('move_tab_to_window', {
+      target,
+      paths: handoff.paths ?? [],
+      transfer: handoff.transfer ?? null,
+    });
+  },
+
+  onTabArrive(handler) {
+    return subscribe(() => listenHere<TabArrival>(EVENT_TAB_ARRIVE, (event) => handler(event.payload)));
+  },
+
+  beginTabDrag(ghost) {
+    return invoke<void>('tab_drag_begin', { label: ghost.label, colors: ghost.colors });
+  },
+
+  moveTabDrag() {
+    return invoke<void>('tab_drag_move');
+  },
+
+  endTabDrag() {
+    return invoke<string | null>('tab_drag_end');
+  },
+
+  onTabDragOver(handler) {
+    return subscribe(() => listenHere<boolean>(EVENT_TAB_DRAG_OVER, (event) => handler(event.payload)));
+  },
+
   quitApp() {
     return invoke<void>('app_quit');
   },
 
   onTrayOpen(handler) {
-    return subscribe(() => listen(EVENT_TRAY_OPEN, () => handler()));
+    return subscribe(() => listenHere(EVENT_TRAY_OPEN, () => handler()));
   },
 
   onSaveAndQuit(handler) {
-    return subscribe(() => listen(EVENT_SAVE_AND_QUIT, () => handler()));
+    return subscribe(() => listenHere(EVENT_SAVE_AND_QUIT, () => handler()));
   },
 
   onSaveAndClose(handler) {
-    return subscribe(() => listen(EVENT_SAVE_AND_CLOSE, () => handler()));
+    return subscribe(() => listenHere(EVENT_SAVE_AND_CLOSE, () => handler()));
   },
 
   onTrayResume(handler) {
-    return subscribe(() => listen<number>(EVENT_TRAY_RESUME, (event) => handler(event.payload)));
+    return subscribe(() => listenHere<number>(EVENT_TRAY_RESUME, (event) => handler(event.payload)));
   },
 
   isWindowMaximized() {
@@ -261,7 +303,7 @@ export const tauriPlatform: Platform = {
   },
 
   onWindowMaximizedChanged(handler) {
-    return subscribe(() => listen<boolean>(EVENT_WINDOW_MAXIMIZED, (event) => handler(event.payload)));
+    return subscribe(() => listenHere<boolean>(EVENT_WINDOW_MAXIMIZED, (event) => handler(event.payload)));
   },
 
   setSnapLayoutsTarget(rect) {
@@ -269,7 +311,7 @@ export const tauriPlatform: Platform = {
   },
 
   onMaximizeHoverChanged(handler) {
-    return subscribe(() => listen<boolean>(EVENT_MAXIMIZE_HOVER, (event) => handler(event.payload)));
+    return subscribe(() => listenHere<boolean>(EVENT_MAXIMIZE_HOVER, (event) => handler(event.payload)));
   },
 
   ready() {
@@ -301,6 +343,6 @@ export const tauriPlatform: Platform = {
   },
 
   onOpenRequest(handler) {
-    return subscribe(() => listen<OpenRequest>(EVENT_OPEN_REQUEST, (event) => handler(event.payload)));
+    return subscribe(() => listenHere<OpenRequest>(EVENT_OPEN_REQUEST, (event) => handler(event.payload)));
   },
 };

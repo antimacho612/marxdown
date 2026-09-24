@@ -69,6 +69,12 @@ describe('getPlatform', () => {
       'openNewInstance',
       'stashTransfer',
       'takeTransfer',
+      'sendTabToWindow',
+      'onTabArrive',
+      'beginTabDrag',
+      'moveTabDrag',
+      'endTabDrag',
+      'onTabDragOver',
     ];
     for (const key of required) {
       expect(original[key], `web 実装に ${key} が無い`).toBeDefined();

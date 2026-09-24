@@ -78,20 +78,10 @@ pub fn stash<R: Runtime>(app: &AppHandle<R>, label: &str) {
 /// 転送されたファイルが現れるウィンドウと、前面に出るウィンドウが違ってはいけない。
 pub fn restore<R: Runtime>(app: &AppHandle<R>) {
     let label = crate::target_window(app);
-    let Some(window) = app.get_webview_window(&label) else {
-        return;
-    };
 
     // 既に表示されているなら復帰ではない。
     // トレイメニューの「開く」はウィンドウが表示されたままでも押せるため、ここで除外しないと Tray Resume に 0ms 近い値が混ざって中央値が意味を失う。
-    let was_hidden = !window.is_visible().unwrap_or(true);
-
-    // `show()` の前に呼ぶ。
-    // サスペンド時に false にした `IsVisible` を戻さないと、ウィンドウは表示されるが内容が描画されない（`webview.rs` の制約 2）。
-    crate::webview::resume(&window);
-    let _ = window.unminimize();
-    let _ = window.show();
-    let _ = window.set_focus();
+    let was_hidden = bring_forward(app, &label);
 
     // Tray Resume の計測（ADR-0007「計測項目」/ 目標 120ms）。
     //
@@ -104,6 +94,29 @@ pub fn restore<R: Runtime>(app: &AppHandle<R>) {
             let _ = app.emit_to(label.as_str(), crate::EVENT_TRAY_RESUME, id);
         }
     }
+}
+
+/// 指定したウィンドウを前面へ出す。トレイに格納されていれば復帰させる。
+///
+/// 格納されていた（非表示だった）かを返す。
+/// ウィンドウが無ければ何もせず `false` を返す。
+///
+/// トレイからの復帰（[`restore`]）と、別のウィンドウからタブが移されてきたとき（`crate::send_tab`）が使う。
+/// 後者で前面へ出さないと、元のウィンドウからタブが消えるだけで、移った先が見えない。
+pub fn bring_forward<R: Runtime>(app: &AppHandle<R>, label: &str) -> bool {
+    let Some(window) = app.get_webview_window(label) else {
+        return false;
+    };
+
+    let was_hidden = !window.is_visible().unwrap_or(true);
+
+    // `show()` の前に呼ぶ。
+    // サスペンド時に false にした `IsVisible` を戻さないと、ウィンドウは表示されるが内容が描画されない（`webview.rs` の制約 2）。
+    crate::webview::resume(&window);
+    let _ = window.unminimize();
+    let _ = window.show();
+    let _ = window.set_focus();
+    was_hidden
 }
 
 /// プロセスを終える（論点 3 の 3 経路が全部ここへ来る）。

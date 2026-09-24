@@ -12,11 +12,14 @@ export { default as Explorer } from './Explorer.svelte';
 export { registerExplorerFocus, showExplorer } from './show-explorer';
 export { resetSessionWatch, restoreSession, watchSession } from './session.svelte';
 export { default as TabStrip } from './TabStrip.svelte';
+export { moveCurrentTabToMainLazily, receiveTabLazily } from './join-window';
 export {
   moveCurrentTabToSatellite,
   moveTabToSatellite,
   openNewInstance,
   openPathInSatellite,
+  restoreTransferredState,
+  takeTabTransfer,
   type TabTransfer,
 } from './new-window';
 export {

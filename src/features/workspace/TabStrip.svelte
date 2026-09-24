@@ -3,6 +3,7 @@
 タブストリップ。
 
 タブを窓の外へドロップすると、そのタブはサテライトウィンドウへ切り離される（`release`）。
+他の Marxdown のウィンドウの上でドロップした場合は、そのウィンドウのタブ列の末尾へ移る（OQ-43）。
 
 @warning
 HTML5 の drag イベントは使えない。
@@ -14,6 +15,7 @@ HTML5 の drag イベントは使えない。
   import CloseIcon from '@/lib/CloseIcon.svelte';
   import { splitPath } from '@/lib/path';
 
+  import { loadHandoff } from './join-window';
   import { moveTabToSatellite } from './new-window';
   import { activateTab, closeTab, isTabDirty, moveTab, tabMeta, tabsStore, type Tab } from './tabs.svelte';
 
@@ -41,6 +43,13 @@ HTML5 の drag イベントは使えない。
   let moved = $state(false);
 
   /**
+   * ポインタが窓の外にあるか。`true` の間はカーソルに追従する表示が出ている（`lazy/handoff.ts`）。
+   *
+   * 窓の外での処理は遅延チャンクにあり、最初に窓の外へ出たときに読み込む（`loadHandoff`）。
+   */
+  let away = false;
+
+  /**
    * ドラッグを開始する。左ボタンだけを扱う。
    *
    * ポインタを捕捉するのは、タブが並べ替えでポインタの下から動くためである。
@@ -54,15 +63,35 @@ HTML5 の drag イベントは使えない。
     if (event.currentTarget instanceof HTMLElement) event.currentTarget.setPointerCapture(event.pointerId);
   }
 
-  /** 並べ替える。1 ピクセルごとに呼ばれるが、位置が変わらなければ `moveTab` が何もしない。 */
+  /**
+   * 並べ替える。1 ピクセルごとに呼ばれるが、位置が変わらなければ `moveTab` が何もしない。
+   *
+   * 窓の外へ出ている間は並べ替えず、カーソルに追従する表示を動かす（OQ-43）。
+   * 出た先にはタブ列が無く、戻ってきたときに並びが変わっているほうが分かりにくい。
+   */
   function drag(event: PointerEvent): void {
     if (dragging === null) return;
     if (!moved && Math.abs(event.clientX - startX) < DRAG_THRESHOLD) return;
     moved = true;
-    // 窓の外へ出ている間は並べ替えない。
-    // 出た先にはドロップする位置が無く、戻ってきたときに並びが変わっているほうが分かりにくい。
-    if (outside(event)) return;
+
+    if (outside(event)) {
+      away = true;
+      const tab = tabsStore.tabs.find((t) => t.id === dragging);
+      if (tab === undefined) return;
+      const shown = { name: nameOf(tab), dirty: isTabDirty(tab) };
+      void loadHandoff().then((module) => module.trackOutside(shown));
+      return;
+    }
+
+    comeBack();
     moveTab(dragging, indexAt(event.clientX));
+  }
+
+  /** 窓の外から戻った。表示を消す。 */
+  function comeBack(): void {
+    if (!away) return;
+    away = false;
+    void loadHandoff().then((module) => module.returnToWindow());
   }
 
   /**
@@ -87,27 +116,55 @@ HTML5 の drag イベントは使えない。
    * ポインタで処理してしまうと、`<button>` をキーボード（Enter / Space）で押したときに何も起きなくなる。
    * `moved` は残す。直後に来る `click` を無視するかの判断に使う。
    *
-   * 窓の外で離した場合は、そのタブをサテライトへ切り離す（F-OPEN-06）。
+   * 窓の外で離した場合は、そのタブを切り離す（F-OPEN-06 / OQ-43）。
    * ポインタを捕捉してあるため、窓の外へ出た後もこのイベントは届く。
    */
   function release(event: PointerEvent): void {
     if (dragging === null) return;
 
     const id = dragging;
-    // 窓の外で離したら切り離す（F-OPEN-06）。ドラッグしていない押下は対象にしない。
+    // ドラッグしていない押下は対象にしない。
     const detach = moved && outside(event);
+    stopDragging(event);
 
+    if (!detach) {
+      comeBack();
+      return;
+    }
+    away = false;
+    void detachTab(id, { x: event.screenX - DETACH_OFFSET_X, y: event.screenY - DETACH_OFFSET_Y });
+  }
+
+  /**
+   * ドラッグが打ち切られた（`pointercancel`）。切り離さずに終える。
+   *
+   * 窓の外で打ち切られても切り離さない。
+   * 離す操作をしていないのにタブが移ると、何が起きたのか分からない。
+   */
+  function cancel(event: PointerEvent): void {
+    if (dragging === null) return;
+    stopDragging(event);
+    comeBack();
+  }
+
+  function stopDragging(event: PointerEvent): void {
     if (event.currentTarget instanceof HTMLElement && event.currentTarget.hasPointerCapture(event.pointerId)) {
       event.currentTarget.releasePointerCapture(event.pointerId);
     }
     dragging = null;
+  }
 
-    if (detach) {
-      void moveTabToSatellite(id, {
-        x: event.screenX - DETACH_OFFSET_X,
-        y: event.screenY - DETACH_OFFSET_Y,
-      });
-    }
+  /**
+   * 窓の外で離したタブを、落とした先へ移す。
+   *
+   * 他の Marxdown のウィンドウの上ならそのウィンドウのタブ列の末尾へ（OQ-43）、それ以外なら落とした位置にサテライトを作る（F-OPEN-06）。
+   * 落とした先の判定は Rust がカーソルの位置で行う。
+   */
+  async function detachTab(id: number, position: { x: number; y: number }): Promise<void> {
+    const module = await loadHandoff();
+    const target = await module.dropOutside();
+    if (target === null) await moveTabToSatellite(id, position);
+    else await module.moveTabToWindow(id, target);
   }
 
   /**
@@ -253,7 +310,7 @@ HTML5 の drag イベントは使えない。
         onpointerdown={(event) => grab(event, tab)}
         onpointermove={drag}
         onpointerup={release}
-        onpointercancel={release}
+        onpointercancel={cancel}
       >
         <span class="mx-tab__name">{name}</span>
         {#if isTabDirty(tab)}
