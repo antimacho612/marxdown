@@ -60,6 +60,7 @@ export const COMMAND_CATALOG: CommandEntry[] = [
 
   { id: 'window.new', label: ja.menu.newWindow, keywords: 'new window instance process', shortcut: 'Ctrl+Alt+N' },
   { id: 'window.moveTab', label: ja.menu.moveToNewWindow, keywords: 'move tab window satellite detach' },
+  { id: 'window.moveTabToMain', label: ja.menu.moveToMainWindow, keywords: 'move tab main window satellite attach' },
 
   { id: 'tab.close', label: ja.tab.closeCurrent, keywords: 'close tab', shortcut: 'Ctrl+W' },
   { id: 'tab.next', label: ja.tab.next, keywords: 'next tab', shortcut: 'Ctrl+Tab' },

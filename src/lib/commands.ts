@@ -49,6 +49,7 @@ export type CommandId =
   | 'view.cycleMode'
   | 'window.new'
   | 'window.moveTab'
+  | 'window.moveTabToMain'
   | 'view.toggleScrollSync'
   | 'view.toggleSplit'
   | 'view.togglePreview';

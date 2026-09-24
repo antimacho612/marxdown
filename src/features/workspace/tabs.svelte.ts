@@ -159,26 +159,37 @@ export function adoptOpened(meta: StoredMeta): void {
 }
 
 /**
- * 新しいタブとして開く（argv 転送・D&D・複数選択が使う）。
+ * 新しいタブとして開く（argv 転送・D&D・複数選択・別のウィンドウから移されてきたタブが使う）。
  *
  * 現在のタブは退避してから残す。
  * 未保存の確認（`confirmDiscard`）は通さない。破棄するものが無く、いまの内容はタブとして残るためである。
+ *
+ * `restoreScroll` を渡すとその位置から、渡さなければ先頭から表示する。
+ * `remember: false` は最近開いたファイルに加えない（移動であって「開いた」ではない場合）。
  */
-export async function openInNewTab(payload: StoredPayload): Promise<boolean> {
+export async function openInNewTab(
+  payload: StoredPayload,
+  options: { restoreScroll?: number; remember?: boolean } = {},
+): Promise<boolean> {
   stashActive();
 
   const tab: Tab = {
     id: nextId++,
     meta: toMeta(payload),
     text: null,
-    scrollTop: 0,
+    scrollTop: options.restoreScroll ?? 0,
     textDirty: false,
     eolOverride: null,
   };
   tabsStore.tabs = [...tabsStore.tabs, tab];
   tabsStore.activeId = tab.id;
 
-  return (await openDocument(payload, { resetScroll: true })) !== null;
+  const opened = await openDocument(payload, {
+    // 位置を戻すときは先頭へ戻さない。両方を指定することはできない（`OpenOptions.restoreScroll`）。
+    ...(options.restoreScroll === undefined ? { resetScroll: true } : { restoreScroll: options.restoreScroll }),
+    ...(options.remember === false && { remember: false }),
+  });
+  return opened !== null;
 }
 
 /**
