@@ -1,6 +1,6 @@
 <!--
 @component
-並びの設定項目（`editor.rulers` / `explorer.exclude`）。カンマ区切りの 1 行で編集する。
+並びの設定項目（`editor.rulers` / `editor.wordSegmenterLocales` / `explorer.exclude`）。カンマ区切りの 1 行で編集する。
 
 入力欄の文字列とストアの値が 1 対 1 で対応しない点が、ほかの項目と違う。
 `80,` まで入力した時点で値（`[80]`）を書き戻すと、打ったばかりのカンマが消える。

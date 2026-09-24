@@ -12,6 +12,7 @@ import { ja } from '@/i18n/ja';
 import { toMessage } from '@/lib/error';
 import { dirOf } from '@/lib/path';
 import { isOutlineOnScreen, refreshOutline, refreshSearch } from '@/lib/refresh';
+import type { OutlineItem } from '@/markdown/plugins/line-map';
 
 import { getParseOptions, getParser } from './open';
 import { documentStore } from './store.svelte';
@@ -29,8 +30,16 @@ const DEBOUNCE_MS = 120;
 
 let timer: ReturnType<typeof setTimeout> | null = null;
 /** 実行中の再描画。並行して実行しない（後から要求されたほうが正しい）。 */
-let running = false;
+let inflight: Promise<void> | null = null;
 let again = false;
+
+/**
+ * 見出し（`documentStore.outline`）が本文より古いか。
+ *
+ * Edit ではアウトラインを閉じているとパースしないため、打鍵のたびに古くなる。
+ * 折りたたみ（`features/editor/lazy/folding.ts`）はそれを知って取り直す必要がある（`latestOutline`）。
+ */
+let outlineStale = false;
 
 /**
  * 再描画 1 回ぶんの時刻（`features/bench/input.ts` が読む / 計測専用）。
@@ -90,6 +99,7 @@ export function observeLiveRender(next: ((timing: LiveRenderTiming) => void) | n
  * Edit で paint しないのは見えない面に CPU を使わないためだが（N-PERF-05）、見出しは表示されているのでそちらだけ取り直す（アウトラインが閉じていれば不要）。
  */
 export function scheduleLiveRender(): void {
+  outlineStale = true;
   if (!wantsRender()) return;
 
   debug.scheduled++;
@@ -133,32 +143,65 @@ export function cancelLiveRender(): void {
 }
 
 /**
+ * いまの本文に対応する見出しを返す（`features/editor/lazy/folding.ts` が折りたたみの範囲に使う）。
+ *
+ * 予約中の再描画は前倒しし、実行中の再描画は終わるのを待つ。それでも見出しが古ければ 1 回だけパースし直す。
+ * Preview ではパースしない。
+ * 面が表示されている間に本文が変わるのはタスクの反転（見出しの位置は変わらない）と読み直し（開く経路が見出しを入れ直す）だけである。
+ */
+export async function latestOutline(): Promise<readonly OutlineItem[]> {
+  if (viewStore.mode === 'preview') return documentStore.outline;
+  cancelLiveRender();
+  if (inflight) await inflight;
+  if (outlineStale) await renderNow();
+  return documentStore.outline;
+}
+
+/**
  * いますぐ再描画する。プレビューの面へ戻った直後に 1 回だけ呼ぶ（`features/mode/mode.ts`）。
  *
  * Edit では paint を行わない。
  * 表示していない面の DOM は作り直さず、パースの結果（見出し・文字数）だけをストアへ入れる。
  *
- * 実行中に再度呼ばれた場合は、実行中の処理が終わってから 1 回だけやり直す。
+ * 実行中に再度呼ばれた場合は、実行中の処理が終わってから 1 回だけやり直し、そのやり直しまで含めて待つ。
  * パースは非同期であるため、並行して実行すると古い結果が後から届いて本文が前の状態に戻る。
  */
-export async function renderNow(): Promise<void> {
-  if (running) {
+export function renderNow(): Promise<void> {
+  if (inflight) {
     again = true;
-    return;
+    return inflight;
   }
+  inflight = renderUntilSettled();
+  return inflight;
+}
 
+/** 1 回描画し、その間に要求があればやり直す。やり直しを待ってから解決するため、実行中に受け取った側もやり直しまで待つことになる。 */
+async function renderUntilSettled(): Promise<void> {
+  try {
+    await renderOnce();
+  } finally {
+    inflight = null;
+  }
+  if (again) {
+    again = false;
+    await renderNow();
+  }
+}
+
+async function renderOnce(): Promise<void> {
   const parser = getParser();
   const container = document.querySelector<HTMLElement>(PREVIEW_SELECTOR);
   const meta = documentStore.meta;
   if (!parser || !container || !meta) return;
 
-  running = true;
   debug.started++;
   // 開始時点の値を保持する。
   // 描画中も打鍵は続き、`scheduledAt` はそのたびに更新される。
   // 保持しないと、入力を終えてから画面が変わるまでの時間が次の打鍵からの差になり、値が小さくなる（`huge.md` では負の値にもなる）。
   const scheduledFor = scheduledAt;
   const startedAt = observer ? performance.now() : 0;
+  // 本文を読む前に false にする。パースの途中で打鍵があれば `scheduleLiveRender` が再び true にする。
+  outlineStale = false;
   try {
     const parsed = await parser.parse(getDocumentText(), getParseOptions());
     const parsedAt = observer ? performance.now() : 0;
@@ -199,21 +242,16 @@ export async function renderNow(): Promise<void> {
     // ここは `void renderNow()` で呼ばれるため、投げた例外はどこにも捕捉されない。
     // 本文は前の内容のまま残るが、入力しても右側が更新されない状態になり、原因を特定できない。
     debug.lastError = toMessage(e);
+    outlineStale = true;
     documentStore.notice = { level: 'error', message: `${ja.error.renderFailed}: ${toMessage(e)}` };
-  } finally {
-    running = false;
-  }
-
-  if (again) {
-    again = false;
-    await renderNow();
   }
 }
 
 /** テスト用。予約と実行状態を初期化する。 */
 export function resetLiveRender(): void {
   cancelLiveRender();
-  running = false;
+  inflight = null;
   again = false;
+  outlineStale = false;
   observer = null;
 }

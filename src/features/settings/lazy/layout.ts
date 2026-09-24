@@ -297,6 +297,13 @@ export const LAYOUT = [
       },
       {
         kind: 'field',
+        key: 'editor.stickyScroll.enabled',
+        widget: 'toggle',
+        label: ja.settings.editor.stickyScroll.label,
+        description: ja.settings.editor.stickyScroll.description,
+      },
+      {
+        kind: 'field',
         key: 'editor.rulers',
         widget: 'list',
         placeholder: ja.settings.editor.rulers.placeholder,
@@ -350,6 +357,14 @@ export const LAYOUT = [
         widget: 'text',
         label: ja.settings.editor.wordSeparators.label,
         description: ja.settings.editor.wordSeparators.description,
+      },
+      {
+        kind: 'field',
+        key: 'editor.wordSegmenterLocales',
+        widget: 'list',
+        placeholder: ja.settings.editor.wordSegmenterLocales.placeholder,
+        label: ja.settings.editor.wordSegmenterLocales.label,
+        description: ja.settings.editor.wordSegmenterLocales.description,
       },
       {
         kind: 'field',

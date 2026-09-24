@@ -204,7 +204,7 @@ Rust 側も拒否するが、UI が「保存できたように見せる」のを
 
   /** 並びを入力欄の 1 行にする。縦罫線は桁だけを出す。 */
   function listText(key: ListKey): string {
-    if (key === 'explorer.exclude') return values[key].join(', ');
+    if (key === 'explorer.exclude' || key === 'editor.wordSegmenterLocales') return values[key].join(', ');
     return values[key].map(rulerColumn).join(', ');
   }
 
@@ -220,7 +220,7 @@ Rust 側も拒否するが、UI が「保存できたように見せる」のを
       .map((part) => part.trim())
       .filter((part) => part.length > 0);
 
-    if (key === 'explorer.exclude') {
+    if (key === 'explorer.exclude' || key === 'editor.wordSegmenterLocales') {
       changeSetting(key, parts);
       return parts.join(', ');
     }

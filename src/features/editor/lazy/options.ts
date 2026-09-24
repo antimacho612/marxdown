@@ -2,7 +2,7 @@
  * 設定を Monaco のオプションに写す（`editor` チャンク / F-CONF-04 / ADR-0012）。
  *
  * 値の検証は Rust 側（`settings/schema.rs`）と `platform/settings-schema.ts` の許容範囲が済ませており、ここで再検証しない。
- * `editor.create()` に直接書いたオプション（`editor.ts`）は設定にしないと決めたもの（N-CMP-03 に触れる／IDE 寄りの機能／禁則との衝突）で、迷ったらそちら側に置く。
+ * `editor.create()` に直接書いたオプション（`editor.ts`）は設定にしないと決めたもの（N-CMP-03 に触れる／IDE 寄りの機能／禁則との衝突／テキスト以外を持ち出す）で、迷ったらそちら側に置く。
  * トークンから引くのは表示倍率と `editor.fontFamily` の空欄時フォールバックの 2 つだけである（`theme.ts` 経由）。
  *
  * 設定変化の購読（`watchEditorSettings`）はルーンを使うため `watch-settings.svelte.ts` に分けてあり、このファイルは素の `.ts` のまま Svelte も Monaco も通さずテストできる。
@@ -56,10 +56,19 @@ export function editorOptions(values: Settings): EditorOptions {
     tabSize: values['editor.tabSize'],
     insertSpaces: values['editor.insertSpaces'],
     wordSeparators: values['editor.wordSeparators'],
+    wordSegmenterLocales: values['editor.wordSegmenterLocales'],
     cursorStyle: values['editor.cursorStyle'],
     cursorBlinking: values['editor.cursorBlinking'],
     cursorSurroundingLines: values['editor.cursorSurroundingLines'],
     scrollBeyondLastLine: values['editor.scrollBeyondLastLine'],
+
+    // 固定する行は見出しの折りたたみ範囲から決める（`folding.ts`）。
+    // Monaco の既定（`outlineModel`）は DocumentSymbolProvider を先に探し、見つからなければ折りたたみ範囲へ進む。
+    // 登録していない provider を毎回探させないため、最初から折りたたみ範囲を指定する。
+    stickyScroll: {
+      enabled: values['editor.stickyScroll.enabled'],
+      defaultModel: 'foldingProviderModel',
+    },
 
     // 横スクロールバーの表示は折り返しの設定から決まる。
     // 折り返さない設定にしたまま隠すと、右にはみ出した行へ到達する手段が無くなる。

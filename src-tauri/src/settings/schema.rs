@@ -43,8 +43,10 @@ pub const KEY_EDITOR_RENDER_LINE_HIGHLIGHT: &str = "editor.renderLineHighlight";
 pub const KEY_EDITOR_RENDER_WHITESPACE: &str = "editor.renderWhitespace";
 pub const KEY_EDITOR_RULERS: &str = "editor.rulers";
 pub const KEY_EDITOR_SCROLL_BEYOND_LAST_LINE: &str = "editor.scrollBeyondLastLine";
+pub const KEY_EDITOR_STICKY_SCROLL_ENABLED: &str = "editor.stickyScroll.enabled";
 pub const KEY_EDITOR_THEME: &str = "editor.theme";
 pub const KEY_EDITOR_TAB_SIZE: &str = "editor.tabSize";
+pub const KEY_EDITOR_WORD_SEGMENTER_LOCALES: &str = "editor.wordSegmenterLocales";
 pub const KEY_EDITOR_WORD_SEPARATORS: &str = "editor.wordSeparators";
 pub const KEY_EDITOR_WORD_WRAP: &str = "editor.wordWrap";
 pub const KEY_EDITOR_WORD_WRAP_COLUMN: &str = "editor.wordWrapColumn";
@@ -91,6 +93,9 @@ pub const DEFAULT_EDITOR_TAB_SIZE: f64 = 2.0;
 /// VS Code の `editor.wordSeparators` の既定値と同じ（Monaco も同じ値を使う）。
 pub const DEFAULT_EDITOR_WORD_SEPARATORS: &str = r#"`~!@#$%^&*()-=+[{]}\|;:'",.<>/?"#;
 pub const DEFAULT_EDITOR_WORD_WRAP_COLUMN: f64 = 80.0;
+/// 単語の分割に使うロケール。
+/// VS Code の既定は空だが、Marxdown の UI は日本語のみであり（OQ-11）、空のままでは日本語の文が句読点か空白まで 1 語として扱われる。
+pub const DEFAULT_EDITOR_WORD_SEGMENTER_LOCALE: &str = "ja";
 
 /// アウトラインの既定。6（`h6`）は見出しの最大階層であり、実質「制限なし」を意味する。
 pub const DEFAULT_OUTLINE_MAX_DEPTH: f64 = 6.0;
@@ -117,6 +122,11 @@ const OUTLINE_MAX_DEPTH_RANGE: (f64, f64) = (1.0, 6.0);
 /// 縦罫線の本数の上限。
 /// 上限を置かないと、手で書いた `[1,2,3,...]` がそのまま描画コストになる。
 const RULERS_MAX: usize = 8;
+
+/// 単語分割のロケールの本数と 1 本あたりの長さの上限。
+/// 長さは BCP 47 の実装が最低限扱うべき長さ（RFC 5646 §4.4.1 の 35 文字）に揃える。
+const WORD_SEGMENTER_LOCALES_MAX: usize = 8;
+const LOCALE_TAG_MAX_LEN: usize = 35;
 
 /// 除外パターンの本数の上限。
 /// 1 エントリごとに全パターンを試すため、本数がそのまま一覧の走査コストになる。
@@ -288,6 +298,9 @@ pub struct Settings {
     pub editor_rulers: Vec<Ruler>,
     #[serde(rename = "editor.scrollBeyondLastLine")]
     pub editor_scroll_beyond_last_line: bool,
+    /// 見出しを編集面の上端に固定する（折りたたみの範囲から決まる / `features/editor/lazy/folding.ts`）。
+    #[serde(rename = "editor.stickyScroll.enabled")]
+    pub editor_sticky_scroll_enabled: bool,
     /// エディターの配色（02.architecture/10-theming.md §3）。
     ///
     /// 列挙ではなく文字列である。
@@ -297,6 +310,9 @@ pub struct Settings {
     pub editor_theme: String,
     #[serde(rename = "editor.tabSize")]
     pub editor_tab_size: f64,
+    /// 単語単位の移動・選択で、区切りを `Intl.Segmenter` で決めるロケール（BCP 47）。空なら `editor.wordSeparators` だけで区切る。
+    #[serde(rename = "editor.wordSegmenterLocales")]
+    pub editor_word_segmenter_locales: Vec<String>,
     /// 単語単位のカーソル移動（`Ctrl+←` / `Ctrl+→`）で区切りとして扱う文字。
     #[serde(rename = "editor.wordSeparators")]
     pub editor_word_separators: String,
@@ -396,8 +412,10 @@ impl Default for Settings {
             editor_render_whitespace: RenderWhitespace::default(),
             editor_rulers: Vec::new(),
             editor_scroll_beyond_last_line: true,
+            editor_sticky_scroll_enabled: true,
             editor_theme: DEFAULT_THEME_ID.to_owned(),
             editor_tab_size: DEFAULT_EDITOR_TAB_SIZE,
+            editor_word_segmenter_locales: vec![DEFAULT_EDITOR_WORD_SEGMENTER_LOCALE.to_owned()],
             editor_word_separators: DEFAULT_EDITOR_WORD_SEPARATORS.to_owned(),
             editor_word_wrap: WordWrap::default(),
             editor_word_wrap_column: DEFAULT_EDITOR_WORD_WRAP_COLUMN,
@@ -492,9 +510,13 @@ impl Settings {
             editor_rulers: take_rulers(&mut map).unwrap_or(d.editor_rulers),
             editor_scroll_beyond_last_line: take(&mut map, KEY_EDITOR_SCROLL_BEYOND_LAST_LINE)
                 .unwrap_or(d.editor_scroll_beyond_last_line),
+            editor_sticky_scroll_enabled: take(&mut map, KEY_EDITOR_STICKY_SCROLL_ENABLED)
+                .unwrap_or(d.editor_sticky_scroll_enabled),
             editor_theme: take_theme_id(&mut map, KEY_EDITOR_THEME).unwrap_or(d.editor_theme),
             editor_tab_size: take_int(&mut map, KEY_EDITOR_TAB_SIZE, TAB_SIZE_RANGE)
                 .unwrap_or(d.editor_tab_size),
+            editor_word_segmenter_locales: take_word_segmenter_locales(&mut map)
+                .unwrap_or(d.editor_word_segmenter_locales),
             editor_word_separators: take(&mut map, KEY_EDITOR_WORD_SEPARATORS)
                 .unwrap_or(d.editor_word_separators),
             editor_word_wrap: take(&mut map, KEY_EDITOR_WORD_WRAP).unwrap_or(d.editor_word_wrap),
@@ -644,6 +666,31 @@ fn is_hex_color(value: &str) -> bool {
     value.strip_prefix('#').is_some_and(|hex| {
         matches!(hex.len(), 3 | 4 | 6 | 8) && hex.bytes().all(|b| b.is_ascii_hexdigit())
     })
+}
+
+/// 単語分割のロケール。
+///
+/// VS Code は文字列 1 つでも受け付けるため、`"ja"` も `["ja"]` と同じに扱う（VS Code の `settings.json` から転記できるようにする / F-CONF-06）。
+/// BCP 47 の文字（英数字と `-`）以外を含むものと長すぎるものは 1 本ずつ除く。
+/// 実在するロケールかは調べない。Monaco が `Intl.Segmenter.supportedLocalesOf` で判定し、扱えないものを無視する。
+/// 型が違う要素が 1 つでもあれば、配列ごと既定に戻す（`take_rulers` と同じ判断）。
+fn take_word_segmenter_locales(map: &mut Map<String, Value>) -> Option<Vec<String>> {
+    let values: Vec<String> = match map.remove(KEY_EDITOR_WORD_SEGMENTER_LOCALES)? {
+        Value::String(one) => vec![one],
+        other => serde_json::from_value(other).ok()?,
+    };
+    Some(
+        values
+            .into_iter()
+            .map(|v| v.trim().to_owned())
+            .filter(|v| {
+                !v.is_empty()
+                    && v.len() <= LOCALE_TAG_MAX_LEN
+                    && v.chars().all(|c| c.is_ascii_alphanumeric() || c == '-')
+            })
+            .take(WORD_SEGMENTER_LOCALES_MAX)
+            .collect(),
+    )
 }
 
 /// 除外パターン。空文字と空白だけのものを除き、本数を上限で切る。
@@ -944,6 +991,53 @@ mod tests {
             Settings::from_map(serde_json::from_str(r#"{"explorer.exclude":["dist",3]}"#).unwrap());
 
         assert!(s.explorer_exclude.is_empty(), "部分的に拾わない");
+    }
+
+    #[test]
+    fn a_single_locale_string_is_read_as_a_list() {
+        let s = Settings::from_map(
+            serde_json::from_str(r#"{"editor.wordSegmenterLocales":"zh-CN"}"#).unwrap(),
+        );
+
+        assert_eq!(s.editor_word_segmenter_locales, vec!["zh-CN".to_owned()]);
+    }
+
+    #[test]
+    fn locales_drop_malformed_tags_and_are_capped() {
+        let mut list: Vec<String> = (0..WORD_SEGMENTER_LOCALES_MAX + 2)
+            .map(|i| format!("x-{i}"))
+            .collect();
+        list.insert(0, " ja ".into());
+        list.insert(1, "ja;drop".into());
+        list.insert(2, "a".repeat(LOCALE_TAG_MAX_LEN + 1));
+        let json = serde_json::json!({ KEY_EDITOR_WORD_SEGMENTER_LOCALES: list });
+
+        let s = Settings::from_map(json.as_object().unwrap().clone());
+
+        assert_eq!(
+            s.editor_word_segmenter_locales.len(),
+            WORD_SEGMENTER_LOCALES_MAX
+        );
+        assert_eq!(
+            s.editor_word_segmenter_locales[0], "ja",
+            "前後の空白は取り除く"
+        );
+        assert_eq!(
+            s.editor_word_segmenter_locales[1], "x-0",
+            "記号を含むものと長すぎるものは除外する"
+        );
+    }
+
+    #[test]
+    fn an_empty_locale_list_is_kept() {
+        let s = Settings::from_map(
+            serde_json::from_str(r#"{"editor.wordSegmenterLocales":[]}"#).unwrap(),
+        );
+
+        assert!(
+            s.editor_word_segmenter_locales.is_empty(),
+            "空は既定に戻さない（分割しない指定）"
+        );
     }
 
     #[test]

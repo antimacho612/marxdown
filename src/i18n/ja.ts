@@ -340,6 +340,10 @@ export const ja = {
         description: '対応する括弧を色分けするかどうかを制御します。',
       },
       minimap: { label: 'ミニマップ', description: 'ミニマップを表示するかどうかを制御します。' },
+      stickyScroll: {
+        label: '見出しの固定表示',
+        description: 'スクロールしたときに、いま読んでいる箇所が属する見出しをエディターの上端に固定して表示します。',
+      },
       rulers: {
         label: '縦罫線',
         description:
@@ -367,6 +371,12 @@ export const ja = {
       wordSeparators: {
         label: '単語の区切り文字',
         description: '「Ctrl+←」「Ctrl+→」などの単語単位のカーソル移動で、区切りとして扱う文字を指定します。',
+      },
+      wordSegmenterLocales: {
+        label: '単語分割の言語',
+        description:
+          '単語単位のカーソル移動・ダブルクリックでの選択で、空白で区切られていない文を単語に分けるときの言語を指定します（BCP 47 の言語タグ）。カンマ区切りで複数指定できます。空にすると区切り文字だけで分けます。',
+        placeholder: '例: ja, zh-CN',
       },
       cursorStyle: 'カーソルの形',
       cursorStyleOptions: {

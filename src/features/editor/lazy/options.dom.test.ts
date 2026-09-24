@@ -34,6 +34,7 @@ describe('editorOptions', () => {
         'editor.tabSize': 4,
         'editor.insertSpaces': false,
         'editor.wordSeparators': './\\()"\'',
+        'editor.wordSegmenterLocales': ['zh-CN'],
         'editor.rulers': [80, 100],
       }),
     );
@@ -47,6 +48,7 @@ describe('editorOptions', () => {
     expect(options.tabSize).toBe(4);
     expect(options.insertSpaces).toBe(false);
     expect(options.wordSeparators).toBe('./\\()"\'');
+    expect(options.wordSegmenterLocales).toEqual(['zh-CN']);
     expect(options.rulers).toEqual([80, 100]);
   });
 
@@ -65,6 +67,7 @@ describe('editorOptions', () => {
         'editor.minimap.enabled': true,
         'editor.bracketPairColorization.enabled': true,
         'editor.padding.top': 24,
+        'editor.stickyScroll.enabled': false,
       }),
     );
 
@@ -72,6 +75,7 @@ describe('editorOptions', () => {
     expect(options.minimap).toEqual({ enabled: true });
     expect(options.bracketPairColorization).toEqual({ enabled: true });
     expect(options.padding).toEqual({ top: 24 });
+    expect(options.stickyScroll).toEqual({ enabled: false, defaultModel: 'foldingProviderModel' });
   });
 
   /**

@@ -16,6 +16,7 @@ import { attachEditorScrollPort, startScrollSync, stopScrollSync } from '@/featu
 
 import { installCursorReport } from './cursor';
 import { runEdit } from './edits';
+import { installHeadingFolding } from './folding';
 import { installEditorKeymap } from './keymap';
 import { MARKDOWN_LANGUAGE_ID, monaco } from './monaco';
 import { applyEditorOptions, editorOptions } from './options';
@@ -137,7 +138,7 @@ export function mountEditor(host: HTMLElement): monaco.editor.IStandaloneCodeEdi
     ...editorOptions(settingsStore.values),
 
     /*
-     * ここから下は設定項目にしないと決めたものである。理由は 3 つに分かれる。
+     * ここから下は設定項目にしないと決めたものである。理由は 4 つに分かれる。
      * 追加するときは `options.ts` の冒頭を読むこと。
      */
 
@@ -158,6 +159,11 @@ export function mountEditor(host: HTMLElement): monaco.editor.IStandaloneCodeEdi
     formatOnPaste: false,
     formatOnType: false,
     autoIndent: 'keep',
+
+    // コピーしたときにクリップボードへ入れるのはテキストだけにする。
+    // 有効のままだと、編集面の配色（背景色を含む）とコードフォントを指定した HTML も入り、Word や Outlook へ貼ると暗い背景の等幅ブロックになる。
+    // Markdown はテキストとして持ち出すものであり、見た目を付けて渡す理由が無いため設定項目にしない。
+    copyWithSyntaxHighlighting: false,
 
     // Markdown に補完は不要である。editor worker を起動する経路でもある。
     // Non-goal（IDE）に近づくため設定項目にしない。
@@ -201,6 +207,8 @@ export function mountEditor(host: HTMLElement): monaco.editor.IStandaloneCodeEdi
   installPaste(editor, host);
   // カーソル位置をステータスバーへ通知する（03.ux-spec/07-status-and-notifications.md §3）。更新は rAF で間引く（`cursor.ts`）。
   installCursorReport(editor);
+  // 見出し単位の折りたたみと、見出しの上端への固定表示（`folding.ts`）。
+  installHeadingFolding(editor);
 
   // 行番号だけを扱うインタフェースを渡す（`features/view/scroll-sync.ts`）。
   // Split に入る前から渡しておく。
