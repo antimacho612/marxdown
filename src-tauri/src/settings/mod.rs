@@ -219,7 +219,13 @@ mod tests {
             theme: Theme::Dark,
             editor_font_family: "Cascadia Code".into(),
             editor_line_height: 1.4,
-            editor_rulers: vec![80.0, 100.0],
+            editor_rulers: vec![
+                Ruler::Column(80.0),
+                Ruler::Styled {
+                    column: 100.0,
+                    color: Some("#ff000080".into()),
+                },
+            ],
             editor_word_wrap: WordWrap::Bounded,
             preview_code_font_family: "BIZ UD Gothic".into(),
             preview_font_family: "Noto Sans JP".into(),

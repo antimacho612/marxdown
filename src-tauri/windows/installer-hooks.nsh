@@ -1,4 +1,4 @@
-﻿; Tauri の NSIS テンプレートに差し込むフック（docs/06.roadmap/m6-ship.md / docs/04.tech-stack/09-tauri-config.md §2）。
+﻿; Tauri の NSIS テンプレートに差し込むフック（docs/06.roadmap/m6-ship.md / docs/04.tech-stack/09-tauri-config.md §3）。
 ;
 ; NOTE: BOM 付き UTF-8 で保存する。BOM が無いと makensis はシステムのコードページとして読み、日本語の文字列が化ける。
 ; NOTE: MX_PROGID は tauri.conf.json の `bundle.fileAssociations[].name` と一致させる。テンプレートはこの値を define として公開していない。

@@ -50,6 +50,14 @@ describe('editorOptions', () => {
     expect(options.rulers).toEqual([80, 100]);
   });
 
+  it('色を持つ縦罫線は Monaco の形に写し、色の無いものはテーマの色にする', () => {
+    const options = editorOptions(
+      withSettings({ 'editor.rulers': [80, { column: 100, color: '#ff000080' }, { column: 120 }] }),
+    );
+
+    expect(options.rulers).toEqual([80, { column: 100, color: '#ff000080' }, { column: 120, color: null }]);
+  });
+
   it('入れ子のキーは Monaco 側の入れ子オプションへ移す', () => {
     const options = editorOptions(
       withSettings({
