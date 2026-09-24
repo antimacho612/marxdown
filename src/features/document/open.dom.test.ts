@@ -32,6 +32,7 @@ function fakeParser(): MarkdownParser {
       Promise.resolve({
         id: 1,
         chunks: [`<p>${text.length}</p>`],
+        blocks: [`<p>${text.length}</p>`],
         outline: [{ level: 1, text: 'hello', slug: 'hello', line: 0 }],
         frontMatter: null,
         parseMs: 0.5,
@@ -210,6 +211,7 @@ describe('configureOpener', () => {
     resolveParse({
       id: 1,
       chunks: ['<p>x</p>'],
+      blocks: ['<p>x</p>'],
       outline: [],
       frontMatter: null,
       parseMs: 0.1,

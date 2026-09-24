@@ -218,7 +218,7 @@ export async function openDocument(payload: StoredPayload, options: OpenOptions 
     const container = document.querySelector<HTMLElement>(PREVIEW_SELECTOR);
     if (!container) throw new Error(`${PREVIEW_SELECTOR} が見つからない`);
 
-    const result = paint(container, parsed.chunks, parsed.frontMatter);
+    const result = paint(container, parsed.chunks, parsed.frontMatter, parsed.blocks);
     if (options.resetScroll === true) container.scrollTop = 0;
     else if (options.restoreScroll !== undefined) container.scrollTop = options.restoreScroll;
 
