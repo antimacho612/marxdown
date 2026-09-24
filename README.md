@@ -26,6 +26,75 @@ Marxdown はこのループのためだけに作る。
 - **調整できる** — 既定のまま完成しているが、テーマ・配色・フォント・本文幅で自分に合わせられる
 - **信頼できない入力を前提にする** — 自分が書いていないファイルを開くのが中心ユースケース
 
+## インストール
+
+Windows 10 / 11（x64）向け。
+macOS / Linux はビルドできる状態を保っているだけで、配布していない。
+
+`Marxdown_<バージョン>_x64-setup.exe` を実行する。
+ソースから作る場合は `pnpm build` で `src-tauri/target/release/bundle/nsis/` に出来る。
+
+- 現在のユーザーにだけインストールされる（`%LOCALAPPDATA%\Marxdown`）。管理者権限は要らない
+- `.md` / `.markdown` に関連付けられ、「プログラムから開く」にも Marxdown が出る
+- WebView2 ランタイムは Windows 11 に標準で入っている。入っていない環境（一部の Windows 10）では、インストール中にダウンロードする。そのためネットワークが要る
+
+### 「Windows によって PC が保護されました」と出たとき
+
+インストーラにはコード署名をしていないため、ダウンロードした直後の初回実行で SmartScreen が止める（[ADR-0018](docs/adr/0018-no-code-signing.md)）。
+「詳細情報」を押し、表示された「実行」を押すと続行できる。
+
+### ターミナルから `marxdown` で開けるようにする
+
+インストールの最後に「新しいターミナルから marxdown コマンドで開けるようにしますか？」と聞かれる。
+「はい」を選ぶと、ユーザーの環境変数 PATH に `%LOCALAPPDATA%\Marxdown\bin` が追加される。
+PATH の他のエントリは変更しない。
+
+サイレントインストールでは `/ADDTOPATH` で指定する。
+更新のときは前回の選択を引き継ぐ。
+
+```powershell
+.\Marxdown_0.1.0_x64-setup.exe /S /ADDTOPATH
+```
+
+### アンインストール
+
+「設定 > アプリ > インストールされているアプリ」から Marxdown をアンインストールする。
+関連付けと PATH のエントリは元に戻る。
+設定と最近開いたファイルの履歴は残る。
+消したい場合は、アンインストール画面の「アプリのデータを削除」にチェックを入れる。
+
+## 使い方
+
+```bash
+marxdown README.md            # ファイルを開く
+marxdown README.md CHANGELOG.md
+marxdown docs/                # フォルダを開く（ファイルツリーとクイックオープンが使える）
+marxdown -m split notes.md    # 表示モードを指定して開く: preview | edit | split
+marxdown -n draft.md          # 常駐しているウィンドウに相乗りせず、独立したウィンドウで開く
+marxdown --help
+```
+
+cmd.exe / PowerShell / Git Bash のどれから実行しても、プロンプトはすぐに戻る。
+
+**2 回目以降は、常駐しているウィンドウにタブとして開く。**
+WebView の初期化を払わないため、1 回目よりずっと速い。
+`✕` を押してもウィンドウはタスクトレイに入るだけで、プロセスは残る。
+終了するには `Ctrl+Q` を押すか、トレイのメニューから「終了」を選ぶ。
+
+エクスプローラーで `.md` をダブルクリックしても開ける。
+別のアプリが既定になっている場合は、「プログラムから開く」で Marxdown を選ぶ。
+
+| キー | 動作 |
+| --- | --- |
+| `Ctrl+Shift+V` | Preview と編集モードを切り替える |
+| `Ctrl+\` | Split（編集とプレビューを並べる）を切り替える |
+| `Ctrl+P` | フォルダ内の Markdown をあいまい検索して開く |
+| `Ctrl+Shift+P` | コマンドパレット（すべての操作に届く） |
+| `Ctrl+,` | 設定 |
+| `Ctrl+Q` | 終了 |
+
+キーバインドの一覧は [`docs/03.ux-spec/04-keybindings.md`](docs/03.ux-spec/04-keybindings.md) にある。
+
 ## 開発
 
 Node 24 / pnpm 12 / Rust stable 1.80+ が要る。
@@ -106,23 +175,29 @@ Marxdown の最初の目標は「作っている本人が毎日使う」こと�
 pnpm build
 ```
 
-`src-tauri/target/release/marxdown.exe` が出来る。これを PATH に通す。
+`src-tauri/target/release/marxdown.exe` と、CLI シム（`src-tauri/target/release/bin/`）が出来る。
+**PATH に通すのは `bin` のほうである。**
 
 ```powershell
 # PowerShell（ユーザー環境変数に追記。1 回だけ）
-$exe = Resolve-Path .\src-tauri\target\release
+$bin = Resolve-Path .\src-tauri\target\release\bin
 [Environment]::SetEnvironmentVariable(
   'Path',
-  [Environment]::GetEnvironmentVariable('Path', 'User') + ';' + $exe,
+  [Environment]::GetEnvironmentVariable('Path', 'User') + ';' + $bin,
   'User'
 )
 ```
 
 新しいターミナルを開くと `marxdown README.md` が通る。
 
-> **release ビルドのパスを直接通している** のは意図的。
+> **`target\release` を直接通さないこと。**
+> そこにあるのは GUI の exe そのもので、cmd.exe と Git Bash は Marxdown を終了するまでプロンプトを返さない。
+> `bin` のシムは起動を切り離してすぐに戻る。
+
+> **release ビルドの出力を直接指している** のは意図的。
 > インストーラ（`src-tauri/target/release/bundle/nsis/`）を入れると、ビルドのたびに再インストールが要る。
 > `pnpm build` の出力をそのまま指しておけば、ビルドし直すだけで次の起動から新しい版になる。
+> インストール版と両方を PATH に入れると、先に書かれているほうが使われる。
 
 2 回目以降の `marxdown foo.md` は新しいプロセスを立てず、常駐しているプロセスにパスを転送する（単一インスタンス / ADR-0004）。
 ここが速さの中心なので、**ドッグフーディングではウィンドウを閉じずに置いておく** のが本来の使い方。
@@ -156,4 +231,4 @@ src-tauri/src/
 
 ## ライセンス
 
-未定。
+[MIT](LICENSE)
