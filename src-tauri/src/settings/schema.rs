@@ -220,6 +220,22 @@ pub enum CursorBlinking {
     Solid,
 }
 
+/// 縦罫線 1 本（VS Code `editor.rulers` の要素）。
+///
+/// 桁だけの数値と、色を持てるオブジェクトの 2 通りの書き方がある。
+/// 読んだときの書き方のまま書き戻すため、どちらか一方に正規化しない。
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum Ruler {
+    Column(f64),
+    Styled {
+        column: f64,
+        /// `None` はテーマの罫線色を使う。
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        color: Option<String>,
+    },
+}
+
 /// 設定の全体。既定値で埋めた後の状態であり、ファイルの中身そのものではない。
 ///
 /// `flatten` した `extra` に未知のキーが入る。
@@ -267,9 +283,9 @@ pub struct Settings {
     pub editor_render_line_highlight: RenderLineHighlight,
     #[serde(rename = "editor.renderWhitespace")]
     pub editor_render_whitespace: RenderWhitespace,
-    /// 縦罫線を引く桁。空なら引かない。`preview.maxWidth` と対で使う。
+    /// 縦罫線。空なら引かない。`preview.maxWidth` と対で使う。
     #[serde(rename = "editor.rulers")]
-    pub editor_rulers: Vec<f64>,
+    pub editor_rulers: Vec<Ruler>,
     #[serde(rename = "editor.scrollBeyondLastLine")]
     pub editor_scroll_beyond_last_line: bool,
     /// エディターの配色（02.architecture/10-theming.md §3）。
@@ -590,20 +606,44 @@ fn take_theme_id(map: &mut Map<String, Value>, key: &str) -> Option<String> {
     ok.then_some(value)
 }
 
-/// 縦罫線。要素ごとに範囲へ丸め、本数も上限で切る。
+/// 縦罫線。要素ごとに桁を範囲へ丸め、本数も上限で切る。
 ///
 /// 型が違う要素が 1 つでもあれば、配列ごと既定（引かない）に戻す。
 /// 部分的に採用すると、指定したのに 1 本足りない状態になり原因が追いにくい。
-fn take_rulers(map: &mut Map<String, Value>) -> Option<Vec<f64>> {
-    let values: Vec<f64> = take(map, KEY_EDITOR_RULERS)?;
+/// 色だけが解釈できない場合は、その色だけを捨てて罫線は残す。
+fn take_rulers(map: &mut Map<String, Value>) -> Option<Vec<Ruler>> {
+    let values: Vec<Ruler> = take(map, KEY_EDITOR_RULERS)?;
     Some(
         values
             .into_iter()
-            .filter(|v| v.is_finite())
-            .map(|v| v.clamp(RULER_RANGE.0, RULER_RANGE.1).round())
+            .filter_map(sanitize_ruler)
             .take(RULERS_MAX)
             .collect(),
     )
+}
+
+fn sanitize_ruler(ruler: Ruler) -> Option<Ruler> {
+    let clamp = |v: f64| {
+        v.is_finite()
+            .then(|| v.clamp(RULER_RANGE.0, RULER_RANGE.1).round())
+    };
+    match ruler {
+        Ruler::Column(column) => clamp(column).map(Ruler::Column),
+        Ruler::Styled { column, color } => Some(Ruler::Styled {
+            column: clamp(column)?,
+            color: color.filter(|c| is_hex_color(c)),
+        }),
+    }
+}
+
+/// `#RGB` / `#RGBA` / `#RRGGBB` / `#RRGGBBAA` か。VS Code のスキーマ（`color-hex`）と同じ範囲である。
+///
+/// Monaco は色の文字列を検証せずに `box-shadow` の値へ埋め込む。
+/// 任意の文字列を通すと `red, 0 0 0 9999px red` のように影を追加でき、編集面を塗りつぶせる。
+fn is_hex_color(value: &str) -> bool {
+    value.strip_prefix('#').is_some_and(|hex| {
+        matches!(hex.len(), 3 | 4 | 6 | 8) && hex.bytes().all(|b| b.is_ascii_hexdigit())
+    })
 }
 
 /// 除外パターン。空文字と空白だけのものを除き、本数を上限で切る。
@@ -810,16 +850,80 @@ mod tests {
 
         assert_eq!(
             s.editor_rulers,
-            [80.0, 101.0, 500.0, 1.0, 2.0, 3.0, 4.0, 5.0]
+            [80.0, 101.0, 500.0, 1.0, 2.0, 3.0, 4.0, 5.0].map(Ruler::Column)
         );
     }
 
     #[test]
     fn a_ruler_list_with_a_bad_element_falls_back_to_none() {
-        let s =
-            Settings::from_map(serde_json::from_str(r#"{"editor.rulers":[80,"ひゃく"]}"#).unwrap());
+        for bad in [
+            r#"[80,"ひゃく"]"#,
+            r##"[80,{"color":"#ff0000"}]"##,
+            r#"[80,{"column":"100"}]"#,
+            r#"[80,{"column":100,"color":255}]"#,
+        ] {
+            let s = Settings::from_map(
+                serde_json::from_str(&format!(r#"{{"editor.rulers":{bad}}}"#)).unwrap(),
+            );
+            assert!(s.editor_rulers.is_empty(), "部分的に拾わない: {bad}");
+        }
+    }
 
-        assert!(s.editor_rulers.is_empty(), "部分的に拾わない");
+    /// VS Code と同じく、数値とオブジェクトを混在させられる。
+    /// 書き戻すときも読んだときの書き方を保つ。
+    #[test]
+    fn rulers_keep_their_shape_and_color() {
+        let json =
+            r##"{"editor.rulers":[80,{"column":100.4,"color":"#ff000080"},{"column":120}]}"##;
+        let s = Settings::from_map(serde_json::from_str(json).unwrap());
+
+        assert_eq!(
+            s.editor_rulers,
+            [
+                Ruler::Column(80.0),
+                Ruler::Styled {
+                    column: 100.0,
+                    color: Some("#ff000080".into())
+                },
+                Ruler::Styled {
+                    column: 120.0,
+                    color: None
+                },
+            ]
+        );
+        assert_eq!(
+            s.to_map()[KEY_EDITOR_RULERS],
+            serde_json::json!([80.0, { "column": 100.0, "color": "#ff000080" }, { "column": 120.0 }])
+        );
+    }
+
+    /// 色だけが読めない場合は罫線を残し、テーマの色で引く。
+    #[test]
+    fn a_ruler_color_that_is_not_hex_is_dropped() {
+        for bad in [
+            "red",
+            "#ff000",
+            "#gggggg",
+            "ff0000",
+            "red, 0 0 0 9999px red",
+            "#fff; x",
+        ] {
+            let json = serde_json::json!({ KEY_EDITOR_RULERS: [{ "column": 80, "color": bad }] });
+            let s = Settings::from_map(json.as_object().unwrap().clone());
+
+            assert_eq!(
+                s.editor_rulers,
+                [Ruler::Styled {
+                    column: 80.0,
+                    color: None
+                }],
+                "{bad}"
+            );
+        }
+
+        for good in ["#fff", "#ffff", "#A0b1C2", "#a0b1c2d3"] {
+            assert!(is_hex_color(good), "{good}");
+        }
     }
 
     #[test]

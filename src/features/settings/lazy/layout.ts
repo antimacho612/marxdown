@@ -19,7 +19,7 @@ type Labels<K extends SettingKey> = Readonly<Record<Settings[K] & string, string
 /**
  * キーに割り当てられる部品。スキーマの `kind` から決まる。
  *
- * 並び（`number[]` / `string[]`）は入力欄の文字列と値が 1:1 でないため `list` になる。
+ * 並び（`ruler[]` / `string[]`）は入力欄の文字列と値が 1:1 でないため `list` になる。
  * 打っている途中の文字列を保持するのは `ListField.svelte` で、値としての解釈はダイアログ側が持つ。
  *
  * 文字列だけ 2 択にしてある。

@@ -41,10 +41,24 @@ interface StringEntry {
   default: string;
 }
 
-/** 数値の並び。`min` / `max` は要素 1 つあたりの範囲で、`maxLength` は本数の上限。 */
-interface NumberListEntry {
-  kind: 'number[]';
-  default: readonly number[];
+/** 色を持てる書き方の縦罫線。`color` を省くとテーマの罫線色になる。 */
+export interface StyledRuler {
+  column: number;
+  /** `#RGB` / `#RGBA` / `#RRGGBB` / `#RRGGBBAA`。それ以外は Rust 側で取り除かれる。 */
+  color?: string;
+}
+
+/**
+ * 縦罫線 1 本。VS Code の `editor.rulers` と同じく、桁だけの数値と色を持てるオブジェクトの 2 通りの書き方がある。
+ *
+ * 読んだときの書き方のまま書き戻すため、どちらか一方に正規化しない（`src-tauri/src/settings/schema.rs` の `Ruler`）。
+ */
+export type Ruler = number | StyledRuler;
+
+/** 縦罫線の並び。`min` / `max` は桁 1 つあたりの範囲で、`maxLength` は本数の上限。 */
+interface RulerListEntry {
+  kind: 'ruler[]';
+  default: readonly Ruler[];
   min: number;
   max: number;
   maxLength: number;
@@ -60,7 +74,7 @@ interface StringListEntry {
 
 /** スキーマ 1 項目。種別ごとに持つ情報が違うため判別可能なユニオンにしてある。 */
 export type SettingSchemaEntry =
-  EnumEntry | NumberEntry | BooleanEntry | StringEntry | NumberListEntry | StringListEntry;
+  EnumEntry | NumberEntry | BooleanEntry | StringEntry | RulerListEntry | StringListEntry;
 
 /**
  * 既定値が選択肢の中にあることを型で保証する。
@@ -121,10 +135,10 @@ export const SETTINGS_SCHEMA = defineSettingsSchema({
     default: 'none',
   },
   /**
-   * 縦罫線を引く桁。空なら引かない。`preview.maxWidth` と対で使う。
+   * 縦罫線。空なら引かない。`preview.maxWidth` と対で使う。
    * 本数に上限があるのは、手書きの長い配列がそのまま描画コストになるため。
    */
-  'editor.rulers': { kind: 'number[]', default: [], min: 1, max: 500, maxLength: 8 },
+  'editor.rulers': { kind: 'ruler[]', default: [], min: 1, max: 500, maxLength: 8 },
   'editor.scrollBeyondLastLine': { kind: 'boolean', default: true },
   /**
    * エディターの配色（02.architecture/10-theming.md §3）。列挙ではなく文字列である。
@@ -219,8 +233,8 @@ type ValueOf<E> = E extends { kind: 'enum'; values: readonly (infer V)[] }
       ? boolean
       : E extends { kind: 'string' }
         ? string
-        : E extends { kind: 'number[]' }
-          ? number[]
+        : E extends { kind: 'ruler[]' }
+          ? Ruler[]
           : E extends { kind: 'string[]' }
             ? string[]
             : never;
