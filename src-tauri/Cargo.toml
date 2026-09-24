@@ -3,6 +3,7 @@ name = "marxdown"
 version = "0.1.0"
 description = "Markdown を見る・書くなら、これ一択。"
 authors = ["antimacho612"]
+license = "MIT"
 edition = "2021"
 rust-version = "1.80"
 
