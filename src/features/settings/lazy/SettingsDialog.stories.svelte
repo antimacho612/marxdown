@@ -78,7 +78,7 @@
       'preview.maxWidth': 80,
       'editor.fontFamily': 'Cascadia Code',
       'editor.fontSize': 15,
-      'editor.rulers': [80, 100],
+      'editor.rulers': [80, { column: 100, color: '#ff000080' }],
       'editor.wordWrap': 'bounded',
       'editor.minimap.enabled': true,
     }),
