@@ -179,7 +179,8 @@ pub fn build(
     // 1 枚目を bootstrap に載せるのは、復元の最初の描画を `marxdown foo.md` と同じ速さにするためである（02.architecture/05-startup-sequence.md §1）。
     let mut session = Vec::new();
     let mut session_active = 0;
-    if args.paths.is_empty() && !store.session.paths.is_empty() {
+    // 標準入力（`--stdin-file`）も引数として扱う。
+    if args.paths.is_empty() && args.stdin_file.is_none() && !store.session.paths.is_empty() {
         let restored = store.session.clone().sanitized();
         if let Some(path) = restored.paths.get(restored.active) {
             // 開けなければ復元しない。通知は出さない（消えていることは想定内である）。

@@ -25,6 +25,7 @@ pub mod settings;
 /// Windows の Snap Layouts。Windows 以外では空になる（ファイル冒頭の `#![cfg(windows)]`）。
 pub mod snap_layouts;
 pub mod state;
+mod stdin;
 pub mod store;
 pub mod tab_drag;
 pub mod themes;
@@ -271,6 +272,12 @@ pub fn run() {
     if let Some(op) = args.path_op {
         std::process::exit(path_env::run(op));
     }
+    // `-`: 標準入力を書き出して起動し直す（`stdin.rs`）。
+    // このプロセスはシムがフォアグラウンドで実行しており、常駐させるとシェルが返らない。
+    if args.stdin {
+        let argv: Vec<String> = std::env::args().skip(1).collect();
+        std::process::exit(stdin::run(&argv));
+    }
 
     // `--gc-probe`: メモリ計測で強制 GC を使うための経路（05.performance-budget/05-operations.md §3）。
     // 閉じた文書のメモリが解放されるかを確かめるには強制 GC の後で測る必要があるが、既定の WebView2 に `gc()` は無い。
@@ -342,7 +349,7 @@ pub fn run() {
     let preview_theme = themes::find(themes_dir.as_deref(), &settings_data.values.preview_theme);
 
     // T2: ファイル読み込み。ウィンドウ生成の前に行い、WebView 初期化と重ねる。
-    let payload = bootstrap::build(&args, &trace, &store_data, &settings_data, preview_theme);
+    let mut payload = bootstrap::build(&args, &trace, &store_data, &settings_data, preview_theme);
     trace.mark(
         "T2",
         payload
@@ -351,6 +358,7 @@ pub fn run() {
             .map(|d| format!("{} bytes, inlined={}", d.meta.size, d.content.is_some())),
     );
 
+    let stdin_file = args.stdin_file.clone();
     let state = state::AppState::new(
         args,
         trace,
@@ -363,6 +371,21 @@ pub fn run() {
             themes: themes_dir,
         },
     );
+
+    // 標準入力は、未保存のタブをサテライトへ移すときと同じ受け渡し箱で渡す（ADR-0016 §3.4）。
+    // パスを持たない文書は `read_document` で読み直せないため、本文ごと預ける必要がある。
+    if let Some(file) = stdin_file {
+        match stdin::take(&file) {
+            Ok(transfer) => payload.transfer = Some(state.stash_transfer(transfer)),
+            Err(e) => {
+                payload.document_error = Some(bootstrap::BootstrapError {
+                    path: "-".to_owned(),
+                    kind: e.kind().to_string(),
+                    message: e.to_string(),
+                });
+            }
+        }
+    }
 
     let mut builder = tauri::Builder::default();
 
@@ -395,7 +418,27 @@ pub fn run() {
             // トレイに格納されている場合もここを通る（ADR-0007 論点 10）。
             // `restore` がサスペンドの解除まで担当するため、格納中の `marxdown foo.md` を特別扱いしなくて済む。
             close::restore(app);
-            let _ = app.emit_to(target_window(app).as_str(), EVENT_OPEN_REQUEST, &request);
+            let target = target_window(app);
+            let _ = app.emit_to(target.as_str(), EVENT_OPEN_REQUEST, &request);
+
+            // 標準入力（`stdin.rs`）。起動時と同じ受け渡し箱を使い、他のウィンドウから移されてきたタブとして届ける。
+            // 失敗を知らせる画面上の経路が無いため、標準エラーへ書くだけにする。
+            if let Some(file) = forwarded.stdin_file.as_deref() {
+                match stdin::take(file) {
+                    Ok(transfer) => {
+                        let id = app.state::<state::AppState>().stash_transfer(transfer);
+                        send_tab(
+                            app,
+                            &target,
+                            &TabArrival {
+                                paths: Vec::new(),
+                                transfer: Some(id),
+                            },
+                        );
+                    }
+                    Err(e) => eprintln!("[marxdown] 標準入力を開けませんでした: {e}"),
+                }
+            }
         }));
     }
 
