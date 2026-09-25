@@ -93,4 +93,18 @@ describe('dirOf', () => {
   it('親ディレクトリを返す', () => {
     expect(dirOf('C:\\work\\a.md')).toBe('C:\\work');
   });
+
+  it('ドライブ直下のファイルではドライブのルートを返す', () => {
+    expect(dirOf('C:\\sample.md')).toBe('C:\\');
+    expect(dirOf('C:/sample.md')).toBe('C:/');
+  });
+
+  it('POSIX のルート直下のファイルでは / を返す', () => {
+    expect(dirOf('/sample.md')).toBe('/');
+  });
+
+  it('区切りが無ければ空文字を返す', () => {
+    expect(dirOf('')).toBe('');
+    expect(dirOf('a.md')).toBe('');
+  });
 });
