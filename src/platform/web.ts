@@ -28,6 +28,11 @@ import {
   type WriteRequest,
 } from './types';
 
+/** `dev:web` では扱えない操作のエラー。形は Rust の `CoreError` に揃える。 */
+function unsupported(): { kind: 'io'; message: string } {
+  return { kind: 'io', message: 'dev:web の仮想 FS では扱えない' };
+}
+
 const STORE_KEY = 'marxdown:web-fs';
 const STATE_KEY = 'marxdown:web-state';
 
@@ -427,6 +432,57 @@ export const webPlatform: Platform = {
     return { files: [], truncated: false };
   },
 
+  /** 仮想 FS はこのタブの中にしかなく、外から書き換わることがない。 */
+  async watchTree() {},
+
+  onDirChanged() {
+    return () => {};
+  },
+
+  /*
+   * ファイル操作（ADR-0020）。仮想 FS にはディレクトリが無く、ツリーも空であるため操作の対象が存在しない。
+   * 操作の流れは Storybook と Rust のユニットテストで確かめる。
+   */
+  async createEntry() {
+    throw unsupported();
+  },
+
+  async renameEntry() {
+    throw unsupported();
+  },
+
+  async moveEntries() {
+    throw unsupported();
+  },
+
+  async copyEntries() {
+    throw unsupported();
+  },
+
+  async trashEntries() {
+    throw unsupported();
+  },
+
+  async importDropped() {
+    throw unsupported();
+  },
+
+  async openDroppedFolder() {
+    throw unsupported();
+  },
+
+  onEntriesMoved() {
+    return () => {};
+  },
+
+  onEntriesRemoved() {
+    return () => {};
+  },
+
+  async confirmAction(message) {
+    return globalThis.confirm(message);
+  },
+
   /** `dev:web` では復元しない。起動のたびに同じ状態から始まるほうが確かめやすい。 */
   async setSession() {},
 
@@ -605,14 +661,14 @@ export const webPlatform: Platform = {
     // Domain 層から見た形は Tauri 実装と同じになる。
     const onOver = (e: DragEvent) => {
       e.preventDefault();
-      handler({ type: 'over' });
+      handler({ type: 'over', x: e.clientX, y: e.clientY });
     };
     const onLeave = () => handler({ type: 'leave' });
     const onDrop = (e: DragEvent) => {
       e.preventDefault();
       const files = [...(e.dataTransfer?.files ?? [])];
       void Promise.all(files.map(adoptFile)).then((paths) => {
-        handler({ type: 'drop', paths: paths.filter((p): p is string => p !== null) });
+        handler({ type: 'drop', paths: paths.filter((p): p is string => p !== null), x: e.clientX, y: e.clientY });
         return paths;
       });
     };

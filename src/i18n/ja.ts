@@ -481,6 +481,7 @@ export const ja = {
     'too-large': (path: string) => `ファイルが大きすぎます: ${path}`,
     binary: (path: string) => `テキストではないため開けません: ${path}`,
     conflict: 'ファイルが外部で変更されています',
+    'already-exists': (path: string) => `同じ名前が既にあります: ${path}`,
     'invalid-argument': (detail: string) => `引数を解釈できません: ${detail}`,
     'settings-broken': 'settings.json を読めないため、設定を保存できません',
     io: (detail: string) => `入出力エラー: ${detail}`,

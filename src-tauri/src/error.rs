@@ -31,6 +31,12 @@ pub enum CoreError {
     #[error("外部で変更されている（保存の衝突）")]
     Conflict,
 
+    /// 作成・リネーム・移動の宛先に同じ名前がある（`fsops.rs`）。
+    ///
+    /// 上書きはしない。置き換えは元に戻せないためである（ADR-0020 §3.2）。
+    #[error("同じ名前が既にある: {0}")]
+    AlreadyExists(String),
+
     #[error("不正な引数: {0}")]
     InvalidArgument(String),
 
@@ -69,6 +75,7 @@ impl CoreError {
             Self::TooLarge { .. } => "too-large",
             Self::Binary(_) => "binary",
             Self::Conflict => "conflict",
+            Self::AlreadyExists(_) => "already-exists",
             Self::InvalidArgument(_) => "invalid-argument",
             Self::SettingsBroken(_) => "settings-broken",
             Self::Io(_) => "io",

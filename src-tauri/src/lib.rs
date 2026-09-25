@@ -18,6 +18,7 @@ mod document;
 /// タブのドラッグ中にカーソルへ追従する表示。Windows 以外では空になる（ファイル冒頭の `#![cfg(windows)]`）。
 pub mod drag_ghost;
 pub mod error;
+pub mod fsops;
 pub mod glob;
 pub mod path_env;
 pub mod scope;
@@ -447,6 +448,15 @@ pub fn run() {
             commands::open_external,
             commands::open_local_file,
             commands::reveal_in_file_manager,
+            commands::create_entry,
+            commands::rename_entry,
+            commands::move_entries,
+            commands::copy_entries,
+            commands::trash_entries,
+            commands::import_dropped,
+            commands::open_dropped_folder,
+            commands::watch_tree,
+            commands::confirm_action,
             commands::startup_trace,
             commands::warm_done,
             commands::bench_input_done,
@@ -507,6 +517,15 @@ pub fn run() {
         // 移動・リサイズのたびに書くと、ウィンドウをドラッグしている間ずっとファイル I/O が発生する。
         .on_window_event(|window, event| {
             let label = window.label().to_owned();
+
+            // ドロップされたパスを覚えておく（02.architecture/09-security.md §5）。
+            // ファイルツリーへの取り込みは、ここで受け取ったパスだけを複製元にする。
+            if let tauri::WindowEvent::DragDrop(tauri::DragDropEvent::Drop { paths, .. }) = event {
+                window
+                    .state::<state::AppState>()
+                    .note_drop(&label, paths.clone());
+                return;
+            }
 
             // 最大化状態の変化をフロントへ通知する（ウィンドウ操作ボタンの表示）。
             //
