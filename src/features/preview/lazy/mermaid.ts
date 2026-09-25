@@ -138,6 +138,7 @@ export async function renderForExport(root: HTMLElement, light: boolean): Promis
     const cached = light ? undefined : cache.get(source);
     if (cached !== undefined) {
       element.innerHTML = cached;
+      element.dataset[STATE] = 'done';
       continue;
     }
 
@@ -150,6 +151,8 @@ export async function renderForExport(root: HTMLElement, light: boolean): Promis
       // eslint-disable-next-line no-await-in-loop -- 上記
       const { svg } = await mermaid.render(id, light ? `${LIGHT_DIRECTIVE}\n${source}` : source);
       element.innerHTML = sanitizeSvg(svg);
+      // 状態の属性で中央寄せなどの見た目が決まる（`mermaid.css`）。
+      element.dataset[STATE] = 'done';
     } catch {
       fallbackToCodeBlock(element, source);
     } finally {
