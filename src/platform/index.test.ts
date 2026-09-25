@@ -66,7 +66,6 @@ describe('getPlatform', () => {
       'onSaveAndQuit',
       'onSaveAndClose',
       'openSatellite',
-      'openNewInstance',
       'stashTransfer',
       'takeTransfer',
       'sendTabToWindow',

@@ -16,7 +16,6 @@ export { moveCurrentTabToMainLazily, receiveTabLazily } from './join-window';
 export {
   moveCurrentTabToSatellite,
   moveTabToSatellite,
-  openNewInstance,
   openPathInSatellite,
   restoreTransferredState,
   takeTabTransfer,

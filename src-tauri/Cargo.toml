@@ -55,8 +55,6 @@ features = [
   "Win32_System_LibraryLoader",
   # ユーザーの PATH の登録と解除（`src/path_env.rs` / F-OS-02）。
   "Win32_System_Registry",
-  # 既存インスタンスの検出（`src/instance.rs` / F-OPEN-06）。`OpenMutexW` だけを使う。
-  "Win32_System_Threading",
   "Win32_UI_HiDpi",
   "Win32_UI_Input_KeyboardAndMouse",
   "Win32_UI_Shell",

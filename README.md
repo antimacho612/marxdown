@@ -70,7 +70,6 @@ marxdown README.md            # ファイルを開く
 marxdown README.md CHANGELOG.md
 marxdown docs/                # フォルダを開く（ファイルツリーとクイックオープンが使える）
 marxdown -m split notes.md    # 表示モードを指定して開く: preview | edit | split
-marxdown -n draft.md          # 常駐しているウィンドウに相乗りせず、独立したウィンドウで開く
 marxdown --help
 ```
 

@@ -1,15 +1,11 @@
 /**
- * 別ウィンドウで開く（F-OPEN-06 / ADR-0004「1 プロセスが複数ウィンドウを持てる」）。
- *
- * 「別ウィンドウ」には意味の違う 2 つがある。
+ * 別ウィンドウ（サテライト）で開く（F-OPEN-06 / ADR-0004「1 プロセスが複数ウィンドウを持てる」）。
  *
  * サテライトは同じプロセスの中に増える窓で、タブと本文だけを持つ。
  * タブの右クリックと `Shift+Click` がここへ来る。状態（監視・許可スコープ・最近開いたファイル）はプロセス内で共有される。
+ * 独立したプロセスで開く経路は廃止した（ADR-0019）。
  *
- * 新規インスタンスは独立したプロセスで、フルシェルの窓を持つ。
- * `Ctrl+Alt+N` と CLI の `-n`、Explorer の「新規ウィンドウで開く」がこちらである。何も共有しない。
- *
- * どちらも WebView ごと作られるため、タブを増やすのとはコストの桁が違う（ADR-0004 の Option C の欠点そのもの）。
+ * WebView ごと作られるため、タブを増やすのとはコストの桁が違う（ADR-0004 の Option C の欠点そのもの）。
  * 既定の導線はタブのままであり、ここは明示的に選んだときだけ通る経路である。
  */
 import { documentStore, getDocumentText, setDirty, type StoredMeta } from '@/features/document';
@@ -35,11 +31,6 @@ export interface TabTransfer {
   eolOverride: Eol | null;
   /** Preview のスクロール位置。移しても同じ位置から読み始められるようにする。 */
   scrollTop: number;
-}
-
-/** 空の新しいインスタンスを起動する（`Ctrl+Alt+N`）。 */
-export async function openNewInstance(): Promise<boolean> {
-  return launch();
 }
 
 /**
@@ -189,21 +180,6 @@ async function spawnSatellite(options: {
 }): Promise<boolean> {
   try {
     await getPlatform().openSatellite(options);
-    return true;
-  } catch {
-    documentStore.notice = { level: 'error', message: ja.window.failed };
-    return false;
-  }
-}
-
-/**
- * 新しいプロセスを起動する。
- *
- * 成功はプロセスを起動できたところまでで、ウィンドウが出たかどうかまでは分からない（起動を待たないため）。
- */
-async function launch(paths?: string[]): Promise<boolean> {
-  try {
-    await getPlatform().openNewInstance(paths ? { paths } : {});
     return true;
   } catch {
     documentStore.notice = { level: 'error', message: ja.window.failed };

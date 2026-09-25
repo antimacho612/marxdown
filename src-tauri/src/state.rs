@@ -31,19 +31,6 @@ pub struct ConfigPaths {
     pub themes: Option<PathBuf>,
 }
 
-/// このプロセスが単一インスタンスの所有者かどうか（F-OPEN-06 / `instance.rs`）。
-///
-/// 所有者は `tauri-plugin-single-instance` を登録したプロセスで、argv 転送の受け先になる。
-/// `--new-window` で起動し、既に所有者がいた場合だけ `Standalone` になる。
-///
-/// 3 か所で意味を持つ。
-/// トレイに常駐するのは所有者だけであり（ADR-0007 / トレイアイコンがプロセスの数だけ並ばないようにする）、`state.json` のウィンドウ矩形とセッションを書くのも所有者だけであり（後勝ちで消えるのを防ぐ）、それ以外の書き込みは読み直してから行う。
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum InstanceRole {
-    Owner,
-    Standalone,
-}
-
 /// `manage` で 1 つだけ持つ共有状態。コマンドとウィンドウイベントの両方から参照する。
 pub struct AppState {
     pub args: CliArgs,
@@ -97,8 +84,6 @@ pub struct AppState {
     /// 閉じたラベルは再利用しない。
     /// 同じラベルのウィンドウを作り直すと、破棄の途中で届いたイベントが新しいウィンドウのものとして扱われうる。
     window_counter: AtomicU64,
-    /// 単一インスタンスの所有者か（[`InstanceRole`]）。起動時に決まり、以後変わらない。
-    role: InstanceRole,
     /// サテライトへ移すタブの本文（F-OPEN-06 / ADR-0016 §3.4）。
     ///
     /// 未保存のタブはパスだけでは渡せない。
@@ -123,7 +108,6 @@ impl AppState {
         store: StoreData,
         settings: SettingsLoad,
         paths: ConfigPaths,
-        role: InstanceRole,
     ) -> Self {
         let mut roots = Vec::new();
         if let Some(doc) = bootstrap.document.as_ref() {
@@ -150,7 +134,6 @@ impl AppState {
             dirty: Mutex::new(HashMap::new()),
             focused: Mutex::new(crate::window::MAIN_LABEL.to_owned()),
             window_counter: AtomicU64::new(1),
-            role,
             transfer: Mutex::new(None),
             transfer_counter: AtomicU64::new(1),
         }
@@ -181,28 +164,16 @@ impl AppState {
         None
     }
 
-    /// 単一インスタンスの所有者か（F-OPEN-06）。
-    pub fn owns_instance(&self) -> bool {
-        self.role == InstanceRole::Owner
-    }
-
     /// ストアを書き換えて永続化する。
     ///
     /// ロックを保持したままファイル I/O をしないよう、書き出す値を複製してから解放する。
     /// ストアの更新は最近開いたファイルに 1 件追加する程度の頻度であり、複製のコストよりロックの保持時間のほうが問題になる。
-    ///
-    /// 所有者でないプロセスは、書き換える前にディスクから読み直す（F-OPEN-06 / ADR-0016）。
-    /// `state.json` は 1 枚しかなく、こちらが起動した後に所有者が書いた分はメモリ上の複製に反映されていない。
-    /// 読み直さずに書くと、最近開いたファイルを 1 件足すたびに所有者側の更新をまとめて消すことになる。
     pub fn update_store<T>(&self, f: impl FnOnce(&mut StoreData) -> T) -> T {
         let (result, snapshot) = {
             let Ok(mut store) = self.store.lock() else {
                 // ロックが poisoned でも起動は止めない。永続化だけを行わない。
                 return f(&mut StoreData::default());
             };
-            if self.role == InstanceRole::Standalone {
-                *store = crate::store::load(self.paths.store.as_deref());
-            }
             let result = f(&mut store);
             (result, store.clone())
         };
@@ -501,7 +472,6 @@ mod tests {
                 settings: Some(path.to_path_buf()),
                 ..ConfigPaths::default()
             },
-            InstanceRole::Owner,
         )
     }
 
@@ -585,7 +555,6 @@ mod tests {
             StoreData::default(),
             loaded,
             ConfigPaths::default(),
-            InstanceRole::Owner,
         )
     }
 

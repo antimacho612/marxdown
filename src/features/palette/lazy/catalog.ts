@@ -58,7 +58,6 @@ export const COMMAND_CATALOG: CommandEntry[] = [
   { id: 'document.saveAs', label: ja.menu.saveAs, keywords: 'save as file write', shortcut: 'Ctrl+Shift+S' },
   { id: 'document.toggleEol', label: ja.menu.toggleEol, keywords: 'toggle eol line ending newline crlf lf' },
 
-  { id: 'window.new', label: ja.menu.newWindow, keywords: 'new window instance process', shortcut: 'Ctrl+Alt+N' },
   { id: 'window.moveTab', label: ja.menu.moveToNewWindow, keywords: 'move tab window satellite detach' },
   { id: 'window.moveTabToMain', label: ja.menu.moveToMainWindow, keywords: 'move tab main window satellite attach' },
 
