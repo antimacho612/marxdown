@@ -9,6 +9,7 @@
 //! UI ロジックと Markdown の意味解釈は TypeScript 側にある。
 
 pub mod asset;
+mod autostart;
 mod bootstrap;
 pub mod cli;
 pub mod close;
@@ -318,6 +319,11 @@ pub fn run() {
     let settings_path = settings::settings_path(&context.config().identifier);
     let mut settings_data = settings::load(settings_path.as_deref());
 
+    // ログイン時の自動起動（ADR-0020）。トレイに格納できない設定では、見えないプロセスが残るだけになる。
+    if args.background && !settings_data.values.window_close_to_tray {
+        return;
+    }
+
     if settings_data.broken.is_none() {
         let mut changed = false;
         if migrated.preview && settings_data.values.preview_theme == settings::DEFAULT_THEME_ID {
@@ -394,13 +400,18 @@ pub fn run() {
     #[cfg(desktop)]
     {
         builder = builder.plugin(tauri_plugin_single_instance::init(|app, argv, cwd| {
-            // W0。argv 転送を受けた瞬間。ここから「本文が読める」までがウォーム起動。
-            let request_id = app.state::<state::AppState>().begin_warm();
-
             let forwarded = cli::parse(
                 &argv.into_iter().skip(1).collect::<Vec<_>>(),
                 std::path::Path::new(&cwd),
             );
+            // ログイン時の自動起動が、既に常駐しているプロセスへ届いた（ADR-0020）。
+            // 前面へ出すと、ログインのたびにウィンドウが現れる。
+            if forwarded.background {
+                return;
+            }
+
+            // W0。argv 転送を受けた瞬間。ここから「本文が読める」までがウォーム起動。
+            let request_id = app.state::<state::AppState>().begin_warm();
             let paths = forwarded
                 .paths
                 .iter()

@@ -424,6 +424,10 @@ export const ja = {
         label: '✕ で閉じたときにタスクトレイに格納する',
         description: 'ウィンドウを閉じても終了せず、タスクトレイに常駐します。次に開くときの表示が速くなります。',
       },
+      launchAtLogin: {
+        label: 'ログイン時にタスクトレイで起動する',
+        description: '1 日の最初に開くときも速くなります。上の設定が ON のときだけ有効です。',
+      },
     },
 
     sampleHeading: '見出し',

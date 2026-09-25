@@ -67,6 +67,11 @@ pub struct CliArgs {
     /// 利用者が指定するものではない。
     /// 読んだ後に消すため、一時ディレクトリ直下のファイル以外は `stdin::take` が拒否する。
     pub stdin_file: Option<PathBuf>,
+    /// `--background`。ウィンドウを表示せずにトレイへ格納した状態で起動する（ADR-0020）。
+    ///
+    /// ログイン時の自動起動（`autostart.rs`）が `Run` に書く値に付ける。
+    /// 常駐中のプロセスへ転送されたときは何もしない。
+    pub background: bool,
     pub show_help: bool,
     pub show_version: bool,
     /// 解析できなかった引数。警告として通知バーに出す。
@@ -89,6 +94,7 @@ OPTIONS:
         --trace-startup <OUT>  起動計測を有効にし、JSON を OUT へ書き出す
                                OUT に nul を指定すると計測のみ行い書き出さない
         --exit-after-trace     計測の書き出し後にプロセスを終了する（ベンチ用）
+        --background           ウィンドウを出さずにタスクトレイで起動する
     -h, --help                 このヘルプを表示する
     -V, --version              バージョンを表示する
 
@@ -149,6 +155,7 @@ pub fn parse(argv: &[String], cwd: &Path) -> CliArgs {
             "-V" | "--version" => args.show_version = true,
             "--exit-after-trace" => args.exit_after_trace = true,
             "--gc-probe" => args.gc_probe = true,
+            "--background" => args.background = true,
             "--add-to-path" => args.path_op = Some(PathOp::Add),
             "--remove-from-path" => args.path_op = Some(PathOp::Remove),
             "-m" | "--mode" => {

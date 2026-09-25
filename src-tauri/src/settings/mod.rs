@@ -231,6 +231,7 @@ mod tests {
             preview_font_family: "Noto Sans JP".into(),
             preview_line_height: 1.9,
             window_close_to_tray: false,
+            window_launch_at_login: true,
             ..Settings::default()
         };
         save(&p, &settings).unwrap();
