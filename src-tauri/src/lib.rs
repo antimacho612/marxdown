@@ -19,6 +19,7 @@ mod document;
 /// タブのドラッグ中にカーソルへ追従する表示。Windows 以外では空になる（ファイル冒頭の `#![cfg(windows)]`）。
 pub mod drag_ghost;
 pub mod error;
+mod export;
 pub mod glob;
 pub mod path_env;
 pub mod scope;
@@ -505,6 +506,9 @@ pub fn run() {
             commands::warm_done,
             commands::bench_input_done,
             commands::app_quit,
+            export::export_html,
+            export::export_pdf,
+            export::inline_image,
         ])
         .setup(move |app| {
             // T2b: Tauri のブートとプラグイン初期化が終わった時点。

@@ -18,6 +18,7 @@ import {
   toggleEol,
 } from '@/features/document';
 import { formatTableLazily, gotoLineLazily } from '@/features/editor';
+import { exportLazily } from '@/features/export';
 import { canGoBack, canGoForward, goBack, goForward } from '@/features/history';
 import { cycleMode, openFind, openReplace, setMode, togglePreview, toggleSplit } from '@/features/mode';
 import { openJumpLazily, showOutline } from '@/features/outline';
@@ -113,6 +114,10 @@ const COMMANDS: Command[] = [
   // 操作しても反応が無い状態を避けるためで、内容が同じならディスク上のバイト列は変わらない。
   { id: 'document.save', run: () => void saveSafely(), isListed: hasDocument },
   { id: 'document.saveAs', run: () => void saveAsSafely(), isListed: hasDocument },
+
+  // エクスポート（F-VIEW-18）。実体は `export` チャンクにあり、押すまで読み込まない。キーは割り当てない。
+  { id: 'document.exportHtml', run: () => void exportLazily('html'), isListed: hasDocument },
+  { id: 'document.exportPdf', run: () => void exportLazily('pdf'), isListed: hasDocument },
 
   // 改行コードの変換（F-EDIT-14 / 03.ux-spec/07-status-and-notifications.md §3）。
   // 実体はステータスバーの `LF` / `CRLF` で、ここはコマンドとしての入口である。

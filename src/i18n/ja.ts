@@ -93,6 +93,8 @@ export const ja = {
     moveToMainWindow: 'メインウィンドウに戻す',
     save: '保存',
     saveAs: '名前を付けて保存',
+    exportHtml: 'HTML として書き出す',
+    exportPdf: 'PDF として書き出す',
     toEdit: '編集する',
     toPreview: 'プレビューに戻る',
     toSplit: '左右に並べる',
@@ -447,6 +449,12 @@ export const ja = {
     open: 'themes フォルダーを開く',
     unknown: '選ばれている配色が見つからないため適用していません',
     rejected: '配色を面の中に収められないため適用していません。} の対応を確認してください',
+  },
+
+  export: {
+    done: (path: string) => `書き出しました: ${path}`,
+    reveal: '場所を開く',
+    failed: (reason: string) => `書き出せませんでした: ${reason}`,
   },
 
   status: {

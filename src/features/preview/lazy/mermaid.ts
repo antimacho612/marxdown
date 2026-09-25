@@ -116,6 +116,49 @@ function onIntersect(entries: IntersectionObserverEntry[]): void {
 }
 
 /**
+ * Mermaid のテーマを図ごとに既定（明るい配色）へ固定する指定。
+ *
+ * `initialize` のテーマはモジュール全体の状態であり、書き出しのために切り替えると画面の図まで描き直しになる。
+ * 図の先頭に置く指定は、その図にだけ効く。
+ */
+const LIGHT_DIRECTIVE = '%%{init: {"theme": "default"}}%%';
+
+/**
+ * 書き出し用の本文（`root`）にある図をすべて描く（F-VIEW-18）。
+ *
+ * `root` は画面とは別に描いた未処理の本文で、各図の中身は元の記述のままである。
+ * `light` のときは画面の配色に関係なく明るい配色で描く（PDF / docs/06.roadmap/m7-cli-os-export.md §4.4）。
+ * 描けなかった図はコードブロックとして残す（画面と同じ / N-REL-04）。
+ */
+export async function renderForExport(root: HTMLElement, light: boolean): Promise<void> {
+  for (const element of root.querySelectorAll<HTMLElement>('.mx-mermaid')) {
+    const source = element.textContent ?? '';
+    if (source.trim() === '') continue;
+
+    const cached = light ? undefined : cache.get(source);
+    if (cached !== undefined) {
+      element.innerHTML = cached;
+      continue;
+    }
+
+    sequence += 1;
+    const id = `mx-mermaid-${sequence}`;
+    // 1 図ずつ描く。Mermaid は描画のたびに `body` へ測定用の要素を置くため、並行すると片付けが干渉する（`removeScratch`）。
+    try {
+      // eslint-disable-next-line no-await-in-loop -- 上記
+      const mermaid = await load();
+      // eslint-disable-next-line no-await-in-loop -- 上記
+      const { svg } = await mermaid.render(id, light ? `${LIGHT_DIRECTIVE}\n${source}` : source);
+      element.innerHTML = sanitizeSvg(svg);
+    } catch {
+      fallbackToCodeBlock(element, source);
+    } finally {
+      removeScratch(id);
+    }
+  }
+}
+
+/**
  * 図を 1 つ描く。
  *
  * `await` を挟むため、同じ要素に対して 2 回実行されないよう先に印を付ける。

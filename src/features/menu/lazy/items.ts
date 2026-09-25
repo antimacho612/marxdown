@@ -88,6 +88,9 @@ const MENU: MenuSection[] = [
       // 保存（F-EDIT-02）。
       { id: 'save', command: 'document.save' },
       { id: 'save-as', command: 'document.saveAs' },
+      // エクスポート（F-VIEW-18）。保存と同じく、いま開いている文書をファイルへ書き出す操作の並びに置く。
+      { id: 'export-html', command: 'document.exportHtml' },
+      { id: 'export-pdf', command: 'document.exportPdf' },
       // 別ウィンドウで開く（F-OPEN-06）。ファイルを開く手段の並びに置く。
       { id: 'move-to-new-window', command: 'window.moveTab' },
     ],
