@@ -32,6 +32,7 @@ import {
 import { awaitPreviewTheme, enableThemeNotices, installPreviewThemeWatch, primePreviewTheme } from '@/features/theme';
 import { initSplit, initWindowRole, viewStore } from '@/features/view';
 import {
+  installEntryWatch,
   openPathInSatellite,
   openPathsInTabs,
   receiveTabLazily,
@@ -229,6 +230,7 @@ export async function startup(renderShell: () => void): Promise<void> {
   installTrayResume();
   installDragAndDrop();
   installFileWatch();
+  installEntryWatch();
   installSettingsWatch();
   installWindowState();
   // パースの結果そのものを変える設定（`preview.softBreak` と `markdown.*`）に追従して本文を再描画する。

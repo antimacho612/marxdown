@@ -24,6 +24,7 @@ import {
   openDocument,
   openPath,
   previewScrollTop,
+  relabelDocumentText,
   setDirty,
   toMeta,
   untitledPayload,
@@ -444,6 +445,31 @@ export async function cycleTab(delta: 1 | -1): Promise<boolean> {
 export async function selectTabAt(index: number): Promise<boolean> {
   const target = tabsStore.tabs[index - 1];
   return target === undefined ? false : activateTab(target.id);
+}
+
+/**
+ * リネーム・移動されたファイルのタブを付け替える（ファイルツリー / ADR-0020）。
+ *
+ * 未保存の変更と Undo 履歴はそのまま残し、次の保存は新しいパスへ書く。
+ * 表示中のタブは監視も新しいパスへ移す（前のパスの監視は Rust 側で解除される）。
+ * 閉じたタブの記録（`Ctrl+Shift+T`）も付け替える。
+ */
+export function relocateTabs(relocate: (path: string) => string | null): void {
+  for (const tab of tabsStore.tabs) {
+    const meta = tabMeta(tab);
+    if (meta.path === null) continue;
+    const next = relocate(meta.path);
+    if (next === null) continue;
+
+    tab.meta = { ...meta, path: next };
+    relabelDocumentText(tab.id, next);
+    if (tab.id !== tabsStore.activeId || tab.id !== tabsStore.loadedId || documentStore.meta === null) continue;
+    documentStore.meta = { ...documentStore.meta, path: next };
+    void getPlatform()
+      .watchPath(next)
+      .catch(() => {});
+  }
+  for (const entry of closed) entry.path = relocate(entry.path) ?? entry.path;
 }
 
 /** テスト用。一覧と採番を初期状態に戻す。 */

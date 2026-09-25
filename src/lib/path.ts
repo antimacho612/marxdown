@@ -47,6 +47,24 @@ export function isAbsolutePath(path: string): boolean {
 }
 
 /**
+ * `path` が `from` かその配下なら、`to` へ付け替えたパスを返す。どちらでもなければ `null`。
+ *
+ * ファイルツリーでリネーム・移動したとき、開いているタブと履歴のパスを付け替えるために使う（ADR-0020）。
+ * 比較はパスの区切りの位置で行い、`C:\a\doc` を `C:\a\docs` の配下と取り違えない。
+ * Windows のパスは大文字と小文字を区別しない（`src-tauri/src/fsops.rs` の `relocate` と同じ規則）。
+ */
+export function relocatePath(path: string, from: string, to: string): string | null {
+  const insensitive = /^[a-z]:[\\/]/i.test(from) || from.startsWith('\\\\');
+  const same = (a: string, b: string): boolean => (insensitive ? a.toLowerCase() === b.toLowerCase() : a === b);
+
+  if (same(path, from)) return to;
+  const base = from.replace(/[\\/]+$/, '');
+  const separator = path.charAt(base.length);
+  if ((separator !== '\\' && separator !== '/') || !same(path.slice(0, base.length), base)) return null;
+  return to + path.slice(base.length);
+}
+
+/**
  * Marxdown が自分で開く拡張子（F-VIEW-05）。この判断の唯一の置き場所。
  *
  * クイックオープン（F-NAV-05）は候補を集める段で絞り込む必要があるため、この一覧を Rust へ渡す（`platform/tauri.ts` の `listFiles` / `src-tauri/src/dir.rs`）。
