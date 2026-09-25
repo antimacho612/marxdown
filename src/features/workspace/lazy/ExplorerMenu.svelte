@@ -11,7 +11,7 @@
   見た目とキー操作はタブの右クリックメニュー（`TabMenu.svelte`）に揃える。
 -->
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount, tick } from 'svelte';
 
   import { jaExplorer } from '@/i18n/ja-explorer';
   import { splitPath } from '@/lib/path';
@@ -154,12 +154,14 @@
     list[(index + step + list.length) % list.length]?.focus();
   }
 
-  onMount(() => {
+  onMount(async () => {
     const box = panel.getBoundingClientRect();
     placed = {
       left: Math.max(EDGE_MARGIN, Math.min(x, globalThis.innerWidth - box.width - EDGE_MARGIN)),
       top: Math.max(EDGE_MARGIN, Math.min(y, globalThis.innerHeight - box.height - EDGE_MARGIN)),
     };
+    // 位置が決まるまでは `visibility: hidden` で、その間の `focus()` は無視される。表示に切り替わってから移す。
+    await tick();
     buttons()[0]?.focus();
   });
 
