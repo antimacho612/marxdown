@@ -20,7 +20,7 @@ import {
 import { mountEditorLazily, preloadEditor, setSplitSyncLazily } from '@/features/editor';
 import { configureHistory } from '@/features/history';
 import { decideInitialMode, initMode } from '@/features/mode';
-import { initPanes } from '@/features/panes';
+import { initPanes, openLeftPane } from '@/features/panes';
 import { applyZoom, installLinkHandler, installTaskHandler, installWheelZoom } from '@/features/preview';
 import {
   enabledSyntax,
@@ -30,7 +30,7 @@ import {
   settingsStore,
 } from '@/features/settings';
 import { awaitPreviewTheme, enableThemeNotices, installPreviewThemeWatch, primePreviewTheme } from '@/features/theme';
-import { initSplit, initWindowRole, viewStore } from '@/features/view';
+import { initSplit, initWindowRole, isSatellite, viewStore } from '@/features/view';
 import {
   installEntryWatch,
   openPathInSatellite,
@@ -41,6 +41,7 @@ import {
   restoreTransferredState,
   setTreeRoot,
   takeTabTransfer,
+  treeDropHandler,
   watchSession,
   workspaceOpenerHooks,
   type TabTransfer,
@@ -497,21 +498,29 @@ function installOpenRequestHandler(): void {
  *
  * ドロップ先の表示は `data-mx-dragover` 属性 1 つで表す。
  * Svelte を通さないのは、ドラッグ中に `over` が毎フレーム発火するためである（ADR-0005 と同じ判断）。
+ *
+ * ファイルツリーの上に落とされたものは、ツリーがそのフォルダへ複製する（F-NAV-13 / `treeDropHandler`）。
+ * そのときは画面全体の表示を出さず、ツリーが落とす先のフォルダを強調する。
  */
 function installDragAndDrop(): void {
   const root = document.documentElement;
 
   getPlatform().onDragDrop((event) => {
+    const tree = treeDropHandler();
     if (event.type === 'over') {
-      root.dataset['mxDragover'] = 'true';
+      if (tree?.over(event.x, event.y) === true) delete root.dataset['mxDragover'];
+      else root.dataset['mxDragover'] = 'true';
       return;
     }
 
     delete root.dataset['mxDragover'];
-    if (event.type !== 'drop') return;
+    if (event.type !== 'drop') {
+      tree?.leave();
+      return;
+    }
+    if (tree?.drop(event.paths, event.x, event.y) === true) return;
 
-    // ドロップされた数だけタブを開く（F-OPEN-08）。
-    void openPathsInTabs(event.paths);
+    void openDropped(event.paths);
   });
 
   // 他のウィンドウから引き出されたタブがこの上に来た（OQ-43）。
@@ -520,6 +529,33 @@ function installDragAndDrop(): void {
     if (over) root.dataset['mxDragover'] = 'true';
     else delete root.dataset['mxDragover'];
   });
+}
+
+/**
+ * ツリーの外に落とされたものを開く。ファイルはタブで開き（F-OPEN-08）、フォルダはファイルツリーの基点として開く（F-NAV-13）。
+ *
+ * どちらなのかはフロントからは分からないため、フォルダとして許可を求めて断られたものをファイルとして扱う。
+ * サテライトはファイルツリーを持たないので、すべてファイルとして扱う。
+ */
+async function openDropped(paths: readonly string[]): Promise<void> {
+  const platform = getPlatform();
+  const files: string[] = [];
+  for (const path of paths) {
+    if (isSatellite()) {
+      files.push(path);
+      continue;
+    }
+    try {
+      // eslint-disable-next-line no-await-in-loop -- 基点は 1 つしか持てず、後に落としたフォルダが勝つ順序を保つ
+      const folder = await platform.openDroppedFolder(path);
+      // eslint-disable-next-line no-await-in-loop -- 同上
+      await setTreeRoot(folder);
+      openLeftPane();
+    } catch {
+      files.push(path);
+    }
+  }
+  if (files.length > 0) await openPathsInTabs(files);
 }
 
 function describeError(kind: string, path: string, fallback: string): string {

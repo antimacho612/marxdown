@@ -78,8 +78,9 @@ function dispatch(event: KeyboardEvent): void {
  *
  * `metaKey` を Ctrl と同一視しているのは、Windows を第一優先としたまま macOS でも動作させるためである。
  * macOS 固有の割り当ては macOS ビルド（F-OS-07）で扱う。
+ * ウィジェット内のキー（ファイルツリーの `F2` など / `features/workspace/lazy/tree-keys.ts`）も同じ表記で判定する。
  */
-function comboOf(event: KeyboardEvent): string {
+export function comboOf(event: KeyboardEvent): string {
   const key = canonicalKey(event.key);
   const parts: string[] = [];
   if (event.ctrlKey || event.metaKey) parts.push('Ctrl');

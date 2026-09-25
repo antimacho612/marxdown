@@ -3,7 +3,7 @@
 
   遅延チャンク側にある。ペインを開くまで読み込まない（`ExplorerBody.svelte`）。
 
-  現在はフィルターの 2 つだけだが、表示の更新などツリーへの操作もここに並べる。
+  並びは「作る」「絞る」「表示を整える」の 3 群で、群の間に区切りを置く（03.ux-spec/06-panes.md §1.1）。
   ボタンの見た目は `mx-etoolbar__button` に集約してあり、増やすときは要素を追加するだけでよい。
 
   文字ラベルは置かない。ペインは 180px まで狭くなるため、操作が増えた分だけ折り返しで縦に伸びる。
@@ -11,9 +11,11 @@
 -->
 <script lang="ts">
   import { ja } from '@/i18n/ja';
+  import { jaExplorer } from '@/i18n/ja-explorer';
   import Icon from '@/lib/Icon.svelte';
 
-  import { treeStore } from '../tree.svelte';
+  import { collapseAll, reloadTree, treeStore } from '../tree.svelte';
+  import { startCreate } from './actions';
   import { filterStore } from './filter.svelte';
 
   /** 拡張子フィルターが有効な間、Markdown フィルターは表示を変えない（`filter.svelte.ts`）。 */
@@ -126,6 +128,37 @@
     bind:this={row}
     onkeydown={onKeyDown}
   >
+    <button
+      type="button"
+      class="mx-etoolbar__button"
+      aria-label={jaExplorer.newFile}
+      title={jaExplorer.newFile}
+      onclick={() => void startCreate(false)}
+    >
+      <Icon name="document-plus" />
+    </button>
+
+    <button
+      type="button"
+      class="mx-etoolbar__button"
+      aria-label={jaExplorer.newFolder}
+      title={jaExplorer.newFolder}
+      onclick={() => void startCreate(true)}
+    >
+      <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" focusable="false">
+        <path
+          d="M2.4 4.2h4l1.3 1.5h5.9v6.9H2.4Z M8 7.6v3.4 M6.3 9.3h3.4"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.5"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        />
+      </svg>
+    </button>
+
+    <span class="mx-etoolbar__separator" aria-hidden="true"></span>
+
     <!--
       押せなくするのではなく `aria-disabled` にしてある。
       `disabled` はフォーカスを受けられなくなるため、キーボードだけでは機能しない理由を読み取る手段が無くなる。
@@ -171,6 +204,50 @@
         />
       </svg>
     </button>
+
+    <span class="mx-etoolbar__separator" aria-hidden="true"></span>
+
+    <!-- 監視が届かない場所（ネットワークドライブなど）のために置く（ADR-0021）。 -->
+    <button
+      type="button"
+      class="mx-etoolbar__button"
+      aria-label={jaExplorer.refresh}
+      title={jaExplorer.refresh}
+      onclick={() => void reloadTree()}
+    >
+      <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" focusable="false">
+        <path
+          d="M12.9 7.2A5 5 0 1 0 11.6 11.5 M13.2 3.4v3.9H9.3"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.5"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        />
+      </svg>
+    </button>
+
+    <button
+      type="button"
+      class="mx-etoolbar__button"
+      aria-label={jaExplorer.collapseAll}
+      title={jaExplorer.collapseAll}
+      onclick={() => {
+        collapseAll();
+        resetTreeFocus();
+      }}
+    >
+      <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" focusable="false">
+        <path
+          d="M3.4 2.6h9.2v10.8H3.4Z M5.8 8h4.4"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.5"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        />
+      </svg>
+    </button>
   </div>
 
   {#if filterStore.extensionsOpen}
@@ -204,6 +281,14 @@
     display: flex;
     flex-wrap: wrap;
     gap: var(--mx-space-1);
+  }
+
+  .mx-etoolbar__separator {
+    align-self: center;
+    width: 1px;
+    height: 14px;
+    margin-inline: 2px;
+    background: var(--mx-color-border-subtle);
   }
 
   .mx-etoolbar__button {
