@@ -246,10 +246,6 @@ export const tauriPlatform: Platform = {
     return invoke<string | null>('take_transfer', { id });
   },
 
-  openNewInstance(options = {}) {
-    return invoke<void>('open_new_instance', { paths: options.paths ?? [] });
-  },
-
   sendTabToWindow(target, handoff) {
     return invoke<void>('move_tab_to_window', {
       target,

@@ -37,11 +37,6 @@ pub enum PathOp {
 pub struct CliArgs {
     /// 絶対パスに解決済み。存在確認はまだ行っていない。
     pub paths: Vec<PathBuf>,
-    /// `-n` / `--new-window`。独立したプロセスで開く（F-OPEN-06）。
-    ///
-    /// 既に所有者がいる場合、このプロセスは single-instance プラグインを登録せず、argv も転送しない（`instance.rs`）。
-    /// 同じプロセスの中に窓を増やすのはサテライト（`crate::open_satellite`）であり、こちらとは別の経路である。
-    pub new_window: bool,
     pub mode: Option<ViewMode>,
     /// `--trace-startup <path>`。`nul` / `/dev/null` は「計測はするが書き出さない」。
     pub trace_startup: Option<PathBuf>,
@@ -77,7 +72,6 @@ USAGE:
     marxdown [OPTIONS] [FILE|DIR]...
 
 OPTIONS:
-    -n, --new-window           既存プロセスに相乗りせず、新しいプロセスで開く
     -m, --mode <MODE>          起動時の表示モード: preview | edit | split
         --trace-startup <OUT>  起動計測を有効にし、JSON を OUT へ書き出す
                                OUT に nul を指定すると計測のみ行い書き出さない
@@ -139,7 +133,6 @@ pub fn parse(argv: &[String], cwd: &Path) -> CliArgs {
             "--" => only_paths = true,
             "-h" | "--help" => args.show_help = true,
             "-V" | "--version" => args.show_version = true,
-            "-n" | "--new-window" => args.new_window = true,
             "--exit-after-trace" => args.exit_after_trace = true,
             "--gc-probe" => args.gc_probe = true,
             "--add-to-path" => args.path_op = Some(PathOp::Add),
@@ -258,10 +251,15 @@ mod tests {
         assert_eq!(a.unknown.len(), 1);
     }
 
+    /// 廃止した `-n` / `--new-window` は、黙って無視せず未知の引数として知らせる（ADR-0019）。
     #[test]
-    fn parses_new_window_flag() {
-        assert!(args(&["-n", "a.md"]).new_window);
-        assert!(args(&["--new-window"]).new_window);
+    fn retired_new_window_flag_is_unknown() {
+        let a = args(&["-n", "--new-window", "a.md"]);
+        assert_eq!(
+            a.unknown,
+            vec!["-n".to_string(), "--new-window".to_string()]
+        );
+        assert_eq!(a.paths, vec![cwd().join("a.md")]);
     }
 
     #[test]
@@ -315,7 +313,7 @@ mod tests {
         let a = args(&["--", "--mode", "-n"]);
         assert_eq!(a.paths.len(), 2);
         assert_eq!(a.mode, None);
-        assert!(!a.new_window);
+        assert!(a.unknown.is_empty());
     }
 
     #[test]

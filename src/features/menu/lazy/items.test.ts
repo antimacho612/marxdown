@@ -60,8 +60,8 @@ describe('ハンバーガーメニューの項目 (03.ux-spec/01-screen-layout.m
     const groups = buildMenu();
 
     // 「新規ファイル」「設定」「終了」は文書に依存しないので、ここでも押せる。
-    // 新しいウィンドウは文書に依存しない（空のウィンドウが開く）。タブを移す操作は開いているときだけ。
-    expect(ids(groups)).toEqual(['open', 'open-folder', 'new', 'new-window', 'palette', 'settings', 'quit']);
+    // タブを別ウィンドウへ移す操作は開いているときだけ。
+    expect(ids(groups)).toEqual(['open', 'open-folder', 'new', 'palette', 'settings', 'quit']);
     expect(group(groups, 'document')).toBeUndefined();
     expect(group(groups, 'zoom')).toBeUndefined();
   });
@@ -75,7 +75,6 @@ describe('ハンバーガーメニューの項目 (03.ux-spec/01-screen-layout.m
       'new',
       'save',
       'save-as',
-      'new-window',
       'move-to-new-window',
       'mode',
       'split',

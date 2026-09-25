@@ -87,8 +87,6 @@ export const ja = {
     new: '新規ファイル',
     open: 'ファイルを開く',
     openFolder: 'フォルダを開く',
-    /** 空の新しいウィンドウ（`Ctrl+Alt+N` / F-OPEN-06）。 */
-    newWindow: '新しいウィンドウ',
     /** いま見ているタブを別ウィンドウへ移す（F-OPEN-06）。 */
     moveToNewWindow: '別ウィンドウで開く',
     /** サテライトのタブをメインウィンドウへ戻す（OQ-43）。 */

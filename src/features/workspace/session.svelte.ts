@@ -49,7 +49,7 @@ export async function restoreSession(paths: readonly string[], active: number): 
  */
 export function watchSession(): () => void {
   // サテライトでは何も書かない。解除の形だけ揃えて返す。
-  // 独立プロセスからの書き込みは Rust 側でも拒否しているが（`store_set_session`）、無駄な IPC を出さないためにここでも見る。
+  // サテライトからの書き込みは Rust 側でも拒否しているが（`store_set_session`）、無駄な IPC を出さないためにここでも見る。
   if (isSatellite()) return noop;
 
   return $effect.root(() => {

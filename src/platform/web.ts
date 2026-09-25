@@ -656,11 +656,6 @@ export const webPlatform: Platform = {
     return null;
   },
 
-  // ブラウザにはプロセスが無い。
-  async openNewInstance() {
-    console.info('[marxdown] openNewInstance（ブラウザでは何も起きない）');
-  },
-
   // ブラウザには渡す先のウィンドウが無い。
   // 失敗させるのは、成功扱いにすると呼び出し側が元のタブを閉じてしまうためである。
   async sendTabToWindow(target) {

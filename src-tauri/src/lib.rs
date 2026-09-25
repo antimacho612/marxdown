@@ -19,7 +19,6 @@ mod document;
 pub mod drag_ghost;
 pub mod error;
 pub mod glob;
-pub mod instance;
 pub mod path_env;
 pub mod scope;
 pub mod settings;
@@ -110,9 +109,6 @@ pub fn target_window<R: tauri::Runtime>(app: &tauri::AppHandle<R>) -> String {
 ///
 /// 生成したウィンドウのラベルを返す。
 /// タブと本文だけを持つウィンドウで、ファイルツリーもアウトラインもハンバーガーメニューも持たない（[`bootstrap::WindowRole`]）。
-///
-/// 別プロセスで開く `--new-window` とは別物である。
-/// あちらは独立した `main` のウィンドウで、こちらは同じプロセスの中の従属した 1 枚である。
 ///
 /// ウィンドウを作る手順そのものは起動時の 1 枚目と同じ `window::create` である。
 /// 違うのは 2 点だけで、`CliArgs` を argv ではなく引数から組み立てることと、前回のタブを復元しないことである。
@@ -355,18 +351,6 @@ pub fn run() {
             .map(|d| format!("{} bytes, inlined={}", d.meta.size, d.content.is_some())),
     );
 
-    // このプロセスが単一インスタンスの所有者になるか（F-OPEN-06 / `instance.rs`）。
-    //
-    // `--new-window` は「既存プロセスに相乗りしない」という指定である。
-    // 既に所有者がいるなら、single-instance プラグインを登録しないことで独立したプロセスとして起動する。
-    // いなければ通常どおり登録して所有者になる。所有者不在のプロセスを作らないためである。
-    let standalone = args.new_window && instance::is_running(&context.config().identifier);
-    let role = if standalone {
-        state::InstanceRole::Standalone
-    } else {
-        state::InstanceRole::Owner
-    };
-
     let state = state::AppState::new(
         args,
         trace,
@@ -378,7 +362,6 @@ pub fn run() {
             settings: settings_path,
             themes: themes_dir,
         },
-        role,
     );
 
     let mut builder = tauri::Builder::default();
@@ -386,7 +369,7 @@ pub fn run() {
     // 単一インスタンス化は他のどのプラグインよりも先に登録する必要がある。
     // 2 番目のプロセスは、ここでコールバックを実行したあと即座に終了する。
     #[cfg(desktop)]
-    if !standalone {
+    {
         builder = builder.plugin(tauri_plugin_single_instance::init(|app, argv, cwd| {
             // W0。argv 転送を受けた瞬間。ここから「本文が読める」までがウォーム起動。
             let request_id = app.state::<state::AppState>().begin_warm();
@@ -401,8 +384,6 @@ pub fn run() {
                 .map(|p| p.display().to_string())
                 .collect::<Vec<_>>();
 
-            // `--new-window` はここへ来ない（F-OPEN-06）。
-            // 転送元のプロセスが single-instance プラグインを登録しないため、そのまま独立したプロセスとして起動している。
             let request = OpenRequest {
                 request_id,
                 paths,
@@ -455,7 +436,6 @@ pub fn run() {
             commands::window_is_maximized,
             commands::set_snap_layouts_target,
             commands::open_satellite,
-            commands::open_new_instance,
             commands::stash_transfer,
             commands::take_transfer,
             commands::move_tab_to_window,

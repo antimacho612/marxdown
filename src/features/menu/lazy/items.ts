@@ -89,8 +89,6 @@ const MENU: MenuSection[] = [
       { id: 'save', command: 'document.save' },
       { id: 'save-as', command: 'document.saveAs' },
       // 別ウィンドウで開く（F-OPEN-06）。ファイルを開く手段の並びに置く。
-      // 新しいウィンドウはファイルを開いていなくても作れるが、タブを移すのは開いているときだけである。
-      { id: 'new-window', command: 'window.new' },
       { id: 'move-to-new-window', command: 'window.moveTab' },
     ],
   },

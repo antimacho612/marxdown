@@ -593,15 +593,6 @@ export interface Platform {
    */
   takeTransfer(id: number): Promise<string | null>;
   /**
-   * 独立したプロセスで開く（F-OPEN-06）。
-   *
-   * 自分自身を `-n` 付きで起動する。開いた先はフルシェルの `main` を持つ別のインスタンスで、状態を一切共有しない。
-   * `paths` を省略すると引数なしの起動になる。
-   *
-   * 起動の完了は待たない。返った時点ではまだウィンドウは出ていない。
-   */
-  openNewInstance(options?: { paths?: string[] }): Promise<void>;
-  /**
    * タブを既にあるウィンドウへ移す（OQ-43）。
    *
    * 渡すものはサテライトへ移すときと同じで、`paths` か `transfer` のどちらか一方である。

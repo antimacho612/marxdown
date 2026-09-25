@@ -211,14 +211,9 @@ fn ask_then_quit<R: Runtime>(app: AppHandle<R>) {
 /// `true` を返したら呼び出し側が `prevent_close()` する。
 /// ここで直接止めないのは、`CloseRequested` の `api` を持ち回すとこの関数がイベント型に依存し、テストから呼べなくなるためである。
 pub fn on_close_requested<R: Runtime>(app: &AppHandle<R>, label: &str) -> bool {
-    let owner = app
-        .try_state::<AppState>()
-        .map(|s| s.owns_instance())
-        .unwrap_or(true);
-
-    // ウィンドウ位置を記録するのは、所有者プロセスの主ウィンドウの分だけである（F-CONF-10 / ADR-0016）。
-    // 追加ウィンドウは閉じたら消え、独立プロセスの矩形を書くと所有者側の値を上書きしてしまう。
-    if owner && label == MAIN_LABEL {
+    // ウィンドウ位置を記録するのは主ウィンドウの分だけである（F-CONF-10 / ADR-0016）。
+    // サテライトは閉じたら消えるため、覚えても次に使う場面が無い。
+    if label == MAIN_LABEL {
         save_window_state(app);
     }
 
@@ -229,10 +224,9 @@ pub fn on_close_requested<R: Runtime>(app: &AppHandle<R>, label: &str) -> bool {
 
     // ここから下は「最後の 1 枚」である。閉じた先はトレイ格納か、プロセスの終了しかない。
 
-    // トレイに常駐するのは、所有者プロセスの主ウィンドウだけである（ADR-0016 §3.5）。
-    // 独立プロセス（`--new-window`）とサテライトは常駐しない。
-    // 常駐させると、閉じたつもりのプロセスが増え続け、トレイから戻したときに出てくる窓も一定しない。
-    if owner && label == MAIN_LABEL && stashes_on_close(app) {
+    // トレイに常駐するのは主ウィンドウだけである（ADR-0016 §3.5）。
+    // サテライトまで常駐させると、トレイから戻したときに出てくる窓が一定しない。
+    if label == MAIN_LABEL && stashes_on_close(app) {
         // 初回だけ、`✕` の意味が変わることを説明する（論点 4）。
         //
         // 03.ux-spec/07-status-and-notifications.md §2 は「モーダルはデータ消失の可能性がある場面だけ」としており、これはその例外にあたる。
