@@ -12,6 +12,8 @@
 速さは目標ではなく予算である。
 その内側で、読む・書く体験の質に投資する（[ADR-0008](docs/adr/0008-value-priority.md)）。
 
+![Split 表示。左のエディターで Markdown を編集し、右のプレビューに表・コード・数式・Mermaid の図が描画されている](assets/screenshot.png)
+
 ## 何を解こうとしているか
 
 LLM が Markdown を生成し、それをすぐ確認する。
