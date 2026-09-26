@@ -155,10 +155,13 @@ describe('2 枚目以降のタブ', () => {
 
     await startup(() => {});
 
+    // 並び順とアクティブなタブを同じ待機の中で見る。
+    // 並びは最後のタブ（c.md）を挿入した時点で揃うが、その時点ではまだ c.md がアクティブであり、b.md へ戻るのは c.md を開き終えた後である。
+    // 並び順だけを待ってから検査すると、c.md の読み込みが遅れた場合に中間の状態を検査してしまう。
     await vi.waitFor(() => {
       expect(tabsStore.tabs.map((tab) => tab.meta.path)).toEqual(['C:/notes/a.md', 'C:/notes/b.md', 'C:/notes/c.md']);
+      expect(tabsStore.active?.meta.path).toBe('C:/notes/b.md');
     });
-    expect(tabsStore.active?.meta.path).toBe('C:/notes/b.md');
   });
 });
 
