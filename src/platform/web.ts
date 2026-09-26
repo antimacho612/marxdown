@@ -15,6 +15,7 @@ import {
   DEFAULT_PANES,
   SPLIT_DEFAULT,
   type Bootstrap,
+  type CoreError,
   type DiscardChoice,
   type DocumentPayload,
   type OpenRequest,
@@ -609,6 +610,27 @@ export const webPlatform: Platform = {
     const base = suggested === null ? 'untitled.md' : splitPath(suggested).name || 'untitled.md';
     const name = globalThis.prompt('保存先のファイル名（dev:web の仮想 FS）', base);
     return name === null || name.trim() === '' ? null : `/virtual/${name.trim()}`;
+  },
+
+  /** ブラウザのダウンロードとして書き出す。保存先は選べない。 */
+  async exportHtml(html, suggested) {
+    const name = `${(suggested === null ? 'untitled' : splitPath(suggested).name).replace(/\.[^.]*$/, '')}.html`;
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(new Blob([html], { type: 'text/html' }));
+    link.download = name;
+    link.click();
+    URL.revokeObjectURL(link.href);
+    return name;
+  },
+
+  /** ブラウザには PDF を直接書き出す手段が無い。呼び出し側が `window.print()` で代用する。 */
+  async exportPdf() {
+    throw { kind: 'invalid-argument', message: 'dev:web では PDF を直接書き出せない' } satisfies CoreError;
+  },
+
+  /** dev:web の画像は元から data URI か外部の URL である。 */
+  async inlineImage(src) {
+    return src;
   },
 
   /**

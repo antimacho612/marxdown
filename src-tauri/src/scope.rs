@@ -45,9 +45,9 @@ fn component_eq(a: &Component, b: &Component) -> bool {
 ///
 /// 正規化に失敗した場合（存在しないパス）は拒否する。
 /// アセット解決は既存ファイルを指すはずであり、存在しないものを通す理由がない。
+/// 絶対パスでないもの（`C:` / `C:foo` / `\foo` を含む）も拒否する（[`canonicalize_absolute`]）。
 pub fn resolve_within(roots: &[PathBuf], candidate: &Path) -> CoreResult<PathBuf> {
-    let resolved = dunce::canonicalize(candidate)
-        .map_err(|_| CoreError::NotFound(candidate.display().to_string()))?;
+    let resolved = canonicalize_absolute(candidate)?;
 
     for root in roots {
         // root 自身も symlink である可能性があるため、毎回解決する
@@ -71,8 +71,7 @@ pub fn resolve_within(roots: &[PathBuf], candidate: &Path) -> CoreResult<PathBuf
 /// 再帰しないことが防御の要である。
 /// ボタン 1 つで木が丸ごと開くなら、`![](../../../.ssh/id_rsa)` に対する防御は形骸化する。
 pub fn resolve_in_dirs(dirs: &[PathBuf], candidate: &Path) -> CoreResult<PathBuf> {
-    let resolved = dunce::canonicalize(candidate)
-        .map_err(|_| CoreError::NotFound(candidate.display().to_string()))?;
+    let resolved = canonicalize_absolute(candidate)?;
     let Some(parent) = resolved.parent() else {
         return Err(CoreError::OutOfScope(resolved.display().to_string()));
     };
@@ -89,6 +88,21 @@ pub fn resolve_in_dirs(dirs: &[PathBuf], candidate: &Path) -> CoreResult<PathBuf
     }
 
     Err(CoreError::OutOfScope(resolved.display().to_string()))
+}
+
+/// 絶対パスだけを正規化する。
+///
+/// 相対パスを `canonicalize` に渡すと、プロセスのカレントディレクトリを基準に解決される。
+/// 呼び出し元の意図とは無関係な場所を指すことになるため、正規化の前に拒否する。
+/// NOTE: Windows では `C:`（ドライブのカレントディレクトリ）と `\foo`（カレントドライブのルート基準）も相対パスとして扱われる。
+fn canonicalize_absolute(candidate: &Path) -> CoreResult<PathBuf> {
+    if !candidate.is_absolute() {
+        return Err(CoreError::InvalidArgument(format!(
+            "絶対パスではない: {}",
+            candidate.display()
+        )));
+    }
+    dunce::canonicalize(candidate).map_err(|_| CoreError::NotFound(candidate.display().to_string()))
 }
 
 #[cfg(test)]
@@ -209,6 +223,30 @@ mod tests {
 
         std::fs::remove_dir_all(&base).ok();
         std::fs::remove_file(base.join("..").join("marxdown-scope-flat-outside.png")).ok();
+    }
+
+    /// 相対パスはカレントディレクトリ基準で解決されるため、許可ディレクトリの内側を指していても拒否する。
+    #[test]
+    fn a_relative_path_is_rejected_before_resolution() {
+        let dir = std::env::temp_dir();
+        let roots = vec![dir.clone()];
+        for candidate in ["a.png", "."] {
+            let err = resolve_within(&roots, Path::new(candidate)).unwrap_err();
+            assert_eq!(err.kind(), "invalid-argument");
+            let err = resolve_in_dirs(&roots, Path::new(candidate)).unwrap_err();
+            assert_eq!(err.kind(), "invalid-argument");
+        }
+    }
+
+    /// `C:` は C ドライブのルートではなくカレントディレクトリを指す。
+    #[cfg(windows)]
+    #[test]
+    fn a_drive_relative_path_is_rejected() {
+        let roots = vec![PathBuf::from(r"C:\")];
+        for candidate in [r"C:", r"C:Windows", r"\Windows"] {
+            let err = resolve_within(&roots, Path::new(candidate)).unwrap_err();
+            assert_eq!(err.kind(), "invalid-argument");
+        }
     }
 
     #[test]

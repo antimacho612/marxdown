@@ -230,6 +230,9 @@ export const SETTINGS_SCHEMA = defineSettingsSchema({
 
   /** `✕` で閉じたときにトレイへ格納するか（ADR-0007）。false ならプロセスを終了する。 */
   'window.closeToTray': { kind: 'boolean', default: true },
+
+  /** ログイン時にトレイへ常駐した状態で起動するか（ADR-0020）。`window.closeToTray` が false のときは効果が無い。 */
+  'window.launchAtLogin': { kind: 'boolean', default: false },
 });
 
 type Schema = typeof SETTINGS_SCHEMA;

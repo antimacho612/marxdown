@@ -23,6 +23,8 @@ export type CommandId =
   | 'document.reload'
   | 'document.save'
   | 'document.saveAs'
+  | 'document.exportHtml'
+  | 'document.exportPdf'
   | 'document.toggleEol'
   | 'editor.gotoLine'
   | 'editor.formatTable'

@@ -56,6 +56,8 @@ export const COMMAND_CATALOG: CommandEntry[] = [
   { id: 'document.reload', label: ja.menu.reload, keywords: 'reload revert file', shortcut: 'F5' },
   { id: 'document.save', label: ja.menu.save, keywords: 'save file write', shortcut: 'Ctrl+S' },
   { id: 'document.saveAs', label: ja.menu.saveAs, keywords: 'save as file write', shortcut: 'Ctrl+Shift+S' },
+  { id: 'document.exportHtml', label: ja.menu.exportHtml, keywords: 'export html save write' },
+  { id: 'document.exportPdf', label: ja.menu.exportPdf, keywords: 'export pdf print save write' },
   { id: 'document.toggleEol', label: ja.menu.toggleEol, keywords: 'toggle eol line ending newline crlf lf' },
 
   { id: 'window.moveTab', label: ja.menu.moveToNewWindow, keywords: 'move tab window satellite detach' },

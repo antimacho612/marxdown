@@ -15,9 +15,18 @@ export function splitPath(path: string): { dir: string; name: string } {
   return { dir: path.slice(0, index), name: path.slice(index + 1) };
 }
 
-/** 親ディレクトリ。相対パスの基準に使う。 */
+/**
+ * 親ディレクトリ。相対パスの基準やファイルツリーの基点に使う。
+ *
+ * ルート直下のファイルではルートそのもの（`C:\` / `/`）を返す。
+ */
 export function dirOf(path: string): string {
-  return splitPath(path).dir;
+  const { dir } = splitPath(path);
+  // NOTE: `C:` はドライブのルートではなく C ドライブのカレントディレクトリを指す。
+  // Rust 側で正規化するとプロセスの cwd に解決され、無関係なフォルダが基点になる。
+  if (/^[a-z]:$/i.test(dir)) return path.slice(0, dir.length + 1);
+  if (dir === '' && /^[\\/]/.test(path)) return path.charAt(0);
+  return dir;
 }
 
 /**

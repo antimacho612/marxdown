@@ -28,6 +28,7 @@ export {
   configureOpener,
   describeOpenError,
   externalOpenActions,
+  getParseOptions,
   getParser,
   openDocument,
   openPath,

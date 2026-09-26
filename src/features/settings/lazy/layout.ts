@@ -120,6 +120,13 @@ export const LAYOUT = [
         label: ja.settings.window.closeToTray.label,
         description: ja.settings.window.closeToTray.description,
       },
+      {
+        kind: 'field',
+        key: 'window.launchAtLogin',
+        widget: 'toggle',
+        label: ja.settings.window.launchAtLogin.label,
+        description: ja.settings.window.launchAtLogin.description,
+      },
     ],
   },
   {

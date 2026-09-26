@@ -213,6 +213,20 @@ export const tauriPlatform: Platform = {
     return invoke<string | null>('pick_save_path', { suggested });
   },
 
+  exportHtml(html, suggested) {
+    return invoke<string | null>('export_html', { html, suggested });
+  },
+
+  exportPdf(suggested) {
+    return invoke<string | null>('export_pdf', { suggested });
+  },
+
+  inlineImage(src) {
+    // `convertFileSrc` の逆。パスは URL のパス部分に 1 つのセグメントとしてエンコードされている。
+    const path = decodeURIComponent(new URL(src).pathname.slice(1));
+    return invoke<string>('inline_image', { path });
+  },
+
   setDirty(dirty) {
     return invoke<void>('set_dirty', { dirty });
   },
