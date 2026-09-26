@@ -6,7 +6,7 @@
  * 本文の DOM 再構築はパース本体よりコストが高いため、打鍵ごとには描かず打ち終わりを待つ（N-PERF-03）。
  * 本文は作り直さず、変わったブロックだけを差し替える（`preview/paint.ts` の `patch` / #159）。
  */
-import { enhance, patch } from '@/features/preview';
+import { enhance, paintMarp, patch } from '@/features/preview';
 import { takeEditorLead, viewStore } from '@/features/view';
 import { ja } from '@/i18n/ja';
 import { toMessage } from '@/lib/error';
@@ -214,7 +214,15 @@ async function renderOnce(): Promise<void> {
       // 差し替えた要素の高さが変わると、ブラウザのスクロールアンカーがプレビューの位置を補正して `scroll` が発火する。
       // 利用者の操作ではないため、主導権をエディター側に置いてエディターが打っている行から離れないようにする。
       takeEditorLead();
-      patch(container, parsed.blocks, parsed.frontMatter);
+      if (parsed.marp) {
+        // NOTE: スライドは差分更新せず全体を入れ直す。同じタスク内で入れ直すため、通常はスクロール位置が保たれる。
+        const scrollTop = container.scrollTop;
+        const { styleRejected } = await paintMarp(container, parsed.marp, dirOf(meta.path ?? ''));
+        if (container.scrollTop !== scrollTop) container.scrollTop = scrollTop;
+        if (styleRejected) documentStore.notice = { level: 'warning', message: ja.preview.marpStyleRejected };
+      } else {
+        patch(container, parsed.blocks, parsed.frontMatter);
+      }
     }
 
     documentStore.frontMatter = parsed.frontMatter;

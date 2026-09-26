@@ -23,6 +23,8 @@ import { taskListPlugin } from './plugins/task-list';
 import { LINE_HEAD } from './protocol';
 
 export { loadSyntax, SYNTAX_NAMES, type SyntaxName } from './plugins/syntax';
+export { extractOutline } from './plugins/line-map';
+export { mathPlugin } from './plugins/math';
 
 /** `render` の結果。HTML と、そこから導出した派生値をまとめて返す。 */
 export interface RenderResult {
@@ -260,4 +262,17 @@ export function renderChunks(
   if (pending.length > 0) chunks.push(pending.join(''));
 
   return { chunks, blocks, outline: extractOutline(tokens), frontMatter };
+}
+
+/**
+ * Marp の文書（Front Matter の最上位に `marp: true`）なら Front Matter を、そうでなければ `null` を返す（F-VIEW-17）。
+ *
+ * 判定は Marp for VS Code と同じである。
+ * YAML は解釈しない（`plugins/front-matter.ts` と同じ理由）。
+ * Front Matter で始まらない文書では、全行の分割（`splitFrontMatter`）を実行しない。
+ */
+export function marpFrontMatter(text: string): string | null {
+  if (!/^\u{FEFF}?---/u.test(text)) return null;
+  const { frontMatter } = splitFrontMatter(text);
+  return frontMatter !== null && /^marp[ \t]*:[ \t]*true[ \t]*(?:#.*)?$/m.test(frontMatter) ? frontMatter : null;
 }

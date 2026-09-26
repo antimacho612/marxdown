@@ -24,6 +24,21 @@ export interface ParseResult {
   parseMs: number;
   /** 文字数と読了時間（03.ux-spec/07-status-and-notifications.md §3）。本文を持っている側で数える。 */
   textStats: TextStats;
+  /**
+   * Marp の文書（Front Matter に `marp: true`）のときの描画結果（F-VIEW-17 / ADR-0023）。
+   *
+   * このとき `chunks` と `blocks` は空で、本文は `features/preview/marp.ts` が描く。
+   */
+  marp?: MarpRender;
+}
+
+/** Marp の文書の描画結果。HTML はサニタイズしていない。 */
+export interface MarpRender {
+  /** スライドごとの HTML。1 枚が `<svg data-marpit-svg>` 1 つにあたる。 */
+  slides: string[];
+  /** テーマと文書中の `<style>` をまとめた CSS。Marpit がスライドの中へ閉じ込めてある。 */
+  css: string;
+  outline: OutlineItem[];
 }
 
 /** 段階的描画の既定値。最初のチャンクがおよそ 1 画面分になるように選ぶ。 */

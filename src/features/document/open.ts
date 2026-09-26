@@ -5,7 +5,7 @@
  * 描いた HTML も Markdown テキストもこの層は保持せず（ADR-0005）、ストアへ渡すのはメタ情報・アウトライン・計測値などの派生値だけである。
  */
 import { pushHistory } from '@/features/history';
-import { enhance, paint, scrollToAnchor } from '@/features/preview';
+import { enhance, paint, paintMarp, scrollToAnchor } from '@/features/preview';
 import { ja } from '@/i18n/ja';
 import { toMessage } from '@/lib/error';
 import { dirOf } from '@/lib/path';
@@ -218,13 +218,18 @@ export async function openDocument(payload: StoredPayload, options: OpenOptions 
     const container = document.querySelector<HTMLElement>(PREVIEW_SELECTOR);
     if (!container) throw new Error(`${PREVIEW_SELECTOR} が見つからない`);
 
-    const result = paint(container, parsed.chunks, parsed.frontMatter, parsed.blocks);
+    const result = parsed.marp
+      ? await paintMarp(container, parsed.marp, dirOf(payload.path ?? ''))
+      : paint(container, parsed.chunks, parsed.frontMatter, parsed.blocks);
     if (options.resetScroll === true) container.scrollTop = 0;
     else if (options.restoreScroll !== undefined) container.scrollTop = options.restoreScroll;
 
     documentStore.frontMatter = parsed.frontMatter;
     documentStore.textStats = parsed.textStats;
-    documentStore.notice = null;
+    documentStore.notice =
+      'styleRejected' in result && result.styleRejected
+        ? { level: 'warning', message: ja.preview.marpStyleRejected }
+        : null;
 
     // 「読める」瞬間は DOM 挿入ではなく次のフレーム（05.performance-budget/05-operations.md §2）。
     await nextFrame();

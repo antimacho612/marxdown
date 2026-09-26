@@ -12,6 +12,7 @@ import { dirOf } from '@/lib/path';
 import { formatSrcset, parseSrcset } from '@/lib/srcset';
 import { getPlatform, type CoreError } from '@/platform';
 
+import { releaseMarp } from './marp';
 import { observeTables, releaseTables } from './table';
 
 /** 処理済みの印。2 回目の `enhance` はこれを見て未処理の要素だけを対象にする。 */
@@ -43,7 +44,7 @@ export function enhance(container: HTMLElement, options: EnhanceOptions): void {
 /**
  * 遅延チャンクが保持しているものを解放する（N-PERF-06）。
  *
- * 対象は Mermaid（`IntersectionObserver` と描画済み SVG のキャッシュ）と、表の幅の監視である。
+ * 対象は Mermaid（`IntersectionObserver` と描画済み SVG のキャッシュ）と、表の幅の監視と、Marp の背景画像の解決結果である。
  * Mermaid はロードされていなければ何もしない。
  *
  * `paint` のたびに呼んではいけない。
@@ -54,6 +55,7 @@ export function releasePreviewResources(): void {
   disposeMermaid?.();
   disposeMermaid = null;
   releaseTables();
+  releaseMarp();
 }
 
 /** ロード済みの Mermaid の解放関数。`main` から Mermaid を静的に辿らせないため、関数だけを保持する。 */

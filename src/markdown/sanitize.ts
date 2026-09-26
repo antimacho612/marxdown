@@ -21,7 +21,8 @@ const SCHEME = /^([a-z][a-z0-9+.-]*):/i;
 
 const ALLOWED_SCHEMES = new Set(['http', 'https', 'mailto', 'tel', 'asset', 'blob']);
 
-function isAllowedUri(value: string): boolean {
+/** URI が許可リストに入っているか。スキームの無いもの（相対パス）は許可する。 */
+export function isAllowedUri(value: string): boolean {
   const trimmed = value.trim();
   if (trimmed === '') return true;
   if (trimmed.startsWith('#')) return true; // ページ内アンカー
@@ -237,6 +238,24 @@ export function sanitizeMath(html: string): string {
   return DOMPurify.sanitize(html, {
     ...CONFIG,
     USE_PROFILES: { html: true, mathMl: true, svg: true, svgFilters: true },
+    FORBID_ATTR: ['formaction', 'ping'],
+  });
+}
+
+/**
+ * Marp のスライド 1 枚（`<section>`）をサニタイズする（F-VIEW-17 / ADR-0023 §3.3）。
+ *
+ * 本文用の設定から変えるのは `style` 属性だけである。
+ * Marp はディレクティブ（背景色・背景画像・ページ番号など）を `<section>` の `style` で表現しており、除去するとスライドの装飾が消える。
+ * `style` の中の `url()` は呼び出し側（`features/preview/lazy/marp.ts`）が `isAllowedUri` で検証する。
+ * `foreignObject` は通さない。SVG の枠は呼び出し側が組み直す。
+ * `<style>` も通さない。文書中の `<style>` は Marpit がテーマの CSS へまとめており、スライドの中には残らない。
+ */
+export function sanitizeMarp(html: string): string {
+  configure();
+  return DOMPurify.sanitize(html, {
+    ...CONFIG,
+    FORBID_TAGS: [...(CONFIG.FORBID_TAGS ?? []), 'style'],
     FORBID_ATTR: ['formaction', 'ping'],
   });
 }

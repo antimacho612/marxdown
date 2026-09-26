@@ -45,8 +45,26 @@ export function createParser(): MarkdownParser {
   return {
     async parse(text, options = {}) {
       const id = nextId++;
-      const { renderChunks, resetMarkdownIt, loadSyntax } = await pipeline;
+      const { renderChunks, resetMarkdownIt, loadSyntax, marpFrontMatter, mathPlugin, extractOutline } = await pipeline;
       const { measure } = await textStats;
+
+      const frontMatter = marpFrontMatter(text);
+      if (frontMatter !== null) {
+        // Marp の描画（F-VIEW-17）は `marp: true` の文書を開くまで読み込まない。
+        const { renderMarp } = await import('./marp');
+        const started = performance.now();
+        const rendered = renderMarp(text, { mathPlugin, extractOutline });
+        return {
+          id,
+          chunks: [],
+          blocks: [],
+          outline: rendered.outline,
+          frontMatter,
+          parseMs: performance.now() - started,
+          textStats: measure(text),
+          marp: rendered,
+        };
+      }
 
       // 追加記法は ON のものだけを動的 import する（`plugins/syntax.ts`）。
       // 既定では空であり、`loadSyntax` は何も読み込まずに返る。

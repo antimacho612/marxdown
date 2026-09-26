@@ -186,6 +186,7 @@ export const ja = {
     imageAllow: 'このフォルダの画像を許可',
     imageAllowHint: (dir: string) => `${dir} の直下だけを、アプリを終了するまで許可します`,
     imageAllowFailed: '許可できませんでした',
+    marpStyleRejected: 'Marp のスタイルをスライドの中に収められないため適用していません',
   },
 
   search: {
@@ -459,6 +460,7 @@ export const ja = {
     done: (path: string) => `書き出しました: ${path}`,
     reveal: '場所を開く',
     failed: (reason: string) => `書き出せませんでした: ${reason}`,
+    marpUnsupported: 'Marp のスライドの書き出しには対応していません',
   },
 
   status: {
