@@ -99,6 +99,6 @@ describe('設定の変更 (F-CONF-05)', () => {
     await flushSettingWrites();
 
     expect(documentStore.notice?.level).toBe('error');
-    expect(documentStore.notice?.message).toBe('settings.json を読めないため、設定を保存できません');
+    expect(documentStore.notice?.message).toBe('settings.json を読み込めないため、設定を保存できません');
   });
 });

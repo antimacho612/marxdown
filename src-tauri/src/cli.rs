@@ -33,6 +33,7 @@ pub enum PathOp {
 
 /// 解析済みの起動引数。
 /// 不正な引数でも解析は失敗させず、`unknown` に加えて通知バーで知らせる。
+/// `unknown` の各要素は画面にそのまま並ぶため、利用者が入力した引数の形（値の欠けた `--mode`、不正な値の `--mode foo`）で持つ。
 #[derive(Debug, Clone, Default)]
 pub struct CliArgs {
     /// 絶対パスに解決済み。存在確認はまだ行っていない。
@@ -79,32 +80,24 @@ pub struct CliArgs {
 }
 
 /// `--help` の出力。オプションを足したらここも直す。
+///
+/// 載せるのは利用者が使うオプションだけである。
+/// 計測用（`--trace-startup` / `--exit-after-trace` / `--gc-probe` / `--bench-input`）とインストーラ用（`--add-to-path` / `--remove-from-path`）は解析するが、ここには載せない。
 pub const HELP: &str = "\
-marxdown — Markdown を見る・書くなら、これ一択。
+marxdown — Markdown ビューアー＆エディター
 
-USAGE:
-    marxdown [OPTIONS] [FILE|DIR]...
-    <command> | marxdown [OPTIONS] -
+使い方:
+    marxdown [オプション] [ファイル|フォルダー]...
+    <コマンド> | marxdown [オプション] -
 
-ARGS:
-    -                          標準入力を無題の文書として開く
+引数:
+    -                      標準入力の内容を無題の文書として開く
 
-OPTIONS:
-    -m, --mode <MODE>          起動時の表示モード: preview | edit | split
-        --trace-startup <OUT>  起動計測を有効にし、JSON を OUT へ書き出す
-                               OUT に nul を指定すると計測のみ行い書き出さない
-        --exit-after-trace     計測の書き出し後にプロセスを終了する（ベンチ用）
-        --background           ウィンドウを出さずにタスクトレイで起動する
-    -h, --help                 このヘルプを表示する
-    -V, --version              バージョンを表示する
-
-MEASUREMENT OPTIONS (計測用。開発ビルドでのみ意味を持つ):
-        --gc-probe                              DevTools から gc() を呼べるようにする
-        --bench-input <OUT>                     入力レスポンスを計測し JSON を OUT へ書き出して終了する
-
-INSTALLER OPTIONS (インストーラが使う):
-        --add-to-path          インストール先の bin をユーザーの PATH に追加して終了する
-        --remove-from-path     同じエントリをユーザーの PATH から削除して終了する
+オプション:
+    -m, --mode <モード>    表示モードを指定して開く: preview | edit | split
+        --background       ウィンドウを表示せず、タスクトレイで起動する
+    -h, --help             このヘルプを表示する
+    -V, --version          バージョンを表示する
 ";
 
 /// `argv`（実行ファイル名を含まない）と `cwd` から引数を解析する。
@@ -142,7 +135,7 @@ pub fn parse(argv: &[String], cwd: &Path) -> CliArgs {
                     i += 1;
                     Some(v)
                 } else {
-                    args.unknown.push(concat!($name, " に値がない").to_string());
+                    args.unknown.push($name.to_string());
                     None
                 }
             }};
@@ -164,7 +157,7 @@ pub fn parse(argv: &[String], cwd: &Path) -> CliArgs {
                         "preview" => args.mode = Some(ViewMode::Preview),
                         "edit" => args.mode = Some(ViewMode::Edit),
                         "split" => args.mode = Some(ViewMode::Split),
-                        other => args.unknown.push(format!("--mode の値が不正: {other}")),
+                        other => args.unknown.push(format!("--mode {other}")),
                     }
                 }
             }
