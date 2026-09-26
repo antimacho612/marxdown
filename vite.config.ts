@@ -67,6 +67,35 @@ function katexWoff2Only(): Plugin {
   };
 }
 
+/** marp-core から読まれるときだけ空のモジュールに差し替えるもの。 */
+const MARP_STUBBED = /^(?:mathjax-full\/|highlight\.js\/lib\/|katex(?:\/|$))/;
+
+const MARP_STUB_ID = '\0marxdown:marp-stub';
+
+/**
+ * marp-core が静的に読み込む重い依存を、marp-core からの読み込みに限って空のモジュールにする（ADR-0023 §3.2）。
+ *
+ * marp-core は MathJax と highlight.js の全言語を静的に読み込み、そのままでは gzip で 1MB を超える。
+ * Marxdown は数式（`math: false`）とハイライト（`highlighter` の差し替え）を既存の遅延チャンクで描くため、これらの実体は実行されない。
+ * `alias` にしないのは、Marxdown 自身の highlight.js / KaTeX の読み込みまで差し替わるためである。
+ *
+ * NOTE: marp-core の更新でこれらを初期化時に呼ぶようになると、Marp の文書を開いたときに例外になる。
+ * Vitest は `vitest.config.ts` を使い、この差し替えを通らない。差し替えた状態の確認は実ビルドで行う（docs/measurements/07-bundle.md §8）。
+ */
+function marpStubs(): Plugin {
+  return {
+    name: 'marxdown:marp-stubs',
+    enforce: 'pre',
+    resolveId(source, importer) {
+      if (!importer?.replaceAll('\\', '/').includes('/node_modules/@marp-team/marp-core/')) return null;
+      return MARP_STUBBED.test(source) ? MARP_STUB_ID : null;
+    },
+    load(id) {
+      return id === MARP_STUB_ID ? 'export default {};' : null;
+    },
+  };
+}
+
 /** バンドルに入った npm パッケージの一覧の書き出し先（`scripts/gen-third-party-notices.mjs` が読む）。 */
 const BUNDLED_PACKAGES_FILE = fileURLToPath(new URL('./node_modules/.tmp/bundled-packages.json', import.meta.url));
 
@@ -117,6 +146,7 @@ export default defineConfig(({ mode }) => ({
   plugins: [
     svelte(),
     katexWoff2Only(),
+    marpStubs(),
     recordBundledPackages(),
     ...(mode === 'analyze'
       ? [visualizer({ filename: 'dist/stats.html', gzipSize: true, brotliSize: true, open: false })]
