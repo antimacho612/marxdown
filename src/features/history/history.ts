@@ -120,6 +120,18 @@ export function dropHistory(key: number): void {
   byTab.delete(key);
 }
 
+/**
+ * 履歴に残っているパスを付け替える（ファイルツリーでのリネーム・移動 / ADR-0020）。
+ *
+ * `relocate` が `null` を返したエントリはそのまま残す。
+ * 付け替えないと、`Alt+←` で戻った先が「開けないファイル」になる。
+ */
+export function relocateHistory(relocate: (path: string) => string | null): void {
+  for (const state of byTab.values()) {
+    for (const entry of state.entries) entry.path = relocate(entry.path) ?? entry.path;
+  }
+}
+
 /** テスト用。すべてのタブの履歴を初期化する。 */
 export function resetHistory(): void {
   byTab.clear();

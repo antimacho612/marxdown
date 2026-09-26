@@ -15,6 +15,7 @@ import {
   openInNewTab,
   openPathInNewTab,
   openPathsInTabs,
+  relocateTabs,
   reopenClosedTab,
   resetTabs,
   selectTabAt,
@@ -479,5 +480,46 @@ describe('外部で削除・リネームされたタブ', () => {
     expect(tabsStore.activeId).toBeNull();
     // 何も開いていない状態の判定はこれ 1 つ（`app/App.svelte`）
     expect(documentStore.meta).toBeNull();
+  });
+});
+
+describe('relocateTabs（ファイルツリーでのリネーム・移動 / ADR-0020）', () => {
+  const rename = (path: string): string | null => (path === 'C:/work/a.md' ? 'C:/work/renamed.md' : null);
+
+  it('表示中のタブは文書のパスも付け替え、監視を新しいパスへ移す', async () => {
+    const watched: string[] = [];
+    setPlatform({ ...getPlatform(), watchPath: (path: string) => (watched.push(path), Promise.resolve()) } as Platform);
+    await openPathInNewTab('C:/work/a.md');
+
+    relocateTabs(rename);
+
+    expect(documentStore.meta?.path).toBe('C:/work/renamed.md');
+    expect(tabsStore.tabs[0]?.meta.path).toBe('C:/work/renamed.md');
+    expect(watched.at(-1)).toBe('C:/work/renamed.md');
+  });
+
+  it('未保存の変更はそのまま残る', async () => {
+    await openPathInNewTab('C:/work/a.md');
+    setDirty(true);
+    await openPathInNewTab('C:/work/b.md');
+
+    relocateTabs(rename);
+
+    const moved = tabsStore.tabs.find((tab) => tab.meta.path === 'C:/work/renamed.md');
+    expect(moved).toBeDefined();
+    expect(moved && isTabDirty(moved)).toBe(true);
+  });
+
+  it('閉じたタブの記録も付け替える', async () => {
+    disk.set('C:/work/renamed.md', '# renamed\n');
+    await openPathInNewTab('C:/work/a.md');
+    await openPathInNewTab('C:/work/b.md');
+    const first = tabsStore.tabs[0];
+    if (first) await closeTab(first.id);
+
+    relocateTabs(rename);
+    await reopenClosedTab();
+
+    expect(documentStore.meta?.path).toBe('C:/work/renamed.md');
   });
 });

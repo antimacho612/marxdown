@@ -41,6 +41,7 @@ function fakePort(initial: string): EditorTextPort & {
     }),
     switched: [] as { key: number; documentId: string }[],
     dispose: vi.fn(),
+    relabel: vi.fn(),
   };
   return port;
 }

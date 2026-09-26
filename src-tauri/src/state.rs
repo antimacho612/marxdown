@@ -96,6 +96,11 @@ pub struct AppState {
     /// 同時に 2 枚移す操作が無いため、新しい転送で上書きし、引き取りで空にすれば取りこぼしも漏れも起きない。
     transfer: Mutex<Option<(u64, String)>>,
     transfer_counter: AtomicU64,
+    /// OS のドロップイベントで直近に受け取ったパス。ウィンドウごとに 1 回分だけ持つ（02.architecture/09-security.md §5）。
+    ///
+    /// 外部からのドロップをファイルツリーへ取り込むとき、コピー元はこの中にあるものに限る。
+    /// フロントが渡すパスを信用すると、許可範囲の外のファイルを配下へ複製して読めるようになる。
+    drops: Mutex<HashMap<String, Vec<PathBuf>>>,
 }
 
 impl AppState {
@@ -136,6 +141,7 @@ impl AppState {
             window_counter: AtomicU64::new(1),
             transfer: Mutex::new(None),
             transfer_counter: AtomicU64::new(1),
+            drops: Mutex::new(HashMap::new()),
         }
     }
 
@@ -374,6 +380,71 @@ impl AppState {
         if let Ok(mut map) = self.maximized.lock() {
             map.remove(label);
         }
+        if let Ok(mut map) = self.drops.lock() {
+            map.remove(label);
+        }
+    }
+
+    /// OS のドロップイベントで受け取ったパスを記録する。前の回の分は置き換える。
+    pub fn note_drop(&self, label: &str, paths: Vec<PathBuf>) {
+        if let Ok(mut map) = self.drops.lock() {
+            map.insert(label.to_owned(), paths);
+        }
+    }
+
+    /// 直近のドロップで受け取ったパスのうち、`requested` に含まれるものを返す。
+    ///
+    /// 含まれないパスが 1 つでもあれば全体を拒む。
+    /// 一部だけ通すと、フロントの不整合を黙って飲み込むことになる。
+    pub fn dropped(&self, label: &str, requested: &[String]) -> CoreResult<Vec<PathBuf>> {
+        let map = self
+            .drops
+            .lock()
+            .map_err(|_| CoreError::Io("ドロップの記録を読めない".into()))?;
+        let known = map.get(label).map(Vec::as_slice).unwrap_or_default();
+        requested
+            .iter()
+            .map(|path| {
+                known
+                    .iter()
+                    .find(|k| k.as_os_str() == std::ffi::OsStr::new(path))
+                    .cloned()
+                    .ok_or_else(|| CoreError::OutOfScope(path.clone()))
+            })
+            .collect()
+    }
+
+    /// ゴミ箱へ移した項目（フォルダならその配下も）を、最近開いたファイルから外す。更新後の一覧を返す。
+    pub fn forget_recent(&self, removed: &[String]) -> Vec<RecentEntry> {
+        self.update_store(|s| {
+            s.recent.retain(|entry| {
+                !removed.iter().any(|path| {
+                    crate::scope::is_within(
+                        std::path::Path::new(path),
+                        std::path::Path::new(&entry.path),
+                    )
+                })
+            });
+            s.recent.clone()
+        })
+    }
+
+    /// 移動・リネームしたファイルを、最近開いたファイルの中でも付け替える。更新後の一覧を返す。
+    ///
+    /// 開いた日時はそのまま残す。
+    /// 消して積み直すと、リネームしただけで一覧の先頭へ上がる。
+    pub fn relocate_recent(&self, moves: &[crate::fsops::Moved]) -> Vec<RecentEntry> {
+        self.update_store(|s| {
+            for entry in &mut s.recent {
+                if let Some(to) = moves
+                    .iter()
+                    .find_map(|m| crate::fsops::relocate(&entry.path, &m.from, &m.to))
+                {
+                    entry.path = to;
+                }
+            }
+            s.recent.clone()
+        })
     }
 
     /// 最後にフォーカスされたウィンドウを記録する。

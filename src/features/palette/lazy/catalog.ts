@@ -90,6 +90,10 @@ export const COMMAND_CATALOG: CommandEntry[] = [
     keywords: 'explorer show file tree sidebar',
     shortcut: 'Ctrl+Shift+E',
   },
+  { id: 'explorer.newFile', label: ja.menu.explorerNewFile, keywords: 'explorer new file create add' },
+  { id: 'explorer.newFolder', label: ja.menu.explorerNewFolder, keywords: 'explorer new folder directory create add' },
+  { id: 'explorer.refresh', label: ja.menu.explorerRefresh, keywords: 'explorer refresh reload file tree' },
+  { id: 'explorer.collapseAll', label: ja.menu.explorerCollapseAll, keywords: 'explorer collapse all folders tree' },
   {
     id: 'outline.show',
     label: ja.menu.showOutline,

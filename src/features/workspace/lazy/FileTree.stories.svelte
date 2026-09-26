@@ -12,6 +12,7 @@
   import { treeStore } from '../tree.svelte';
   import FileTree from './FileTree.svelte';
   import { resetFilter } from './filter.svelte';
+  import { resetSelection, selection, type Editing } from './selection.svelte';
 
   const { Story } = defineMeta({
     title: '画面/ファイルツリー',
@@ -39,6 +40,21 @@
       treeStore.focusPath = null;
       // 絞り込みも singleton なので、ツールバー側の story から持ち越さない。
       resetFilter();
+      resetSelection();
+    };
+  }
+
+  /**
+   * ファイル操作の途中の表示（03.ux-spec/06-panes.md §1.4）。
+   * 実アプリでは複数の操作を重ねないと並ばないため、選択・切り取り・ドロップ先を直接入れる。
+   */
+  function withOperation(state: { selected?: string[]; cut?: string[]; drop?: string; editing?: Editing }) {
+    return () => {
+      withTree(NESTED, [`${ROOT}/docs`])();
+      selection.selected = state.selected ?? [];
+      selection.clipboard = state.cut ? { paths: state.cut, mode: 'cut' } : null;
+      selection.dropTarget = state.drop ?? null;
+      selection.editing = state.editing ?? null;
     };
   }
 
@@ -71,3 +87,23 @@
 
 <!-- 空のディレクトリ。操作できない行を並べる代わりに 1 行の説明を出す。 -->
 <Story name="空" loaders={[withTree({ [ROOT]: [] })]} />
+
+<!-- 複数選択・切り取り中（淡い表示）・ドラッグで落とす先の 3 つを同時に並べる。 -->
+<Story
+  name="選択と切り取り"
+  loaders={[
+    withOperation({
+      selected: [`${ROOT}/README.md`, `${ROOT}/package.json`],
+      cut: [`${ROOT}/docs/00.design-brief.md`],
+      drop: `${ROOT}/src`,
+    }),
+  ]}
+/>
+
+<!-- 行内の入力欄。同じ階層にある名前を打つと、確定できない理由が下に出る。 -->
+<Story name="リネーム中" loaders={[withOperation({ editing: { kind: 'rename', path: `${ROOT}/docs/README.md` } })]} />
+
+<Story
+  name="新規作成中"
+  loaders={[withOperation({ editing: { kind: 'create', parent: `${ROOT}/docs`, dir: false } })]}
+/>

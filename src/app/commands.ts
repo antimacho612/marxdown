@@ -29,15 +29,19 @@ import { openSettingsLazily } from '@/features/settings';
 import { isSatellite, viewStore } from '@/features/view';
 import {
   closeTab,
+  collapseAll,
+  createInExplorer,
   cycleTab,
   moveCurrentTabToMainLazily,
   moveCurrentTabToSatellite,
   openFolderViaDialog,
   openUntitledTab,
+  reloadTree,
   reopenClosedTab,
   selectTabAt,
   showExplorer,
   tabsStore,
+  treeStore,
 } from '@/features/workspace';
 import { registerCommands, runCommand, type Command, type CommandId } from '@/lib/commands';
 import { toMessage } from '@/lib/error';
@@ -57,6 +61,11 @@ function hasDocument(): boolean {
  */
 function hasPanes(): boolean {
   return !isSatellite();
+}
+
+/** ファイルツリーの基点が決まっているか。決まっていなければ作る場所も読み直す対象も無い。 */
+function hasTree(): boolean {
+  return hasPanes() && treeStore.root !== null;
 }
 
 /** タブが 2 枚以上あるか。切り替えは 1 枚では意味を持たない。 */
@@ -144,6 +153,11 @@ const COMMANDS: Command[] = [
   { id: 'outline.show', run: () => void showOutline(), isListed: hasPanes },
   // Explorer を出してフォーカスする（`Ctrl+Shift+E`）。`outline.show` と対になるビュー側のキーである。
   { id: 'explorer.show', run: () => void showExplorer(), isListed: hasPanes },
+  // ツールバーの操作をパレットからも届くようにする（OQ-42 の決着 / ADR-0020）。絞り込みは状態を残すため載せない。
+  { id: 'explorer.newFile', run: () => void createInExplorer('file'), isListed: hasTree },
+  { id: 'explorer.newFolder', run: () => void createInExplorer('folder'), isListed: hasTree },
+  { id: 'explorer.refresh', run: () => void reloadTree(), isListed: hasTree },
+  { id: 'explorer.collapseAll', run: () => collapseAll(), isListed: hasTree },
 
   // 見出しへジャンプ（03.ux-spec/04-keybindings.md §3「移動」）。実体は遅延チャンクにある。
   // コマンドパレット（`Ctrl+Shift+P`）ではなく、見出し専用である。

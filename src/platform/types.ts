@@ -52,6 +52,28 @@ export interface DirEntry {
   dir: boolean;
 }
 
+/** 移動・リネームの結果（`src-tauri/src/fsops.rs` の `Moved`）。どちらも絶対パス。 */
+export interface Moved {
+  from: string;
+  to: string;
+}
+
+/**
+ * ファイルツリーでの移動・リネーム（`marxdown://entries-moved`）。全ウィンドウに届く。
+ *
+ * 最近開いたファイルは Rust 側で付け替え済みで、更新後の一覧が `recent` に入っている。
+ */
+export interface EntriesMoved {
+  moves: Moved[];
+  recent: RecentEntry[];
+}
+
+/** ファイルツリーでゴミ箱へ移した項目（`marxdown://entries-removed`）。全ウィンドウに届く。 */
+export interface EntriesRemoved {
+  paths: string[];
+  recent: RecentEntry[];
+}
+
 /** クイックオープンの候補（F-NAV-05）。 */
 export interface FileList {
   /** 正規化済み絶対パス。パス順に並んでいる。 */
@@ -93,6 +115,7 @@ export interface CoreError {
     | 'too-large'
     | 'binary'
     | 'conflict'
+    | 'already-exists'
     | 'invalid-argument'
     | 'settings-broken'
     | 'io';
@@ -345,9 +368,13 @@ export interface TraceMark {
  * WebView はドロップされたファイルの絶対パスを JS へ渡さないため、`DataTransfer` からでは最近開いたファイルに追加できず、相対パスの画像も解決できない（F-VIEW-08 / N-SEC-05）。
  */
 export type DragDropEvent =
-  /** ウィンドウの上にファイルが来ている。ドロップ先の見た目を出す。 */
-  | { type: 'over' }
-  | { type: 'drop'; paths: string[] }
+  /**
+   * ウィンドウの上にファイルが来ている。ドロップ先の見た目を出す。
+   *
+   * 位置は CSS ピクセルのビューポート座標で、`document.elementFromPoint` にそのまま渡せる（F-NAV-13）。
+   */
+  | { type: 'over'; x: number; y: number }
+  | { type: 'drop'; paths: string[]; x: number; y: number }
   /** 外へ出た / 取り消された。 */
   | { type: 'leave' };
 
@@ -413,6 +440,56 @@ export interface Platform {
    * 対象の拡張子は Platform 層が `lib/path.ts` から渡す。件数と深さには上限があり、超えたときは `truncated` が立つ（`src-tauri/src/dir.rs`）。
    */
   listFiles(root: string): Promise<FileList>;
+  /**
+   * ファイルツリーで開いている枝を監視する（ADR-0021）。
+   *
+   * 渡した集合がそのまま監視の対象になり、含まれなくなった枝は解放される。空を渡せばすべて手放す。
+   * 変化は `onDirChanged` で届く。
+   */
+  watchTree(dirs: string[]): Promise<void>;
+  /** 監視している枝の中身が変わった。受け取ったらそのディレクトリを読み直す。 */
+  onDirChanged(handler: (dir: string) => void): () => void;
+  /**
+   * 新しいファイルかフォルダを作る（F-NAV-11）。作ったパスを返す。
+   *
+   * 同じ名前が既にあれば `already-exists` で失敗する。上書きはしない。
+   */
+  createEntry(parent: string, name: string, dir: boolean): Promise<string>;
+  /** 同じフォルダの中で名前を変える（F-NAV-11）。開いているタブへの反映は `onEntriesMoved` で届く。 */
+  renameEntry(path: string, newName: string): Promise<Moved>;
+  /**
+   * フォルダの中へ移す（F-NAV-11 / F-NAV-12）。
+   *
+   * 途中で失敗しても、それまでに移した分は `onEntriesMoved` で届く。
+   */
+  moveEntries(paths: string[], dest: string): Promise<Moved[]>;
+  /** フォルダの中へ複製する（F-NAV-11 / F-NAV-12）。同じ名前があれば `名前 copy` として置く。 */
+  copyEntries(paths: string[], dest: string): Promise<string[]>;
+  /**
+   * ゴミ箱へ移す（ADR-0020 §3.3）。消えたパスを返す。
+   *
+   * 確認は呼び出し側が `confirmAction` で先に済ませること。
+   * ゴミ箱に入らない項目は OS が完全に削除してよいかを尋ね、断られた項目は返り値に含まれない。
+   */
+  trashEntries(paths: string[]): Promise<string[]>;
+  /**
+   * 外部からドロップされた項目をフォルダへ複製する（F-NAV-13）。
+   *
+   * `paths` は直近の `onDragDrop` の `drop` で受け取ったものでなければならない。Rust 側が照合して、それ以外は拒む。
+   */
+  importDropped(paths: string[], dest: string): Promise<string[]>;
+  /** 外部からドロップされたフォルダを、ファイルツリーの基点として許可する（F-NAV-13）。正規化済みのパスを返す。 */
+  openDroppedFolder(path: string): Promise<string>;
+  /** 移動・リネームを購読する。他のウィンドウで行った操作も届く。 */
+  onEntriesMoved(handler: (event: EntriesMoved) => void): () => void;
+  /** ゴミ箱へ移した項目を購読する。他のウィンドウで行った操作も届く。 */
+  onEntriesRemoved(handler: (event: EntriesRemoved) => void): () => void;
+  /**
+   * 確認のダイアログを出す（ファイルツリーの削除・移動）。
+   *
+   * `confirm` は実行する側のボタンの文言である。既定は実行しない側で、閉じられた場合も `false` になる。
+   */
+  confirmAction(message: string, confirm: string): Promise<boolean>;
   /**
    * 開いているタブを覚える。引数なしで起動したときだけ復元される。
    *

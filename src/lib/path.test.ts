@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { dirOf, isAbsolutePath, isMarkdownPath, joinPath, splitPath } from './path';
+import { dirOf, isAbsolutePath, isMarkdownPath, joinPath, relocatePath, splitPath } from './path';
 
 describe('splitPath', () => {
   it('Windows のパスを割る', () => {
@@ -106,5 +106,26 @@ describe('dirOf', () => {
   it('区切りが無ければ空文字を返す', () => {
     expect(dirOf('')).toBe('');
     expect(dirOf('a.md')).toBe('');
+  });
+});
+
+describe('relocatePath', () => {
+  it('対象そのものを付け替える', () => {
+    expect(relocatePath('C:\\w\\a.md', 'C:\\w\\a.md', 'C:\\w\\b.md')).toBe('C:\\w\\b.md');
+  });
+
+  it('移したフォルダの配下を付け替える', () => {
+    expect(relocatePath('C:\\w\\docs\\x\\a.md', 'C:\\w\\docs', 'C:\\w\\notes')).toBe('C:\\w\\notes\\x\\a.md');
+    expect(relocatePath('/w/docs/a.md', '/w/docs', '/w/notes')).toBe('/w/notes/a.md');
+  });
+
+  it('名前の前方一致を配下と取り違えない', () => {
+    expect(relocatePath('C:\\w\\docs-old\\a.md', 'C:\\w\\docs', 'C:\\w\\notes')).toBeNull();
+    expect(relocatePath('C:\\w\\other.md', 'C:\\w\\docs', 'C:\\w\\notes')).toBeNull();
+  });
+
+  it('Windows のパスは大文字と小文字を区別しない', () => {
+    expect(relocatePath('c:\\W\\Docs\\a.md', 'C:\\w\\docs', 'C:\\w\\notes')).toBe('C:\\w\\notes\\a.md');
+    expect(relocatePath('/W/docs/a.md', '/w/docs', '/w/notes')).toBeNull();
   });
 });
