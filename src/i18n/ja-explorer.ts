@@ -15,11 +15,11 @@ export const jaExplorer = {
   nameProblem: {
     empty: '名前を入力してください',
     chars: '使えない文字が含まれています（\\ / : * ? " < > |）',
-    reserved: 'この名前は Windows で予約されています',
-    trailing: '末尾に . や空白は使えません',
+    reserved: 'この名前は Windows では使えません',
+    trailing: '名前の末尾に . や空白は使えません',
     dots: 'この名前は使えません',
     tooLong: '名前が長すぎます',
-    exists: 'この場所に同じ名前があります',
+    exists: '同じ名前のファイルまたはフォルダーが既にあります',
   },
   menu: {
     label: (name: string) => `${name} の操作`,
@@ -48,7 +48,7 @@ export const jaExplorer = {
   trashed: (count: number) => `${count} 件をゴミ箱へ移動しました`,
   copied: (count: number) => `${count} 件を複製しました`,
   moved: (count: number) => `${count} 件を移動しました`,
-  hiddenCreated: (name: string) => `「${name}」を作成しました。. で始まる名前はエクスプローラーに表示されません`,
+  hiddenCreated: (name: string) => `「${name}」を作成しました。名前が . で始まる項目はエクスプローラーに表示されません`,
   linkCopied: 'Markdown リンクをコピーしました',
   operationFailed: (detail: string) => `ファイル操作に失敗しました: ${detail}`,
 } as const;

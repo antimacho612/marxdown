@@ -1,9 +1,8 @@
 /**
  * 表示中の文書を HTML / PDF に書き出す（F-VIEW-18 / docs/06.roadmap/m7-cli-os-export.md §4.4）。
  */
-import { documentStore } from '@/features/document';
+import { describeOpenError, documentStore } from '@/features/document';
 import { ja } from '@/i18n/ja';
-import { toMessage } from '@/lib/error';
 import { dirOf, splitPath } from '@/lib/path';
 import { getPlatform } from '@/platform';
 
@@ -36,7 +35,7 @@ export async function exportDocument(format: ExportFormat): Promise<void> {
       actions: [{ label: ja.export.reveal, run: () => void getPlatform().revealInFileManager(saved) }],
     };
   } catch (e) {
-    documentStore.notice = { level: 'error', message: ja.export.failed(toMessage(e)) };
+    documentStore.notice = { level: 'error', message: ja.export.failed(describeOpenError(e, '')) };
   }
 }
 

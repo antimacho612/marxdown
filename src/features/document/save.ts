@@ -6,7 +6,6 @@
  * ダーティ状態は `dirty.ts` にある（依存の向きが違うため）。
  */
 import { ja } from '@/i18n/ja';
-import { toMessage } from '@/lib/error';
 import { getPlatform, type Eol, type SaveResult, type WriteRequest } from '@/platform';
 
 import { markClean } from './dirty';
@@ -181,7 +180,7 @@ export async function saveSafely(): Promise<void> {
   try {
     await saveCurrent();
   } catch (e) {
-    documentStore.notice = { level: 'error', message: `${ja.save.failed}: ${toMessage(e)}` };
+    documentStore.notice = { level: 'error', message: `${ja.save.failed}: ${describeOpenError(e, '')}` };
   }
 }
 
@@ -190,6 +189,6 @@ export async function saveAsSafely(): Promise<void> {
   try {
     await saveAs();
   } catch (e) {
-    documentStore.notice = { level: 'error', message: `${ja.save.failed}: ${toMessage(e)}` };
+    documentStore.notice = { level: 'error', message: `${ja.save.failed}: ${describeOpenError(e, '')}` };
   }
 }

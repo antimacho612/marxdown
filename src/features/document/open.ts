@@ -7,7 +7,6 @@
 import { pushHistory } from '@/features/history';
 import { enhance, paint, scrollToAnchor } from '@/features/preview';
 import { ja } from '@/i18n/ja';
-import { toMessage } from '@/lib/error';
 import { dirOf } from '@/lib/path';
 import { refreshOutline, refreshSearch } from '@/lib/refresh';
 import { mark } from '@/lib/trace';
@@ -275,8 +274,8 @@ export async function openDocument(payload: StoredPayload, options: OpenOptions 
     if (payload.path !== null) void watch(payload.path);
 
     return outcome;
-  } catch (e) {
-    documentStore.notice = { level: 'error', message: `${ja.error.renderFailed}: ${toMessage(e)}` };
+  } catch {
+    documentStore.notice = { level: 'error', message: ja.error.renderFailed };
     return null;
   }
 }
@@ -417,7 +416,12 @@ function kindOf(e: unknown): string | null {
   return null;
 }
 
-/** Rust の `CoreError` を日本語 1 行の文言に変換する。 */
+/**
+ * 例外を通知に出す 1 行の文言に変換する。
+ *
+ * Rust の `CoreError` は `kind` から文言を引く。
+ * `message` は開発者向けの詳細であり（`src-tauri/src/error.rs`）、`kind` を持たない例外のメッセージとともに画面には出さない。
+ */
 export function describeOpenError(e: unknown, path: string): string {
   const kind = kindOf(e);
   if (kind !== null) {
@@ -425,5 +429,5 @@ export function describeOpenError(e: unknown, path: string): string {
     if (typeof entry === 'function') return (entry as (p: string) => string)(path);
     if (typeof entry === 'string') return entry;
   }
-  return toMessage(e);
+  return ja.error.unexpected;
 }

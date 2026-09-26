@@ -87,7 +87,7 @@
     </section>
 
     <p class="mx-welcome__hint">{ja.welcome.dropHint}</p>
-    <p class="mx-welcome__hint"><code>{ja.welcome.cliHint}</code></p>
+    <p class="mx-welcome__hint">{ja.welcome.cliHint} <code>marxdown &lt;file.md&gt;</code></p>
   </div>
 </div>
 

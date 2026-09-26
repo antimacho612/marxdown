@@ -11,7 +11,6 @@
 import { documentStore, getDocumentText, setDirty, type StoredMeta } from '@/features/document';
 import { viewStore } from '@/features/view';
 import { ja } from '@/i18n/ja';
-import { toMessage } from '@/lib/error';
 import { getPlatform, type Eol, type ViewMode } from '@/platform';
 
 import { closeTab, isTabDirty, tabMeta, tabsStore, type Tab } from './tabs.svelte';
@@ -131,8 +130,8 @@ export async function takeTabTransfer(id: number): Promise<TabTransfer | null> {
   try {
     const raw = await getPlatform().takeTransfer(id);
     return raw === null ? null : (JSON.parse(raw) as TabTransfer);
-  } catch (e) {
-    documentStore.notice = { level: 'error', message: toMessage(e) };
+  } catch {
+    documentStore.notice = { level: 'error', message: ja.window.moveFailed };
     return null;
   }
 }
