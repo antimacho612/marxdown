@@ -463,6 +463,25 @@ export interface Platform {
    */
   pickSavePath(suggested: string | null): Promise<string | null>;
   /**
+   * HTML を書き出す（F-VIEW-18）。保存先はダイアログで選ばせ、書き込んだパスを返す。取り消されたら `null`。
+   *
+   * `suggested` は元の文書のパスで、同じ場所と同じ名前（拡張子だけ差し替える）を初期値にする。
+   */
+  exportHtml(html: string, suggested: string | null): Promise<string | null>;
+  /**
+   * 表示中のウィンドウを PDF に書き出す（F-VIEW-18）。何を印刷させるかは、呼ぶ前に `@media print` で整えておく。
+   *
+   * WebView2 の `PrintToPdf` を使うため、Windows 以外では `invalid-argument` で失敗する（`src-tauri/src/export.rs`）。
+   */
+  exportPdf(suggested: string | null): Promise<string | null>;
+  /**
+   * 表示中のローカル画像を data URI にする（HTML の書き出しで 1 ファイルに収めるため）。
+   *
+   * `src` は `resolveAsset` が返した URL である。
+   * 読めるのはプレビューが表示を許可している範囲だけで、それ以外は失敗する。
+   */
+  inlineImage(src: string): Promise<string>;
+  /**
    * 未保存の変更があることを知らせる（F-EDIT-03）。
    *
    * 変わり目だけ呼び、打鍵ごとには呼ばない。

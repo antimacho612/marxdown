@@ -58,6 +58,20 @@ pub struct CliArgs {
     /// インストーラ専用（`windows/installer-hooks.nsh`）。
     /// single-instance プラグインより前に処理するため、アプリが常駐していても argv は転送されない。
     pub path_op: Option<PathOp>,
+    /// `-`。標準入力を読み、一時ファイルへ書き出してから起動し直す（F-OPEN-10 / `stdin.rs`）。
+    ///
+    /// `--` より後の `-` はファイル名として扱い、ここには入らない。
+    pub stdin: bool,
+    /// `--stdin-file <PATH>`。`-` を受けたプロセスが起動し直すときに付ける。
+    ///
+    /// 利用者が指定するものではない。
+    /// 読んだ後に消すため、一時ディレクトリ直下のファイル以外は `stdin::take` が拒否する。
+    pub stdin_file: Option<PathBuf>,
+    /// `--background`。ウィンドウを表示せずにトレイへ格納した状態で起動する（ADR-0020）。
+    ///
+    /// ログイン時の自動起動（`autostart.rs`）が `Run` に書く値に付ける。
+    /// 常駐中のプロセスへ転送されたときは何もしない。
+    pub background: bool,
     pub show_help: bool,
     pub show_version: bool,
     /// 解析できなかった引数。警告として通知バーに出す。
@@ -70,12 +84,17 @@ marxdown — Markdown を見る・書くなら、これ一択。
 
 USAGE:
     marxdown [OPTIONS] [FILE|DIR]...
+    <command> | marxdown [OPTIONS] -
+
+ARGS:
+    -                          標準入力を無題の文書として開く
 
 OPTIONS:
     -m, --mode <MODE>          起動時の表示モード: preview | edit | split
         --trace-startup <OUT>  起動計測を有効にし、JSON を OUT へ書き出す
                                OUT に nul を指定すると計測のみ行い書き出さない
         --exit-after-trace     計測の書き出し後にプロセスを終了する（ベンチ用）
+        --background           ウィンドウを出さずにタスクトレイで起動する
     -h, --help                 このヘルプを表示する
     -V, --version              バージョンを表示する
 
@@ -131,10 +150,12 @@ pub fn parse(argv: &[String], cwd: &Path) -> CliArgs {
 
         match key {
             "--" => only_paths = true,
+            "-" => args.stdin = true,
             "-h" | "--help" => args.show_help = true,
             "-V" | "--version" => args.show_version = true,
             "--exit-after-trace" => args.exit_after_trace = true,
             "--gc-probe" => args.gc_probe = true,
+            "--background" => args.background = true,
             "--add-to-path" => args.path_op = Some(PathOp::Add),
             "--remove-from-path" => args.path_op = Some(PathOp::Remove),
             "-m" | "--mode" => {
@@ -150,6 +171,11 @@ pub fn parse(argv: &[String], cwd: &Path) -> CliArgs {
             "--trace-startup" => {
                 if let Some(v) = take_value!("--trace-startup") {
                     args.trace_startup = Some(resolve(cwd, &v));
+                }
+            }
+            "--stdin-file" => {
+                if let Some(v) = take_value!("--stdin-file") {
+                    args.stdin_file = Some(resolve(cwd, &v));
                 }
             }
             "--bench-input" => {
@@ -212,6 +238,28 @@ mod tests {
     fn the_gc_probe_is_opt_in() {
         assert!(!args(&["a.md"]).gc_probe, "既定では expose-gc を渡さない");
         assert!(args(&["--gc-probe", "a.md"]).gc_probe);
+    }
+
+    #[test]
+    fn a_lone_dash_reads_stdin() {
+        let a = args(&["-m", "edit", "-"]);
+        assert!(a.stdin);
+        assert!(a.paths.is_empty(), "`-` はパスとして扱わない");
+        assert!(a.unknown.is_empty());
+    }
+
+    #[test]
+    fn a_dash_after_double_dash_is_a_file_name() {
+        let a = args(&["--", "-"]);
+        assert!(!a.stdin);
+        assert_eq!(a.paths, vec![cwd().join("-")]);
+    }
+
+    #[test]
+    fn parses_stdin_file() {
+        let a = args(&["--stdin-file", "x.md"]);
+        assert_eq!(a.stdin_file, Some(cwd().join("x.md")));
+        assert!(a.paths.is_empty());
     }
 
     #[test]

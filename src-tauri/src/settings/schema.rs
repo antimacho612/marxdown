@@ -75,6 +75,7 @@ pub const KEY_PREVIEW_TABLE_STYLE: &str = "preview.tableStyle";
 pub const KEY_PREVIEW_THEME: &str = "preview.theme";
 
 pub const KEY_WINDOW_CLOSE_TO_TRAY: &str = "window.closeToTray";
+pub const KEY_WINDOW_LAUNCH_AT_LOGIN: &str = "window.launchAtLogin";
 
 /// プレビューの既定。`src/styles/tokens.css` と揃える。
 pub const DEFAULT_FONT_SIZE: f64 = 16.0;
@@ -380,6 +381,12 @@ pub struct Settings {
     #[serde(rename = "window.closeToTray")]
     pub window_close_to_tray: bool,
 
+    /// ログイン時にトレイへ常駐した状態で起動するか（ADR-0020）。
+    /// 既定を `false` にしているのは、使わない人のログインを遅くし、メモリを占めるためである。
+    /// `window.closeToTray` が `false` のときは効果が無い（`autostart.rs`）。
+    #[serde(rename = "window.launchAtLogin")]
+    pub window_launch_at_login: bool,
+
     /// Marxdown が解釈しないキー。破棄せず保持することだけが役目である。
     #[serde(flatten)]
     pub extra: Map<String, Value>,
@@ -446,6 +453,7 @@ impl Default for Settings {
             preview_theme: DEFAULT_THEME_ID.to_owned(),
 
             window_close_to_tray: true,
+            window_launch_at_login: false,
 
             extra: Map::new(),
         }
@@ -564,6 +572,8 @@ impl Settings {
 
             window_close_to_tray: take(&mut map, KEY_WINDOW_CLOSE_TO_TRAY)
                 .unwrap_or(d.window_close_to_tray),
+            window_launch_at_login: take(&mut map, KEY_WINDOW_LAUNCH_AT_LOGIN)
+                .unwrap_or(d.window_launch_at_login),
 
             extra: map,
         }
@@ -744,6 +754,10 @@ mod tests {
         assert_eq!(s.preview_font_size, DEFAULT_FONT_SIZE);
         assert_eq!(s.editor_font_size, DEFAULT_EDITOR_FONT_SIZE);
         assert!(s.window_close_to_tray, "常駐が既定（ADR-0004）");
+        assert!(
+            !s.window_launch_at_login,
+            "自動起動は既定で OFF（ADR-0020）"
+        );
     }
 
     /// ADR-0012。読む面と書く面でタイポグラフィが別であること自体を固定する。

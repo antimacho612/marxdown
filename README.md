@@ -140,10 +140,16 @@ marxdown README.md                 # ファイルを開く
 marxdown README.md CHANGELOG.md    # 複数まとめて開く
 marxdown docs/                     # フォルダーを開く
 marxdown -m split notes.md         # 表示モードを指定: preview | edit | split
+llm "設計案を出して" | marxdown -   # 標準入力を無題の文書として開く
 marxdown --help
 ```
 
 cmd.exe / PowerShell / Git Bash のどれから実行しても、プロンプトはすぐに戻ります。
+
+標準入力から開いた文書はファイルを持ちません。残したいときは <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>S</kbd>（名前を付けて保存）で保存してください。
+Windows PowerShell 5.1 からパイプすると、ASCII 以外の文字が `?` になります（PowerShell の仕様）。PowerShell 7.4 以降では起きません。
+
+エクスプローラーでフォルダーを右クリックし、「Marxdown で開く」を選んでも開けます（Windows 11 では「その他のオプションを確認」の中にあります）。
 
 > [!TIP]
 > `✕` でウィンドウを閉じても、Marxdown はタスクトレイで待機しています。
