@@ -15,7 +15,7 @@
 import { isSatellite } from '@/features/view';
 import { getPlatform } from '@/platform';
 
-import { openPathInNewTab, selectTabAt, tabMeta, tabsStore } from './tabs.svelte';
+import { activateTab, openPathInNewTab, tabMeta, tabsStore } from './tabs.svelte';
 
 /** 最後に書いた内容。同じ状態を何度も書かないための照合に使う。 */
 let written = '';
@@ -25,18 +25,24 @@ let written = '';
  *
  * 表示していた 1 枚は bootstrap に含まれて既に開かれている（`document`）。
  * 添字の順に挿入するので、最後には元の並びに戻る。
+ * 開けなかったタブは抜けたままになる。
  *
  * 最近開いたファイルには記録し直さない。
  * 起動しただけで一覧が前回のタブで埋まると、「最後に開いた順」の意味が失われる。
  */
 export async function restoreSession(paths: readonly string[], active: number): Promise<void> {
+  const shownId = tabsStore.activeId;
+  // 開けなかったタブの数。以降の挿入位置をその分だけ前へ詰める。
+  let missing = 0;
   for (const [index, path] of paths.entries()) {
     if (index === active) continue;
     // eslint-disable-next-line no-await-in-loop -- 添字の挿入が前の 1 枚の完了に依存する（並行にすると並びが崩れる）
-    await openPathInNewTab(path, { index, remember: false });
+    const opened = await openPathInNewTab(path, { index: index - missing, remember: false });
+    if (!opened) missing += 1;
   }
   // 開き直した分だけ表示が移っている。元のタブへ戻す。
-  await selectTabAt(active + 1);
+  // 位置ではなく ID で戻す。開けなかったタブがあると、元の添字は別のタブを指す。
+  if (shownId !== null) await activateTab(shownId);
 }
 
 /**
