@@ -40,12 +40,24 @@
   DeleteRegKey /ifnosubkeys /ifnovalues SHCTX "Software\Classes\.${EXT}"
 !macroend
 
+; インストーラの言語（ADR-0026）に合わせた文言を OUT に入れる。1041 は日本語。
+; NOTE: LangString は使えない。このファイルはテンプレートが言語を読み込む（MUI_LANGUAGE）より前に include される。
+!macro MX_TEXT OUT JA EN
+  ${If} $LANGUAGE = 1041
+    StrCpy ${OUT} "${JA}"
+  ${Else}
+    StrCpy ${OUT} "${EN}"
+  ${EndIf}
+!macroend
+
 ; エクスプローラーのコンテキストメニュー（F-OS-05）。
 ; 対象はフォルダだけである。.md ファイルは「開く」と「プログラムから開く」で既に開ける。
 ; Windows 11 では「その他のオプションを確認」の中に出る。新しいメニューに出すにはパッケージ ID が要り、それには署名が要る（ADR-0018）。
 ; %V はフォルダそのものを右クリックしたときも、フォルダ内の余白を右クリックしたときも、そのフォルダのパスになる。
+; 項目名はインストール時の言語で書き込む。後から表示言語を変えても追従しない。
 !macro MX_REGISTER_FOLDER_MENU ROOT
-  WriteRegStr SHCTX "Software\Classes\${ROOT}\shell\${MX_PROGID}" "" "Marxdown で開く"
+  !insertmacro MX_TEXT $R3 "Marxdown で開く" "Open with Marxdown"
+  WriteRegStr SHCTX "Software\Classes\${ROOT}\shell\${MX_PROGID}" "" "$R3"
   WriteRegStr SHCTX "Software\Classes\${ROOT}\shell\${MX_PROGID}" "Icon" "$\"$INSTDIR\${MAINBINARYNAME}.exe$\",0"
   WriteRegStr SHCTX "Software\Classes\${ROOT}\shell\${MX_PROGID}\command" "" "$\"$INSTDIR\${MAINBINARYNAME}.exe$\" $\"%V$\""
 !macroend
@@ -56,6 +68,7 @@
 ; 追加しないと答えたときも解除を呼ぶ。以前のインストールで追加したエントリを残さないため。
 ; NOTE: サイレントインストール用のフラグを /PATH にしない。テンプレートの ${GetOptions} "/P"（パッシブモード）が前方一致で拾う。
 !macro MX_APPLY_PATH_CHOICE
+  !insertmacro MX_TEXT $R3 "ターミナルから marxdown コマンドを使えるようにしますか？$\r$\n$\r$\nユーザー環境変数 PATH に次のフォルダーを追加します。この後に開いたターミナルから使えます。$\r$\n$\r$\n$INSTDIR\bin" "Make the marxdown command available from the terminal?$\r$\n$\r$\nThe following folder is added to your user PATH environment variable. The command works in terminals opened after this.$\r$\n$\r$\n$INSTDIR\bin"
   StrCpy $R0 0
   ${If} $UpdateMode = 1
     ClearErrors
@@ -70,7 +83,7 @@
     ${IfNot} ${Errors}
       StrCpy $R0 1
     ${EndIf}
-  ${ElseIf} ${Cmd} `MessageBox MB_YESNO|MB_ICONQUESTION "ターミナルから marxdown コマンドを使えるようにしますか？$\r$\n$\r$\nユーザー環境変数 PATH に次のフォルダーを追加します。この後に開いたターミナルから使えます。$\r$\n$\r$\n$INSTDIR\bin" IDYES`
+  ${ElseIf} ${Cmd} `MessageBox MB_YESNO|MB_ICONQUESTION "$R3" IDYES`
     StrCpy $R0 1
   ${EndIf}
   WriteRegDWORD SHCTX "${MANUPRODUCTKEY}" "AddToPath" $R0
@@ -84,9 +97,10 @@
   ${EndIf}
   ${If} ${Errors}
   ${OrIf} $R1 != 0
-    DetailPrint "環境変数 PATH を更新できませんでした（終了コード: $R1）"
+    DetailPrint "PATH: exit code $R1"
     ${IfNot} ${Silent}
-      MessageBox MB_OK|MB_ICONEXCLAMATION "環境変数 PATH を更新できませんでした。$\r$\nmarxdown コマンド以外の機能は、このまま使えます。"
+      !insertmacro MX_TEXT $R3 "環境変数 PATH を更新できませんでした。$\r$\nmarxdown コマンド以外の機能は、このまま使えます。" "Could not update the PATH environment variable.$\r$\nEverything except the marxdown command works as usual."
+      MessageBox MB_OK|MB_ICONEXCLAMATION "$R3"
     ${EndIf}
   ${EndIf}
 !macroend
@@ -97,6 +111,9 @@
 !macroend
 
 !macro NSIS_HOOK_POSTINSTALL
+  ; ファイルの種類の名前。テンプレートの APP_ASSOCIATE は tauri.conf.json の description を 1 つの言語で書くため、インストーラの言語で上書きする。
+  !insertmacro MX_TEXT $R3 "Markdown ドキュメント" "Markdown Document"
+  WriteRegStr SHCTX "Software\Classes\${MX_PROGID}" "" "$R3"
   WriteRegStr SHCTX "${MX_APPKEY}" "FriendlyAppName" "${PRODUCTNAME}"
   WriteRegStr SHCTX "${MX_APPKEY}\shell\open\command" "" "$\"$INSTDIR\${MAINBINARYNAME}.exe$\" $\"%1$\""
   !insertmacro MX_REGISTER_OPEN_WITH "md"

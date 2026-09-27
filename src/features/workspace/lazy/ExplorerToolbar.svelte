@@ -10,8 +10,8 @@
   代わりに、現在の状態をツールチップへ添える（`app/StatusBar.svelte` の `⇄` と同じ理由）。
 -->
 <script lang="ts">
-  import { ja } from '@/i18n/ja';
-  import { jaExplorer } from '@/i18n/ja-explorer';
+  import { t } from '@/i18n';
+  import { tExplorer } from '@/i18n/explorer';
   import Icon from '@/lib/Icon.svelte';
 
   import { collapseAll, reloadTree, treeStore } from '../tree.svelte';
@@ -124,15 +124,15 @@
     class="mx-etoolbar__row"
     role="toolbar"
     tabindex="-1"
-    aria-label={ja.tree.toolbar}
+    aria-label={t.tree.toolbar}
     bind:this={row}
     onkeydown={onKeyDown}
   >
     <button
       type="button"
       class="mx-etoolbar__button"
-      aria-label={jaExplorer.newFile}
-      title={jaExplorer.newFile}
+      aria-label={tExplorer.newFile}
+      title={tExplorer.newFile}
       onclick={() => void startCreate(false)}
     >
       <Icon name="document-plus" />
@@ -141,8 +141,8 @@
     <button
       type="button"
       class="mx-etoolbar__button"
-      aria-label={jaExplorer.newFolder}
-      title={jaExplorer.newFolder}
+      aria-label={tExplorer.newFolder}
+      title={tExplorer.newFolder}
       onclick={() => void startCreate(true)}
     >
       <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" focusable="false">
@@ -169,10 +169,10 @@
       class:mx-etoolbar__button--on={filterStore.markdownOnly && !overridden}
       aria-pressed={filterStore.markdownOnly}
       aria-disabled={overridden}
-      aria-label={ja.tree.markdownOnly}
+      aria-label={t.tree.markdownOnly}
       title={overridden
-        ? ja.tree.markdownOnlyOverridden
-        : ja.tree.toggleState(ja.tree.markdownOnly, filterStore.markdownOnly)}
+        ? t.tree.markdownOnlyOverridden
+        : t.tree.toggleState(t.tree.markdownOnly, filterStore.markdownOnly)}
       onclick={toggleMarkdownOnly}
     >
       <Icon name="markdown" />
@@ -185,8 +185,8 @@
       bind:this={extensionsButton}
       aria-pressed={overridden}
       aria-expanded={filterStore.extensionsOpen}
-      aria-label={ja.tree.extensions}
-      title={ja.tree.toggleState(ja.tree.extensions, overridden)}
+      aria-label={t.tree.extensions}
+      title={t.tree.toggleState(t.tree.extensions, overridden)}
       onclick={toggleExtensions}
     >
       <!--
@@ -211,8 +211,8 @@
     <button
       type="button"
       class="mx-etoolbar__button"
-      aria-label={jaExplorer.refresh}
-      title={jaExplorer.refresh}
+      aria-label={tExplorer.refresh}
+      title={tExplorer.refresh}
       onclick={() => void reloadTree()}
     >
       <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" focusable="false">
@@ -230,8 +230,8 @@
     <button
       type="button"
       class="mx-etoolbar__button"
-      aria-label={jaExplorer.collapseAll}
-      title={jaExplorer.collapseAll}
+      aria-label={tExplorer.collapseAll}
+      title={tExplorer.collapseAll}
       onclick={() => {
         collapseAll();
         resetTreeFocus();
@@ -258,8 +258,8 @@
       value={filterStore.extensionsInput}
       spellcheck="false"
       autocomplete="off"
-      aria-label={ja.tree.extensionsInput}
-      placeholder={ja.tree.extensionsPlaceholder}
+      aria-label={t.tree.extensionsInput}
+      placeholder={t.tree.extensionsPlaceholder}
       oninput={(event) => onInput(event.currentTarget.value)}
       onkeydown={onInputKeyDown}
     />

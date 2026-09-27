@@ -8,7 +8,7 @@
  * 判定はスキーム付きで空白を含まない 1 行に限り、緩めると普通の文字列貼り付けまでリンク化されてしまう。
  */
 import { documentStore } from '@/features/document';
-import { ja } from '@/i18n/ja';
+import { t } from '@/i18n';
 import { getPlatform } from '@/platform';
 
 import { byRange, runEdit, textAt, type MarkdownEdit } from './edits';
@@ -84,7 +84,7 @@ export function imageLink(relativePath: string): MarkdownEdit {
 async function pasteImage(editor: monaco.editor.IStandaloneCodeEditor, file: File, extension: string): Promise<void> {
   const path = documentStore.meta?.path ?? null;
   if (path === null || path === '') {
-    documentStore.statusMessage = ja.editor.pasteImageUntitled;
+    documentStore.statusMessage = t.editor.pasteImageUntitled;
     return;
   }
 
@@ -95,7 +95,7 @@ async function pasteImage(editor: monaco.editor.IStandaloneCodeEditor, file: Fil
   } catch {
     // 書き込めなかった（容量・権限・拡張子）。本文には何も入れない。
     // 入れてから失敗を知らせると、指す先の無いリンクが残る。
-    documentStore.notice = { level: 'error', message: ja.editor.pasteImageFailed };
+    documentStore.notice = { level: 'error', message: t.editor.pasteImageFailed };
   }
 }
 

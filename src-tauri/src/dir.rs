@@ -89,15 +89,18 @@ impl Exclude {
     }
 }
 
-/// 並び順。ディレクトリが先、その中は名前順（大文字小文字を区別しない）。
+/// 並び順の比較。ディレクトリが先、その中は名前順（大文字小文字を区別しない）。
 ///
 /// エクスプローラーとしての見え方を揃えるためであり、`read_dir` の順序は OS 依存で安定しない。
+/// 一覧（[`list`]）とツリー（[`tree`]）で同じ順序になる必要があるため、比較だけを切り出してある。
+fn by_kind_then_name(a: (bool, &str), b: (bool, &str)) -> std::cmp::Ordering {
+    b.0.cmp(&a.0)
+        .then_with(|| a.1.to_lowercase().cmp(&b.1.to_lowercase()))
+}
+
+/// 一覧の並び順。
 fn sort_entries(entries: &mut [DirEntry]) {
-    entries.sort_by(|a, b| {
-        b.dir
-            .cmp(&a.dir)
-            .then_with(|| a.name.to_lowercase().cmp(&b.name.to_lowercase()))
-    });
+    entries.sort_by(|a, b| by_kind_then_name((a.dir, a.name.as_str()), (b.dir, b.name.as_str())));
 }
 
 /// `root` の配下であることを検証したうえで、`path` の中身を 1 階層ぶん返す。
@@ -257,6 +260,143 @@ fn has_extension(name: &str, extensions: &[String]) -> bool {
     };
     let ext = ext.to_lowercase();
     extensions.contains(&ext)
+}
+
+/// ツリーの深さの上限（`list_tree`）。
+///
+/// 本文へ貼り付けて読める範囲に収めるための値であり、[`MAX_DEPTH`] より浅い。
+/// 上限で展開しなかった枝に中身があれば `truncated` を立てる。
+const MAX_TREE_DEPTH: usize = 8;
+
+/// ツリーに載せる件数の上限。
+///
+/// あいまい検索の候補（[`MAX_FILES`]）と違い、そのまま本文へ貼り付ける前提の値である。
+const MAX_TREE_ENTRIES: usize = 1000;
+
+/// ツリーの 1 件（`list_tree`）。
+///
+/// 入れ子のまま返す。
+/// アスキーアートへの整形はフロント側が行うため（`features/workspace/lazy/ascii-tree.ts`）、ここで平坦化すると罫線を組み直せない。
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct TreeNode {
+    pub name: String,
+    pub dir: bool,
+    /// ディレクトリ以外では常に空。
+    pub children: Vec<TreeNode>,
+}
+
+/// 基点とその配下（`list_tree`）。
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct DirTree {
+    /// 基点の表示名。ドライブ直下のように名前を取れない場合はパスをそのまま入れる。
+    pub name: String,
+    pub nodes: Vec<TreeNode>,
+    /// 上限で打ち切ったか。フロントはこれを見て、一部であることを通知に添える。
+    pub truncated: bool,
+}
+
+/// `root` の配下を再帰的に辿り、木の形で返す。
+///
+/// 除外は [`list`] と同じ（隠しファイル・`node_modules`・`explorer.exclude`）。
+/// エクスプローラーに出ないものは、コピーした木にも出ない。
+/// ディレクトリへのシンボリックリンクは辿らず、名前だけを出す。
+/// 上限は深さ [`MAX_TREE_DEPTH`]・[`MAX_TREE_ENTRIES`] 件で、超えたら `truncated` を立てて打ち切る。
+///
+/// 存在しない・ディレクトリでない場合は [`CoreError::NotFound`]。
+/// スコープ外は [`CoreError::OutOfScope`]（N-SEC-05 / ADR-0006）。
+pub fn tree(roots: &[PathBuf], root: &Path, exclude: &Exclude) -> CoreResult<DirTree> {
+    let resolved = scope::resolve_within(roots, root)?;
+    if !resolved.is_dir() {
+        return Err(CoreError::NotFound(resolved.display().to_string()));
+    }
+
+    let name = resolved
+        .file_name()
+        .map(|name| name.to_string_lossy().to_string())
+        .unwrap_or_else(|| resolved.display().to_string());
+
+    let mut count = 0;
+    let mut truncated = false;
+    let nodes = walk(&resolved, exclude, 0, &mut count, &mut truncated);
+
+    Ok(DirTree {
+        name,
+        nodes,
+        truncated,
+    })
+}
+
+/// 1 階層ぶんを木にして、ディレクトリへ潜る。
+///
+/// 読めないディレクトリ（権限が無い / 消えた）はその枝ごと対象外にする。
+/// [`collect`] と同じく、一部が読めないことで全体を失敗させない。
+fn walk(
+    dir: &Path,
+    exclude: &Exclude,
+    depth: usize,
+    count: &mut usize,
+    truncated: &mut bool,
+) -> Vec<TreeNode> {
+    let Ok(read) = std::fs::read_dir(dir) else {
+        return Vec::new();
+    };
+
+    let mut items = Vec::new();
+    for item in read.flatten() {
+        let name = item.file_name().to_string_lossy().to_string();
+        if !is_visible(&name) || exclude.hides(dir, &name) {
+            continue;
+        }
+        let Ok(kind) = item.file_type() else {
+            continue;
+        };
+        // `file_type` はリンク自体の種別を返すため、ディレクトリへのリンクはここで dir=false になる。
+        // 辿らないのは、リンク先が親を指していると終わらないためである（[`collect`] と同じ判断）。
+        items.push((name, kind.is_dir(), item.path()));
+    }
+    items.sort_by(|a, b| by_kind_then_name((a.1, a.0.as_str()), (b.1, b.0.as_str())));
+
+    let mut nodes = Vec::new();
+    for (name, dir, path) in items {
+        if *count >= MAX_TREE_ENTRIES {
+            *truncated = true;
+            break;
+        }
+        *count += 1;
+
+        let children = if !dir {
+            Vec::new()
+        } else if depth + 1 < MAX_TREE_DEPTH {
+            walk(&path, exclude, depth + 1, count, truncated)
+        } else {
+            // 展開しなかった枝に中身があれば、見せていないものがあることになる。
+            if has_visible_child(&path, exclude) {
+                *truncated = true;
+            }
+            Vec::new()
+        };
+
+        nodes.push(TreeNode {
+            name,
+            dir,
+            children,
+        });
+    }
+
+    nodes
+}
+
+/// 可視の中身を 1 件でも持つか。深さの上限で展開しなかった枝について調べる。
+fn has_visible_child(dir: &Path, exclude: &Exclude) -> bool {
+    let Ok(read) = std::fs::read_dir(dir) else {
+        return false;
+    };
+    read.flatten().any(|item| {
+        let name = item.file_name().to_string_lossy().to_string();
+        is_visible(&name) && !exclude.hides(dir, &name)
+    })
 }
 
 #[cfg(test)]
@@ -476,6 +616,104 @@ mod tests {
         let dir = std::env::temp_dir();
         let roots = vec![dir.join("marxdown-scope-test-root")];
         let error = list_files(&roots, &dir, &["md".to_string()], &Exclude::default()).unwrap_err();
+
+        assert!(matches!(error, CoreError::OutOfScope(_)));
+    }
+
+    #[test]
+    fn tree_returns_children_in_display_order() {
+        let base = std::env::temp_dir().join("marxdown-tree-test");
+        let _ = std::fs::remove_dir_all(&base);
+        let nested = base.join("docs");
+        std::fs::create_dir_all(&nested).unwrap();
+        std::fs::create_dir_all(base.join("node_modules")).unwrap();
+        std::fs::create_dir_all(base.join(".git")).unwrap();
+        std::fs::write(base.join("README.md"), "").unwrap();
+        std::fs::write(nested.join("a.md"), "").unwrap();
+
+        let result = tree(std::slice::from_ref(&base), &base, &Exclude::default()).unwrap();
+
+        assert_eq!(result.name, "marxdown-tree-test");
+        assert!(!result.truncated);
+
+        let names: Vec<&str> = result.nodes.iter().map(|n| n.name.as_str()).collect();
+        assert_eq!(names, vec!["docs", "README.md"]);
+        assert_eq!(result.nodes[0].children.len(), 1);
+        assert_eq!(result.nodes[0].children[0].name, "a.md");
+        assert!(result.nodes[1].children.is_empty());
+
+        std::fs::remove_dir_all(&base).unwrap();
+    }
+
+    #[test]
+    fn tree_follows_the_user_exclude() {
+        let base = std::env::temp_dir().join("marxdown-tree-exclude-test");
+        let _ = std::fs::remove_dir_all(&base);
+        std::fs::create_dir_all(base.join("dist")).unwrap();
+        std::fs::create_dir_all(base.join("docs")).unwrap();
+        std::fs::write(base.join("dist").join("a.md"), "").unwrap();
+        std::fs::write(base.join("docs").join("b.md"), "").unwrap();
+        let resolved = dunce::canonicalize(&base).unwrap();
+        let exclude = Exclude::new(&["dist".to_string()], Some(&resolved));
+
+        let result = tree(std::slice::from_ref(&base), &base, &exclude).unwrap();
+
+        // エクスプローラーで隠しているものは、コピーした木にも出さない。
+        let names: Vec<&str> = result.nodes.iter().map(|n| n.name.as_str()).collect();
+        assert_eq!(names, vec!["docs"]);
+
+        std::fs::remove_dir_all(&base).unwrap();
+    }
+
+    #[test]
+    fn tree_stops_at_the_depth_limit() {
+        let base = std::env::temp_dir().join("marxdown-tree-depth-test");
+        let _ = std::fs::remove_dir_all(&base);
+        let mut deep = base.clone();
+        for _ in 0..=MAX_TREE_DEPTH {
+            deep = deep.join("d");
+        }
+        std::fs::create_dir_all(&deep).unwrap();
+
+        let result = tree(std::slice::from_ref(&base), &base, &Exclude::default()).unwrap();
+
+        // 展開しなかった枝に中身があるため、打ち切りとして伝わる。
+        assert!(result.truncated);
+
+        let mut node = &result.nodes[0];
+        let mut depth = 1;
+        while let Some(child) = node.children.first() {
+            node = child;
+            depth += 1;
+        }
+        assert_eq!(depth, MAX_TREE_DEPTH);
+
+        std::fs::remove_dir_all(&base).unwrap();
+    }
+
+    #[test]
+    fn walking_stops_at_the_entry_limit() {
+        let base = std::env::temp_dir().join("marxdown-tree-limit-test");
+        let _ = std::fs::remove_dir_all(&base);
+        std::fs::create_dir_all(&base).unwrap();
+        std::fs::write(base.join("a.md"), "").unwrap();
+
+        // 上限そのものを作ると 1000 件書くことになる。到達済みの状態から呼んで同じ経路を通す。
+        let mut count = MAX_TREE_ENTRIES;
+        let mut truncated = false;
+        let nodes = walk(&base, &Exclude::default(), 0, &mut count, &mut truncated);
+
+        assert!(nodes.is_empty());
+        assert!(truncated);
+
+        std::fs::remove_dir_all(&base).unwrap();
+    }
+
+    #[test]
+    fn walking_outside_the_roots_is_rejected() {
+        let dir = std::env::temp_dir();
+        let roots = vec![dir.join("marxdown-scope-test-root")];
+        let error = tree(&roots, &dir, &Exclude::default()).unwrap_err();
 
         assert!(matches!(error, CoreError::OutOfScope(_)));
     }

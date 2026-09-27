@@ -3,7 +3,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import { documentStore } from '@/features/document';
-import { ja } from '@/i18n/ja';
+import { t } from '@/i18n';
 
 import { applyPreviewTheme, awaitPreviewTheme, enableThemeNotices, primePreviewTheme } from './index';
 
@@ -66,7 +66,7 @@ describe('bootstrap 由来の配色 (ADR-0014)', () => {
 
     enableThemeNotices();
 
-    expect(documentStore.notice?.message).toBe(ja.themes.rejected);
+    expect(documentStore.notice?.message).toBe(t.themes.rejected);
     expect(documentStore.notice?.level).toBe('warning');
   });
 });

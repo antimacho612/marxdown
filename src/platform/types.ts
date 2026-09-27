@@ -52,6 +52,27 @@ export interface DirEntry {
   dir: boolean;
 }
 
+/**
+ * ツリーの 1 件（`src-tauri/src/dir.rs` の `TreeNode`）。
+ *
+ * 入れ子のまま受け取る。罫線を組むには木の形が要る。
+ */
+export interface TreeNode {
+  name: string;
+  dir: boolean;
+  /** ディレクトリ以外では常に空。 */
+  children: TreeNode[];
+}
+
+/** 基点とその配下（`src-tauri/src/dir.rs` の `DirTree`）。 */
+export interface DirTree {
+  /** 基点の表示名。パスではない。 */
+  name: string;
+  nodes: TreeNode[];
+  /** 上限で打ち切ったか。true なら木は全体の一部である。 */
+  truncated: boolean;
+}
+
 /** 移動・リネームの結果（`src-tauri/src/fsops.rs` の `Moved`）。どちらも絶対パス。 */
 export interface Moved {
   from: string;
@@ -409,6 +430,22 @@ export interface UpdateInfo {
  */
 export type InstallRefusal = 'dirty' | 'up-to-date';
 
+/** アプリ自身の情報（「Marxdown について」と不具合の報告 / F-OS-09）。 */
+export interface AppInfo {
+  version: string;
+  /** OS の名前と版（`Windows 11 24H2 (26100.4061)` の形）。 */
+  os: string;
+  /** WebView2 の版。取れなければ `null`。 */
+  webview: string | null;
+}
+
+/**
+ * インストーラに同梱したライセンス文の種類。
+ *
+ * パスではなく種類で指定する。任意のファイルを既定アプリで開く経路を作らないため（ADR-0006）。
+ */
+export type BundledFile = 'license' | 'thirdPartyNotices';
+
 /**
  * Platform 層のインタフェース。
  *
@@ -464,6 +501,14 @@ export interface Platform {
    * 対象の拡張子は Platform 層が `lib/path.ts` から渡す。件数と深さには上限があり、超えたときは `truncated` が立つ（`src-tauri/src/dir.rs`）。
    */
   listFiles(root: string): Promise<FileList>;
+  /**
+   * 指定したディレクトリの配下を木の形で返す（エクスプローラーの「ディレクトリ構造のコピー」）。
+   *
+   * 除外は `listDir` と同じで、深さと件数には上限がある（`src-tauri/src/dir.rs`）。
+   * 1 階層ずつではなく 1 回で全体を返すのは、往復の回数が枝の数だけ増えるのを避けるためである。
+   * `root` の意味は `listDir` と同じ。
+   */
+  listTree(path: string, root: string): Promise<DirTree>;
   /**
    * ファイルツリーで開いている枝を監視する（ADR-0021）。
    *
@@ -849,6 +894,10 @@ export interface Platform {
    * 確認の契機と間隔は Rust 側が決める（`src-tauri/src/update.rs`）。
    */
   onUpdateAvailable(handler: (info: UpdateInfo) => void): () => void;
+  /** Marxdown のバージョン・OS・WebView2 の版を返す（F-OS-09）。 */
+  appInfo(): Promise<AppInfo>;
+  /** 同梱したライセンス文を OS の既定アプリで開く（F-OS-09）。 */
+  openBundledFile(file: BundledFile): Promise<void>;
   /**
    * Markdown 以外のローカルファイルを OS の既定アプリで開く（F-VIEW-06）。
    * 許可ディレクトリの外は Rust 側で拒まれる。

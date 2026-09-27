@@ -11,7 +11,7 @@ HTML5 の drag イベントは使えない。
 -->
 
 <script lang="ts">
-  import { ja } from '@/i18n/ja';
+  import { t } from '@/i18n';
   import CloseIcon from '@/lib/CloseIcon.svelte';
   import { splitPath } from '@/lib/path';
 
@@ -248,7 +248,7 @@ HTML5 の drag イベントは使えない。
    */
   function nameOf(tab: Tab): string {
     const path = tabMeta(tab).path;
-    return path === null ? ja.titlebar.untitled : splitPath(path).name;
+    return path === null ? t.titlebar.untitled : splitPath(path).name;
   }
 
   /** 右クリックメニューを開いているか。閉じているあいだはチャンクも取得しない。 */
@@ -285,12 +285,19 @@ HTML5 の drag イベントは使えない。
     if (refocus) menuOpener?.focus();
     menuOpener = null;
   }
+
+  /** タブのメニューを読み込む。文言（`tExplorer`）の読み込みも待つ。 */
+  async function loadTabMenu() {
+    const module = await import('./lazy/TabMenu.svelte');
+    await module.ready;
+    return module;
+  }
 </script>
 
 <div
   class="mx-tabs"
   role="tablist"
-  aria-label={ja.tab.list}
+  aria-label={t.tab.list}
   data-mx-overflow={overflow || undefined}
   bind:this={strip}
   onscroll={measureOverflow}
@@ -320,14 +327,14 @@ HTML5 の drag イベントは使えない。
       >
         <span class="mx-tab__name">{name}</span>
         {#if isTabDirty(tab)}
-          <span class="mx-tab__dirty" aria-label={ja.save.dirtyLabel}>●</span>
+          <span class="mx-tab__dirty" aria-label={t.save.dirtyLabel}>●</span>
         {/if}
       </button>
       <button
         type="button"
         class="mx-tab__close"
-        title={ja.tab.close(name)}
-        aria-label={ja.tab.close(name)}
+        title={t.tab.close(name)}
+        aria-label={t.tab.close(name)}
         onclick={() => void closeTab(tab.id)}
       >
         <CloseIcon size={10} />
@@ -342,7 +349,7 @@ HTML5 の drag イベントは使えない。
 -->
 {#if menuOpen && menuTarget}
   {@const target = menuTarget}
-  {#await import('./lazy/TabMenu.svelte') then { default: TabMenu }}
+  {#await loadTabMenu() then { default: TabMenu }}
     <TabMenu tabId={target.tabId} name={target.name} x={target.x} y={target.y} onclose={closeMenu} />
   {/await}
 {/if}

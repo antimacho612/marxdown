@@ -58,6 +58,7 @@ const UNICORN_NOT_ENFORCED_BEFORE = [
 const FEATURE_BARREL_ENFORCED = [
   'document',
   'editor',
+  'help',
   'history',
   'menu',
   'mode',
@@ -186,6 +187,8 @@ export default tseslint.config(
       'tests/setup.ts',
       // Monaco から何を取るかの一覧そのもので、contrib の登録は副作用インポート以外の書き方が無い。
       'src/features/editor/lazy/monaco.ts',
+      // Monaco の日本語化も同じ理由で副作用インポートになる。
+      'src/features/editor/lazy/nls.ts',
       // KaTeX の CSS
       'src/features/preview/lazy/math.ts',
       'src/features/preview/lazy/mermaid.ts',

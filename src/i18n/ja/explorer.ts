@@ -1,10 +1,4 @@
-/**
- * ファイルツリーのファイル操作だけが使う文言（ADR-0020）。
- *
- * `ja.ts` から分けてあるのは、使う側がすべて遅延チャンク（`features/workspace/lazy/`）にあるためである。
- * `ja.ts` は 1 つのオブジェクトとして `main` に入り、ツリーを開かない人の起動にも読み込まれる。
- * 置き場所は変えず、`src/i18n/` に集約する方針（OQ-11）は保つ。
- */
+/** ファイルツリーのファイル操作だけが使う日本語の文言。`core.ts` と分けてある理由は `../explorer.ts` にある。 */
 export const jaExplorer = {
   newFile: '新しいファイル',
   newFolder: '新しいフォルダー',
@@ -35,6 +29,7 @@ export const jaExplorer = {
     copyPath: 'パスのコピー',
     copyRelativePath: '相対パスのコピー',
     copyLink: 'Markdown リンクとしてコピー',
+    copyTree: 'ディレクトリ構造のコピー',
     reveal: 'エクスプローラーで表示',
     rename: '名前の変更…',
     delete: '削除',
@@ -52,5 +47,9 @@ export const jaExplorer = {
   moved: (count: number) => `${count} 件を移動しました`,
   hiddenCreated: (name: string) => `「${name}」を作成しました。名前が . で始まる項目はエクスプローラーに表示されません`,
   linkCopied: 'Markdown リンクをコピーしました',
+  treeCopied: 'ディレクトリ構造をコピーしました',
+  /** 深さ・件数の上限で打ち切った場合（`src-tauri/src/dir.rs`）。貼り付けた木が一部であることを伝える。 */
+  treeCopiedPartial: 'ディレクトリ構造をコピーしました（大きいため一部だけです）',
+  treeCopyFailed: 'ディレクトリ構造をコピーできませんでした',
   operationFailed: (detail: string) => `ファイル操作に失敗しました: ${detail}`,
 } as const;

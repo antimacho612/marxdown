@@ -8,6 +8,7 @@
 //!
 //! UI ロジックと Markdown の意味解釈は TypeScript 側にある。
 
+mod about;
 pub mod asset;
 mod autostart;
 mod bootstrap;
@@ -22,6 +23,7 @@ pub mod error;
 mod export;
 pub mod fsops;
 pub mod glob;
+pub mod i18n;
 pub mod marp_themes;
 pub mod path_env;
 pub mod scope;
@@ -266,7 +268,7 @@ pub fn run() {
     let args = cli::parse_process_args();
 
     if args.show_help {
-        println!("{}", cli::HELP);
+        println!("{}", i18n::text().help);
         return;
     }
     if args.show_version {
@@ -322,6 +324,8 @@ pub fn run() {
 
     let settings_path = settings::settings_path(&context.config().identifier);
     let mut settings_data = settings::load(settings_path.as_deref());
+    // ダイアログとトレイの文言の言語。フロントエンドと同じく起動時に 1 回だけ決める（ADR-0026）。
+    i18n::init(settings_data.values.ui_language);
 
     // ログイン時の自動起動（ADR-0022）。トレイに格納できない設定では、見えないプロセスが残るだけになる。
     if args.background && !settings_data.values.window_close_to_tray {
@@ -472,6 +476,7 @@ pub fn run() {
             commands::write_asset,
             commands::list_dir,
             commands::list_files,
+            commands::list_tree,
             commands::allow_image_dir,
             commands::pick_file,
             commands::pick_folder,
@@ -524,6 +529,8 @@ pub fn run() {
             commands::app_quit,
             commands::check_update,
             commands::install_update,
+            commands::app_info,
+            commands::open_bundled_file,
             export::export_html,
             export::export_pdf,
             export::inline_image,

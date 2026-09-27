@@ -5,6 +5,8 @@
  */
 import { mount, unmount } from 'svelte';
 
+import { loadSettingsMessages } from '@/i18n/settings';
+
 import SettingsDialog from './SettingsDialog.svelte';
 
 let host: HTMLElement | null = null;
@@ -17,8 +19,10 @@ let opener: HTMLElement | null = null;
  * 開く。既に開いていればフォーカスを戻すだけ（`openSearch` と同じ）。
  *
  * `Ctrl+,` を続けて押したときにダイアログが 2 枚開かないこと、およびフォーカスがパネルにあることを両立させる。
+ * 文言（`tSettings`）の読み込みを待つ間に 2 回目が来ることがあるため、既に開いているかは待った後に判定する。
  */
-export function openSettings(): void {
+export async function openSettings(): Promise<void> {
+  await loadSettingsMessages();
   if (host) {
     focusPanel();
     return;

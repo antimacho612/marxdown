@@ -25,7 +25,7 @@ describe('起動して本文が読める', () => {
     // メタ情報が Rust から届いて派生状態に入っていることの確認。
     // 保存時の `WriteRequest` はこの値をそのまま返す（F-EDIT-14）。
     //
-    // 綴りは `i18n/ja.ts` の `status.encoding` が持つ通り名である。
+    // 綴りは `i18n/ja/core.ts` の `status.encoding` が持つ通り名である。
     // 正規表現で書くのは、エンコーディング名の大小を揃える lint と衝突しないため。
     await expect($('.mx-statusbar')).toHaveText(/UTF-8[\s\S]*\bLF\b/);
   });

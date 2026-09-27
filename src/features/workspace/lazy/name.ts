@@ -6,7 +6,7 @@
  * 食い違っても安全側に倒れる（ここを通っても Rust が拒めば、失敗として通知される）。
  */
 
-/** 名前を確定できない理由。`ja.tree.nameProblem` のキーと対応する。 */
+/** 名前を確定できない理由。`tExplorer.nameProblem` のキーと対応する。 */
 export type NameProblem = 'empty' | 'chars' | 'reserved' | 'trailing' | 'dots' | 'tooLong' | 'exists';
 
 const FORBIDDEN = /[\\/:*?"<>|]/;

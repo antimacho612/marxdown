@@ -8,7 +8,7 @@ import { documentStore, ENCODINGS, reinterpret } from '@/features/document';
 import { setMode } from '@/features/mode';
 import { applyZoom, formatZoom, ZOOM_STEPS } from '@/features/preview';
 import { viewStore } from '@/features/view';
-import { ja } from '@/i18n/ja';
+import { t } from '@/i18n';
 import type { Encoding, ViewMode } from '@/platform';
 
 import type { StatusMenuKind } from '../props';
@@ -56,7 +56,7 @@ function encodingItems(): StatusMenuItem[] {
   const current = documentStore.meta?.encoding;
   return ENCODINGS.map((encoding) => ({
     id: encoding,
-    label: ja.status.encoding[encoding],
+    label: t.status.encoding[encoding],
     checked: encoding === current,
     run: () => void reinterpret(encoding),
   }));
@@ -65,7 +65,7 @@ function encodingItems(): StatusMenuItem[] {
 function modeItems(): StatusMenuItem[] {
   return MODES.map((mode) => ({
     id: mode,
-    label: ja.status.mode[mode],
+    label: t.status.mode[mode],
     checked: mode === viewStore.mode,
     run: () => void setMode(mode),
   }));

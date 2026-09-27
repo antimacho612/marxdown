@@ -13,7 +13,7 @@ import { commandEntry, resolve } from '@/features/palette/lazy/catalog';
 import { formatZoom, ZOOM_MAX, ZOOM_MIN } from '@/features/preview';
 import { viewStore } from '@/features/view';
 import { recentStore } from '@/features/workspace';
-import { ja } from '@/i18n/ja';
+import { t } from '@/i18n';
 import { isCommandListed, runCommand, type CommandId } from '@/lib/commands';
 import { splitPath } from '@/lib/path';
 
@@ -117,7 +117,7 @@ type MenuEntry = CommandEntry | SubmenuEntry | RecentEntry | ZoomEntry;
  * - `file` … ファイルを開く・書き出す操作。一覧を伴うもの（履歴・書き出し形式）はサブメニューに収める
  * - `view` … 見え方を変える操作。文書の中身は変わらない
  * - `document` … いま開いている文書に対する操作。再読み込みと検索は同じ対象を指すので隣に置く
- * - `app` … アプリに対する操作。ファイルを開いていなくても実行できる
+ * - `app` … アプリに対する操作。ファイルを開いていなくても実行できる。ヘルプもここに収める
  */
 const MENU: { id: string; entries: MenuEntry[] }[] = [
   {
@@ -138,7 +138,7 @@ const MENU: { id: string; entries: MenuEntry[] }[] = [
       // エクスポート（F-VIEW-18）。保存と同じく、いま開いている文書をファイルへ書き出す操作の並びに置く。
       {
         id: 'export',
-        label: ja.menu.export,
+        label: t.menu.export,
         submenu: [
           { id: 'export-html', command: 'document.exportHtml' },
           { id: 'export-pdf', command: 'document.exportPdf' },
@@ -159,7 +159,7 @@ const MENU: { id: string; entries: MenuEntry[] }[] = [
   {
     id: 'view',
     entries: [
-      // モードの切り替え（F-MODE-06）。ラベルは行き先を言う（`ja.menu`）。
+      // モードの切り替え（F-MODE-06）。ラベルは行き先を言う（`t.menu`）。
       { id: 'mode', command: 'view.togglePreview' },
       // Split（F-MODE-03）。ラベルは行き先を言う（モードのトグルと同じ）。
       { id: 'split', command: 'view.toggleSplit' },
@@ -188,6 +188,20 @@ const MENU: { id: string; entries: MenuEntry[] }[] = [
       // キーを知らない人がすべての機能へ辿り着ける経路は、メニューからパレットへ入る 2 手だけである。
       { id: 'palette', command: 'palette.open' },
       { id: 'settings', command: 'settings.open' },
+      // ヘルプ（F-OS-09 / ADR-0027）。一覧を伴うため、書き出しと同じくサブメニューに収める。
+      // 「更新を確認」もここに置く。アプリそのものについての操作であり、使用頻度もほかの項目と同程度に低い。
+      {
+        id: 'help',
+        label: t.menu.help,
+        submenu: [
+          { id: 'report-issue', command: 'help.reportIssue' },
+          { id: 'suggest-feature', command: 'help.suggestFeature' },
+          { id: 'check-update', command: 'app.checkUpdate' },
+          { id: 'license', command: 'help.license' },
+          { id: 'third-party-notices', command: 'help.thirdPartyNotices' },
+          { id: 'about', command: 'help.about' },
+        ],
+      },
       // 終了（ADR-0007 論点 3 の 3 経路のうちの 1 つ）。
       //
       // `✕` はトレイ格納の意味であるため、この項目が必要である。
@@ -264,8 +278,8 @@ function recentSubmenu(id: string): MenuSubmenu {
   return {
     kind: 'submenu',
     id,
-    label: ja.menu.recent,
-    empty: ja.menu.noRecent,
+    label: t.menu.recent,
+    empty: t.menu.noRecent,
     items: recentStore.entries.slice(0, MENU_RECENT_SHOWN).map((entry) => {
       const split = splitPath(entry.path);
       return {
@@ -295,7 +309,7 @@ function zoomStepper(id: string): MenuStepper | null {
   return {
     kind: 'stepper',
     id,
-    label: ja.menu.zoom,
+    label: t.menu.zoom,
     value: formatZoom(zoom),
     decrease,
     reset,

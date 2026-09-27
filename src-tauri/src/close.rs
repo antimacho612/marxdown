@@ -19,12 +19,6 @@ use tauri::{AppHandle, Emitter, Manager, Runtime};
 use crate::state::AppState;
 use crate::window::MAIN_LABEL;
 
-/// 未保存の変更があることを伝える文面。
-///
-/// 終了の確認（`ask_then_quit`）と、別の文書へ移るときの確認（`commands::confirm_discard`）で共有する。
-/// 同じ状態を指す言葉が経路ごとに違うと、同じ危険が別のことのように見える。
-pub const DIRTY_MESSAGE: &str = "未保存の変更があります。保存しますか？";
-
 /// いま `✕` がどちらの意味か（設定 `window.closeToTray`）。
 ///
 /// ディスクではなくメモリ上の設定を見る。
@@ -173,8 +167,7 @@ fn ask_then_quit<R: Runtime>(app: AppHandle<R>) {
 
     // `YesNoCancelCustom` はラベルをカスタムした時点で、結果は `Yes` / `No` ではなく常に `Custom(ラベル文字列)` で返ってくる（tauri-plugin-dialog の仕様）。
     // ラベルで判定しないと、どちらのボタンを押しても `_` に該当して何も起きない。
-    const SAVE_AND_QUIT: &str = "保存して終了";
-    const QUIT_WITHOUT_SAVING: &str = "保存せず終了";
+    let text = crate::i18n::text();
 
     // 保存を依頼する先。ダーティなウィンドウのうちの 1 枚。
     let target = app
@@ -184,23 +177,25 @@ fn ask_then_quit<R: Runtime>(app: AppHandle<R>) {
 
     let handle = app.clone();
     app.dialog()
-        .message(DIRTY_MESSAGE)
+        .message(text.dirty_message)
         .title("Marxdown")
         .kind(MessageDialogKind::Warning)
         .buttons(MessageDialogButtons::YesNoCancelCustom(
-            SAVE_AND_QUIT.to_string(),
-            QUIT_WITHOUT_SAVING.to_string(),
-            "キャンセル".to_string(),
+            text.save_and_quit.to_string(),
+            text.quit_without_saving.to_string(),
+            text.cancel.to_string(),
         ))
         .show_with_result(move |result| match result {
-            MessageDialogResult::Custom(label) if label == SAVE_AND_QUIT => {
+            MessageDialogResult::Custom(label) if label == text.save_and_quit => {
                 // ダーティなウィンドウが前面にあるとは限らない。保存の前に見せる。
                 if let Some(window) = handle.get_webview_window(&target) {
                     let _ = window.set_focus();
                 }
                 let _ = handle.emit_to(target.as_str(), crate::EVENT_SAVE_AND_QUIT, ());
             }
-            MessageDialogResult::Custom(label) if label == QUIT_WITHOUT_SAVING => quit(&handle),
+            MessageDialogResult::Custom(label) if label == text.quit_without_saving => {
+                quit(&handle)
+            }
             // キャンセル / ダイアログを閉じた場合は何もしない。既定は終了しない側にする（N-REL-01）。
             _ => {}
         });
@@ -291,24 +286,23 @@ fn ask_then_close<R: Runtime>(app: AppHandle<R>, label: String) {
         DialogExt, MessageDialogButtons, MessageDialogKind, MessageDialogResult,
     };
 
-    const SAVE_AND_CLOSE: &str = "保存して閉じる";
-    const CLOSE_WITHOUT_SAVING: &str = "保存せず閉じる";
+    let text = crate::i18n::text();
 
     let handle = app.clone();
     app.dialog()
-        .message(DIRTY_MESSAGE)
+        .message(text.dirty_message)
         .title("Marxdown")
         .kind(MessageDialogKind::Warning)
         .buttons(MessageDialogButtons::YesNoCancelCustom(
-            SAVE_AND_CLOSE.to_string(),
-            CLOSE_WITHOUT_SAVING.to_string(),
-            "キャンセル".to_string(),
+            text.save_and_close.to_string(),
+            text.close_without_saving.to_string(),
+            text.cancel.to_string(),
         ))
         .show_with_result(move |result| match result {
-            MessageDialogResult::Custom(text) if text == SAVE_AND_CLOSE => {
+            MessageDialogResult::Custom(pressed) if pressed == text.save_and_close => {
                 let _ = handle.emit_to(label.as_str(), crate::EVENT_SAVE_AND_CLOSE, ());
             }
-            MessageDialogResult::Custom(text) if text == CLOSE_WITHOUT_SAVING => {
+            MessageDialogResult::Custom(pressed) if pressed == text.close_without_saving => {
                 if let Some(state) = handle.try_state::<AppState>() {
                     state.set_dirty(&label, false);
                 }
@@ -333,17 +327,15 @@ fn ask_then_stash<R: Runtime>(app: AppHandle<R>, label: String) {
         state.mark_tray_intro_shown();
     }
 
+    let text = crate::i18n::text();
     let handle = app.clone();
     app.dialog()
-        .message(
-            "ウィンドウを閉じても、Marxdown はタスクトレイで動作し続けます。次に開くときにすぐ表示されます。\n\n\
-             この動作は、設定の「閉じるときにタスクトレイに格納する」で変更できます。",
-        )
+        .message(text.tray_intro)
         .title("Marxdown")
         .kind(MessageDialogKind::Info)
         .buttons(MessageDialogButtons::OkCancelCustom(
-            "タスクトレイに格納".to_string(),
-            "終了".to_string(),
+            text.tray_intro_stash.to_string(),
+            text.tray_intro_quit.to_string(),
         ))
         .show(move |stash_it| {
             if stash_it {

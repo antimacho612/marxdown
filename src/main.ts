@@ -10,6 +10,8 @@ import { mount } from 'svelte';
 
 import App from '@/app/App.svelte';
 import { startup } from '@/app/bootstrap';
+import { loadMessages, resolveLocale, setLocale } from '@/i18n';
+import { getPlatform } from '@/platform';
 
 const root = document.getElementById('root');
 
@@ -18,4 +20,12 @@ function renderShell(): void {
   mount(App, { target: root });
 }
 
-void startup(renderShell);
+// 表示言語は起動時に 1 回だけ決める（ADR-0026）。
+// NOTE: 本文の面（`#mx-preview` / `#mx-editor`）は `index.html` で `lang="ja"` に固定してある。
+// `<html lang>` を継承させると、英語の UI で日本語の本文の漢字が中国語の字形で描かれうる（OQ-49）。
+const locale = resolveLocale(getPlatform().getBootstrap()?.settings['ui.language'] ?? 'auto', navigator.languages);
+setLocale(locale);
+document.documentElement.lang = locale;
+
+// NOTE: 起動処理は通知やシェルの描画で文言を使うため、文言の読み込みを待ってから始める。
+void loadMessages().then(() => startup(renderShell));

@@ -7,7 +7,7 @@
   外枠は `Palette.svelte` である。ここが持つのは「何を並べるか」だけである。
 -->
 <script lang="ts">
-  import { ja } from '@/i18n/ja';
+  import { t } from '@/i18n';
   import { runCommand, type CommandId } from '@/lib/commands';
 
   import { listedCommands } from './catalog';
@@ -40,11 +40,11 @@
 </script>
 
 <Palette
-  label={ja.palette.title}
-  placeholder={ja.palette.placeholder}
+  label={t.palette.title}
+  placeholder={t.palette.placeholder}
   {items}
-  emptyText={ja.palette.noMatch}
-  noMatchText={ja.palette.noMatch}
+  emptyText={t.palette.noMatch}
+  noMatchText={t.palette.noMatch}
   onselect={run}
   {onclose}
 />

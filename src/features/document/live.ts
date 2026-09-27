@@ -8,7 +8,7 @@
  */
 import { enhance, paintMarp, patch } from '@/features/preview';
 import { takeEditorLead, viewStore } from '@/features/view';
-import { ja } from '@/i18n/ja';
+import { t } from '@/i18n';
 import { toMessage } from '@/lib/error';
 import { dirOf } from '@/lib/path';
 import { isOutlineOnScreen, refreshOutline, refreshSearch } from '@/lib/refresh';
@@ -251,7 +251,7 @@ async function renderOnce(): Promise<void> {
     // 本文は前の内容のまま残るが、入力しても右側が更新されない状態になり、原因を特定できない。
     debug.lastError = toMessage(e);
     outlineStale = true;
-    documentStore.notice = { level: 'error', message: ja.error.renderFailed };
+    documentStore.notice = { level: 'error', message: t.error.renderFailed };
   }
 }
 

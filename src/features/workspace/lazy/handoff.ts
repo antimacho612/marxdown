@@ -8,7 +8,7 @@
  * 引き出した側はポインタを捕捉しているため、下にある他のウィンドウには何も届かない。
  */
 import { documentStore } from '@/features/document';
-import { ja } from '@/i18n/ja';
+import { t } from '@/i18n';
 import { getPlatform, type Rgb, type TabArrival, type TabDragGhost } from '@/platform';
 
 import {
@@ -36,7 +36,7 @@ export async function moveTabToWindow(id: number, target: string): Promise<boole
   try {
     await getPlatform().sendTabToWindow(target, handoff);
   } catch {
-    documentStore.notice = { level: 'error', message: ja.window.moveFailed };
+    documentStore.notice = { level: 'error', message: t.window.moveFailed };
     return false;
   }
   return releaseMovedTab(id);

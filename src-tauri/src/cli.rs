@@ -79,11 +79,11 @@ pub struct CliArgs {
     pub unknown: Vec<String>,
 }
 
-/// `--help` の出力。オプションを足したらここも直す。
+/// `--help` の出力（日本語）。オプションを足したら `HELP_EN` と一緒に直す。
 ///
 /// 載せるのは利用者が使うオプションだけである。
 /// 計測用（`--trace-startup` / `--exit-after-trace` / `--gc-probe` / `--bench-input`）とインストーラ用（`--add-to-path` / `--remove-from-path`）は解析するが、ここには載せない。
-pub const HELP: &str = "\
+pub const HELP_JA: &str = "\
 marxdown — Markdown ビューアー＆エディター
 
 使い方:
@@ -98,6 +98,25 @@ marxdown — Markdown ビューアー＆エディター
         --background       ウィンドウを表示せず、タスクトレイで起動する
     -h, --help             このヘルプを表示する
     -V, --version          バージョンを表示する
+";
+
+/// `--help` の出力（英語）。載せるオプションは `HELP_JA` と同じである。
+/// どちらを出すかは `i18n::text()` が決める（ADR-0026）。
+pub const HELP_EN: &str = "\
+marxdown — Markdown viewer & editor
+
+Usage:
+    marxdown [options] [file|folder]...
+    <command> | marxdown [options] -
+
+Arguments:
+    -                      Open standard input as an untitled document
+
+Options:
+    -m, --mode <mode>      Open in the given view mode: preview | edit | split
+        --background       Start in the system tray without showing a window
+    -h, --help             Show this help
+    -V, --version          Show the version
 ";
 
 /// `argv`（実行ファイル名を含まない）と `cwd` から引数を解析する。

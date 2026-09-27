@@ -1,10 +1,24 @@
 [
   {
-    "name": "critical path (main + shared + pipeline + app css)",
+    "name": "critical path ja (main + shared + pipeline + i18n core + app css — ADR-0026)",
     "path": [
       "dist/assets/main-*.js",
       "dist/assets/shared-*.js",
       "dist/assets/pipeline-*.js",
+      "dist/assets/i18n-ja-core-*.js",
+      "dist/assets/index-*.css",
+      "dist/assets/workspace-*.css"
+    ],
+    "limit": "150 KB",
+    "gzip": true
+  },
+  {
+    "name": "critical path en (main + shared + pipeline + i18n core + app css — ADR-0026)",
+    "path": [
+      "dist/assets/main-*.js",
+      "dist/assets/shared-*.js",
+      "dist/assets/pipeline-*.js",
+      "dist/assets/i18n-en-core-*.js",
       "dist/assets/index-*.css",
       "dist/assets/workspace-*.css"
     ],
@@ -72,6 +86,34 @@
     "gzip": true
   },
   {
+    "name": "help (ヘルプの項目と「Marxdown について」。ヘルプの項目を選ぶまでロードしない — ADR-0027)",
+    "path": ["dist/assets/help-*.js"],
+    "limit": "3 KB",
+    "gzip": true
+  },
+  {
+    "name": "i18n ja (遅延チャンクが使う文言。ファイルツリー・設定・更新・ヘルプを開くまでロードしない — ADR-0026)",
+    "path": [
+      "dist/assets/i18n-ja-explorer-*.js",
+      "dist/assets/i18n-ja-help-*.js",
+      "dist/assets/i18n-ja-settings-*.js",
+      "dist/assets/i18n-ja-update-*.js"
+    ],
+    "limit": "6 KB",
+    "gzip": true
+  },
+  {
+    "name": "i18n en (遅延チャンクが使う文言。ファイルツリー・設定・更新・ヘルプを開くまでロードしない — ADR-0026)",
+    "path": [
+      "dist/assets/i18n-en-explorer-*.js",
+      "dist/assets/i18n-en-help-*.js",
+      "dist/assets/i18n-en-settings-*.js",
+      "dist/assets/i18n-en-update-*.js"
+    ],
+    "limit": "6 KB",
+    "gzip": true
+  },
+  {
     "name": "bench input (--bench-input のときだけロードする計測経路)",
     "path": ["dist/assets/bench-*.js"],
     "limit": "4 KB",
@@ -97,20 +139,36 @@
   },
   {
     "name": "marp (Marp のスライド。marp: true の文書を開くまでロードしない。予算の対象外 — ADR-0023)",
-    "path": ["dist/assets/marp-*.js"],
+    "path": ["dist/assets/marp-*.js", "dist/assets/i18n-*-marp-*.js"],
     "limit": "200 KB",
     "gzip": true
   },
   {
-    "name": "total (no mermaid, no math, no marp, no editor)",
+    "name": "total ja (no mermaid, no math, no marp, no editor, no i18n-en)",
     "path": [
       "dist/assets/*.js",
       "!dist/assets/mermaid-*.js",
       "!dist/assets/math-*.js",
       "!dist/assets/marp-*.js",
-      "!dist/assets/editor-*.js"
+      "!dist/assets/editor-*.js",
+      "!dist/assets/i18n-*-marp-*.js",
+      "!dist/assets/i18n-en-*.js"
     ],
-    "limit": "235 KB",
+    "limit": "240 KB",
+    "gzip": true
+  },
+  {
+    "name": "total en (no mermaid, no math, no marp, no editor, no i18n-ja)",
+    "path": [
+      "dist/assets/*.js",
+      "!dist/assets/mermaid-*.js",
+      "!dist/assets/math-*.js",
+      "!dist/assets/marp-*.js",
+      "!dist/assets/editor-*.js",
+      "!dist/assets/i18n-*-marp-*.js",
+      "!dist/assets/i18n-ja-*.js"
+    ],
+    "limit": "240 KB",
     "gzip": true
   }
 ]

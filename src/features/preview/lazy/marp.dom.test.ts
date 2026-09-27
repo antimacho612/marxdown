@@ -7,7 +7,7 @@
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { jaMarp } from '@/i18n/ja-marp';
+import { tMarp } from '@/i18n/marp';
 import type { MarpRender } from '@/markdown/protocol';
 import { getPlatform, setPlatform, type Platform } from '@/platform';
 
@@ -181,7 +181,7 @@ describe('自作テーマの通知', () => {
       },
       '',
     );
-    expect(notice).toBe(jaMarp.themeFailed(jaMarp.themeProblem.missing, 'C:/t/a.css', 1));
+    expect(notice).toBe(tMarp.themeFailed(tMarp.themeProblem.missing, 'C:/t/a.css', 1));
   });
 });
 
@@ -199,7 +199,7 @@ describe('テーマの CSS', () => {
       render([frame('<section></section>')], '}\nbody { display: none; }\n#mx-preview {'),
       '',
     );
-    expect(notice).toBe(jaMarp.styleRejected);
+    expect(notice).toBe(tMarp.styleRejected);
     expect(container.querySelector('style')?.textContent).not.toContain('body {');
   });
 });

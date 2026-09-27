@@ -10,7 +10,7 @@
  * 状態で変わる名前は関数で持つ。行き先を言うほうが、押した結果を事前に判断できる（「編集する」/「プレビューに戻る」）。
  */
 import { viewStore } from '@/features/view';
-import { ja } from '@/i18n/ja';
+import { t } from '@/i18n';
 import { isCommandListed, type CommandId } from '@/lib/commands';
 
 /** 1 つのコマンドの見せ方。 */
@@ -24,7 +24,7 @@ export interface CommandEntry {
    * ラベルが日本語しか無いため、`file` や `save` と打つと 1 件も出てこない。
    * id（`document.open`）を照合しても「ファイルを開く」に `file` は含まれず届かないので、呼び名として使われる語をここに並べる。
    *
-   * 表示しないため `i18n/ja.ts` には置かない。あちらは人に見せる文言の置き場所である。
+   * 表示しないため `i18n/` には置かない。あちらは人に見せる文言の置き場所である。
    * 省略できない形にしてあり、書き漏らしは `catalog.test.ts` が検出する。
    */
   keywords: string;
@@ -49,98 +49,108 @@ export interface ResolvedCommand {
  * 並びは `app/commands.ts` の実体の表に合わせてある。突き合わせるときに目で追える。
  */
 export const COMMAND_CATALOG: CommandEntry[] = [
-  { id: 'document.new', label: ja.menu.new, keywords: 'new file document create', shortcut: 'Ctrl+N' },
-  { id: 'document.open', label: ja.menu.open, keywords: 'open file document', shortcut: 'Ctrl+O' },
-  { id: 'folder.open', label: ja.menu.openFolder, keywords: 'open folder directory workspace', shortcut: 'Ctrl+Alt+O' },
-  { id: 'document.quickOpen', label: ja.menu.quickOpen, keywords: 'quick open file goto', shortcut: 'Ctrl+P' },
-  { id: 'document.reload', label: ja.menu.reload, keywords: 'reload revert file', shortcut: 'F5' },
-  { id: 'document.save', label: ja.menu.save, keywords: 'save file write', shortcut: 'Ctrl+S' },
-  { id: 'document.saveAs', label: ja.menu.saveAs, keywords: 'save as file write', shortcut: 'Ctrl+Shift+S' },
-  { id: 'document.exportHtml', label: ja.menu.exportHtml, keywords: 'export html save write' },
-  { id: 'document.exportPdf', label: ja.menu.exportPdf, keywords: 'export pdf print save write' },
-  { id: 'document.toggleEol', label: ja.menu.toggleEol, keywords: 'toggle eol line ending newline crlf lf' },
+  { id: 'document.new', label: t.menu.new, keywords: 'new file document create', shortcut: 'Ctrl+N' },
+  { id: 'document.open', label: t.menu.open, keywords: 'open file document', shortcut: 'Ctrl+O' },
+  { id: 'folder.open', label: t.menu.openFolder, keywords: 'open folder directory workspace', shortcut: 'Ctrl+Alt+O' },
+  { id: 'document.quickOpen', label: t.menu.quickOpen, keywords: 'quick open file goto', shortcut: 'Ctrl+P' },
+  { id: 'document.reload', label: t.menu.reload, keywords: 'reload revert file', shortcut: 'F5' },
+  { id: 'document.save', label: t.menu.save, keywords: 'save file write', shortcut: 'Ctrl+S' },
+  { id: 'document.saveAs', label: t.menu.saveAs, keywords: 'save as file write', shortcut: 'Ctrl+Shift+S' },
+  { id: 'document.exportHtml', label: t.menu.exportHtml, keywords: 'export html save write' },
+  { id: 'document.exportPdf', label: t.menu.exportPdf, keywords: 'export pdf print save write' },
+  { id: 'document.toggleEol', label: t.menu.toggleEol, keywords: 'toggle eol line ending newline crlf lf' },
 
-  { id: 'window.moveTab', label: ja.menu.moveToNewWindow, keywords: 'move tab window satellite detach' },
-  { id: 'window.moveTabToMain', label: ja.menu.moveToMainWindow, keywords: 'move tab main window satellite attach' },
+  { id: 'window.moveTab', label: t.menu.moveToNewWindow, keywords: 'move tab window satellite detach' },
+  { id: 'window.moveTabToMain', label: t.menu.moveToMainWindow, keywords: 'move tab main window satellite attach' },
 
-  { id: 'tab.close', label: ja.tab.closeCurrent, keywords: 'close tab', shortcut: 'Ctrl+W' },
-  { id: 'tab.next', label: ja.tab.next, keywords: 'next tab', shortcut: 'Ctrl+Tab' },
-  { id: 'tab.previous', label: ja.tab.previous, keywords: 'previous prev tab', shortcut: 'Ctrl+Shift+Tab' },
-  { id: 'tab.reopen', label: ja.tab.reopen, keywords: 'reopen restore closed tab', shortcut: 'Ctrl+Shift+T' },
+  { id: 'tab.close', label: t.tab.closeCurrent, keywords: 'close tab', shortcut: 'Ctrl+W' },
+  { id: 'tab.next', label: t.tab.next, keywords: 'next tab', shortcut: 'Ctrl+Tab' },
+  { id: 'tab.previous', label: t.tab.previous, keywords: 'previous prev tab', shortcut: 'Ctrl+Shift+Tab' },
+  { id: 'tab.reopen', label: t.tab.reopen, keywords: 'reopen restore closed tab', shortcut: 'Ctrl+Shift+T' },
 
-  { id: 'history.back', label: ja.history.back, keywords: 'back history navigate', shortcut: 'Alt+←' },
-  { id: 'history.forward', label: ja.history.forward, keywords: 'forward history navigate', shortcut: 'Alt+→' },
+  { id: 'history.back', label: t.history.back, keywords: 'back history navigate', shortcut: 'Alt+←' },
+  { id: 'history.forward', label: t.history.forward, keywords: 'forward history navigate', shortcut: 'Alt+→' },
 
   // ペインとビューは意味が違う（`app/commands.ts`）。ラベルもそれに合わせる。
   {
     id: 'pane.toggleLeft',
-    label: () => (viewStore.panes.left.open ? ja.pane.hideExplorer : ja.pane.showExplorer),
+    label: () => (viewStore.panes.left.open ? t.pane.hideExplorer : t.pane.showExplorer),
     keywords: 'toggle left pane sidebar explorer',
     shortcut: 'Ctrl+Shift+B',
   },
   {
     id: 'pane.toggleRight',
-    label: () => (viewStore.panes.right.open ? ja.pane.hideOutline : ja.pane.showOutline),
+    label: () => (viewStore.panes.right.open ? t.pane.hideOutline : t.pane.showOutline),
     keywords: 'toggle right pane sidebar outline',
     shortcut: 'Ctrl+Alt+B',
   },
   {
     id: 'explorer.show',
-    label: ja.menu.showExplorer,
+    label: t.menu.showExplorer,
     keywords: 'explorer show file tree sidebar',
     shortcut: 'Ctrl+Shift+E',
   },
-  { id: 'explorer.newFile', label: ja.menu.explorerNewFile, keywords: 'explorer new file create add' },
-  { id: 'explorer.newFolder', label: ja.menu.explorerNewFolder, keywords: 'explorer new folder directory create add' },
-  { id: 'explorer.refresh', label: ja.menu.explorerRefresh, keywords: 'explorer refresh reload file tree' },
-  { id: 'explorer.collapseAll', label: ja.menu.explorerCollapseAll, keywords: 'explorer collapse all folders tree' },
+  { id: 'explorer.newFile', label: t.menu.explorerNewFile, keywords: 'explorer new file create add' },
+  { id: 'explorer.newFolder', label: t.menu.explorerNewFolder, keywords: 'explorer new folder directory create add' },
+  { id: 'explorer.refresh', label: t.menu.explorerRefresh, keywords: 'explorer refresh reload file tree' },
+  { id: 'explorer.collapseAll', label: t.menu.explorerCollapseAll, keywords: 'explorer collapse all folders tree' },
+  {
+    id: 'explorer.copyTree',
+    label: t.menu.explorerCopyTree,
+    keywords: 'explorer copy tree directory structure ascii',
+  },
   {
     id: 'outline.show',
-    label: ja.menu.showOutline,
+    label: t.menu.showOutline,
     keywords: 'outline show heading sidebar',
     shortcut: 'Ctrl+Shift+U',
   },
   {
     id: 'outline.jump',
-    label: ja.outline.jump,
+    label: t.outline.jump,
     keywords: 'outline jump goto heading symbol',
     shortcut: 'Ctrl+Shift+O',
   },
 
   {
     id: 'view.togglePreview',
-    label: () => (viewStore.mode === 'preview' ? ja.menu.toEdit : ja.menu.toPreview),
+    label: () => (viewStore.mode === 'preview' ? t.menu.toEdit : t.menu.toPreview),
     keywords: 'toggle preview edit view mode',
     shortcut: 'Ctrl+Shift+V',
   },
   {
     id: 'view.toggleSplit',
-    label: () => (viewStore.mode === 'split' ? ja.menu.fromSplit : ja.menu.toSplit),
+    label: () => (viewStore.mode === 'split' ? t.menu.fromSplit : t.menu.toSplit),
     keywords: 'toggle split view mode',
     shortcut: 'Ctrl+\\',
   },
-  { id: 'view.cycleMode', label: ja.menu.cycleMode, keywords: 'cycle view mode', shortcut: 'Ctrl+Shift+M' },
-  { id: 'view.toggleScrollSync', label: ja.menu.toggleScrollSync, keywords: 'toggle scroll sync' },
+  { id: 'view.cycleMode', label: t.menu.cycleMode, keywords: 'cycle view mode', shortcut: 'Ctrl+Shift+M' },
+  { id: 'view.toggleScrollSync', label: t.menu.toggleScrollSync, keywords: 'toggle scroll sync' },
 
-  { id: 'editor.gotoLine', label: ja.menu.gotoLine, keywords: 'goto line number', shortcut: 'Ctrl+G' },
-  { id: 'editor.formatTable', label: ja.menu.formatTable, keywords: 'format table', shortcut: 'Shift+Alt+F' },
+  { id: 'editor.gotoLine', label: t.menu.gotoLine, keywords: 'goto line number', shortcut: 'Ctrl+G' },
+  { id: 'editor.formatTable', label: t.menu.formatTable, keywords: 'format table', shortcut: 'Shift+Alt+F' },
 
   {
     id: 'find.open',
-    label: () => (viewStore.mode === 'preview' ? ja.menu.search : ja.menu.find),
+    label: () => (viewStore.mode === 'preview' ? t.menu.search : t.menu.find),
     keywords: 'find search',
     shortcut: 'Ctrl+F',
   },
-  { id: 'find.replace', label: ja.menu.replace, keywords: 'replace find search', shortcut: 'Ctrl+H' },
+  { id: 'find.replace', label: t.menu.replace, keywords: 'replace find search', shortcut: 'Ctrl+H' },
 
-  { id: 'preview.zoomIn', label: ja.menu.zoomIn, keywords: 'zoom in preview', shortcut: 'Ctrl+=' },
-  { id: 'preview.zoomOut', label: ja.menu.zoomOut, keywords: 'zoom out preview', shortcut: 'Ctrl+-' },
-  { id: 'preview.zoomReset', label: ja.menu.zoomReset, keywords: 'zoom reset preview', shortcut: 'Ctrl+0' },
+  { id: 'preview.zoomIn', label: t.menu.zoomIn, keywords: 'zoom in preview', shortcut: 'Ctrl+=' },
+  { id: 'preview.zoomOut', label: t.menu.zoomOut, keywords: 'zoom out preview', shortcut: 'Ctrl+-' },
+  { id: 'preview.zoomReset', label: t.menu.zoomReset, keywords: 'zoom reset preview', shortcut: 'Ctrl+0' },
 
-  { id: 'palette.open', label: ja.palette.title, keywords: 'command palette', shortcut: 'Ctrl+Shift+P' },
-  { id: 'settings.open', label: ja.menu.settings, keywords: 'settings preferences config option', shortcut: 'Ctrl+,' },
-  { id: 'app.checkUpdate', label: ja.menu.checkUpdate, keywords: 'update upgrade version release' },
-  { id: 'app.quit', label: ja.menu.quit, keywords: 'quit exit close app', shortcut: 'Ctrl+Q' },
+  { id: 'palette.open', label: t.palette.title, keywords: 'command palette', shortcut: 'Ctrl+Shift+P' },
+  { id: 'settings.open', label: t.menu.settings, keywords: 'settings preferences config option', shortcut: 'Ctrl+,' },
+  { id: 'app.checkUpdate', label: t.menu.checkUpdate, keywords: 'update upgrade version release' },
+  { id: 'help.reportIssue', label: t.menu.reportIssue, keywords: 'report bug issue feedback help' },
+  { id: 'help.suggestFeature', label: t.menu.suggestFeature, keywords: 'suggest feature request idea feedback help' },
+  { id: 'help.license', label: t.menu.license, keywords: 'license help' },
+  { id: 'help.thirdPartyNotices', label: t.menu.thirdPartyNotices, keywords: 'third party license notices help' },
+  { id: 'help.about', label: t.menu.about, keywords: 'about version copyright help' },
+  { id: 'app.quit', label: t.menu.quit, keywords: 'quit exit close app', shortcut: 'Ctrl+Q' },
 ];
 
 /**

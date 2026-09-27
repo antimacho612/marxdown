@@ -442,6 +442,11 @@ export const webPlatform: Platform = {
     return { files: [], truncated: false };
   },
 
+  /** 同じ理由でツリーも空になる。コピーしても基点の 1 行だけになる。 */
+  async listTree() {
+    return { name: '', nodes: [], truncated: false };
+  },
+
   /** 仮想 FS はこのタブの中にしかなく、外から書き換わることがない。 */
   async watchTree() {},
 
@@ -842,6 +847,15 @@ export const webPlatform: Platform = {
     // 実機では通信を挟むため、起動直後の文書のオープン（通知をクリアする）より後に届く。
     if (info) setTimeout(() => handler(info), 1000);
     return () => {};
+  },
+
+  async appInfo() {
+    return { version: '0.0.0-web', os: 'ブラウザ', webview: null };
+  },
+
+  async openBundledFile(file) {
+    // ブラウザには同梱ファイルも既定アプリも無い（`openLocalFile` と同じ扱い）。
+    console.info('[marxdown] openBundledFile', file);
   },
 
   async openLocalFile(path) {
