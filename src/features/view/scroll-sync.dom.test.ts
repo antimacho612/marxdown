@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 /**
- * スクロール同期の配線と双方向ジャンプ（F-MODE-05 / 03.ux-spec/03-split-mode.md §2, §3）。
+ * スクロール同期の配線と双方向ジャンプ（F-MODE-05）。
  *
  * 補間の計算は `scroll-sync.test.ts` が検証している。
  * ここでは配線を検証し、「どちらが主導するか」「ダブルクリックがどの行になるか」「抜けたときに外れるか」を確認する。
@@ -108,7 +108,7 @@ describe('開始と終了', () => {
   });
 });
 
-describe('主導権 (§2)', () => {
+describe('主導権', () => {
   it('エディターが動くとプレビューが追随する', () => {
     const preview = stubRects();
     startScrollSync();
@@ -165,7 +165,7 @@ describe('主導権 (§2)', () => {
   });
 });
 
-describe('双方向ジャンプ (§3)', () => {
+describe('双方向ジャンプ', () => {
   it('プレビューのダブルクリックで、その行へ飛ぶ', () => {
     const preview = stubRects();
     startScrollSync();
@@ -193,7 +193,7 @@ describe('双方向ジャンプ (§3)', () => {
     expect(revealLine).not.toHaveBeenCalled();
   });
 
-  it('同期が OFF でもジャンプは効く（§2 の但し書き）', () => {
+  it('同期が OFF でもジャンプは効く', () => {
     const preview = stubRects();
     startScrollSync();
     viewStore.scrollSync = false;

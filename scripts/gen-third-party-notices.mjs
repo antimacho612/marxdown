@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * 同梱している第三者のソフトウェアのライセンス表示（THIRD_PARTY_NOTICES.txt）を生成する（docs/06.roadmap/m6-ship.md Phase 4.5）。
+ * 同梱している第三者のソフトウェアのライセンス表示（THIRD_PARTY_NOTICES.txt）を生成する。
  *
  * 依存の MIT / BSD / Apache-2.0 は、バイナリで配るときにも著作権表示とライセンス文の同梱を求める。
  * 対象は、実際に配布物へ入るものだけである。

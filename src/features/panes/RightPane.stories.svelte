@@ -1,5 +1,5 @@
 <!--
-  ライトペイン（03.ux-spec/06-panes.md §3）。
+  ライトペイン。
 
   実アプリと同じ grid（`shell.css` の `grid-template-areas`）の中に置いて、本文とペインの幅の配分を確認するための story。
   確認できるのは 3 つである。
@@ -78,7 +78,7 @@
   </div>
 {/snippet}
 
-<!-- 既定幅（240px / 03.ux-spec/06-panes.md §3）。 -->
+<!-- 既定幅（240px）。 -->
 <Story name="既定幅" loaders={[seed(240)]} template={stage} />
 
 <!-- 最小幅。長い見出しがどこで省略されるかを見る。 -->

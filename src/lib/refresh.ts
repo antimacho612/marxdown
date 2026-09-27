@@ -21,9 +21,9 @@ export function refreshSearch(): void {
 }
 
 /**
- * アウトライン（F-VIEW-02 / 03.ux-spec/06-panes.md §2）。
+ * アウトライン（F-VIEW-02）。
  *
- * 段階的描画（02.architecture/06-markdown-rendering-pipeline.md §4）では、本文は idle 時に後から追加される。
+ * 段階的描画では、本文は idle 時に後から追加される。
  * 追加が完了したことを知っているのは開く経路だけであるため、そちらが通知する側になる。
  *
  * ペインを閉じると `null` が渡り、以降は呼ばれない。

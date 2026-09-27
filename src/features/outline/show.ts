@@ -1,6 +1,6 @@
 /**
- * Outline を出してフォーカスする（`Ctrl+Shift+U` / 03.ux-spec/06-panes.md §4）。
- * トグルにしないのは §4 の決定で、常に同じ結果を返すためである（閉じるのはペイン側の `Ctrl+Alt+B`）。
+ * Outline を出してフォーカスする（`Ctrl+Shift+U`）。
+ * トグルにしないのは、常に同じ結果を返すためである（閉じるのはペイン側の `Ctrl+Alt+B`）。
  * 将来アウトラインを左ペインへ移すときも `openRightPane()` を差し替えるだけで済む。
  *
  * フォーカス先の DOM 要素は `Outline.svelte` だけが知っているため、ここから `querySelector` で探さず `Outline.svelte` 側から登録してもらう（`lib/refresh.ts` の `registerSearchRefresher` と同じ形）。

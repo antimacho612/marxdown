@@ -1,5 +1,5 @@
 /**
- * palette feature の公開面（02.architecture/03-layers.md §2）。
+ * palette feature の公開面。
  *
  * `main` に常駐するのは動的 import の入口だけである。
  * 外枠（`Palette.svelte`）も一覧の組み立ても `lazy/` にあり、押されるまで読み込まれない。

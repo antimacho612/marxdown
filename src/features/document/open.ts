@@ -44,12 +44,12 @@ export interface OpenerConfig {
   /**
    * 現在の `preview.softBreak` の値。
    *
-   * `document` は `settings` feature を参照しないため（02.architecture/03-layers.md §3）、パースのたびに読む関数として注入する。
+   * `document` は `settings` feature を参照しないため、パースのたびに読む関数として注入する。
    * 値そのものを固定すると設定変更後も古い値でパースし続ける。
    */
   softBreak: () => boolean;
   /**
-   * 有効になっている追加記法（`markdown.*` / 04.tech-stack/04-markdown.md §3）。
+   * 有効になっている追加記法（`markdown.*`）。
    *
    * `softBreak` と同じ理由で、値ではなく読む関数として受ける。
    */
@@ -140,7 +140,7 @@ export interface OpenOptions {
   /** 起動計測の T6 / T7 / T8 を打つか。コールド起動だけが true。 */
   trace?: boolean;
   /**
-   * エンコーディングの指定（03.ux-spec/07-status-and-notifications.md §3「クリックでエンコーディング再解釈」）。
+   * エンコーディングの指定。
    * 省略すると Rust 側の推定に任せる。
    *
    * 渡すのは `reinterpret()` だけ（`document/encoding.ts`）。
@@ -149,7 +149,7 @@ export interface OpenOptions {
   /**
    * パースを開始した直後、結果を待つ前に呼ばれる。
    *
-   * 起動シーケンス（02.architecture/05-startup-sequence.md §1）がシェルを描画するための拡張点である。
+   * 起動シーケンスがシェルを描画するための拡張点である。
    * ここでの処理はパース時間と重なる。この用途のためだけに存在する引数である。
    */
   betweenParseAndPaint?: () => void;
@@ -242,7 +242,7 @@ export async function openDocument(payload: StoredPayload, options: OpenOptions 
     documentStore.textStats = parsed.textStats;
     documentStore.notice = marp?.notice ? { level: 'warning', message: marp.notice } : null;
 
-    // 「読める」瞬間は DOM 挿入ではなく次のフレーム（05.performance-budget/05-operations.md §2）。
+    // 「読める」瞬間は DOM 挿入ではなく次のフレーム。
     await nextFrame();
     traceMark(options, 'T8');
 
@@ -301,7 +301,7 @@ export async function openDocument(payload: StoredPayload, options: OpenOptions 
  * パスから開く。読み込みの失敗もここで処理する。
  *
  * 開けなかったファイルは履歴から外す。
- * 消えたファイルを一覧に残し続けると、次の起動でも同じ失敗が起きる（03.ux-spec/08-empty-states.md §1 の一覧は道具であって記録ではない）。
+ * 消えたファイルを一覧に残し続けると、次の起動でも同じ失敗が起きる（Welcome 画面の一覧は道具であって記録ではない）。
  */
 export async function openPath(path: string, options: OpenOptions = {}): Promise<OpenOutcome | null> {
   // 編集中の内容を捨てる前に尋ねる（F-EDIT-03）。開くと決まっていないので I/O より前に置く。

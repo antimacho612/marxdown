@@ -32,7 +32,7 @@ export async function render(options: RenderOptions): Promise<HTMLElement | null
   if (!parser) return null;
 
   const parsed = await parser.parse(getDocumentText(), getParseOptions());
-  // NOTE: Marp の文書を通常の本文として書き出すと、見ているものと違うものが渡る（docs/06.roadmap/m9-marp.md §4.2 / OQ-47）。
+  // NOTE: Marp の文書を通常の本文として書き出すと、見ているものと違うものが渡る（OQ-47）。
   if (parsed.marp) throw new Error(ja.export.marpUnsupported);
   const root = document.createElement('div');
 

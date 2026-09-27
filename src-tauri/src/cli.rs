@@ -2,12 +2,12 @@
 //!
 //! `tauri-plugin-cli` は使わない。
 //! その `matches()` は `App` の構築後（`setup()` の中）でしか呼べない。
-//! 一方、02.architecture/05-startup-sequence.md §1 の起動シーケンスは、ウィンドウ生成より前にパスを確定させ、ファイル読み込みを WebView 初期化と並行させることを要求する。
+//! 一方、起動シーケンスは、ウィンドウ生成より前にパスを確定させ、ファイル読み込みを WebView 初期化と並行させることを要求する。
 //! そのため、プラグイン経由ではこの並行化ができない。
-//! また、05.performance-budget/05-operations.md §2 の T1（CLI 引数解析完了）を T0 の直後に置けることが、内訳の計測そのものに必要である。
+//! また、起動計測の T1（CLI 引数解析完了）を T0 の直後に置けることが、内訳の計測そのものに必要である。
 //!
 //! よって argv は `std::env::args_os()` から直接読む。
-//! 引数体系は 03.ux-spec/README.md に閉じており、clap を要する複雑さはない（04.tech-stack/06-rust.md §3）。
+//! 引数体系は小さく閉じており、clap を要する複雑さはない。
 
 use std::path::{Path, PathBuf};
 
@@ -46,11 +46,11 @@ pub struct CliArgs {
     /// `--bench-input <OUT>`。入力レスポンスを計測し、JSON を書き出して終了する。
     ///
     /// 計測専用（`scripts/bench-input.mjs` 用）。
-    /// 入力レスポンス（05.performance-budget/04-targets.md §3）はこの経路でしか測定できない。
+    /// 入力レスポンスはこの経路でしか測定できない。
     pub bench_input: Option<PathBuf>,
     /// `--gc-probe`。WebView2 に `--js-flags=--expose-gc` を渡す。
     ///
-    /// 計測専用（05.performance-budget/05-operations.md §3）。
+    /// 計測専用。
     /// 閉じた文書のメモリが、到達可能な参照によって残っているのか、GC が未実行なだけなのかを切り分けるために使う。
     /// これが無いと DevTools から `gc()` を呼べない。
     pub gc_probe: bool,
@@ -323,7 +323,7 @@ mod tests {
     }
 
     /// 実装の比較にだけ使うフラグ（`--spike-*`）は受け付けない。
-    /// 比較のためだけの経路を製品に残さない（05.performance-budget/05-operations.md §1）。
+    /// 比較のためだけの経路を製品に残さない。
     #[test]
     fn retired_spike_flags_are_no_longer_recognized() {
         let a = args(&[

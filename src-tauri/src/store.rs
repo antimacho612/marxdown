@@ -1,10 +1,10 @@
 //! 永続化ストア（`state.json`: 最近開いたファイル / 表示倍率 / ウィンドウ / ペイン / 分割比 / セッション）。
 //!
-//! `tauri-plugin-window-state` は使わない（04.tech-stack/06-rust.md §5。`tauri-plugin-fs` を使わないのと同じ構図）。
+//! `tauri-plugin-window-state` は使わない（`tauri-plugin-fs` を使わないのと同じ構図）。
 //! ウィンドウをコードで生成しているため（`window.rs`）、位置とサイズを `WebviewWindowBuilder` に直接渡せる。
-//! これにより、生成後に復元するプラグイン方式と違って「既定位置に表示されてから移動する」ちらつきが原理的に発生せず、`visible: false` から本文ごと表示する設計（04.tech-stack/09-tauri-config.md §1）と整合する。
+//! これにより、生成後に復元するプラグイン方式と違って「既定位置に表示されてから移動する」ちらつきが原理的に発生せず、`visible: false` から本文ごと表示する設計と整合する。
 //! また、最近開いたファイルと表示倍率でどのみち JSON ストアが必要になる。
-//! Welcome 画面（F-OPEN-09 / 03.ux-spec/08-empty-states.md §1）は起動直後に最近使ったファイルを表示するため、bootstrap に同梱できないと IPC 往復が 1 回増える。
+//! Welcome 画面（F-OPEN-09）は起動直後に最近使ったファイルを表示するため、bootstrap に同梱できないと IPC 往復が 1 回増える。
 //! 同じ用途のストアが 2 つある状態のほうが、依存が 1 つ増えるコストより大きい。
 //!
 //! このファイルはユーザーの成果物ではなく、いつでも破棄してよいキャッシュである。
@@ -21,7 +21,7 @@ use crate::document::atomic;
 pub const STORE_VERSION: u32 = 1;
 
 /// 最近開いたファイルの保持数。
-/// 03.ux-spec/08-empty-states.md §1 が表示するのは数件だが、存在しなくなったファイルを除外した後でも埋まるよう多めに保持する。
+/// Welcome 画面が表示するのは数件だが、存在しなくなったファイルを除外した後でも埋まるよう多めに保持する。
 pub const RECENT_LIMIT: usize = 20;
 
 /// セッションとして覚えるタブの上限。
@@ -35,14 +35,14 @@ pub const ZOOM_MIN: f64 = 0.5;
 pub const ZOOM_MAX: f64 = 3.0;
 pub const ZOOM_DEFAULT: f64 = 1.0;
 
-/// ペインの幅（03.ux-spec/06-panes.md §3）。既定 240px、最小 180px。
+/// ペインの幅。既定 240px、最小 180px。
 pub const PANE_WIDTH_DEFAULT: f64 = 240.0;
 pub const PANE_WIDTH_MIN: f64 = 180.0;
-/// 上限は 03.ux-spec/06-panes.md §3 には無い。
+/// 上限は UX 仕様には無い。
 /// 本文の領域を優先するため（Principle 2）の制限であり、手で書いた `state.json` や解像度の異なる環境から極端な幅が渡っても本文の領域が失われないようにする。
 pub const PANE_WIDTH_MAX: f64 = 640.0;
 
-/// Split の分割比（エディター側の取り分 / 03.ux-spec/03-split-mode.md §1）。
+/// Split の分割比（エディター側の取り分）。
 ///
 /// 比率で保持する。
 /// ピクセルで記録すると、解像度やペインの開閉によって左右の配分が変わってしまう。
@@ -84,10 +84,10 @@ pub struct WindowState {
     pub maximized: bool,
 }
 
-/// ペイン 1 枚の状態（03.ux-spec/06-panes.md §3 / 02.architecture/04-rust-responsibilities.md §5）。
+/// ペイン 1 枚の状態。
 ///
 /// 記録が無いときは閉じた状態にする。
-/// F-NAV-04 の「既定は非表示」は初回起動についての規定であり、一度開いた状態を維持できることと両立する（03.ux-spec/06-panes.md §3 の引用ブロック）。
+/// F-NAV-04 の「既定は非表示」は初回起動についての規定であり、一度開いた状態を維持できることと両立する。
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PaneState {
@@ -114,7 +114,7 @@ impl PaneState {
     }
 }
 
-/// 左右のペイン（03.ux-spec/06-panes.md §3）。
+/// 左右のペイン。
 ///
 /// 幅は左右で別々に記録する。
 #[derive(Debug, Clone, Copy, Default, Serialize, Deserialize)]
@@ -140,7 +140,7 @@ impl Panes {
 
 /// 前回開いていたタブ（F-NAV-01）。
 ///
-/// 引数なしで起動したときだけ復元する（02.architecture/04-rust-responsibilities.md §5）。
+/// 引数なしで起動したときだけ復元する。
 /// `marxdown foo.md` には「foo.md を見たい」という意図があり、そこへ前回の 8 枚を混ぜない。
 ///
 /// 未保存の本文は持たない。パスだけである。
@@ -178,21 +178,21 @@ pub struct StoreData {
     pub recent: Vec<RecentEntry>,
     pub zoom: f64,
     pub window: Option<WindowState>,
-    /// ペインの開閉と幅（02.architecture/04-rust-responsibilities.md §5 の表）。
+    /// ペインの開閉と幅。
     ///
     /// `#[serde(default)]` にしてあるため、`panes` を持たない古い `state.json` もそのまま読める。
     /// 版を上げると最近開いたファイルと倍率まで一緒に破棄することになり、キー 1 つの追加に対して代償が大きい。
     #[serde(default)]
     pub panes: Panes,
-    /// Split の分割比（03.ux-spec/03-split-mode.md §1）。`panes` と同じく `#[serde(default)]` で、この値を持たない古い `state.json` も読める。
+    /// Split の分割比。`panes` と同じく `#[serde(default)]` で、この値を持たない古い `state.json` も読める。
     #[serde(default = "default_split")]
     pub split: f64,
     /// トレイ常駐の説明を一度でも出したか（ADR-0007 論点 4）。
     ///
     /// `✕` の意味が OS の慣習と変わる時点でだけモーダルを表示する。
-    /// 03.ux-spec/07-status-and-notifications.md §2 の「モーダルはデータ消失の可能性がある場面だけ」に対する意図的な例外である。
+    /// UX 仕様の「モーダルはデータ消失の可能性がある場面だけ」に対する意図的な例外である。
     /// 生涯 1 回であることが許容条件そのものであるため、フラグを永続化する。
-    /// `state.json` に置くのは、アプリが自動的に書く値だからである（02.architecture/04-rust-responsibilities.md §5）。
+    /// `state.json` に置くのは、アプリが自動的に書く値だからである。
     #[serde(default)]
     pub tray_intro_shown: bool,
     /// 前回開いていたタブ。
@@ -287,7 +287,7 @@ pub fn store_path(identifier: &str) -> Option<PathBuf> {
     Some(config_dir(identifier)?.join(FILE_NAME))
 }
 
-/// アプリのデータ置き場。`settings/mod.rs` も同じディレクトリを使う（02.architecture/04-rust-responsibilities.md §5）。
+/// アプリのデータ置き場。`settings/mod.rs` も同じディレクトリを使う。
 /// 2 か所で辿ると、片方だけ規則が変わったときに設定と状態の保存先が分かれてしまう。
 pub fn config_dir(identifier: &str) -> Option<PathBuf> {
     #[cfg(windows)]
@@ -473,7 +473,6 @@ mod tests {
         std::fs::remove_dir_all(&d).ok();
     }
 
-    /// 03.ux-spec/06-panes.md §3 の引用ブロック。
     /// 記録が無いときは左右とも閉じた状態で出る（F-NAV-04 は初回起動の話）。
     #[test]
     fn panes_start_closed_when_nothing_was_recorded() {
@@ -517,7 +516,7 @@ mod tests {
         std::fs::remove_dir_all(&d).ok();
     }
 
-    /// 03.ux-spec/06-panes.md §3「幅は左右で別々に記憶する」。
+    /// 幅は左右で別々に記憶する。
     #[test]
     fn pane_widths_are_remembered_per_side() {
         let d = temp_dir("panes-roundtrip");

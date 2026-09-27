@@ -3,7 +3,7 @@
 
   中身を知らない。何を並べるかは呼び出し側が `items` で渡し、選ばれたら `onselect` が呼ばれる。
 
-  あいまい検索は `fuzzy.ts`（同じ遅延チャンクの中）。fzf 系のライブラリは入れない（04.tech-stack/05-frontend.md）。
+  あいまい検索は `fuzzy.ts`（同じ遅延チャンクの中）。fzf 系のライブラリは入れない。
 -->
 <script lang="ts">
   import { splitShortcutKeys } from '@/lib/shortcuts';
@@ -188,7 +188,7 @@
 <style>
   /*
    * 上寄せの中央に配置する。
-   * 03.ux-spec/09-motion.md の「パレットの出現 100ms」に合わせるが、変化させるのはパレット自身の不透明度と位置だけで、本文には影響しない。
+   * モーションの規則の「パレットの出現 100ms」に合わせるが、変化させるのはパレット自身の不透明度と位置だけで、本文には影響しない。
    */
   .mx-palette {
     position: fixed;

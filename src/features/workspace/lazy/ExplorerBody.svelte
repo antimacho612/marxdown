@@ -1,5 +1,5 @@
 <!--
-  Explorer の中身（F-NAV-03 / 03.ux-spec/06-panes.md §1）。遅延チャンクの入口。
+  Explorer の中身（F-NAV-03）。遅延チャンクの入口。
 
   `Explorer.svelte` の動的 import はここを指す。
   ツールバーとツリーを 1 つのチャンクにまとめてあり、ペインを開くと両方が同時に届く。

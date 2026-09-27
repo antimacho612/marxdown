@@ -77,7 +77,7 @@ export interface Category {
 export type CategoryId = (typeof LAYOUT)[number]['id'];
 
 /**
- * 追加記法の項目（04.tech-stack/04-markdown.md §3）。
+ * 追加記法の項目。
  *
  * 7 つとも同じ形（トグル 1 つ）なので、名前を書き下さずに文言の側から作る。
  * 書き下すと、キーと文言の組み合わせを取り違えても型では気づけない。
@@ -413,7 +413,7 @@ export const LAYOUT = [
   },
   {
     /*
-     * 追加記法（04.tech-stack/04-markdown.md §3）。どれも既定 OFF である。
+     * 追加記法。どれも既定 OFF である。
      *
      * カテゴリを分けているのは、プレビューの中に混ぜると「見た目の調整」と「本文の解釈が変わる設定」が同じ並びに来るためである。
      * 後者は押した結果が本文そのものに出る。

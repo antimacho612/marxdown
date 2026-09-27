@@ -1,5 +1,5 @@
 <!--
-  ファイルツリー（F-NAV-03 / 03.ux-spec/06-panes.md §1）。
+  ファイルツリー（F-NAV-03）。
 
   実アプリで木を並べるにはディレクトリを開いて回るしかないので、ここでは `loaders` でストアへ直接入れる。
   `dev:web` の仮想 FS にはディレクトリが無く（`platform/web.ts` の `listDir`）、見た目を確かめられるのはここだけである。
@@ -45,7 +45,7 @@
   }
 
   /**
-   * ファイル操作の途中の表示（03.ux-spec/06-panes.md §1.4）。
+   * ファイル操作の途中の表示。
    * 実アプリでは複数の操作を重ねないと並ばないため、選択・切り取り・ドロップ先を直接入れる。
    */
   function withOperation(state: { selected?: string[]; cut?: string[]; drop?: string; editing?: Editing }) {

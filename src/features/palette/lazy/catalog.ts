@@ -44,7 +44,7 @@ export interface ResolvedCommand {
  * すべてのコマンド。
  *
  * ここに無いコマンドはパレットに出ない。
- * パレットは「すべての機能への到達手段」であり（[03.ux-spec > screen-layout §3](../../../../docs/03.ux-spec/01-screen-layout.md)）、抜けているとキーを知っている人にしか使えない機能になる。
+ * パレットは「すべての機能への到達手段」であり、抜けているとキーを知っている人にしか使えない機能になる。
  *
  * 並びは `app/commands.ts` の実体の表に合わせてある。突き合わせるときに目で追える。
  */
@@ -151,7 +151,7 @@ export const COMMAND_CATALOG: CommandEntry[] = [
  * 対象を取るコマンド（`document.openPath` / `tab.select`）は `COMMAND_CATALOG` に載せていない。
  * 引数を渡す経路が別にあり（最近開いたファイルの 1 件 / `Ctrl+1`〜`9`）、一覧からは実行できない。
  *
- * パレット自身（`palette.open`）は載せてある。ハンバーガーメニューから辿れる必要があるためで（03.ux-spec/01-screen-layout.md §3 の「初学者の逃げ道」）、パレットの中では呼び出し側が外す。
+ * パレット自身（`palette.open`）は載せてある。ハンバーガーメニューから辿れる必要があるためで、パレットの中では呼び出し側が外す。
  */
 export function listedCommands(): ResolvedCommand[] {
   return COMMAND_CATALOG.filter((entry) => isCommandListed(entry.id)).map(resolve);

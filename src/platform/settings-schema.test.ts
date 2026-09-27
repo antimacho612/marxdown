@@ -17,7 +17,7 @@ function rustDefaults(): Record<string, unknown> {
   return JSON.parse(readFileSync(path, 'utf8')) as Record<string, unknown>;
 }
 
-describe('設定スキーマ (02.architecture/04-rust-responsibilities.md §5)', () => {
+describe('設定スキーマ', () => {
   /**
    * 既定値は 3 か所で一致させる必要がある（`src-tauri/src/settings/schema.rs` の冒頭）。
    * TypeScript・Rust・`src/styles/tokens.css` の 3 つを、ここで機械的に固定する。

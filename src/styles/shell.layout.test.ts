@@ -25,7 +25,7 @@ const OVERLAYS = [
   ['Welcome', '../features/workspace/Welcome.svelte'],
 ] as const;
 
-describe('本文の面に重ねる要素の配置 (02.architecture/03-layers.md)', () => {
+describe('本文の面に重ねる要素の配置', () => {
   it('shell.css が置き場所を 1 か所で決めている', () => {
     expect(SHELL).toContain('.mx-over-main');
   });

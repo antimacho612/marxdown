@@ -62,7 +62,7 @@ afterEach(() => {
   uninstall();
 });
 
-describe('ハンバーガーメニューの項目 (03.ux-spec/01-screen-layout.md §3)', () => {
+describe('ハンバーガーメニューの項目', () => {
   /**
    * Principle 3「Simple Means Low Cognitive Load」。
    * ファイルを開いていないときの再読み込み・倍率・検索は押しても何も起きない。

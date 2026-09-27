@@ -1,5 +1,5 @@
 /**
- * メモリの計測を E2E から駆動する（[measurements > memory](../../docs/measurements/06-memory.md)）。
+ * メモリの計測を E2E から駆動する。
  *
  * 手で測ると、`huge.md` を「描き切ってから」切り替えたのか「描画の途中で」切り替えたのかが記録に残らない。
  * 段階的描画の完了を待ってから切り替えるには、機械で駆動する必要がある。
@@ -25,7 +25,7 @@ const DRIVER_PORT = 4444;
 /** 基準ファイルの置き場所（`pnpm fixtures` が作る。Git 管理外）。 */
 export const FIXTURES = path.resolve(here, '..', '..', 'bench', 'fixtures');
 
-/** 計測結果の置き場所。[measurements](../../docs/measurements/README.md) の他の JSON と同じ。 */
+/** 計測結果の置き場所。設計ドキュメントの measurements にある他の JSON と同じ。 */
 const REPORT_DIR = path.resolve(here, '..', '..', 'design', 'measurements');
 
 /**
@@ -80,7 +80,7 @@ interface ProcessMemory {
  * プロセスツリーの Private Working Set。`scripts/measure-memory.ps1` を呼ぶ。
  *
  * 計算を TypeScript 側へ写さない。
- * WebView2 のプロセスをコマンドラインで絞り込む部分と `WorkingSetPrivate` を読む部分は、手で測るときと同じものである必要がある（[measurements > memory §3](../../docs/measurements/06-memory.md)）。
+ * WebView2 のプロセスをコマンドラインで絞り込む部分と `WorkingSetPrivate` を読む部分は、手で測るときと同じものである必要がある。
  */
 function processMemory(label: string): ProcessMemory {
   const out = execFileSync('pwsh', ['-NoProfile', '-NonInteractive', '-File', SCRIPT, '-Label', label, '-Json'], {
@@ -131,7 +131,7 @@ function toSample(label: string, page: PageMemory, counters: DomCounters): Memor
  * CDP を使うか。`MX_MEMORY_CDP=0` で切れる。
  *
  * 切れるようにしてあるのは、CDP そのものが計測を汚していないかを確かめるためである。
- * CDP を使う計測では 1 往復あたり約 20MB の線形増加が現れ、ドライバを介さない手計測では現れない（[measurements > memory](../../docs/measurements/06-memory.md)）。
+ * CDP を使う計測では 1 往復あたり約 20MB の線形増加が現れ、ドライバを介さない手計測では現れない。
  */
 const USE_CDP = process.env['MX_MEMORY_CDP'] !== '0';
 

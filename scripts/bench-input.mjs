@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * 入力レスポンス計測ハーネス（05.performance-budget/04-targets.md §3）。
+ * 入力レスポンス計測ハーネス。
  *
  * `--bench-input` を付けた実行ファイルを繰り返し起動し、Split で打鍵を合成して「打鍵 → 反映」と「打ち終わり → プレビュー反映」の分布を出す。
  *
@@ -12,7 +12,7 @@
  * ```
  *
  * 比べるのは同じファイル・同じ run 数の値だけである。
- * Cold Start と同じく（measurements/03-cold-start.md §2）、絶対値は環境で振れる。
+ * Cold Start と同じく、絶対値は環境で振れる。
  * 意味を持つのは実装を変えた前後の差である（打鍵列はシード固定で毎回同じ）。
  */
 import { spawn } from 'node:child_process';
@@ -31,7 +31,7 @@ const EXE_CANDIDATES = [
   join(ROOT, 'src-tauri', 'target', 'debug', 'marxdown'),
 ];
 
-/** 05.performance-budget/04-targets.md の入力レスポンス。 */
+/** 入力レスポンスの目標値。 */
 const INPUT_BUDGET_MS = 16;
 
 function parseArgs(argv) {
@@ -72,7 +72,7 @@ function findExe() {
     process.exit(1);
   }
   if (exe.includes('debug')) {
-    console.warn('⚠ debug ビルドを計測している。05.performance-budget/02-environment.md は release を要求する。');
+    console.warn('⚠ debug ビルドを計測している。計測は release ビルドで行う。');
   }
   return exe;
 }

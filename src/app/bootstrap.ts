@@ -1,5 +1,5 @@
 /**
- * 起動シーケンス（02.architecture/05-startup-sequence.md §1）。
+ * 起動シーケンス。
  *
  * パースをシェル描画より前に開始し、その取得・評価とシェル描画を重ねる（`openDocument` の `betweenParseAndPaint` / ADR-0010）。
  * 開く経路自体は `features/document/open.ts` に一本化されており、このファイルは起動固有の処理（bootstrap 読み取り・ウィンドウ表示・購読登録）のみを扱う。
@@ -62,7 +62,7 @@ import { installWindowState, reportSnapLayoutsTarget } from './window';
 const PREVIEW_SELECTOR = '#mx-preview';
 
 /**
- * bootstrap を読む。同期的に読めることが最も重要である（02.architecture/05-startup-sequence.md §1 の要点 2）。
+ * bootstrap を読む。同期的に読めることが最も重要である。
  *
  * `invoke()` の往復を待つと、WebView の準備完了・リクエスト・レスポンスという最低 1 往復が本文表示の前に挟まる。
  */
@@ -86,7 +86,7 @@ export async function startup(renderShell: () => void): Promise<void> {
   mark('T5', bootstrap?.document ? `${bootstrap.document.size} bytes` : 'no document');
 
   // ここから配色の適用までは、すべて本文を描くより前に適用する。
-  // 後から適用すると、本文が描画された直後に見た目が変化する瞬間が生じる（F-VIEW-11 / F-NAV-04 / 03.ux-spec/06-panes.md §3 / 02.architecture/04-rust-responsibilities.md §5）。
+  // 後から適用すると、本文が描画された直後に見た目が変化する瞬間が生じる（F-VIEW-11 / F-NAV-04）。
   // シェルの描き分け（F-OPEN-06）。ペインや倍率と同じく、最初のフレームより前に決める。
   // 後から適用すると、サテライトが一度フルシェルとして描画されてからペインとメニューが消える。
   initWindowRole(bootstrap);
@@ -102,14 +102,14 @@ export async function startup(renderShell: () => void): Promise<void> {
   // 後から適用すると、本文が一度全幅で描画された後に幅が縮小して見える。
   // ここで設定した値は、この下の `renderShell()` が描く最初のシェルに既に反映されている（シェルの描画は本文の paint より前 / `betweenParseAndPaint`）。
   initPanes(bootstrap);
-  // 後から適用すると、`--mode split` で開いたときに 50:50 の状態が一度描画された後に分割比が変化して見える（03.ux-spec/03-split-mode.md §1）。
+  // 後から適用すると、`--mode split` で開いたときに 50:50 の状態が一度描画された後に分割比が変化して見える。
   initSplit(bootstrap);
 
-  // `themes/` から選ばれている 1 枚は bootstrap に同梱されて届く（02.architecture/10-theming.md §3.3）。
+  // `themes/` から選ばれている 1 枚は bootstrap に同梱されて届く。
   // 設定を適用するより前に渡しておくと、`initSettings` の中の配色の適用がそのまま同期的に完了する。
   primePreviewTheme(bootstrap?.previewTheme ?? null);
 
-  // bootstrap に丸ごと含まれているため IPC 往復は発生しない（02.architecture/05-startup-sequence.md §1）。
+  // bootstrap に丸ごと含まれているため IPC 往復は発生しない。
   // テーマ・フォント・本文幅・配色は `initSettings` の中で同期的に反映される。
   // 後から適用すると、一度描画された内容が別の見た目に再描画される。
   initSettings(bootstrap);
@@ -170,7 +170,7 @@ export async function startup(renderShell: () => void): Promise<void> {
     ? { ...transferred.meta, content: transferred.text }
     : await resolveInitialDocument(bootstrap);
 
-  // 組み込みの配色を選んでいる場合だけ、ここで `theme` チャンクの取得を待つ（02.architecture/10-theming.md §3.3）。
+  // 組み込みの配色を選んでいる場合だけ、ここで `theme` チャンクの取得を待つ。
   // 取得は上の bootstrap の処理と重なっており、既定の配色（`default`）で起動した場合は解決済みの `Promise` が返る。
   // 待たずに描くと、暗い配色を選んでいる人の初回フレームが既定の配色で描かれる。
   await awaitPreviewTheme();
@@ -208,14 +208,14 @@ export async function startup(renderShell: () => void): Promise<void> {
   // 以降の変更（設定 UI / `themes/` の外部編集）は、その場で通知される。
   enableThemeNotices();
 
-  // 04.tech-stack/09-tauri-config.md §1: 最初に表示されるフレームが既に本文である状態を作る。
+  // 最初に表示されるフレームが既に本文である状態を作る。
   if (isTracing()) await platform.reportTrace(drain());
   await platform.ready();
 
   // 以降はウィンドウの表示後に実行する。
   // いずれも Rust 側への購読（IPC）を伴い、本文が読める時点に間に合っている必要がない。
   //
-  // ファイル監視の購読が遅れた場合の最悪の結果は、起動直後の数十 ms に発生した外部変更を検出できないことであり、`F5` で回復できる（02.architecture/05-startup-sequence.md §2 の判断基準）。
+  // ファイル監視の購読が遅れた場合の最悪の結果は、起動直後の数十 ms に発生した外部変更を検出できないことであり、`F5` で回復できる。
   //
   // 最大化状態の追従も同じ扱いである。
   // 遅れた場合の最悪の結果は、最大化して起動した直後の数十 ms だけボタンの表示が `□` のままになることで、次に状態が変われば解消する。
@@ -246,7 +246,7 @@ export async function startup(renderShell: () => void): Promise<void> {
 
   // WARNING: Snap Layouts の初回報告。ここより前に置いてはいけない。
   //
-  // 矩形を測る `getBoundingClientRect()` は強制同期レイアウトであり、シェルを描画した直後に呼ぶとスタイル再計算とレイアウトが実行される（32〜35ms / measurements/03-cold-start.md §5）。
+  // 矩形を測る `getBoundingClientRect()` は強制同期レイアウトであり、シェルを描画した直後に呼ぶとスタイル再計算とレイアウトが実行される（32〜35ms）。
   // その間はパース側のスクリプト評価も進まないため、シェルとパースを重ねるというこの経路の前提が成立しなくなる（`window.ts` の `trackSnapLayoutsTarget`）。
   //
   // 遅れた場合の最悪の結果は、起動直後の数十 ms だけフライアウトが表示されないことである。
@@ -256,10 +256,10 @@ export async function startup(renderShell: () => void): Promise<void> {
   // エディター（F-EDIT-01）。`ready()` の後に実行する。
   //
   // `--mode edit` で起動した場合でも、本文が読める時点（T8）をチャンクの取得と評価の後ろへ動かさない。
-  // 遅れた場合の最悪の結果は、起動直後の一瞬だけ空のエディター面が表示されることであり、これは解消する（02.architecture/05-startup-sequence.md §2 の判断基準）。
+  // 遅れた場合の最悪の結果は、起動直後の一瞬だけ空のエディター面が表示されることであり、これは解消する。
   installInitialEditor();
 
-  // `themes/` の外部編集への追従（02.architecture/10-theming.md §3.4）。
+  // `themes/` の外部編集への追従。
   // 既定の配色で起動した場合は `theme` チャンクを読まずに終わる。
   // 起動後に配色を選んだ場合は、その適用が同じ購読を張る。
   void installPreviewThemeWatch();
@@ -449,7 +449,7 @@ function installSaveAndQuit(): void {
  *
  * Warm Start とは別の経路である。
  * Warm Start はウィンドウが可視のまま argv 転送を受けた場合の値で、こちらはサスペンドされた WebView が復帰して表示されるまでを測る。
- * 05.performance-budget/04-targets.md §1 の Tray Resume はこちらの経路を指す。
+ * 性能目標の Tray Resume はこちらの経路を指す。
  *
  * 本文は既に描画されている（ウィンドウを破棄していないため再描画が不要）。
  * そのため読める状態の判定は 1 フレーム描画されたことで足り、開き直す経路と違ってパースも paint も挟まらない。
@@ -469,7 +469,7 @@ function installTrayResume(): void {
 /**
  * 別インスタンスからの起動要求（ウォーム起動 / ADR-0004）。
  *
- * この経路には WebView の初期化もバンドルの評価も Svelte のマウントも含まれず、必要なのはパースの実行だけである（02.architecture/05-startup-sequence.md §3）。
+ * この経路には WebView の初期化もバンドルの評価も Svelte のマウントも含まれず、必要なのはパースの実行だけである。
  *
  * 転送されたファイルはタブとして増やす。
  * 既に開いているファイルなら、そのタブへ切り替えるだけで開き直さない（`openPathInNewTab`）。

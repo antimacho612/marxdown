@@ -32,7 +32,7 @@ export type WindowRole = 'main' | 'satellite';
  */
 export type DiscardChoice = 'save' | 'discard' | 'cancel';
 
-/** 02.architecture/04-rust-responsibilities.md §2 `DocumentPayload` のメタ部分。 */
+/** `DocumentPayload` のメタ部分。 */
 export interface DocumentMeta {
   /** 正規化済み絶対パス */
   path: string;
@@ -89,7 +89,7 @@ export interface DocumentPayload extends DocumentMeta {
 }
 
 /**
- * 保存の要求（02.architecture/04-rust-responsibilities.md §3）。
+ * 保存の要求。
  * `eol` / `bom` / `encoding` は読み込み時の値をそのまま返し、触っていない箇所のバイト列を変えない（N-CMP-03）。
  */
 export interface WriteRequest {
@@ -102,7 +102,7 @@ export interface WriteRequest {
   expectedMtimeMs: number | null;
 }
 
-/** 保存の結果。`conflict` は外部で変更されていたことを表す（02.architecture/04-rust-responsibilities.md §3）。 */
+/** 保存の結果。`conflict` は外部で変更されていたことを表す。 */
 export type SaveResult =
   { status: 'saved'; mtimeMs: number; size: number } | { status: 'conflict'; diskMtimeMs: number };
 
@@ -132,7 +132,7 @@ export interface CoreError {
 /** ペイン 1 枚の状態（`src-tauri/src/store.rs` の `PaneState`）。 */
 export interface PaneState {
   open: boolean;
-  /** 幅（CSS ピクセル）。左右で別々に記録する（03.ux-spec/06-panes.md §3）。 */
+  /** 幅（CSS ピクセル）。左右で別々に記録する。 */
   width: number;
 }
 
@@ -145,7 +145,7 @@ export interface Panes {
 }
 
 /**
- * 記録が無いときの状態。左右とも閉じている（03.ux-spec/06-panes.md §3 の引用ブロック）。
+ * 記録が無いときの状態。左右とも閉じている。
  * `src-tauri/src/store.rs` の `PaneState::default()` と 1:1 で対応する。
  */
 export const DEFAULT_PANES: Panes = {
@@ -154,7 +154,7 @@ export const DEFAULT_PANES: Panes = {
 };
 
 /**
- * Split の既定の分割比と可動域（03.ux-spec/03-split-mode.md §1）。
+ * Split の既定の分割比と可動域。
  * `src-tauri/src/store.rs` の `SPLIT_*` と 1:1 で対応する。
  *
  * 端まで動かして片方の領域を失わないようにする。
@@ -165,10 +165,10 @@ export const SPLIT_MIN = 0.2;
 export const SPLIT_MAX = 0.8;
 
 /**
- * `settings.json` を読めなかった事実（03.ux-spec/07-status-and-notifications.md §2）。
+ * `settings.json` を読めなかった事実。
  *
  * これがある間、アプリは既定値で動作するがファイルを上書きしない。
- * ユーザーが手で書いたファイルであるためである（02.architecture/04-rust-responsibilities.md §5）。
+ * ユーザーが手で書いたファイルであるためである。
  */
 export interface SettingsProblem {
   path: string;
@@ -296,30 +296,30 @@ export interface Bootstrap {
   /** 表示倍率（F-VIEW-11）。最初のフレームから正しい倍率で描画するために必要になる。 */
   zoom: number;
   /**
-   * ペインの開閉と幅（F-NAV-04 / 03.ux-spec/06-panes.md §3）。
+   * ペインの開閉と幅（F-NAV-04）。
    *
    * 倍率と同じ理由でここに載せる。
-   * 後から適用すると、本文が一度全幅で描画された後に幅が縮小して見える（02.architecture/04-rust-responsibilities.md §5）。
+   * 後から適用すると、本文が一度全幅で描画された後に幅が縮小して見える。
    */
   panes: Panes;
   /**
-   * Split の分割比（エディター側の取り分 / 03.ux-spec/03-split-mode.md §1）。
+   * Split の分割比（エディター側の取り分）。
    *
    * 倍率やペインと同じ理由でここに載せる。
    * 後から適用すると、Split で開いたときに 50:50 の状態が一度描画された後に分割比が変化して見える。
    */
   split: number;
   /**
-   * ユーザー設定の全体（02.architecture/04-rust-responsibilities.md §5）。
+   * ユーザー設定の全体。
    *
    * どの設定が初回フレームに間に合う必要があるかを都度判断せずに済むよう、選別せずすべて載せる。
    * 取得する経路（IPC 往復）は作らない。
    */
   settings: Settings;
-  /** `settings.json` を読めなかった事実。通知バーに出す（03.ux-spec/07-status-and-notifications.md §2）。 */
+  /** `settings.json` を読めなかった事実。通知バーに出す。 */
   settingsError: SettingsProblem | null;
   /**
-   * プレビューで選ばれている `themes/` の 1 枚（02.architecture/10-theming.md §3.3）。
+   * プレビューで選ばれている `themes/` の 1 枚。
    *
    * 選択中の id に一致するファイルがあるときだけ入る。
    * 組み込みの配色を選んでいる場合と、存在しない綴りの場合は `null` で届く。
@@ -413,7 +413,7 @@ export type InstallRefusal = 'dirty' | 'up-to-date';
  * Platform 層のインタフェース。
  *
  * Domain 層はこれだけを参照する。
- * Tauri に依存しないことで、Vitest 上でも `dev:web` のブラウザ上でも同じコードが動作する（02.architecture/03-layers.md §1）。
+ * Tauri に依存しないことで、Vitest 上でも `dev:web` のブラウザ上でも同じコードが動作する。
  */
 export interface Platform {
   readonly kind: 'tauri' | 'web';
@@ -422,7 +422,7 @@ export interface Platform {
   /**
    * ファイルを読む。
    *
-   * `encoding` はエンコーディングの指定である（03.ux-spec/07-status-and-notifications.md §3「クリックでエンコーディング再解釈」）。
+   * `encoding` はエンコーディングの指定である。
    * 省略が通常の経路であり、そのときだけ Rust 側が推定を実行する。
    */
   readDocument(path: string, encoding?: Encoding): Promise<DocumentPayload>;
@@ -442,7 +442,7 @@ export interface Platform {
    */
   writeAsset(documentPath: string, extension: string, data: Uint8Array): Promise<string>;
   /**
-   * スコープ外の画像を 1 件だけ許可する（ADR-0006 / 02.architecture/09-security.md §3）。
+   * スコープ外の画像を 1 件だけ許可する（ADR-0006）。
    *
    * 許可されるのはその画像があるディレクトリ 1 つだけで、配下へは広がらない。
    * アプリを終了すれば消える。利用者がプレースホルダのボタンを押したときにだけ呼ぶこと。
@@ -452,7 +452,7 @@ export interface Platform {
    * ディレクトリの中身を 1 階層ぶん返す（F-NAV-03 / ファイルツリー）。
    *
    * 隠しファイル・`node_modules`・`explorer.exclude` の glob は Rust 側で除外されて届く（`src-tauri/src/dir.rs`）。
-   * 再帰しないのは、開いたディレクトリだけを読む遅延展開のためである（03.ux-spec/06-panes.md §1）。
+   * 再帰しないのは、開いたディレクトリだけを読む遅延展開のためである。
    *
    * `root` は木の基点。`explorer.exclude` の glob をどこからの相対として解釈するかだけに使う。
    * 読む範囲を決めるのは `path` のほうであり、`root` は許可範囲を広げも狭めもしない。
@@ -531,14 +531,14 @@ export interface Platform {
    */
   setZoom(zoom: number): Promise<void>;
   /**
-   * ペインの開閉と幅を永続化する（03.ux-spec/06-panes.md §3）。
+   * ペインの開閉と幅を永続化する。
    *
    * 倍率と同じく、反映は呼び出し側が即座に行う。
    * ここは保存だけを担当するため、ドラッグ中に毎フレーム呼ばず、デバウンスしてから呼ぶこと。
    */
   setPanes(panes: Panes): Promise<void>;
   /**
-   * Split の分割比を保存する（03.ux-spec/03-split-mode.md §1）。
+   * Split の分割比を保存する。
    *
    * `setPanes` と同じくドラッグ中は呼ばず、離した時点で 1 回だけ呼ぶ。
    */
@@ -608,7 +608,7 @@ export interface Platform {
   readSettings(): Promise<SettingsLoad>;
   /**
    * 変更したキーだけを書き戻す。更新後の設定全体を返す。
-   * `settings.json` が読めない状態では拒否される（02.architecture/04-rust-responsibilities.md §5）。
+   * `settings.json` が読めない状態では拒否される。
    */
   writeSettings(patch: SettingsPatch): Promise<Settings>;
   /**
@@ -647,7 +647,7 @@ export interface Platform {
    */
   readMarpThemes(paths: readonly string[]): Promise<MarpThemes>;
   /**
-   * 表示中のファイルの監視を始める（F-EDIT-16 / 02.architecture/04-rust-responsibilities.md §4）。
+   * 表示中のファイルの監視を始める（F-EDIT-16）。
    *
    * 監視するのは表示中のファイル 1 つだけである（N-PERF-05）。
    * 呼ぶたびに前のファイルの監視は解除される。
@@ -658,7 +658,7 @@ export interface Platform {
   /** 監視しているファイルの外部変更を購読する。 */
   onFileChanged(handler: (change: FileChange) => void): () => void;
   /**
-   * `settings.json` の外部変更を購読する（02.architecture/04-rust-responsibilities.md §5）。
+   * `settings.json` の外部変更を購読する。
    *
    * 中身は渡さない。
    * 受け取ったら `readSettings` で読み直して全体を適用し直すことが唯一の使い方であり、差分を渡す必要がない（設定は小さい）。
@@ -667,10 +667,10 @@ export interface Platform {
   /** ウィンドウへのドラッグ＆ドロップを購読する（F-OPEN-08）。 */
   onDragDrop(handler: (event: DragDropEvent) => void): () => void;
   /**
-   * ウィンドウ操作（カスタムタイトルバー / 03.ux-spec/01-screen-layout.md §1）。
+   * ウィンドウ操作（カスタムタイトルバー）。
    *
    * `decorations: false` であるため、`─ □ ✕` は自前の `<button>` である。
-   * 実体は Rust 側の自作コマンドで、JS の `@tauri-apps/api/window` は導入していない（04.tech-stack/06-rust.md §2 と同じ判断）。
+   * 実体は Rust 側の自作コマンドで、JS の `@tauri-apps/api/window` は導入していない（`@tauri-apps/plugin-dialog` を入れないのと同じ判断）。
    *
    * ドラッグとダブルクリックによる最大化はここには無い。
    * Tauri 本体が注入する `data-tauri-drag-region` の処理が担当し、フロントは属性を指定するだけである。

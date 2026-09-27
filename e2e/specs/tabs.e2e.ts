@@ -95,13 +95,12 @@ describe('タブ', () => {
   });
 
   it('1 枚でもタブを出す', async () => {
-    // 03.ux-spec/01-screen-layout.md §1。枚数で表示が切り替わらない。
+    // 枚数で表示が切り替わらない。
     expect(await tabNames()).toEqual(['doc.md']);
     expect(await activeTabName()).toBe('doc.md');
   });
 
   it('フルパスはステータスバーに出る', async () => {
-    // 03.ux-spec/07-status-and-notifications.md §3。
     // タブが持つのはファイル名だけで、どの場所のファイルかはここにしか無い。
     expect(await statusBarPath()).toBe(WORK_DOC);
   });
@@ -309,7 +308,7 @@ describe('コマンドパレット', () => {
  */
 describe('ファイルツリー', () => {
   it('レフトペインを開くと、開いているファイルの隣が並ぶ', async () => {
-    // 開閉は `state.json` に永続化される（03.ux-spec/06-panes.md §3）。
+    // 開閉は `state.json` に永続化される。
     // 前回の実行で開いたままのことがあるため、トグルではなく「閉じていたら開く」にする。
     await openLeftPane();
 
@@ -346,7 +345,7 @@ describe('ファイルツリー', () => {
   });
 
   it('Ctrl+Shift+E でツリーへフォーカスが移る', async () => {
-    // 「出してフォーカスする」であって、トグルではない（03.ux-spec/06-panes.md §4）。
+    // 「出してフォーカスする」であって、トグルではない。
     await browser.keys([Key.Control, Key.Shift, 'e']);
 
     await browser.waitUntil(

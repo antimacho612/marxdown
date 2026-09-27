@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 /**
- * 改行コードの変換（F-EDIT-14 / 03.ux-spec/07-status-and-notifications.md §3）。
+ * 改行コードの変換（F-EDIT-14）。
  *
  * 見たいのは、ダーティの源が 2 つあることである。
  * 本文と改行コードは別々に変わるため、1 つの boolean に統合すると打鍵して Undo で戻しただけで変換の指定が通知なく破棄される（`dirty.ts` の `refreshDirty`）。

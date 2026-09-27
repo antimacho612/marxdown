@@ -1,5 +1,5 @@
 /**
- * 本文のテキストの置き場所（ADR-0005 / 02.architecture/08-state-management.md §1）。
+ * 本文のテキストの置き場所（ADR-0005）。
  *
  * 本文はストアに置かないという不変条件のため、`$state` を使わないモジュール変数で保持する。
  * 保持するのはエディターが未マウントの間だけで、マウント後は Monaco の `ITextModel` が保持する（`attachEditor` の時点でこちら側の保持分を破棄し、二重に持たない）。
@@ -56,7 +56,7 @@ let port: EditorTextPort | null = null;
  * いま開いている文書の識別（`DocumentIdentity`）。
  *
  * 覚えておくのは、エディターは後からマウントされるためである。
- * 既定の表示モードは Preview であり（02.architecture/05-startup-sequence.md §1）、`Ctrl+Shift+V` を押した時点で「どのタブのどの文書か」を伝え直す必要がある。
+ * 既定の表示モードは Preview であり、`Ctrl+Shift+V` を押した時点で「どのタブのどの文書か」を伝え直す必要がある。
  */
 let current: DocumentIdentity | null = null;
 
@@ -69,7 +69,7 @@ const NO_DOCUMENT: DocumentIdentity = { key: 0, documentId: '<none>' };
  * エディターがマウントされていれば、そちらの内容も差し替える。
  *
  * 未保存の変更の確認はここでは行わない。
- * 確認は呼び出し側（`openPath` / `newDocument`）の `confirmDiscard()` が担当する（02.architecture/08-state-management.md §3）。
+ * 確認は呼び出し側（`openPath` / `newDocument`）の `confirmDiscard()` が担当する。
  */
 export function setDocumentText(text: string, document: DocumentIdentity | null = null): void {
   if (document !== null) current = document;
@@ -167,7 +167,7 @@ export function attachEditor(next: EditorTextPort): void {
  *
  * 呼ぶのはエディターを破棄するときだけである。
  * モードを Preview へ切り替えただけでは解除しない。
- * 解除すると Undo 履歴が失われ、03.ux-spec/02-view-modes.md §4 の「モードを切り替えても保持する」を満たせなくなる。
+ * 解除すると Undo 履歴が失われ、「モードを切り替えても保持する」を満たせなくなる。
  */
 export function detachEditor(): void {
   if (!port) return;

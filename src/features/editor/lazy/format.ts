@@ -1,8 +1,8 @@
 /**
  * Markdown の書式コマンド（F-EDIT-08 / `editor` チャンク）。
  *
- * `Ctrl+B` を VS Code のサイドバー切替ではなく太字に割り当てる決定の実体である（Markdown First が Familiar より優先順位が高いため / 03.ux-spec/04-keybindings.md §1）。
- * 押した反応は §5 が定める（選択なしは記号だけ挿入、選択ありは囲む、既に囲まれていれば外す、複数カーソルは全てに適用）。
+ * `Ctrl+B` を VS Code のサイドバー切替ではなく太字に割り当てる決定の実体である（Markdown First が Familiar より優先順位が高いため）。
+ * 押した反応は次のとおり（選択なしは記号だけ挿入、選択ありは囲む、既に囲まれていれば外す、複数カーソルは全てに適用）。
  * 「囲まれている」は記号ごと選んだ場合と中身だけ選んだ場合の 2 通りがあり、どちらも外せないと押すたびに記号が増えてしまう。
  *
  * 触るのは Monaco のモデル（＝ Markdown テキストそのもの）で AST でも DOM でもない（ADR-0002）。
@@ -48,7 +48,7 @@ function runAfter(model: monaco.editor.ITextModel, pos: number, char: string, li
  * 囲みをトグルする。
  *
  * カーソルが語の内側にあるだけでは記号を除去しない。
- * `**bo|ld**` で `Ctrl+B` を押した場合は §5 の「選択なし」に従って記号を挿入する。
+ * `**bo|ld**` で `Ctrl+B` を押した場合は「選択なし」に従って記号を挿入する。
  * 語の範囲を推測して除去する方式は、操作前に対象範囲を判断できない（Principle 3）。
  */
 function toggleWrap({ marker, present }: Wrap): MarkdownEdit {
@@ -88,7 +88,7 @@ function toggleWrap({ marker, present }: Wrap): MarkdownEdit {
         };
       }
 
-      // 3. 囲む。選択が無ければ記号だけを入れて、あいだにカーソルを置く（§5）
+      // 3. 囲む。選択が無ければ記号だけを入れて、あいだにカーソルを置く
       return {
         edits: [
           { from, to: from, text: marker },
@@ -106,9 +106,9 @@ export const toggleStrikethrough = toggleWrap(STRIKETHROUGH);
 export const toggleInlineCode = toggleWrap(CODE);
 
 /**
- * リンクを挿入する（`Ctrl+K` / 03.ux-spec/04-keybindings.md §3）。
+ * リンクを挿入する（`Ctrl+K`）。
  *
- * 選択範囲がリンクテキストになる（§3 の但し書き）。
+ * 選択範囲がリンクテキストになる。
  * URL は空のまま挿入し、そこへカーソルを置く。
  * 選択が無い場合は `[]()` を挿入し、`[]` の中へカーソルを置く。
  * 次に入力する対象が異なるため、カーソルの位置も変える。

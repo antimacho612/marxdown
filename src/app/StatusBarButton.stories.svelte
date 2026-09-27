@@ -1,7 +1,7 @@
 <!--
   ステータスバーの押せる項目。
 
-  押せるものだけがこの見た目になる（03.ux-spec/07-status-and-notifications.md §3.1）。
+  押せるものだけがこの見た目になる。
   並べた story に混ぜてある素の `<span>`（BOM・文字数）との差が、そのまま「押せる / 押せない」の見分けになっている。
   メニューを開く側は `aria-expanded="true"` のあいだ強調されたままになる。
 -->
@@ -53,7 +53,7 @@
       {ja.status.encoding.utf8}
     </StatusBarButton>
     <StatusBarButton title={ja.status.eolConvert('crlf')} onclick={() => {}}>LF</StatusBarButton>
-    <!-- 押せない項目。ボタンに見せない（§3.1）。 -->
+    <!-- 押せない項目。ボタンに見せない。 -->
     <span>BOM</span>
     <span>{ja.status.chars(4210)}</span>
     <span style="flex: 1;"></span>

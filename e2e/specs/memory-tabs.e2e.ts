@@ -25,10 +25,10 @@ import {
 const TINY = { file: path.join(FIXTURES, 'tiny.md'), heading: 'tiny.md — LLM の短い回答を模したファイル' };
 
 /**
- * 10 枚開いて全部閉じる（[05.performance-budget > operations §3](../../docs/05.performance-budget/05-operations.md)）。
+ * 10 枚開いて全部閉じる。
  *
  * 判定には使えない。
- * WebDriver 経由の値は増分が信用できない（[measurements > caveats §3](../../docs/measurements/09-caveats.md)）。
+ * WebDriver 経由の値は増分が信用できない。
  * ここで検証するのは内訳である。
  * JS ヒープ・DOM ノード・リスナが基準へ戻れば、こちら側の解放（モデル・履歴・ウォッチャ）は機能していることになり、残りはアロケータ側の問題になる。
  * 総量の判定は手計測で行う（`scripts/measure-tabs.ps1`）。

@@ -13,7 +13,7 @@ const VALUE_NAME: &str = "Marxdown";
 /// 設定に合わせて `Run` の値を書く、または消す。失敗しても続ける。
 ///
 /// 開発ビルドでは何もしない。`pnpm dev` の exe が登録されるのを防ぐためである。
-/// Windows 以外でも何もしない（docs/06.roadmap/m8-cli-os-export.md §6）。
+/// Windows 以外でも何もしない。
 pub fn sync(settings: &Settings) {
     let enabled = settings.window_launch_at_login && settings.window_close_to_tray;
     if cfg!(debug_assertions) {

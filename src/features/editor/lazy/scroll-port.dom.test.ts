@@ -85,7 +85,7 @@ describe('行番号 → スクロール量', () => {
   });
 });
 
-describe('ジャンプ (§3)', () => {
+describe('ジャンプ', () => {
   it('カーソルをその行の先頭へ置く', () => {
     const target = harness();
     createScrollPort(target).revealLine(50, { focus: false });

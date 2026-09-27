@@ -1,6 +1,6 @@
 //! Marxdown Core (Rust)
 //!
-//! 責務は 02.architecture/01-principles.md 原則 C の 3 つに限定する。
+//! 責務は次の 3 つに限定する。
 //!
 //! - ファイル I/O（速く、安全に、原子的に）
 //! - OS 統合（CLI 引数、関連付け、単一インスタンス、ウィンドウ）
@@ -47,7 +47,7 @@ use tauri::{Emitter, Manager};
 
 /// 別インスタンスから転送された起動要求（ADR-0004）。
 ///
-/// 02.architecture/05-startup-sequence.md §3 のウォーム起動。
+/// ウォーム起動。
 /// この経路には WebView の初期化もバンドルの評価も Svelte のマウントも含まれない。
 #[derive(Debug, Clone, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -256,7 +256,7 @@ pub const EVENT_SAVE_AND_CLOSE: &str = "marxdown://save-and-close";
 
 /// アプリケーションの入口。`main()` から 1 回だけ呼ぶ。
 ///
-/// 02.architecture/05-startup-sequence.md §1 の順序をそのまま実装する。
+/// 起動シーケンスの順序をそのまま実装する。
 /// CLI 引数の解析、設定とストアの先読み、ウィンドウ生成、イベントループの起動まで行い、`--help` / `--version` のときだけ出力して戻る。
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -284,7 +284,7 @@ pub fn run() {
         std::process::exit(stdin::run(&argv));
     }
 
-    // `--gc-probe`: メモリ計測で強制 GC を使うための経路（05.performance-budget/05-operations.md §3）。
+    // `--gc-probe`: メモリ計測で強制 GC を使うための経路。
     // 閉じた文書のメモリが解放されるかを確かめるには強制 GC の後で測る必要があるが、既定の WebView2 に `gc()` は無い。
     //
     // 既定では渡さない。
@@ -312,7 +312,7 @@ pub fn run() {
     let restore_window = store_data.window;
 
     // 設定も同じ理由でここで読む。
-    // 表示に影響する値（テーマ / 本文幅 / フォント / 配色）は本文を描画するより前に適用されている必要があり、後から適用すると FOUC になる（02.architecture/05-startup-sequence.md §2 の判断基準）。
+    // 表示に影響する値（テーマ / 本文幅 / フォント / 配色）は本文を描画するより前に適用されている必要があり、後から適用すると FOUC になる。
     // 読むのは 1KB 未満のファイル 1 枚である。
     //
     // 古いバージョンが使っていたカスタム CSS（`preview.css` / `editor.css`）を `themes/` へ移す。設定を読むより前に行う。
@@ -352,7 +352,7 @@ pub fn run() {
 
     // プレビューで選ばれている 1 枚だけを bootstrap へ載せる（ADR-0014）。
     // プレビューは起動直後から見えている面であり、後から適用すると既定の配色で初回フレームが描かれる。
-    // 読み取りは WebView 初期化と並行するため、クリティカルパスの時間は実質増えない（02.architecture/05-startup-sequence.md §1）。
+    // 読み取りは WebView 初期化と並行するため、クリティカルパスの時間は実質増えない。
     //
     // エディター側は載せない。
     // 既定の表示モードは Preview で、`#mx-editor` は Monaco がマウントされるまで空であるため、遅れて適用しても未適用の配色が見えることがない。
@@ -530,7 +530,7 @@ pub fn run() {
         ])
         .setup(move |app| {
             // T2b: Tauri のブートとプラグイン初期化が終わった時点。
-            // T2→T3 が伸びたときに、WebView2 と自分たちが追加した処理のどちらが原因かを切り分けられるようにする（05.performance-budget/05-operations.md §2）。
+            // T2→T3 が伸びたときに、WebView2 と自分たちが追加した処理のどちらが原因かを切り分けられるようにする。
             let state = app.state::<state::AppState>();
             state.trace.mark("T2b", None);
 
@@ -539,7 +539,7 @@ pub fn run() {
                 let _ = app.asset_protocol_scope().allow_directory(root, true);
             }
 
-            // ファイル監視（02.architecture/04-rust-responsibilities.md §4）。ウィンドウを作る前に `manage` する。
+            // ファイル監視。ウィンドウを作る前に `manage` する。
             // WebView が動き出した直後の `watch_path` が、まだ管理されていない状態を参照しないようにするためである。
             // ここで発生するのはスレッド 1 本の生成だけで、ファイル I/O は伴わない（実際の監視対象は下で決める）。
             app.manage(watch::FileWatcher::start(app.handle().clone()));
@@ -559,16 +559,16 @@ pub fn run() {
             #[cfg(not(windows))]
             let _ = main;
 
-            // 監視の登録は T3 の後。ここから先は「本文が読める」までの経路に載らない（02.architecture/05-startup-sequence.md §2 の判断基準: IPC を伴わず、遅れても最悪 300ms 反映が遅れるだけ）。
+            // 監視の登録は T3 の後。ここから先は「本文が読める」までの経路に載らない（IPC を伴わず、遅れても最悪 300ms 反映が遅れるだけである）。
             //
             // 開いているドキュメントの登録はフロントが `watch_path` で行う。
             // `settings.json` だけは Rust 側で登録する。
-            // パスを知っているのは Rust 側だけであり、フロントに取得させると IPC が 1 往復増える（02.architecture/04-rust-responsibilities.md §5）。
+            // パスを知っているのは Rust 側だけであり、フロントに取得させると IPC が 1 往復増える。
             if let Some(path) = state.settings_path() {
                 app.state::<watch::FileWatcher>()
                     .watch(path, watch::Role::Settings);
             }
-            // 配色のディレクトリも同じ扱い（02.architecture/10-theming.md §3.4）。
+            // 配色のディレクトリも同じ扱い。
             // 中身が増減しても編集されても読み直す。
             if let Some(path) = state.themes_dir() {
                 app.state::<watch::FileWatcher>()
@@ -584,7 +584,7 @@ pub fn run() {
         .on_window_event(|window, event| {
             let label = window.label().to_owned();
 
-            // ドロップされたパスを覚えておく（02.architecture/09-security.md §5）。
+            // ドロップされたパスを覚えておく。
             // ファイルツリーへの取り込みは、ここで受け取ったパスだけを複製元にする。
             if let tauri::WindowEvent::DragDrop(tauri::DragDropEvent::Drop { paths, .. }) = event {
                 window

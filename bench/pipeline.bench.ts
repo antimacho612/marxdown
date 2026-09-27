@@ -1,5 +1,5 @@
 /**
- * markdown-it のパース + HTML 生成にかかる時間（05.performance-budget/04-targets.md §2）。
+ * markdown-it のパース + HTML 生成にかかる時間。
  *
  * DOM を含まない「パイプライン単体」の時間を測る。
  * DOM 込みの実測は起動計測ハーネス（T6→T8）の担当。

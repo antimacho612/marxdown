@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 /**
- * 前回のタブの記録と復元（F-NAV-01 / 02.architecture/04-rust-responsibilities.md §5）。
+ * 前回のタブの記録と復元（F-NAV-01）。
  *
  * 検証するのは 2 つである。並び順が戻ることと、記録しないものを記録しないことである。
  * 引数があるときに復元しないという判断は Rust 側にあり（`bootstrap.rs`）、ここには届かない。

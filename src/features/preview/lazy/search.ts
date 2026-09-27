@@ -1,5 +1,5 @@
 /**
- * プレビュー内の全文検索（F-VIEW-10 / 03.ux-spec/04-keybindings.md §3）。
+ * プレビュー内の全文検索（F-VIEW-10）。
  * 遅延チャンクで `Ctrl+F` を押すまでロードされない。
  *
  * 一致箇所を `<mark>` で包む実装にはしない（段階的描画で増える DOM と混ざる／`huge.md` で本文の DOM が作り直され続ける／`data-line` の行マッピングが壊れる）。
@@ -104,7 +104,7 @@ function mount(container: HTMLElement): SearchState {
   panel.append(input, counter, prev, next, close);
   document.body.append(panel);
 
-  // 開いている間だけ有効なキー（03.ux-spec/04-keybindings.md §3「F3 / Shift+F3 で次 / 前」）。
+  // 開いている間だけ有効なキー。
   // 閉じたら解除する。使用していない機能のキーをグローバルに残さない。
   const unbind = bindKeys([
     { key: 'F3', run: () => step(1) },

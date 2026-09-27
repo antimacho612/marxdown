@@ -1,4 +1,4 @@
-//! ファイル監視（02.architecture/04-rust-responsibilities.md §4 / §5 / F-EDIT-16）。
+//! ファイル監視（F-EDIT-16）。
 //!
 //! 監視対象は開いているファイルと、`settings.json` と、配色のディレクトリ（`themes/`）と、ファイルツリーで開いている枝だけである。
 //! ディレクトリを再帰的に監視することはしない（N-PERF-05）。
@@ -6,10 +6,10 @@
 //!
 //! 監視しているファイルはアプリ自身も書き込む（設定 UI からの保存、本文の保存）。
 //! そのため、書き込み直後のイベントをそのまま処理すると、保存するたびに再読み込みが発生してしまう。
-//! この自己イベントの除外は「最後に自分が把握しているファイルの状態」との照合として一般化してある（02.architecture/04-rust-responsibilities.md §4 の「直前に自分が書いた mtime との照合」）。
+//! この自己イベントの除外は「最後に自分が把握しているファイルの状態」との照合として一般化してある。
 //! 保存直後は `note_self_write` がこの状態を更新するため自己イベントは除外され、実体が変わっていないイベント（属性の変更、一時ファイル作成に伴う付随イベント）も同じ経路で除外される。
 //!
-//! ここにタイマーもポーリングも置かない（05.performance-budget/04-targets.md §5）。
+//! ここにタイマーもポーリングも置かない。
 //! OS の変更通知で起きるスレッドが 1 本あるだけで、待機中の CPU 使用率は 0 になる。
 //! ただしデバウンス処理自体は `notify-debouncer-full` の内部スレッドが `TICK` ごとに溜まったイベントをまとめて処理する構造になっている。
 //! この定期的な起動はクレートの構造によるものであり、こちらが追加したものではない（`TICK` の項を参照）。
@@ -26,16 +26,16 @@ use tauri::{AppHandle, Emitter};
 
 use crate::document;
 
-/// 外部変更の通知（02.architecture/04-rust-responsibilities.md §1）。
+/// 外部変更の通知。
 pub const EVENT_FILE_CHANGED: &str = "marxdown://file-changed";
-/// `settings.json` の外部変更（02.architecture/04-rust-responsibilities.md §5）。フロントは受け取ったら `read_settings` で読み直す。
+/// `settings.json` の外部変更。フロントは受け取ったら `read_settings` で読み直す。
 pub const EVENT_SETTINGS_CHANGED: &str = "marxdown://settings-changed";
-/// `themes/` の中身の変更（02.architecture/10-theming.md §3.4）。フロントは `list_user_themes` で読み直して適用し直す。
+/// `themes/` の中身の変更。フロントは `list_user_themes` で読み直して適用し直す。
 pub const EVENT_THEMES_CHANGED: &str = "marxdown://themes-changed";
 /// ファイルツリーで開いている枝の中身の変更（ADR-0021）。フロントはそのディレクトリを 1 階層読み直す。
 pub const EVENT_DIR_CHANGED: &str = "marxdown://dir-changed";
 
-/// 変更が落ち着いたと見なすまでの時間（02.architecture/04-rust-responsibilities.md §4）。
+/// 変更が落ち着いたと見なすまでの時間。
 ///
 /// エディターの保存は 1 回の操作でも複数のイベントになる（一時ファイルの作成、rename、属性の変更）。
 /// ここを短くすると、書き換えの途中の状態を読みに行くことになる。
@@ -55,7 +55,7 @@ const TICK: Duration = Duration::from_millis(150);
 pub enum Role {
     /// 開いているドキュメント（F-EDIT-16 / N-REL-02）。
     Document,
-    /// `settings.json`（02.architecture/04-rust-responsibilities.md §5）。
+    /// `settings.json`。
     Settings,
     /// ユーザーが追加した配色（`themes/`）。
     ///
@@ -91,7 +91,7 @@ pub enum ChangeKind {
     Removed,
 }
 
-/// フロントへ渡す変更（02.architecture/04-rust-responsibilities.md §1 の `path, mtime, kind`）。
+/// フロントへ渡す変更（`path, mtime, kind`）。
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct FileChange {
@@ -334,7 +334,7 @@ impl FileWatcher {
     /// 監視を始める。既に同じ役割で見ているパスなら何もしない。
     ///
     /// ファイルがまだ存在しない場合は親ディレクトリを監視し、届いたイベントをパスで絞り込む。
-    /// `settings.json` は最初の保存まで存在しないため、この扱いが無いと手で作成された時点を検出できない（02.architecture/04-rust-responsibilities.md §5）。
+    /// `settings.json` は最初の保存まで存在しないため、この扱いが無いと手で作成された時点を検出できない。
     pub fn watch(&self, path: &Path, role: Role) -> bool {
         self.watch_for(path, role, None)
     }
@@ -405,7 +405,7 @@ impl FileWatcher {
     /// 監視をやめる。
     ///
     /// 解除の経路は必ず用意しておく。
-    /// 常駐アプリであるため、解除しなかった監視はプロセスが終わるまで残る（ADR-0004 / 02.architecture/04-rust-responsibilities.md §4）。
+    /// 常駐アプリであるため、解除しなかった監視はプロセスが終わるまで残る（ADR-0004）。
     pub fn unwatch(&self, path: &Path) {
         let Ok(key) = document::canonicalize(path) else {
             return;
@@ -450,7 +450,7 @@ impl FileWatcher {
         }
     }
 
-    /// そのウィンドウが表示しているドキュメントを差し替える（02.architecture/04-rust-responsibilities.md §4）。
+    /// そのウィンドウが表示しているドキュメントを差し替える。
     ///
     /// 1 つのウィンドウが表示しているドキュメントは 1 つだけである。
     /// 前のドキュメントの監視をここで必ず解除することで、タブを切り替えるたびに監視が蓄積しない。
@@ -548,7 +548,7 @@ impl FileWatcher {
         }
     }
 
-    /// 自分がファイルを書いた直後に呼ぶ（02.architecture/04-rust-responsibilities.md §4 の「直前の保存 mtime と照合」）。
+    /// 自分がファイルを書いた直後に呼ぶ。
     ///
     /// これを忘れると、設定 UI から保存するたびに「外部で変更された」通知が発生する。
     pub fn note_self_write(&self, path: &Path) {
@@ -597,7 +597,7 @@ mod tests {
     }
 
     /// 中身が変わっていないイベントは流さない。
-    /// 保存直後の自己イベント（02.architecture/04-rust-responsibilities.md §4）が落ちるのはこの性質による。
+    /// 保存直後の自己イベントが落ちるのはこの性質による。
     #[test]
     fn an_event_without_a_real_change_is_dropped() {
         let d = temp_dir("noop");
@@ -627,7 +627,7 @@ mod tests {
         std::fs::remove_dir_all(&d).ok();
     }
 
-    /// 02.architecture/04-rust-responsibilities.md §4 の自己イベント排除。保存した側が姿を教えておけば、続くイベントは落ちる。
+    /// 自己イベントの排除。保存した側が姿を教えておけば、続くイベントは落ちる。
     #[test]
     fn a_self_write_is_not_reported() {
         let d = temp_dir("self");

@@ -4,7 +4,7 @@
  * 検索は面ごとに別実装（Preview は Range 検索、Edit は Monaco の find ウィジェット）だが、同じキーで表示中の面に対応するほうを開く。
  * `features/editor/lazy/keymap.ts` が `Ctrl+F` を Monaco から解除しているのはこのためである（解除しないと Edit で二重に開く）。
  *
- * Split では両方見えるため `viewStore.mode` では判定できず、フォーカスのある側を探す（03.ux-spec/04-keybindings.md §4。既定はエディター検索）。
+ * Split では両方見えるため `viewStore.mode` では判定できず、フォーカスのある側を探す（既定はエディター検索）。
  * プレビュー検索の `F3`/`Escape` はグローバルに有効なままであるため、開くほうがもう片方を閉じて同時進行を防ぐ。
  * `Ctrl+H`（置換）は Edit と Split のみで、Preview では書き換える経路が無いため何もしない。
  */

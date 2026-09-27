@@ -1,5 +1,5 @@
 /**
- * 終了時の確認（F-EDIT-03 / 03.ux-spec/07-status-and-notifications.md §1）。
+ * 終了時の確認（F-EDIT-03）。
  *
  * 確認はネイティブのモーダルダイアログ（`src-tauri/src/close.rs`）で、WebDriver からはボタンを押せない。
  * 3 択のどれを押すとどうなるかは、ここでは確かめられない。

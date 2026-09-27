@@ -1,7 +1,7 @@
 # E2E（WebdriverIO + tauri-driver）
 
 **実機のプロセス・キー配送・IPC を通さないと確かめられないものだけを置く。**
-[02.architecture > testing-strategy](../docs/02.architecture/12-testing-strategy.md) の「本数を絞る」に従う。
+テスト戦略の「本数を絞る」に従う。
 
 中心は保存経路である。
 編集と保存があるため、壊れたときの被害は「表示が崩れる」では済まず
@@ -16,7 +16,7 @@
 もう 1 つは**キーの経路**である。
 アプリのグローバルキーとエディターのキーバインドが同じキーを奪い合っていないことは、
 実際のキーイベントを流さないと確かめられない
-（[03.ux-spec > keybindings §4](../docs/03.ux-spec/04-keybindings.md)）。
+。
 
 | spec | 検証するもの |
 | --- | --- |
@@ -37,7 +37,7 @@
 `wdio.memory.conf.ts` から `pnpm e2e:memory` で明示的に呼ぶ。
 
 `huge.md` を描き切ってから `tiny.md` へ戻す往復を繰り返し、各点のメモリを記録する
-（[measurements > memory](../docs/measurements/06-memory.md)）。
+。
 往復の回数は `MX_MEMORY_CYCLES`、CDP の利用有無は `MX_MEMORY_CDP` で変えられる。
 結果は `design/measurements/memory-oq18.json` に出る。
 
@@ -45,7 +45,7 @@
 他の spec に持ち込まないためである。
 
 > ⚠️ **合否は判定しない。この spec が固定するのは「同じ手順で測り直せること」だけである。**
-> **数値の判定は手計測で行う**（[measurements > memory §2.3](../docs/measurements/06-memory.md)）。
+> **数値の判定は手計測で行う**。
 > WebDriver を介した値は絶対値も増分も手計測と比較できない。
 
 ## エンジンの名前は 1 ファイルにしか書かない
@@ -54,7 +54,7 @@
 **spec からはエンジンの名前が読めない。**
 
 エンジンを差し替えるときに書き換えるのは `EDITOR_DOM` と、その下の薄い関数群だけで済む
-（[ADR-0009](../docs/adr/0009-editor-engine-monaco.md)）。
+（ADR-0009）。
 Monaco の DOM で注意すべき点は 3 つある。
 
 | | |
@@ -70,14 +70,14 @@ Monaco の DOM で注意すべき点は 3 つある。
 > （`src/features/document/discard.dom.test.ts`）。
 
 **CI では実行しない。** 実機が要り、環境ノイズも大きい
-（[05.performance-budget > operations §5](../docs/05.performance-budget/05-operations.md) の起動時間・メモリと同じ扱い）。
+（性能予算の起動時間・メモリと同じ扱い）。
 `pnpm e2e` の手動実行と、マイルストーン完了時の実行にとどめる。
 
 ## 実行する前に
 
 > **バイナリの更新時刻を先に確認すること。**
 > `pnpm build`（= `tauri build`）は**シェルによっては何もせずに終了コード 0 を返す**
-> （[measurements > caveats §1](../docs/measurements/09-caveats.md)）。
+>。
 > 古いバイナリのまま実行すると、新しく追加したキーが「機能しない」形で失敗する。
 >
 > ```bash
@@ -125,7 +125,7 @@ pnpm build
 ```
 
 **`cargo build --release` 単独では不十分である。** `dist/` が古いまま埋め込まれ、起動が止まる
-（[measurements > caveats](../docs/measurements/09-caveats.md)）。
+。
 
 ## 実行する
 
@@ -135,8 +135,8 @@ pnpm e2e
 
 ## 単一インスタンスに注意
 
-Marxdown は**単一インスタンス**（[ADR-0004](../docs/adr/0004-process-model-and-cli.md)）で、
-`✕` はプロセスを終わらせない（[ADR-0007](../docs/adr/0007-tray-residency.md)）。
+Marxdown は**単一インスタンス**（ADR-0004）で、
+`✕` はプロセスを終わらせない（ADR-0007）。
 
 つまり **Marxdown を普段使いで起動したままだと E2E は動かない。**
 ドライバが起動した 2 つ目のプロセスは argv を転送して即座に終了し、
@@ -168,14 +168,14 @@ msedgedriver が **Chromium のスイッチとして**解釈する。
 ### 代わりに argv 転送を使う
 
 Marxdown は単一インスタンスで、2 回目以降の `marxdown foo.md` は
-**新規プロセスを起動せずに既存プロセスへ argv を転送する**（[ADR-0004](../docs/adr/0004-process-model-and-cli.md)）。
+**新規プロセスを起動せずに既存プロセスへ argv を転送する**（ADR-0004）。
 ドライバが起動した 1 つ目に対して、テストから 2 つ目を起動すればよい（`helpers/app.ts` の `forwardOpen`）。
 
 テスト専用の裏口を製品コードに開けずに済むうえ、
 **中心価値そのもの（Warm Start の経路）を毎回通ることになる。**
 
 > 転送側のプロセスは**待たない**。シェルを保持したまま終わらない既知の問題があり
-> （[OQ-32](../docs/07.open-questions/oq-32-cli-holds-shell.md)）、終了を待つと E2E ごと止まる。
+> （OQ-32）、終了を待つと E2E ごと止まる。
 > 開けたかどうかは画面側で確かめる（`openViaForward`）。
 
 ### 作業ファイル
@@ -191,7 +191,7 @@ N-CMP-03 はそこを検証する要件である。
 ### 前回のタブ（`state.json`）
 
 **E2E のアプリは引数なしで立ち上がる。** つまりセッション復元
-（[02.architecture > rust-responsibilities §5](../docs/02.architecture/04-rust-responsibilities.md)）が
+が
 毎回行われる条件で起動する。前の実行の記録が残っていると、**どの spec も 2 枚目のタブが
 ある状態から始まる**。
 

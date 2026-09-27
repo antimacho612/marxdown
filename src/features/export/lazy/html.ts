@@ -1,7 +1,7 @@
 /**
  * 1 ファイルで完結する HTML を組み立てる（F-VIEW-18）。
  *
- * 見た目は画面と同じにする（docs/06.roadmap/m8-cli-os-export.md §4.4）。
+ * 見た目は画面と同じにする。
  * スクリプトは含めず、CSP でスクリプトと外部への読み込み（画像を除く）を禁じる。
  */
 import { getPlatform } from '@/platform';

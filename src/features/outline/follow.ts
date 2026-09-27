@@ -1,5 +1,5 @@
 /**
- * 本文のスクロールに追従して「いまどの見出しの中にいるか」を決める（F-VIEW-02 / 03.ux-spec/06-panes.md §2）。
+ * 本文のスクロールに追従して「いまどの見出しの中にいるか」を決める（F-VIEW-02）。
  *
  * `IntersectionObserver` を使う（N-PERF-05）。
  * `setInterval` はアイドル時も CPU を使い続け、`scroll` イベントはスクロール中しか発火せず全見出しの位置測り直しでレイアウトを強制する。
@@ -20,7 +20,7 @@ export interface OutlineFollower {
   /**
    * 見出しを集め直す。
    *
-   * 段階的描画（02.architecture/06-markdown-rendering-pipeline.md §4）では、本文が idle 時に後から追加される。
+   * 段階的描画では、本文が idle 時に後から追加される。
    * 追加が完了した時点で呼び直さないと、後半の見出しが観測対象に入らない。
    */
   refresh: () => void;
@@ -36,7 +36,7 @@ export interface OutlineFollower {
  * @param onActive 現在位置が変わったときに呼ばれる。見出しが 1 つも無ければ `-1`
  */
 export function followHeadings(container: HTMLElement, onActive: (index: number) => void): OutlineFollower {
-  // WebView2 / WKWebView には必ずある（04.tech-stack/08-typescript.md）。
+  // WebView2 / WKWebView には必ずある。
   // 無いのはテスト環境（jsdom）だけなので、その場合は何もしない。
   if (typeof IntersectionObserver === 'undefined') {
     return { refresh: () => {}, stop: () => {} };

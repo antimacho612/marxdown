@@ -1,6 +1,6 @@
 <!--
 @component
-通知バー（03.ux-spec/07-status-and-notifications.md §2）。
+通知バー。
 
 `role` を種別で分けているのは、支援技術に割り込ませるかどうかが変わるため。
 情報は `status`（穏やかに読み上げる）、警告とエラーは `alert`（割り込む）。
@@ -78,13 +78,13 @@
     background: var(--mx-color-bg-inset);
     font-size: var(--mx-font-size-ui);
     box-shadow: var(--mx-shadow-1);
-    /* 出現に 150ms（03.ux-spec/09-motion.md） */
+    /* 出現に 150ms */
     animation: mx-notice-in 150ms ease-out;
   }
 
   /*
    * このバーは本文の上に重なっているため、動かしても再レイアウトが発生しない。
-   * サイドバー（`width` の遷移）を 0ms にしてあるのと、ここが 150ms なのは同じ基準による（03.ux-spec/09-motion.md §1）。
+   * サイドバー（`width` の遷移）を 0ms にしてあるのと、ここが 150ms なのは同じ基準による。
    */
   @keyframes mx-notice-in {
     from {
@@ -115,7 +115,7 @@
 
   /*
    * 通知内のボタン。
-   * §2 が「自動で消えるものと、操作が必要なものを見分けられるように」と定めているため、選択肢は枠付き、閉じるだけは枠なしにして区別する。
+   * UX 仕様が「自動で消えるものと、操作が必要なものを見分けられるように」と定めているため、選択肢は枠付き、閉じるだけは枠なしにして区別する。
    */
   .mx-notice__action,
   .mx-notice__close {

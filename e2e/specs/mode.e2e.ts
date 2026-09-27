@@ -6,7 +6,7 @@
  * 分割の境界を壊すと、起動が遅くなるか、切り替えたときに何も表示されないかのどちらかになる。
  *
  * Monaco の取得と評価（raw 3.0MB）が切り替えの瞬間に入りうるため、待ち時間の上限を広げてある（`waitForEditorMounted`）。
- * この 1 本が失敗する場合は、idle プリロードが機能していない可能性もある（[ADR-0009](../../docs/adr/0009-editor-engine-monaco.md) の根拠 2）。
+ * この 1 本が失敗する場合は、idle プリロードが機能していない可能性もある（ADR-0009 の根拠 2）。
  */
 import { Key } from 'webdriverio';
 
@@ -28,7 +28,7 @@ describe('Preview と Edit を行き来する', () => {
   });
 
   it('起動直後は Preview で、エディターは載っていない', async () => {
-    // 既定が Preview であることが `editor` チャンクを分ける境界そのもの（02.architecture/05-startup-sequence.md §1 の要点 3）。
+    // 既定が Preview であることが `editor` チャンクを分ける境界そのもの。
     expect(await mode()).toBe('preview');
     expect(await mountedEditorCount()).toBe(0);
   });
@@ -55,7 +55,7 @@ describe('Preview と Edit を行き来する', () => {
   });
 
   it('もう一度押すと Preview に戻り、エディターは壊されない', async () => {
-    // 03.ux-spec/02-view-modes.md §4。破棄すると Undo 履歴が消える。
+    // 破棄すると Undo 履歴が消える。
     await pressTogglePreview();
 
     await browser.waitUntil(async () => (await mode()) === 'preview', {

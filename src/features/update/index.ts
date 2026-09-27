@@ -1,5 +1,5 @@
 /**
- * update feature の公開面（02.architecture/03-layers.md §2 / ADR-0024）。
+ * update feature の公開面（ADR-0024）。
  *
  * 確認の契機も適用も Rust 側にある。
  * `main` に常駐するのはイベントの購読とコマンドの入口だけで、通知バーの中身・操作・文言は `lazy/notice.ts`（`update` チャンク）にある。

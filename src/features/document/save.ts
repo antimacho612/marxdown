@@ -118,7 +118,7 @@ function applySaved(path: string, mtimeMs: number, size: number, eol: Eol): void
 }
 
 /**
- * 衝突したときの選択（03.ux-spec/07-status-and-notifications.md §2 の「警告」）。
+ * 衝突したときの選択。
  * 「保存できませんでした: 別のプロセスが変更しています」+ 上書き / 再読み込み、を消えない通知として出す。
  * データ消失に直結する選択なので、3 秒で消えて「無かったこと」になってはいけない。
  */

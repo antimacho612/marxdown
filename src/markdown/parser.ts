@@ -1,10 +1,10 @@
 /**
  * Markdown のパースのインタフェース。
  *
- * パースはメインスレッドで実行する（ADR-0010 / 02.architecture/06-markdown-rendering-pipeline.md §2）。
+ * パースはメインスレッドで実行する（ADR-0010）。
  *
  * `parse` は同期的に返せるが `Promise` を保っている。
- * 呼び出し側はパースを開始してから結果を待つ間にシェルを描く構造になっており（02.architecture/05-startup-sequence.md §1）、同期にするとこの並行処理が成立しなくなる。
+ * 呼び出し側はパースを開始してから結果を待つ間にシェルを描く構造になっており、同期にするとこの並行処理が成立しなくなる。
  *
  * `pipeline` を動的 import にしているのは遅延のためではなく、`main` チャンクの予算計測を実態に合わせるためである（size-limit のクリティカルパスに名指しで入っている）。
  */
@@ -17,7 +17,7 @@ export interface ParseOptions {
   /** 単独の改行を `<br>` にするか（`preview.softBreak`）。省略時は false。 */
   breaks?: boolean;
   /**
-   * 有効にする追加記法（`markdown.*` / 04.tech-stack/04-markdown.md §3）。省略時は無し。
+   * 有効にする追加記法（`markdown.*`）。省略時は無し。
    *
    * 描画の前にここで読み込みを待つ。既定（空）では読み込むものが無く、往復も発生しない。
    */

@@ -1,5 +1,5 @@
 /**
- * セッション復元（F-NAV-01 / 02.architecture/04-rust-responsibilities.md §5）。
+ * セッション復元（F-NAV-01）。
  *
  * ここでしか確かめられないのは、引数なしの起動が前回のタブを開き直すことである。
  * Vitest 側はプラットフォームをモックしており、`state.json` も CLI 引数も通っていない。

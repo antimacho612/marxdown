@@ -105,7 +105,7 @@
 <Story name="折り返しを切っている" loaders={[seed({ 'editor.wordWrap': 'off', 'editor.lineNumbers': 'off' })]} />
 
 <!--
-  壊れた `settings.json`（02.architecture/04-rust-responsibilities.md §5）。
+  壊れた `settings.json`。
   入力欄がまとめて止まり、フッタのファイル導線だけが押せる。
   ここで保存できてしまうと、ユーザーが修正している最中のファイルを上書きしてしまう。
 -->

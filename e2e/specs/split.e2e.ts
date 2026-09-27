@@ -1,5 +1,5 @@
 /**
- * Split とスクロール同期（F-MODE-03, 05 / 03.ux-spec/03-split-mode.md）。
+ * Split とスクロール同期（F-MODE-03, 05）。
  *
  * 単体テストは 3 段で下位の層を検証している（`scroll-sync.test.ts`: 補間の計算、`scroll-sync.dom.test.ts`: 配線＝主導権・ダブルクリック・開始と終了、`scroll-port.dom.test.ts`: 換算＝スクロール量 ⇄ 行番号）。
  * ここで検証するのはその上に残る「実際に追随するか」で、実際のレイアウト（要素の高さが無いと data-line の位置が全部 0 になる）、実際の scroll イベント（ブラウザペインでは配送されないことがある）、実際のキー配送（Ctrl+\ は配列によって届き方が変わる）の 3 つが同時に必要になる。
@@ -58,7 +58,7 @@ async function resetBoth(): Promise<void> {
 }
 
 /**
- * 主導権が空くまで待つ（`SUPPRESS_MS` / §2）。
+ * 主導権が空くまで待つ（`SUPPRESS_MS`）。
  *
  * 反対側を動かす前に必ず挟む。
  * 直前に片方が主導していると、そのあいだ反対側からの同期は無視される（循環的な同期を防ぐ仕掛けそのもの）。
@@ -131,7 +131,7 @@ describe('Split に入る (F-MODE-03)', () => {
   });
 });
 
-describe('スクロール同期 (F-MODE-05 / §2)', () => {
+describe('スクロール同期 (F-MODE-05)', () => {
   it('エディターを動かすとプレビューが追随する', async () => {
     await resetBoth();
 
@@ -148,7 +148,7 @@ describe('スクロール同期 (F-MODE-05 / §2)', () => {
 
   /**
    * 循環的な同期が起きていないこと。
-   * 動かした側が動かされ返すと、押した位置から離れていく（§2 の「主導権は最後に操作した側」）。
+   * 動かした側が動かされ返すと、押した位置から離れていく。
    *
    * 位置を数値で指定できないため（キーで動かす）、追随したあとに動かした側が動いていないことで確認する。
    */
@@ -164,7 +164,7 @@ describe('スクロール同期 (F-MODE-05 / §2)', () => {
     expect(Math.abs(later.editor - settled.editor)).toBeLessThan(20);
   });
 
-  /** OFF にしたら追随しない（§2 / ステータスバーの `⇄`）。 */
+  /** OFF にしたら追随しない（ステータスバーの `⇄`）。 */
   it('同期を切ると追随しない', async () => {
     await browser.execute(() => {
       const button = [...document.querySelectorAll('.mx-statusbar__button')].find((el) =>
@@ -190,7 +190,7 @@ describe('スクロール同期 (F-MODE-05 / §2)', () => {
   });
 });
 
-describe('双方向ジャンプ (§3)', () => {
+describe('双方向ジャンプ', () => {
   /**
    * プレビューの要素をダブルクリック → エディターの該当行へ。
    *
@@ -216,7 +216,7 @@ describe('双方向ジャンプ (§3)', () => {
 });
 
 /**
- * Split の検索（[03.ux-spec > keybindings §4](../../docs/03.ux-spec/04-keybindings.md)）。
+ * Split の検索。
  *
  * 同じ `Ctrl+F` が、フォーカスのある側を探す。
  * Split でしか起きない分岐であり、振り分けそのものは `src/features/mode/find.dom.test.ts` が検証している。

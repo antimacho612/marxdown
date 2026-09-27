@@ -1,4 +1,4 @@
-﻿; Tauri の NSIS テンプレートに差し込むフック（docs/06.roadmap/m6-ship.md / docs/04.tech-stack/09-tauri-config.md §3）。
+﻿; Tauri の NSIS テンプレートに差し込むフック。
 ;
 ; NOTE: BOM 付き UTF-8 で保存する。BOM が無いと makensis はシステムのコードページとして読み、日本語の文字列が化ける。
 ; NOTE: MX_PROGID は tauri.conf.json の `bundle.fileAssociations[].name` と一致させる。テンプレートはこの値を define として公開していない。
@@ -40,7 +40,7 @@
   DeleteRegKey /ifnosubkeys /ifnovalues SHCTX "Software\Classes\.${EXT}"
 !macroend
 
-; エクスプローラーのコンテキストメニュー（F-OS-05 / docs/06.roadmap/m8-cli-os-export.md §4.3）。
+; エクスプローラーのコンテキストメニュー（F-OS-05）。
 ; 対象はフォルダだけである。.md ファイルは「開く」と「プログラムから開く」で既に開ける。
 ; Windows 11 では「その他のオプションを確認」の中に出る。新しいメニューに出すにはパッケージ ID が要り、それには署名が要る（ADR-0018）。
 ; %V はフォルダそのものを右クリックしたときも、フォルダ内の余白を右クリックしたときも、そのフォルダのパスになる。
@@ -50,7 +50,7 @@
   WriteRegStr SHCTX "Software\Classes\${ROOT}\shell\${MX_PROGID}\command" "" "$\"$INSTDIR\${MAINBINARYNAME}.exe$\" $\"%V$\""
 !macroend
 
-; PATH のオプトイン（F-OS-02 / docs/06.roadmap/m6-ship.md §4）。
+; PATH のオプトイン（F-OS-02）。
 ; 書き換えは marxdown.exe（src/path_env.rs）に任せる。NSIS の文字列は 1024 文字で切り詰められ、長い PATH を壊すため。
 ; 選択は MANUPRODUCTKEY に残す。更新（/UPDATE）ではアンインストーラもこのキーを消さないため、前回の選択として読める。
 ; 追加しないと答えたときも解除を呼ぶ。以前のインストールで追加したエントリを残さないため。

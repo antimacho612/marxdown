@@ -1,9 +1,9 @@
 /**
- * 表示モードの決定と切り替え（F-MODE-01, 02, 06, 07 / 03.ux-spec/02-view-modes.md）。
+ * 表示モードの決定と切り替え（F-MODE-01, 02, 06, 07）。
  *
  * ここにあるのはモードの値と切り替え手続きだけである。
  * エディターは `features/editor/open-editor.ts` 経由の動的 import で読み込み、直接 import すると `editor` チャンクが `main` に含まれる。
- * 表示の切り替えは `data-mx-mode` 属性で CSS が行い要素の付け外しはしない（エディターを破棄すると Undo 履歴が消え §4 に反する）。
+ * 表示の切り替えは `data-mx-mode` 属性で CSS が行い要素の付け外しはしない（エディターを破棄すると Undo 履歴が消えてしまう）。
  * `display: none` された要素は `scrollTop` を保てないため、非表示にする直前にスクロール位置を保存し、戻すときに再設定する。
  */
 import { cancelLiveRender, renderNow, type StoredMeta } from '@/features/document';
@@ -16,7 +16,7 @@ import { closePreviewFind } from './find';
 const PREVIEW_SELECTOR = '#mx-preview';
 
 /**
- * `Ctrl+Shift+V` が戻る先（03.ux-spec/02-view-modes.md §2「Preview ⇄ 直前の編集モード」）。
+ * `Ctrl+Shift+V` が戻る先。
  *
  * Split から Preview へ移り、そこから戻ると Split に戻る。
  * 戻り先は直前の編集モードであり、常に Edit ではない。
@@ -24,7 +24,7 @@ const PREVIEW_SELECTOR = '#mx-preview';
 let lastEditingMode: Exclude<ViewMode, 'preview'> = 'edit';
 
 /**
- * 順送りの並び（`Ctrl+Shift+M` / 03.ux-spec/02-view-modes.md §2 の図）。
+ * 順送りの並び（`Ctrl+Shift+M`）。
  *
  * WYSIWYG（F-MODE-04）は未実装であるため並びに含めない（操作しても何も起きない位置ができるため）。
  *
@@ -36,7 +36,7 @@ const CYCLE: ViewMode[] = ['preview', 'edit', 'split'];
 let previewScroll = 0;
 
 /**
- * 起動時のモードを決める（F-MODE-07 / 03.ux-spec/02-view-modes.md §3）。
+ * 起動時のモードを決める（F-MODE-07）。
  *
  * 優先順位は、CLI で `--mode` が指定されていればそれに従い、次にファイル単位の記憶（設定 ON 時 / F-MODE-08）、ファイルが読み取り専用なら Preview、それ以外は既定の Preview、の順である。
  *
@@ -52,7 +52,7 @@ export function decideInitialMode(bootstrap: Bootstrap | null, meta: StoredMeta 
 /**
  * 起動時に 1 回だけ適用する。シェルを描画するより前に呼ぶこと。
  *
- * 後から適用すると、Preview の面が 1 フレーム描画されてからエディターへ差し替わる（倍率やペインと同じ理由 / 02.architecture/05-startup-sequence.md §1）。
+ * 後から適用すると、Preview の面が 1 フレーム描画されてからエディターへ差し替わる（倍率やペインと同じ理由）。
  */
 export function initMode(mode: ViewMode): void {
   viewStore.mode = mode;
@@ -100,7 +100,7 @@ export async function setMode(mode: ViewMode): Promise<void> {
   // エディターが表示されるモードに入るときだけ実行するため、ここでチャンクは増えない。
   if (isEditorVisible(mode)) void relayoutEditorLazily();
 
-  // スクロール同期は Split でのみ意味を持つ（03.ux-spec/03-split-mode.md §2）。
+  // スクロール同期は Split でのみ意味を持つ。
   // 片方の面しか表示されていないときに購読を残さない（N-PERF-05）。
   void setSplitSyncLazily(mode === 'split');
 
@@ -119,7 +119,7 @@ export async function setMode(mode: ViewMode): Promise<void> {
 }
 
 /**
- * Split をトグルする（`Ctrl+\` / 03.ux-spec/02-view-modes.md §2）。
+ * Split をトグルする（`Ctrl+\`）。
  *
  * VS Code の「エディターを分割」に対応する。Split から抜ける先は Edit である。
  * Preview へ戻すと分割の解除ではなく閲覧側への移動になり、もう一度押しても元の面に戻れない。
@@ -128,7 +128,7 @@ export async function toggleSplit(): Promise<void> {
   await setMode(viewStore.mode === 'split' ? 'edit' : 'split');
 }
 
-/** 表示モードを順送りする（`Ctrl+Shift+M` / §2 の図）。対象は `CYCLE` の 3 つ。 */
+/** 表示モードを順送りする（`Ctrl+Shift+M`）。対象は `CYCLE` の 3 つ。 */
 export async function cycleMode(): Promise<void> {
   const at = CYCLE.indexOf(viewStore.mode);
   const next = CYCLE[(at + 1) % CYCLE.length] ?? 'preview';
@@ -136,9 +136,9 @@ export async function cycleMode(): Promise<void> {
 }
 
 /**
- * Preview ⇄ 直前の編集モード（`Ctrl+Shift+V` / 03.ux-spec/02-view-modes.md §2）。
+ * Preview ⇄ 直前の編集モード（`Ctrl+Shift+V`）。
  *
- * §2 が最も使用頻度の高いトグルとしているものである。
+ * 最も使用頻度の高いトグルである。
  * 閲覧と編集の往復が中心ユースケースであるため、最も押しやすいキーを割り当てている。
  */
 export async function togglePreview(): Promise<void> {

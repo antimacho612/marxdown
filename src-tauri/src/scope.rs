@@ -65,7 +65,7 @@ pub fn resolve_within(roots: &[PathBuf], candidate: &Path) -> CoreResult<PathBuf
 /// `candidate` を正規化し、その親ディレクトリが `dirs` のいずれかと一致することを検証する。
 ///
 /// [`resolve_within`] と違い再帰しない。`dirs` の直下にあるものだけを通す。
-/// スコープ外の画像を 1 クリックで許可する導線（02.architecture/09-security.md §3）がこれを使う。
+/// スコープ外の画像を 1 クリックで許可する導線がこれを使う。
 /// 許可したのが `C:\work\assets` なら、`C:\work\assets\sub\x.png` は通らない。
 ///
 /// 再帰しないことが防御の要である。

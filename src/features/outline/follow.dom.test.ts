@@ -85,14 +85,14 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-describe('アウトラインのスクロール追従 (03.ux-spec/06-panes.md §2 / N-PERF-05)', () => {
+describe('アウトラインのスクロール追従 (N-PERF-05)', () => {
   it('ポーリングではなく IntersectionObserver で見る', () => {
     seed(3);
     vi.useFakeTimers();
 
     const follower = followHeadings(container, (i) => active.push(i));
 
-    // 03.ux-spec/06-panes.md §2 が明示的に求めている。タイマーを 1 つも追加しない
+    // UX 仕様が明示的に求めている。タイマーを 1 つも追加しない
     expect(vi.getTimerCount()).toBe(0);
     expect(FakeObserver.latest?.observed).toHaveLength(3);
     // 本文のスクロールコンテナを root にしないと、ウィンドウ基準で判定してしまう
@@ -153,7 +153,7 @@ describe('アウトラインのスクロール追従 (03.ux-spec/06-panes.md §2
   });
 
   /**
-   * 段階的描画（02.architecture/06-markdown-rendering-pipeline.md §4）。
+   * 段階的描画。
    * 後から入ったチャンクの見出しを観測しないと、後半で追従が止まる。
    */
   it('後から増えた見出しを refresh で拾い、現在位置を先頭へ跳ね返さない', () => {

@@ -1,5 +1,5 @@
 /**
- * タスクリスト（F-VIEW-01 の GFM 相当 / 04.tech-stack/04-markdown.md §2）。
+ * タスクリスト（F-VIEW-01 の GFM 相当）。
  *
  * `markdown-it-task-lists` を使わず自作するのは、あちらが出力する `<input type="checkbox">` を本文へ入れないためである。
  *

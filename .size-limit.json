@@ -30,7 +30,7 @@
     "gzip": true
   },
   {
-    "name": "settings (設定 UI。Ctrl+, を押すまでロードしない。6 KB から引き上げた根拠は 05.performance-budget/05-operations.md §1)",
+    "name": "settings (設定 UI。Ctrl+, を押すまでロードしない。6 KB から引き上げた根拠は設計ドキュメントの性能予算にある)",
     "path": ["dist/assets/settings-*.js"],
     "limit": "8 KB",
     "gzip": true
@@ -90,7 +90,7 @@
     "gzip": true
   },
   {
-    "name": "mermaid (図を含む文書で、図が画面に入るまでロードしない。予算の対象外 — 05-operations.md §1)",
+    "name": "mermaid (図を含む文書で、図が画面に入るまでロードしない。予算の対象外)",
     "path": ["dist/assets/mermaid-*.js", "dist/assets/mermaid-*.css"],
     "limit": "900 KB",
     "gzip": true
@@ -102,7 +102,7 @@
     "gzip": true
   },
   {
-    "name": "total (no mermaid, no math, no marp, no editor) — 上限の根拠は 05.performance-budget/05-operations.md §1",
+    "name": "total (no mermaid, no math, no marp, no editor)",
     "path": [
       "dist/assets/*.js",
       "!dist/assets/mermaid-*.js",

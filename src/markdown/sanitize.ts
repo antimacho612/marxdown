@@ -1,5 +1,5 @@
 /**
- * DOMPurify の設定（02.architecture/09-security.md §1 Layer 3 / ADR-0006）。
+ * DOMPurify の設定（多層防御の Layer 3 / ADR-0006）。
  *
  * 中心ユースケースは「LLM が生成した、自分が書いていないファイルを開く」ことであり、開いた時点で何かが実行される経路をすべて塞ぐ。
  *
@@ -13,7 +13,7 @@ import { formatSrcset, parseSrcset } from '@/lib/srcset';
 /**
  * スキーム付き URI かどうかの判定と、許可するスキーム。
  *
- * リンクの実際の分岐は JS 側で行う（02.architecture/09-security.md §2）。
+ * リンクの実際の分岐は JS 側で行う。
  * ここは未知のスキームを属性ごと除去するだけである。
  * `./a.png` のような形ではなくスキームの有無で判定するのは、`img/a.png` のような接頭辞の無い相対パス（最も普通の書き方）を除去しないためである。
  */
@@ -95,7 +95,7 @@ function configure(): void {
 }
 
 const CONFIG: Config = {
-  // script / iframe / object / embed / form を除去（§1 Layer 3）
+  // script / iframe / object / embed / form を除去（Layer 3）
   //
   // `button` 以降は仕様が要求していない追加分であり、本文に操作可能な部品を置かないための措置である。
   // `input` にも例外を設けない。タスクリストのチェックボックス（F-VIEW-01）は `<input>` ではなく `<span role="checkbox">` で出力する（`markdown/plugins/task-list.ts`）。
@@ -120,7 +120,7 @@ const CONFIG: Config = {
   // srcset は一律禁止ではなく、フック側で候補単位に検証する。
   FORBID_ATTR: ['style', 'formaction', 'ping'],
   // on* 属性は DOMPurify が既定で除去するが、意図を明示するために記載する
-  ALLOW_DATA_ATTR: true, // data-line が必要（02.architecture/06-markdown-rendering-pipeline.md §3）
+  ALLOW_DATA_ATTR: true, // data-line が必要
   ALLOW_ARIA_ATTR: true,
   // SVG は GitHub Alerts のアイコンと Mermaid が生成したものを通す必要がある
   USE_PROFILES: { html: true, svg: true, svgFilters: true },
@@ -144,7 +144,7 @@ const PREVIEW_SELECTOR = '#mx-preview';
  *
  * CSS はカスケードに DOM 上の位置を問わないため、`<style>` タグを許可リストで素通しするだけでは
  * 本文の外（アプリ全体）にも規則が効いてしまう。`@scope (#mx-preview)` で包み、
- * `02.architecture/10-theming.md §3.4`（`features/theme/inject.ts`）と同じ「ブラウザに解釈させた結果だけを見る」手法で、
+ * `features/theme/inject.ts` と同じ「ブラウザに解釈させた結果だけを見る」手法で、
  * 波かっこの数を細工して範囲外へ出ようとしたものを丸ごと落とす（`confine`）。
  */
 function scopeStyles(html: string): string {
@@ -203,7 +203,7 @@ export function sanitize(html: string): string {
 }
 
 /**
- * Mermaid が生成した SVG も同じサニタイザを通す（F-VIEW-12 / §1 Layer 3）。
+ * Mermaid が生成した SVG も同じサニタイザを通す（F-VIEW-12 / Layer 3）。
  *
  * 本文用の設定から変えるのは `style` 属性だけである。理由は `sanitizeMath` と同じ形で、Mermaid は図形の位置と大きさをインラインの `style` で表現しており、除去すると図が崩れる。
  * 値を組み立てるのは Mermaid であってドキュメントではない。
@@ -223,7 +223,7 @@ export function sanitizeSvg(svg: string): string {
 }
 
 /**
- * KaTeX が生成した HTML をサニタイズする（F-VIEW-13 / §1 Layer 3）。
+ * KaTeX が生成した HTML をサニタイズする（F-VIEW-13 / Layer 3）。
  *
  * 本文用の設定と 2 点だけ違う。
  *

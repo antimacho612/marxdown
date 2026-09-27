@@ -1,6 +1,6 @@
 <!--
 @component
-ウィンドウ操作ボタン 1 つ（03.ux-spec/01-screen-layout.md §1）。
+ウィンドウ操作ボタン 1 つ。
 
 Windows の標準にそのまま合わせる（幅 46px・閉じるのホバーのみ赤 / Principle 5「Familiar Over Novel」）。
 

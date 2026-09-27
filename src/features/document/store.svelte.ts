@@ -1,5 +1,5 @@
 /**
- * ドキュメントの派生状態（02.architecture/08-state-management.md §1 / ADR-0005）。
+ * ドキュメントの派生状態（ADR-0005）。
  *
  * 本文（Monaco の `ITextModel` / Preview の HTML 文字列）はここに複製しない。
  * UI が購読するのはダーティ・カーソル位置・アウトライン・メタ情報などの派生値だけである。
@@ -33,14 +33,14 @@ export function toMeta(payload: StoredPayload): StoredMeta {
   return { path, eol, bom, encoding, mtimeMs, size, readonly };
 }
 
-/** 通知バーの選択肢（03.ux-spec/07-status-and-notifications.md §2 の「再読み込み / 無視」など）。 */
+/** 通知バーの選択肢（「再読み込み / 無視」など）。 */
 export interface NoticeAction {
   label: string;
   run: () => void;
 }
 
 /**
- * 通知バー（03.ux-spec/07-status-and-notifications.md §2）。本文の上に薄く重ねる。
+ * 通知バー。本文の上に薄く重ねる。
  *
  * モーダルダイアログはデータ消失の可能性がある場面だけに限定するという方針の受け皿である。
  * 読み込みの失敗も、編集中に外部で変更されたこともここに表示する。
@@ -57,12 +57,12 @@ export interface Notice {
 }
 
 /**
- * ステータスバーの一時メッセージが消えるまでの時間（03.ux-spec/07-status-and-notifications.md §3.3）。
+ * ステータスバーの一時メッセージが消えるまでの時間。
  */
 export const STATUS_MESSAGE_MS = 3000;
 
 /**
- * カーソル位置（03.ux-spec/07-status-and-notifications.md §3）。行も列も 1 始まりで、Monaco と同じである。
+ * カーソル位置。行も列も 1 始まりで、Monaco と同じである。
  *
  * 列は桁であり、バイト数でも文字数でもない。Monaco の `column` をそのまま表示する。
  */
@@ -84,21 +84,21 @@ class DocumentStore {
   outline = $state<OutlineItem[]>([]);
   frontMatter = $state<string | null>(null);
   stats = $state<RenderStats | null>(null);
-  /** 文字数と読了時間（03.ux-spec/07-status-and-notifications.md §3）。パイプラインが数えた派生値。 */
+  /** 文字数と読了時間。パイプラインが数えた派生値。 */
   textStats = $state<TextStats | null>(null);
   /**
-   * カーソル位置（03.ux-spec/07-status-and-notifications.md §3）。
+   * カーソル位置。
    *
    * エディターがマウントされていない間は `null` になる。
-   * Preview だけで表示しているときはカーソルが存在しない（§3 の但し書き「Preview では非表示」の実体はこれ）。
+   * Preview だけで表示しているときはカーソルが存在しない（「Preview では非表示」の実体はこれ）。
    *
-   * 更新は rAF で間引く（ADR-0005 / 02.architecture/08-state-management.md §1）。
+   * 更新は rAF で間引く（ADR-0005）。
    * 押しっぱなしの矢印キーは 1 フレームに何度も位置を変えるが、画面の更新はフレームに 1 回で足りる。
    * 間引きは `features/editor/lazy/cursor.ts` が行う。
    */
   cursor = $state<CursorPosition | null>(null);
   /**
-   * 保存するときに書き戻す EOL の指定（F-EDIT-14 / 03.ux-spec/07-status-and-notifications.md §3 の「クリックで EOL 変換」）。
+   * 保存するときに書き戻す EOL の指定（F-EDIT-14）。
    * `null` はディスクのまま。
    *
    * `meta` はディスク上の状態そのもの（`mtimeMs` で衝突を検知し、`readonly` で書き込み可否を判断する）であり、これから変えたい値を混ぜると意味が場所ごとに変わるため分けてある。
@@ -116,7 +116,7 @@ class DocumentStore {
    * 自動消滅タイマー。
    *
    * メッセージを出す側（`open.ts` など）は UI の外にあるため、タイマーはストアが持つ。
-   * 1 回だけの `setTimeout` であり、ポーリングではない（05.performance-budget/04-targets.md §5「アイドル時のタイマーを増やさない」）。
+   * 1 回だけの `setTimeout` であり、ポーリングではない。
    */
   #dismissTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -159,7 +159,7 @@ class DocumentStore {
 /** ドキュメントの派生状態。モジュールの singleton として共有する。 */
 export const documentStore = new DocumentStore();
 
-/** ステータスバーに一時メッセージを出す。3 秒で自動的に消える（03.ux-spec/07-status-and-notifications.md §3.3）。 */
+/** ステータスバーに一時メッセージを出す。3 秒で自動的に消える。 */
 export function notifyStatus(message: string): void {
   documentStore.statusMessage = message;
 }

@@ -1,6 +1,6 @@
 //! エンコーディングの検出とデコード / エンコード。
 //!
-//! 02.architecture/04-rust-responsibilities.md §2 の `DocumentPayload` が要求する `bom` / `encoding` を扱う。
+//! `DocumentPayload` が要求する `bom` / `encoding` を扱う。
 //! 保存時に読み込み時と同じバイト列へ戻せることが要件（N-CMP-03）。
 
 use serde::{Deserialize, Serialize};
@@ -110,7 +110,7 @@ pub fn looks_binary(head: &[u8]) -> bool {
     head.contains(&0)
 }
 
-/// エンコーディングを指定して読み直す（03.ux-spec/07-status-and-notifications.md §3「クリックでエンコーディング再解釈」）。
+/// エンコーディングを指定して読み直す。
 ///
 /// `detect` を経由しないのは、再解釈を選ぶのが推定の外れたファイルを人が見て指定し直す場面だからである。
 /// ここでもう一度推定を挟むと、指定する意味がなくなる。
@@ -224,7 +224,7 @@ mod tests {
         }
     }
 
-    /// 再解釈（03.ux-spec/07-status-and-notifications.md §3）。推定を経由しない。
+    /// 再解釈。推定を経由しない。
     ///
     /// 推定が外れたファイルを人が見て直すための操作なので、ここでもう一度推定を混ぜてはいけない。
     #[test]

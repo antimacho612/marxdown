@@ -52,7 +52,7 @@ beforeEach(() => {
   documentStore.notice = null;
 });
 
-describe('設定ストア (02.architecture/04-rust-responsibilities.md §5)', () => {
+describe('設定ストア', () => {
   it('設定の値だけを持つ', () => {
     // ここに「壊れているか」や本文が加わったら設計違反。
     // 壊れている事実は通知バーに流して終わりにする（2 か所に持たない）。
@@ -78,7 +78,7 @@ describe('設定ストア (02.architecture/04-rust-responsibilities.md §5)', ()
   });
 
   /**
-   * 02.architecture/05-startup-sequence.md §1「テーマ / 本文幅 / フォントは描画より前」。
+   * テーマ / 本文幅 / フォントは描画より前に適用する。
    *
    * `initSettings` は `bootstrap.ts` が本文を描画するより前に呼ぶ。その場で適用されていることをここで検証する。
    * `$effect` で購読する形に変えると適用がマイクロタスク以降にずれ、一度表示された内容が再描画される。
@@ -98,7 +98,7 @@ describe('設定ストア (02.architecture/04-rust-responsibilities.md §5)', ()
   });
 });
 
-/** 03.ux-spec/07-status-and-notifications.md §2 の 5 行目。 */
+/** 設定ファイルが壊れているときの通知。 */
 describe('壊れた settings.json の通知', () => {
   it('消えないエラー通知と「ファイルを開く」を出す', () => {
     reportSettingsProblem({ path: 'C:/conf/settings.json', message: 'expected `,`' });
@@ -126,7 +126,7 @@ describe('壊れた settings.json の通知', () => {
   });
 });
 
-/** 外部エディターでの編集を即反映する（02.architecture/04-rust-responsibilities.md §5）。 */
+/** 外部エディターでの編集を即反映する。 */
 describe('settings.json の読み直し', () => {
   function withSettings(readSettings: ReturnType<typeof vi.fn>): () => void {
     const platform = getPlatform();
@@ -146,7 +146,7 @@ describe('settings.json の読み直し', () => {
   });
 
   /**
-   * 02.architecture/04-rust-responsibilities.md §5 の要点。
+   * 壊れた設定ファイルを上書きしない。
    * 編集の途中で JSON として壊れた状態を経由するのは普通のことで、そのたびにテーマが既定に戻ると設定を試行錯誤できない。
    */
   it('読めない内容に変わっても既定値に戻さない', async () => {

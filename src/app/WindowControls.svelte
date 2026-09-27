@@ -1,5 +1,5 @@
 <!--
-  ウィンドウ操作ボタン（03.ux-spec/01-screen-layout.md §1）。
+  ウィンドウ操作ボタン。
   Windows の標準にそのまま合わせる（右上・`─ □ ✕` の順・幅 46px・閉じるのホバーのみ赤 / Principle 5「Familiar Over Novel」）。
   アイコンはインライン SVG である（Segoe Fluent Icons を使うと、フォントが無い環境で文字化けする）。
   10px 角の寸法では線幅 1px の直線以外は輪郭がぼやけるため、`shape-rendering` は既定のままにしている（`crispEdges` にすると高 DPI 環境で線が表示されなくなる）。

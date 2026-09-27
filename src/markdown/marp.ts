@@ -15,7 +15,7 @@ import type { MarpRender, MarpThemeProblem, MarpThemeSet } from './protocol';
 /**
  * pipeline チャンクから受け取る関数。
  *
- * NOTE: ここから静的に import すると、共有部分が別のチャンクへ切り出されて critical path が増える（docs/measurements/07-bundle.md §3）。
+ * NOTE: ここから静的に import すると、共有部分が別のチャンクへ切り出されて critical path が増える。
  */
 export interface MarpHelpers {
   mathPlugin: (md: MarkdownIt) => void;

@@ -1,5 +1,5 @@
 /**
- * 本文を DOM に入れる（02.architecture/06-markdown-rendering-pipeline.md §4）。
+ * 本文を DOM に入れる。
  *
  * 仮想スクロールは採用しない（ブラウザ内検索・アンカーリンク・印刷が壊れ、高さ推定の精度も出ないため）。
  * 代わりに、最初のチャンク（およそ 1 画面分）だけ即座に DOM へ入れ、残りを `requestIdleCallback` で順次追加する段階的描画で N-PERF-04 を満たす。

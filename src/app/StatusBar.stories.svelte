@@ -1,5 +1,5 @@
 <!--
-  ステータスバー（03.ux-spec/07-status-and-notifications.md §3）。
+  ステータスバー。
 
   出る項目はドキュメントのメタ情報で変わる。BOM 付き・CRLF・読み取り専用は実ファイルを用意しないと見られないので、ここに並べておく。
 
@@ -42,7 +42,7 @@
       documentStore.textStats = meta ? { chars: 12_345, words: 2100, readingMinutes: 4 } : null;
       viewStore.zoom = zoom;
       viewStore.mode = mode;
-      // Preview では出ない（03.ux-spec/07-status-and-notifications.md §3）。
+      // Preview では出ない。
       // ストアは story をまたいで残るので、出さない story でも必ず入れ直す。
       documentStore.cursor = mode === 'preview' ? null : { line: 42, column: 8 };
     };
@@ -57,11 +57,11 @@
 <Story name="読み取り専用" loaders={[seed({ ...BASE, readonly: true })]} />
 
 <!--
-  Edit モード。カーソル位置はここで初めて出る（Preview では概念が無い / 03.ux-spec/07-status-and-notifications.md §3）。
+  Edit モード。カーソル位置はここで初めて出る（Preview では概念が無い）。
 -->
 <Story name="Edit (カーソル位置)" loaders={[seed(BASE, 1, 'edit')]} />
 
-<!-- 倍率は 100% でも出す（押せる場所を動かさないため / 03.ux-spec/07-status-and-notifications.md §3）。 -->
+<!-- 倍率は 100% でも出す（押せる場所を動かさないため）。 -->
 <Story name="拡大中" loaders={[seed(BASE, 1.5)]} />
 
 <!-- 何も開いていないとき。左側が丸ごと消え、倍率も出ない。 -->

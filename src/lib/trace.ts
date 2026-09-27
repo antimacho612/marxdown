@@ -1,5 +1,5 @@
 /**
- * フロント側の起動計測（T4〜T9 / 05.performance-budget/05-operations.md §2）。
+ * フロント側の起動計測（T4〜T9）。
  *
  * `performance.now()` は `performance.timeOrigin` からの経過時間である。
  * Rust の T0 は UNIX epoch で渡されるため、`timeOrigin + now - t0EpochMs` で同じ基準の値に変換する。

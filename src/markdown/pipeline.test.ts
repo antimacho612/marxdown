@@ -40,7 +40,7 @@ describe('CommonMark / GFM', () => {
   });
 });
 
-describe('data-line 行マッピング (02.architecture/06-markdown-rendering-pipeline.md §3)', () => {
+describe('data-line 行マッピング', () => {
   it('ブロック要素に開始行を付ける', () => {
     const { html } = render('# h\n\npara\n\n- item\n');
     expect(html).toContain('data-line="0"'); // 見出し

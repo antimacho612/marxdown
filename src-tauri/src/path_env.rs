@@ -1,7 +1,7 @@
 //! ユーザーの PATH への `bin` ディレクトリの登録と解除（F-OS-02 / OQ-32）。
 //!
 //! インストーラ（`windows/installer-hooks.nsh`）が `--add-to-path` / `--remove-from-path` で呼ぶ。
-//! NSIS で書き換えない理由は docs/06.roadmap/m6-ship.md §4 にある。
+//! NSIS の文字列は 1024 文字で切り詰められ、長い PATH を壊すため、NSIS では書き換えない。
 //! Tauri が同梱する NSIS は 1024 文字を超える値を切り詰めるため、書き戻すと利用者の PATH が壊れる。
 //!
 //! 触るのは `HKCU\Environment` の `Path` だけである。
@@ -285,7 +285,7 @@ mod tests {
 
     const BIN: &str = r"C:\Users\me\AppData\Local\Marxdown\bin";
 
-    /// 追加して外すと、元の値にバイト単位で戻る（06.roadmap/m6-ship.md §3 の完了条件）。
+    /// 追加して外すと、元の値にバイト単位で戻る。
     fn assert_round_trip(original: &str) {
         let added = with_entry(original, BIN).expect("追加される");
         assert_eq!(

@@ -1,5 +1,5 @@
 /**
- * 数式記法をプレースホルダにする markdown-it プラグイン（F-VIEW-13 / 04.tech-stack/04-markdown.md §4）。
+ * 数式記法をプレースホルダにする markdown-it プラグイン（F-VIEW-13）。
  *
  * ここは記法の範囲を決めるだけで、KaTeX を呼ばない。
  * 描画は `features/preview/lazy/math.ts` が遅延チャンクで行う。

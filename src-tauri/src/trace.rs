@@ -1,4 +1,4 @@
-//! 起動計測ハーネス（05.performance-budget/05-operations.md §2）。
+//! 起動計測ハーネス。
 //!
 //! Rust 側の T0〜T3（main() 冒頭 / 引数解析完了 / ファイル読み込み完了 / ウィンドウ生成呼び出し完了）と、フロント側の T4〜T9（初期スクリプト評価開始 / bootstrap 読み取り完了 / パース開始 / パース完了 / 本文 DOM 挿入完了 + 次の rAF / window.show()）を、同一の時間軸に統一して JSON へ出力する。
 //!
@@ -45,7 +45,7 @@ pub struct TraceReport {
 pub struct TraceDocument {
     pub path: String,
     pub size: u64,
-    /// bootstrap に本文ごと埋め込んだか（02.architecture/05-startup-sequence.md §1 の 256KB 閾値）
+    /// bootstrap に本文ごと埋め込んだか（256KB が閾値）
     pub inlined: bool,
 }
 

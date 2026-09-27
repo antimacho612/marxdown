@@ -1,7 +1,7 @@
 /**
- * 基準ファイルセット（05.performance-budget/03-fixtures.md）を、パイプラインに通す。
+ * 基準ファイルセットを、パイプラインに通す。
  *
- * `bench/fixtures/` の全ファイルでクラッシュしないことを確かめる（05.performance-budget/04-targets.md §2）。
+ * `bench/fixtures/` の全ファイルでクラッシュしないことを確かめる。
  * 壊れる入力があることを、実測ではなくテストで先に検出する。
  *
  * ここで検証するのはパイプライン（パース → チャンク分割 → 文字数）だけで、サニタイズと描画は DOM が要るため別のテストで検証する。
@@ -25,7 +25,7 @@ import { measure } from '@/markdown/text-stats';
 
 const FIXTURES = join(dirname(fileURLToPath(import.meta.url)), '..', 'bench', 'fixtures');
 
-/** §3 の基準ファイルセット。`gen-fixtures.mjs` が作るものと対応する。 */
+/** 基準ファイルセット。`gen-fixtures.mjs` が作るものと対応する。 */
 const NAMES = ['tiny.md', 'readme.md', 'spec.md', 'diagram.md', 'math.md', 'huge.md', 'extreme.md'] as const;
 
 function load(name: string): string | null {
@@ -35,7 +35,7 @@ function load(name: string): string | null {
 
 const available = NAMES.filter((name) => existsSync(join(FIXTURES, name)));
 
-describe.skipIf(available.length === 0)('基準ファイルセット (05.performance-budget/03-fixtures.md)', () => {
+describe.skipIf(available.length === 0)('基準ファイルセット', () => {
   it('すべて生成されている（`pnpm fixtures`）', () => {
     expect(available).toEqual([...NAMES]);
   });
@@ -78,9 +78,9 @@ describe.skipIf(available.length === 0)('基準ファイルセット (05.perform
    * 段階的描画は「トップレベルのブロックが複数ある」ことに依存している。
    *
    * `extreme.md` は 10MB 丸ごとが 1 つのコードフェンスなので、トップレベルのトークンが 1 つしかなく、チャンクに分割できない。
-   * 要素の途中で分割すると HTML が壊れるため、分割しないのが正しい（02.architecture/06-markdown-rendering-pipeline.md §4）。
+   * 要素の途中で分割すると HTML が壊れるため、分割しないのが正しい。
    *
-   * つまりこの入力では N-PERF-04 の「段階的に表示される」は成立せず、05.performance-budget/04-targets.md §2 の「クラッシュしない」だけが保証になる。
+   * つまりこの入力では N-PERF-04 の「段階的に表示される」は成立せず、性能目標の「クラッシュしない」だけが保証になる。
    * この線引きをテストとして残しておく。同じ性質の入力（巨大な表、巨大な 1 段落）でも同じことが起きる。
    */
   it('10MB の単一コードフェンスは割れない。それでも落ちない', () => {

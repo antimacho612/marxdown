@@ -1,5 +1,5 @@
 /**
- * 配色の入口（ADR-0014 / 02.architecture/03-layers.md §2）。
+ * 配色の入口（ADR-0014）。
  *
  * 組み込みの 50 枚（`lazy/presets.ts`）とカタログ（`lazy/catalog.ts`）は `theme` チャンクにあり、静的 import にしてはいけない。
  * `editor` / `settings` のどちらかに取り込まれると、50 枚ぶんの色が予算の対象外のチャンク（Monaco）に紛れる（`vite.config.ts` の `isThemeOnly`）。

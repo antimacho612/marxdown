@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 /**
- * カーソル位置の間引き（03.ux-spec/07-status-and-notifications.md §3 / ADR-0005）。
+ * カーソル位置の間引き（ADR-0005）。
  *
  * `installCursorReport` が使うのは `getPosition()` と `onDidChangeCursorPosition` の 2 つだけであり、本物のエディターを必要としないため Monaco はマウントしない。
  * 偽のエディターなら「1 フレームに何度も動かす」状況を正確に作れるため、間引きをそのまま検証できる。

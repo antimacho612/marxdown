@@ -270,7 +270,7 @@ describe('reloadCurrent', () => {
     const outcome = await reloadCurrent();
 
     expect(outcome).not.toBeNull();
-    // 第 2 引数はエンコーディングの指定。通常の経路では渡さず、Rust 側の推定に任せる（03.ux-spec/07-status-and-notifications.md §3 の再解釈だけが渡す）。
+    // 第 2 引数はエンコーディングの指定。通常の経路では渡さず、Rust 側の推定に任せる（ステータスバーの再解釈だけが渡す）。
     expect(spies.readDocument).toHaveBeenCalledWith('C:/work/b.md', undefined);
     expect(documentStore.meta?.path).toBe('C:/work/b.md');
     // 既に一覧の先頭にあるファイル。順序は変わらないので加え直さない
@@ -312,7 +312,7 @@ describe('reloadCurrent', () => {
   });
 
   /**
-   * エンコーディングの再解釈（03.ux-spec/07-status-and-notifications.md §3 / `document/encoding.ts`）。
+   * エンコーディングの再解釈（`document/encoding.ts`）。
    *
    * 読み直しの経路は増やさない。
    * スクロールを保つことも履歴に加えないことも `F5` と同じでよく、違うのは指定を 1 つ渡すことだけである。

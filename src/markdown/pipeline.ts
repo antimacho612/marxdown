@@ -1,8 +1,8 @@
 /**
- * markdown-it の構築（02.architecture/06-markdown-rendering-pipeline.md §1 / ADR-0003）。
+ * markdown-it の構築（ADR-0003）。
  *
  * この層は文字列の変換だけを行い、DOM には触れない（サニタイズは `paint.ts` が呼ぶ DOMPurify の担当 / ADR-0006）。
- * プラグイン構成は 04.tech-stack/04-markdown.md §2 の既定に従う。
+ * プラグイン構成は技術選定の既定に従う。
  *
  * `use` の順序は仕様であり、`lineMapPlugin` を最後に置くこと。
  * `md.renderer.rules[...]` をその時点の中身ごと包むため、先に置くと後続プラグインの代入で上書きされる。
@@ -45,7 +45,7 @@ export interface RenderConfig {
   /** 単独の改行を `<br>` にするか（`preview.softBreak`）。 */
   breaks?: boolean;
   /**
-   * 有効にする追加記法（`markdown.*` / 04.tech-stack/04-markdown.md §3）。
+   * 有効にする追加記法（`markdown.*`）。
    *
    * 実際に適用されるのは `loadSyntax` で読み込み済みのものだけである。読み込みは呼び出し側（`markdown/parser.ts`）が描画の前に待つ。
    */
@@ -68,7 +68,7 @@ function configKey(config: RenderConfig): string {
  */
 export function createMarkdownIt(config: RenderConfig = {}): MarkdownIt {
   const md = new MarkdownItCallable({
-    // 02.architecture/09-security.md §1 Layer 2: html は通すが、出力は必ず Layer 3 (DOMPurify) を通す。
+    // 多層防御の Layer 2: html は通すが、出力は必ず Layer 3 (DOMPurify) を通す。
     // ここで false にすると、生 HTML を書いた正当なドキュメントが壊れる。
     html: true,
     linkify: true, // GFM の自動リンク
@@ -94,11 +94,11 @@ export function createMarkdownIt(config: RenderConfig = {}): MarkdownIt {
   md.use(taskListPlugin);
 
   // 数式（F-VIEW-13）。ここではプレースホルダを出すだけで、KaTeX は `features/preview/lazy/math.ts` が遅延ロードする。
-  // パーサ側のプラグインを載せるほどの残余が critical path に無い（04.tech-stack/04-markdown.md §4）。
+  // パーサ側のプラグインを載せるほどの残余が critical path に無い。
   md.use(mathPlugin);
 
   // Mermaid（F-VIEW-12）。`mermaid` フェンスの型を差し替えてプレースホルダにするだけで、描画は遅延チャンクが行う。
-  // Mermaid は全依存の中で突出して重い（04.tech-stack/04-markdown.md §4）。
+  // Mermaid は全依存の中で突出して重い。
   md.use(mermaidPlugin);
 
   // 表（F-VIEW-01）。包む要素と揃えの属性を足すだけで、表の解釈そのものは変えない。
@@ -190,7 +190,7 @@ function shiftTokenLines(tokens: Token[], offset: number): void {
 }
 
 /**
- * 段階的描画（N-PERF-04 / 02.architecture/06-markdown-rendering-pipeline.md §4）のためにチャンク分割する。
+ * 段階的描画（N-PERF-04）のためにチャンク分割する。
  *
  * トップレベルのブロック境界でのみ切る。要素の途中で切ると HTML が壊れる。
  * 最初のチャンクだけを同期的に DOM へ入れ、残りは `requestIdleCallback` で足す。

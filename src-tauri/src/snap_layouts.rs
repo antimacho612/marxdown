@@ -249,7 +249,7 @@ pub fn forget(app: &tauri::AppHandle, label: &str) {
 /// `setup()` から呼んではいけない。
 /// `hwnd()` はイベントループへ問い合わせるゲッターであり、ループが動き出す前は結果が返らない。
 /// `ready` コマンドの中、`show()` の後に呼ぶこと。
-/// ここで行うのは Win32 の呼び出し数回だけであり、本文が読める時点に間に合う必要もない（02.architecture/05-startup-sequence.md §2 の判断基準）。
+/// ここで行うのは Win32 の呼び出し数回だけであり、本文が読める時点に間に合う必要もない。
 pub fn install(app: &tauri::AppHandle, label: &str) {
     let Some(target) = SnapTargets::get(app, label) else {
         // `prepare` が呼ばれていない。

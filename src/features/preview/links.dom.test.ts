@@ -71,7 +71,7 @@ afterEach(() => {
   setPlatform(original);
 });
 
-describe('リンククリックの分岐 (02.architecture/09-security.md §2)', () => {
+describe('リンククリックの分岐', () => {
   it('外部リンクは既定ブラウザに渡す。アプリ内では開かない (F-VIEW-06 / N-SEC-04)', () => {
     click('<a href="https://example.com/x">x</a>');
 

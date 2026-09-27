@@ -1,12 +1,12 @@
 <!--
 @component
-ステータスバーの押せる項目（03.ux-spec/07-status-and-notifications.md §3.1）。
+ステータスバーの押せる項目。
 
 押せる項目だけがこの見た目になる。
 押しても何も起きない項目はボタンとして表示しない（BOM・読み取り専用・カーソル位置・文字数は `<span>` のままにする）。
 
 見た目をこの 1 か所に閉じるための部品である。
-使う側が `StatusBar` と `StatusMenuButton` の 2 つに分かれていても、コンポーネント固有の CSS を `src/styles/` に置かずに済む（02.architecture/03-layers.md §4）。
+使う側が `StatusBar` と `StatusMenuButton` の 2 つに分かれていても、コンポーネント固有の CSS を `src/styles/` に置かずに済む。
 
 属性はそのまま渡す。
 メニューを開く側は `aria-haspopup` / `aria-expanded` と `onkeydown` を、押すだけの側は `title` と `onclick` だけを渡す。

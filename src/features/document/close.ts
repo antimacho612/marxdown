@@ -1,11 +1,11 @@
 /**
  * 開いている文書を閉じる（F-NAV-02 / 最後のタブを閉じたとき）。
  *
- * 何も開いていない状態は Welcome 画面である（03.ux-spec/08-empty-states.md §1）。
+ * 何も開いていない状態は Welcome 画面である。
  * 判定は `documentStore.meta === null` の 1 つだけなので（`app/App.svelte`）、ここで消し残すと本文が無いのに文字数や倍率が残ったステータスバーになる。
  *
  * エディター（Monaco）は破棄しない。
- * モデルの解放はタブを閉じる経路が行う（N-PERF-06 / 02.architecture/07-editor-wysiwyg.md §1）。
+ * モデルの解放はタブを閉じる経路が行う（N-PERF-06）。
  * ここでは本文を空にするところまでを行う。
  */
 import { paint, releasePreviewResources } from '@/features/preview';

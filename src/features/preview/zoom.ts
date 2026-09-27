@@ -1,5 +1,5 @@
 /**
- * 表示倍率（F-VIEW-11 / 03.ux-spec/04-keybindings.md §3）。
+ * 表示倍率（F-VIEW-11）。
  *
  * 拡縮するのは `--mx-zoom` を読む `.mx-preview` だけで、タイトルバーやステータスバーは動かない（本文が主役という画面の主従を保つため）。
  * WebView 自身のズームはクロームごと拡大するため使わず、`shortcuts.ts` が `preventDefault()` で既定動作を止めて二重に掛からないようにする。
@@ -80,7 +80,7 @@ function clamp(zoom: number): number {
 
 /**
  * 保存を遅らせる。
- * 1 回だけの `setTimeout` であり、ポーリングではない（05.performance-budget/04-targets.md §5）。
+ * 1 回だけの `setTimeout` であり、ポーリングではない。
  */
 function schedulePersist(zoom: number): void {
   if (persistTimer !== null) clearTimeout(persistTimer);

@@ -3,7 +3,7 @@
  *
  * 遅延チャンク `math` の入口。
  * 数式を含む文書を描画したときにだけロードされるため、`preview` から静的に import してはいけない。
- * KaTeX は約 74KB（gzip）あり、critical path の予算に収まらない（02.architecture/05-startup-sequence.md §3 の分割境界）。
+ * KaTeX は約 74KB（gzip）あり、critical path の予算に収まらない。
  *
  * CSS とフォントもこのチャンクに含まれる。
  * `katex.min.css` の `@font-face` は woff2 / woff / ttf の 3 形式を参照するが、ビルド時に woff2 だけへ削っている（`vite.config.ts`）。

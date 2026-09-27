@@ -77,7 +77,7 @@
     touch-action: manipulation;
     -webkit-tap-highlight-color: transparent;
     vertical-align: middle;
-    /* 高頻度の操作なので 150ms を上限にする（03.ux-spec/09-motion.md §1 の基準: 本文のレイアウトに触らない）。 */
+    /* 高頻度の操作なので 150ms を上限にする（本文のレイアウトには触らない）。 */
     transition:
       background-color 150ms ease-out,
       border-color 150ms ease-out;
@@ -137,7 +137,7 @@
   }
 
   /*
-   * 動きを伴う他の部品（通知バー・パレット・設定ダイアログ・プレビュー・見出しジャンプ）と同じく、`prefers-reduced-motion` を尊重する（03.ux-spec/10-accessibility.md）。
+   * 動きを伴う他の部品（通知バー・パレット・設定ダイアログ・プレビュー・見出しジャンプ）と同じく、`prefers-reduced-motion` を尊重する。
    */
   @media (prefers-reduced-motion: reduce) {
     .mx-settings__toggle,

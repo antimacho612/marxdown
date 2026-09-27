@@ -1,12 +1,12 @@
 /**
- * 設定で有効化する追加記法（04.tech-stack/04-markdown.md §3 / F-CONF-03）。
+ * 設定で有効化する追加記法（F-CONF-03）。
  *
  * どれも既定 OFF である。
  * 標準的でない記法が意図せず発火して本文が壊れるほうが、ユーザーの認知負荷が高い（Design Brief Principle 3）。
  *
  * ON になっているものだけを動的 import する。
  * 静的に import すると、7 つとも既定 OFF のまま pipeline チャンク（クリティカルパス）に載る。
- * 1 つあたりは小さいが、critical path の残余は小さい（05.performance-budget/06-decision-flow.md）。
+ * 1 つあたりは小さいが、critical path の残余は小さい。
  *
  * 読み込みは `loadSyntax` が行い、`buildSyntax` は読み込み済みのものを返すだけである。
  * `pipeline.ts` の `render` / `renderChunks` を同期のまま保つための分割で、呼び出し側（`markdown/parser.ts`）が描画の前に `loadSyntax` を待つ。

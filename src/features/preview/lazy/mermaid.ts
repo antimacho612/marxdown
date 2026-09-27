@@ -1,11 +1,11 @@
 /**
- * Mermaid ダイアグラムの描画（F-VIEW-12 / 04.tech-stack/04-markdown.md §4）。
+ * Mermaid ダイアグラムの描画（F-VIEW-12）。
  *
  * このモジュール自体は小さく、Mermaid 本体はさらに動的 import する。
  * フェンスが 1 つあるだけでビューポート外の図まで含めて 400KB 超を読み込む形にしないためである。
  * 実際にロードされるのは、図が 1 つでも画面に入ったときになる。
  *
- * 04.tech-stack/04-markdown.md §4 が課す 5 つの制約がそのままこのファイルの構造である。
+ * 技術選定で課した 5 つの制約がそのままこのファイルの構造である。
  * 完全な動的 import / `IntersectionObserver` / 解放 / 1 図ずつ非同期 / 失敗時はコードブロック。
  */
 import type mermaid from 'mermaid';
@@ -89,7 +89,7 @@ export function observeMermaid(container: HTMLElement): void {
 }
 
 /**
- * 保持しているものをすべて解放する（N-PERF-06 / 04.tech-stack/04-markdown.md §4-3）。
+ * 保持しているものをすべて解放する（N-PERF-06）。
  *
  * 呼ぶのは文書を閉じたときだけである。
  * `paint` のたびに呼ぶとキャッシュが毎回空になり、Split の編集中に全図が再描画される。
@@ -127,7 +127,7 @@ const LIGHT_DIRECTIVE = '%%{init: {"theme": "default"}}%%';
  * 書き出し用の本文（`root`）にある図をすべて描く（F-VIEW-18）。
  *
  * `root` は画面とは別に描いた未処理の本文で、各図の中身は元の記述のままである。
- * `light` のときは画面の配色に関係なく明るい配色で描く（PDF / docs/06.roadmap/m8-cli-os-export.md §4.4）。
+ * `light` のときは画面の配色に関係なく明るい配色で描く（PDF）。
  * 描けなかった図はコードブロックとして残す（画面と同じ / N-REL-04）。
  */
 export async function renderForExport(root: HTMLElement, light: boolean): Promise<void> {
@@ -165,7 +165,7 @@ export async function renderForExport(root: HTMLElement, light: boolean): Promis
  * 図を 1 つ描く。
  *
  * `await` を挟むため、同じ要素に対して 2 回実行されないよう先に印を付ける。
- * 描画そのものは Mermaid が 1 図ずつ処理する形になっており、メインスレッドを長時間占有しない（§4-4）。
+ * 描画そのものは Mermaid が 1 図ずつ処理する形になっており、メインスレッドを長時間占有しない。
  */
 async function render(element: HTMLElement): Promise<void> {
   if (stateOf(element) !== undefined) return;
@@ -199,7 +199,7 @@ async function render(element: HTMLElement): Promise<void> {
     }
 
     // Mermaid 自身も内部でサニタイズするが、それは Mermaid の許可リストであってこちらの許可リストではない。
-    // 「DOM に入る HTML は必ず Layer 3 を通る」を例外なく適用する（ADR-0006 / §4 の注意書き）。
+    // 「DOM に入る HTML は必ず Layer 3 を通る」を例外なく適用する（ADR-0006）。
     const safe = sanitizeSvg(svg);
     remember(source, safe);
     sources.set(element, source);
@@ -230,7 +230,7 @@ function removeScratch(id: string): void {
 }
 
 /**
- * 描画できなかった図をコードブロックとして表示する（N-REL-04 / §4-5）。
+ * 描画できなかった図をコードブロックとして表示する（N-REL-04）。
  *
  * 空欄にはしない。中心ユースケースは「LLM が生成した Markdown を読む」ことであり、描画できない図の記述こそ、読んで修正する対象である。
  */
@@ -253,7 +253,7 @@ async function load(): Promise<typeof mermaid> {
 async function initialize(): Promise<typeof mermaid> {
   const module = await import('mermaid');
   module.default.initialize({
-    // 自動描画は使わない。どの図をいつ描くかはこちら側が決める（§4-2）。
+    // 自動描画は使わない。どの図をいつ描くかはこちら側が決める。
     startOnLoad: false,
     // `securityLevel` は Mermaid 側の防御。こちらの `sanitizeSvg` と二重に機能する。
     securityLevel: 'strict',

@@ -1,6 +1,6 @@
 //! コマンド境界のエラー型。
 //!
-//! 種別はフロントエンドが分岐できる最小限に留める（02.architecture/01-principles.md 原則 C）。
+//! 種別はフロントエンドが分岐できる最小限に留める。
 //! ユーザー向けの文言は TypeScript 側（`src/i18n/ja.ts`）が作る。
 
 use serde::Serialize;
@@ -40,7 +40,7 @@ pub enum CoreError {
     #[error("不正な引数: {0}")]
     InvalidArgument(String),
 
-    /// `settings.json` を読めていない状態での書き戻しを拒む（02.architecture/04-rust-responsibilities.md §5）。
+    /// `settings.json` を読めていない状態での書き戻しを拒む。
     ///
     /// これを「保存できなかった」一般の I/O エラーと混ぜてはいけない。
     /// ユーザーが手で直している最中であり、UI が出すべき文言も対処も違う。

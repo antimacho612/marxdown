@@ -1,5 +1,5 @@
 /**
- * 設定を見た目に適用する（F-CONF-01 / F-CONF-04 / 02.architecture/10-theming.md §1）。
+ * 設定を見た目に適用する（F-CONF-01 / F-CONF-04）。
  *
  * 設定 UI は遅延チャンクだが、`main` にはこのファイルとストアだけが残り、`:root` のカスタムプロパティを書き換える処理だけを行う。
  * `bootstrap.ts` の `initSettings` から本文描画より前に同期的に呼ぶ（後から適用すると、一度描画された内容が別の見た目に再描画される）。
@@ -44,7 +44,7 @@ export function applyAppearance(values: Settings): void {
 
   setVar(root, '--mx-font-size-content', numeric(values, 'preview.fontSize', 'px'));
   setVar(root, '--mx-line-height', numeric(values, 'preview.lineHeight', ''));
-  // 単位は `ch` にする。px にすると、文字サイズを変えたときに 1 行あたりの文字数が変わる（02.architecture/10-theming.md §2）。
+  // 単位は `ch` にする。px にすると、文字サイズを変えたときに 1 行あたりの文字数が変わる。
   setVar(root, '--mx-content-width', numeric(values, 'preview.maxWidth', 'ch'));
 }
 
