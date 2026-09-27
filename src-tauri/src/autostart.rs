@@ -1,4 +1,4 @@
-//! ログイン時の自動起動（ADR-0020）。
+//! ログイン時の自動起動（ADR-0022）。
 //!
 //! `settings.json` の `window.launchAtLogin` を真実とし、`HKCU\...\CurrentVersion\Run` の値をそれに合わせる。
 //! 合わせるのは設定を読むたび（起動時・設定 UI からの保存・外部編集の読み直し）で、タイマーは持たない。
@@ -13,7 +13,7 @@ const VALUE_NAME: &str = "Marxdown";
 /// 設定に合わせて `Run` の値を書く、または消す。失敗しても続ける。
 ///
 /// 開発ビルドでは何もしない。`pnpm dev` の exe が登録されるのを防ぐためである。
-/// Windows 以外でも何もしない（docs/06.roadmap/m7-cli-os-export.md §6）。
+/// Windows 以外でも何もしない（docs/06.roadmap/m8-cli-os-export.md §6）。
 pub fn sync(settings: &Settings) {
     let enabled = settings.window_launch_at_login && settings.window_close_to_tray;
     if cfg!(debug_assertions) {

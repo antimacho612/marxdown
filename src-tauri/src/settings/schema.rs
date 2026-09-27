@@ -406,7 +406,7 @@ pub struct Settings {
     #[serde(rename = "window.closeToTray")]
     pub window_close_to_tray: bool,
 
-    /// ログイン時にトレイへ常駐した状態で起動するか（ADR-0020）。
+    /// ログイン時にトレイへ常駐した状態で起動するか（ADR-0022）。
     /// 既定を `false` にしているのは、使わない人のログインを遅くし、メモリを占めるためである。
     /// `window.closeToTray` が `false` のときは効果が無い（`autostart.rs`）。
     #[serde(rename = "window.launchAtLogin")]
@@ -809,7 +809,7 @@ mod tests {
         assert!(s.window_close_to_tray, "常駐が既定（ADR-0004）");
         assert!(
             !s.window_launch_at_login,
-            "自動起動は既定で OFF（ADR-0020）"
+            "自動起動は既定で OFF（ADR-0022）"
         );
     }
 

@@ -323,7 +323,7 @@ pub fn run() {
     let settings_path = settings::settings_path(&context.config().identifier);
     let mut settings_data = settings::load(settings_path.as_deref());
 
-    // ログイン時の自動起動（ADR-0020）。トレイに格納できない設定では、見えないプロセスが残るだけになる。
+    // ログイン時の自動起動（ADR-0022）。トレイに格納できない設定では、見えないプロセスが残るだけになる。
     if args.background && !settings_data.values.window_close_to_tray {
         return;
     }
@@ -408,7 +408,7 @@ pub fn run() {
                 &argv.into_iter().skip(1).collect::<Vec<_>>(),
                 std::path::Path::new(&cwd),
             );
-            // ログイン時の自動起動が、既に常駐しているプロセスへ届いた（ADR-0020）。
+            // ログイン時の自動起動が、既に常駐しているプロセスへ届いた（ADR-0022）。
             // 前面へ出すと、ログインのたびにウィンドウが現れる。
             if forwarded.background {
                 return;

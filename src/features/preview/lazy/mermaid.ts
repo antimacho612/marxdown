@@ -127,7 +127,7 @@ const LIGHT_DIRECTIVE = '%%{init: {"theme": "default"}}%%';
  * 書き出し用の本文（`root`）にある図をすべて描く（F-VIEW-18）。
  *
  * `root` は画面とは別に描いた未処理の本文で、各図の中身は元の記述のままである。
- * `light` のときは画面の配色に関係なく明るい配色で描く（PDF / docs/06.roadmap/m7-cli-os-export.md §4.4）。
+ * `light` のときは画面の配色に関係なく明るい配色で描く（PDF / docs/06.roadmap/m8-cli-os-export.md §4.4）。
  * 描けなかった図はコードブロックとして残す（画面と同じ / N-REL-04）。
  */
 export async function renderForExport(root: HTMLElement, light: boolean): Promise<void> {

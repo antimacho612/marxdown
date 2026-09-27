@@ -1,4 +1,4 @@
-//! PDF / HTML エクスポート（F-VIEW-18 / docs/06.roadmap/m7-cli-os-export.md §4.4）。
+//! PDF / HTML エクスポート（F-VIEW-18 / docs/06.roadmap/m8-cli-os-export.md §4.4）。
 //!
 //! 書き出す中身はフロントが組み立てる。
 //! ここが担当するのは、保存先を選ばせることと、書き込み・PDF 化・画像の埋め込みだけである。

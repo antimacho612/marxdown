@@ -106,7 +106,7 @@ function toDataUri(blob: Blob): Promise<string> {
 }
 
 /**
- * 明るい既定配色のトークンを返す（PDF / docs/06.roadmap/m7-cli-os-export.md §4.4）。
+ * 明るい既定配色のトークンを返す（PDF / docs/06.roadmap/m8-cli-os-export.md §4.4）。
  *
  * 対象は暗い配色（`data-theme="dark"`）が上書きしているトークンだけで、値は `:root` の既定値を使う。
  * フォントや本文幅のトークンは含めない。設定による上書きを印刷でも保つためである。

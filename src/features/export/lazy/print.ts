@@ -3,7 +3,7 @@
  *
  * 描いた本文を印刷専用の要素に入れてウィンドウに置き、`@media print` でそれ以外を隠してから WebView2 の `PrintToPdf` を呼ぶ。
  * 画面の `#mx-preview` は使わない。印刷のあいだも画面の見た目を変えないためである。
- * 配色は常に明るい既定配色にする（docs/06.roadmap/m7-cli-os-export.md §4.4）。
+ * 配色は常に明るい既定配色にする（docs/06.roadmap/m8-cli-os-export.md §4.4）。
  */
 import { getPlatform, type CoreError } from '@/platform';
 

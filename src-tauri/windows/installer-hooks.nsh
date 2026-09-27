@@ -40,7 +40,7 @@
   DeleteRegKey /ifnosubkeys /ifnovalues SHCTX "Software\Classes\.${EXT}"
 !macroend
 
-; エクスプローラーのコンテキストメニュー（F-OS-05 / docs/06.roadmap/m7-cli-os-export.md §4.3）。
+; エクスプローラーのコンテキストメニュー（F-OS-05 / docs/06.roadmap/m8-cli-os-export.md §4.3）。
 ; 対象はフォルダだけである。.md ファイルは「開く」と「プログラムから開く」で既に開ける。
 ; Windows 11 では「その他のオプションを確認」の中に出る。新しいメニューに出すにはパッケージ ID が要り、それには署名が要る（ADR-0018）。
 ; %V はフォルダそのものを右クリックしたときも、フォルダ内の余白を右クリックしたときも、そのフォルダのパスになる。
@@ -109,7 +109,7 @@
 
 ; 本体を消す前に呼ぶ必要がある。PATH の解除は marxdown.exe が行うため。
 ; 更新のときは解除しない。直後のインストールが前回の選択を引き継ぐ。
-; ログイン時の自動起動（ADR-0020）の値も消す。書くのは marxdown.exe（src/autostart.rs）で、設定を読むたびに書き直すため、更新のときは残しておけば次の起動で整う。
+; ログイン時の自動起動（ADR-0022）の値も消す。書くのは marxdown.exe（src/autostart.rs）で、設定を読むたびに書き直すため、更新のときは残しておけば次の起動で整う。
 !macro NSIS_HOOK_PREUNINSTALL
   ${If} $UpdateMode <> 1
     ExecWait '"$INSTDIR\${MAINBINARYNAME}.exe" --remove-from-path'
