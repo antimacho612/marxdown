@@ -5,7 +5,7 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, develop]
   pull_request:
   workflow_dispatch:
 
@@ -15,7 +15,7 @@ concurrency:
 
 # Dependabot の PR では各ジョブを飛ばす。
 # 判定は PR の作成者で行う。`github.actor` だと、人が再実行やプッシュをしたときに対象から外れてしまう。
-# main へのマージ後は push で検証される。
+# develop へのマージ後は push で検証される。
 
 jobs:
   frontend:

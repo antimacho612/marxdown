@@ -1,10 +1,11 @@
-# 更新の PR は月 1 回にまとめる。
+# 更新の PR は月 1 回にまとめ、develop に向ける。
 # これらの PR では CI を走らせない（ci.yml）。
 # 依存の更新はバンドル予算と第三者ライセンスの一覧に影響するため、取り込む前に手元で `pnpm size` と一覧の再生成を行う。
 version: 2
 updates:
   - package-ecosystem: npm
     directory: /
+    target-branch: develop
     schedule:
       interval: monthly
     groups:
@@ -12,6 +13,7 @@ updates:
         update-types: [minor, patch]
   - package-ecosystem: cargo
     directory: /src-tauri
+    target-branch: develop
     schedule:
       interval: monthly
     groups:
@@ -19,6 +21,7 @@ updates:
         update-types: [minor, patch]
   - package-ecosystem: github-actions
     directory: /
+    target-branch: develop
     schedule:
       interval: monthly
     groups:

@@ -63,7 +63,7 @@ export function rewriteLinks(text) {
   const [latest] = versions;
 
   const links = [
-    latest ? `[Unreleased]: ${REPOSITORY}/compare/v${latest}...HEAD` : `[Unreleased]: ${REPOSITORY}/commits/main`,
+    latest ? `[Unreleased]: ${REPOSITORY}/compare/v${latest}...HEAD` : `[Unreleased]: ${REPOSITORY}/commits/develop`,
     ...versions.map((version, i) => {
       const previous = versions[i + 1];
       return previous
