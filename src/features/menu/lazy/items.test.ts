@@ -73,7 +73,7 @@ describe('ハンバーガーメニューの項目', () => {
     // 「新規ファイル」「設定」「終了」は文書に依存しないので、ここでも押せる。
     // タブを別ウィンドウへ移す操作は開いているときだけ。
     // 「最近開いたファイル」は履歴が空でも親の行を残す。
-    expect(ids(groups)).toEqual(['open', 'open-folder', 'new', 'recent', 'palette', 'settings', 'quit']);
+    expect(ids(groups)).toEqual(['open', 'open-folder', 'new', 'recent', 'palette', 'settings', 'help', 'quit']);
     expect(group(groups, 'view')).toBeUndefined();
     expect(group(groups, 'document')).toBeUndefined();
   });
@@ -99,6 +99,7 @@ describe('ハンバーガーメニューの項目', () => {
       'search',
       'palette',
       'settings',
+      'help',
       'quit',
     ]);
   });

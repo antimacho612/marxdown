@@ -72,6 +72,12 @@
     "gzip": true
   },
   {
+    "name": "help (ヘルプの項目と「Marxdown について」。ヘルプの項目を選ぶまでロードしない — ADR-0026)",
+    "path": ["dist/assets/help-*.js"],
+    "limit": "3 KB",
+    "gzip": true
+  },
+  {
     "name": "bench input (--bench-input のときだけロードする計測経路)",
     "path": ["dist/assets/bench-*.js"],
     "limit": "4 KB",
@@ -110,7 +116,7 @@
       "!dist/assets/marp-*.js",
       "!dist/assets/editor-*.js"
     ],
-    "limit": "235 KB",
+    "limit": "236 KB",
     "gzip": true
   }
 ]

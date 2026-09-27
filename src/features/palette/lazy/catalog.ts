@@ -140,6 +140,11 @@ export const COMMAND_CATALOG: CommandEntry[] = [
   { id: 'palette.open', label: ja.palette.title, keywords: 'command palette', shortcut: 'Ctrl+Shift+P' },
   { id: 'settings.open', label: ja.menu.settings, keywords: 'settings preferences config option', shortcut: 'Ctrl+,' },
   { id: 'app.checkUpdate', label: ja.menu.checkUpdate, keywords: 'update upgrade version release' },
+  { id: 'help.reportIssue', label: ja.menu.reportIssue, keywords: 'report bug issue feedback help' },
+  { id: 'help.suggestFeature', label: ja.menu.suggestFeature, keywords: 'suggest feature request idea feedback help' },
+  { id: 'help.license', label: ja.menu.license, keywords: 'license help' },
+  { id: 'help.thirdPartyNotices', label: ja.menu.thirdPartyNotices, keywords: 'third party license notices help' },
+  { id: 'help.about', label: ja.menu.about, keywords: 'about version copyright help' },
   { id: 'app.quit', label: ja.menu.quit, keywords: 'quit exit close app', shortcut: 'Ctrl+Q' },
 ];
 

@@ -317,6 +317,13 @@ export default defineConfig(({ mode }) => ({
           if (isUpdate) return 'assets/update-[hash].js';
 
           /*
+           * ヘルプの項目と「Marxdown について」（F-OS-09 / ADR-0026）。他と同じく名前付けだけ。
+           * `features/help/index.ts`（動的 import の入口）は `main` に残る。
+           */
+          const isHelp = /[\\/]src[\\/]features[\\/]help[\\/]lazy[\\/]/.test(chunk.facadeModuleId ?? '');
+          if (isHelp) return 'assets/help-[hash].js';
+
+          /*
            * エディター。menu / settings / outline と同じく名前付けだけ。
            *
            * `src/features/editor/open-editor.ts` は `main` から静的に import されているので `main` に残る（動的 import の一行だけを持つ入口）。

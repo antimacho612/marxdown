@@ -63,6 +63,8 @@ describe('getPlatform', () => {
       'warmDone',
       'benchInputDone',
       'openExternal',
+      'appInfo',
+      'openBundledFile',
       'openLocalFile',
       'revealInFileManager',
       'onOpenRequest',
