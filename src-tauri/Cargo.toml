@@ -32,7 +32,7 @@ serde_json = "1"
 # デバウンス込みの `notify-debouncer-full` を通して使う。
 # イベント駆動であり、アイドル時のポーリングを増やさないことが採用の前提。
 notify = "8"
-notify-debouncer-full = "0.6"
+notify-debouncer-full = "0.7"
 # 自動更新（F-OS-06 / ADR-0024）。`dialog` と同じく Rust 側だけに入れ、JS の `@tauri-apps/plugin-updater` は入れない。
 # TLS は OS のもの（Windows では SChannel）を使う。rustls より配布物が小さく、社内のプロキシが差し込むルート証明書も OS の証明書ストアから信頼される。
 # `zip` を外しているのは、配布している NSIS の updater 成果物が展開を要しないためである。macOS / Linux を配布するときは戻す（OQ-45）。
