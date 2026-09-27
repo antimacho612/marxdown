@@ -144,7 +144,7 @@ describe('リンククリックの分岐 (02.architecture/09-security.md §2)', 
 
     const notice = documentStore.notice;
     expect(notice?.level).toBe('info');
-    expect(notice?.actions?.map((a) => a.label)).toEqual(['開く', 'フォルダで表示']);
+    expect(notice?.actions?.map((a) => a.label)).toEqual(['開く', 'エクスプローラーで表示']);
 
     notice?.actions?.[0]?.run();
     expect(spies.openLocalFile).toHaveBeenCalledWith('C:\\work\\docs\\./diagram.png');

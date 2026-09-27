@@ -251,7 +251,7 @@ async function renderOnce(): Promise<void> {
     // 本文は前の内容のまま残るが、入力しても右側が更新されない状態になり、原因を特定できない。
     debug.lastError = toMessage(e);
     outlineStale = true;
-    documentStore.notice = { level: 'error', message: `${ja.error.renderFailed}: ${toMessage(e)}` };
+    documentStore.notice = { level: 'error', message: ja.error.renderFailed };
   }
 }
 

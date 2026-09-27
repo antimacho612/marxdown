@@ -95,6 +95,21 @@ describe('復元', () => {
     expect(tabsStore.active?.meta.path).toBe('C:/work/b.md');
   });
 
+  it('手前のタブが開けなくても、残りは元の並びで開き、表示していたタブへ戻る', async () => {
+    setPlatform({
+      ...getPlatform(),
+      readDocument: (path: string) =>
+        path === 'C:/work/a.md' ? Promise.reject(new Error('not found')) : Promise.resolve(payload(path)),
+    } as Platform);
+    await openPath('C:/work/c.md');
+
+    await restoreSession(['C:/work/a.md', 'C:/work/b.md', 'C:/work/c.md', 'C:/work/d.md'], 2);
+
+    // a.md の分だけ後ろのタブが 1 枚ずつ前へ詰まる。元の添字のまま挿入・選択すると、並びも表示もずれる。
+    expect(tabPaths()).toEqual(['C:/work/b.md', 'C:/work/c.md', 'C:/work/d.md']);
+    expect(tabsStore.active?.meta.path).toBe('C:/work/c.md');
+  });
+
   it('最近開いたファイルには積み直さない', async () => {
     await openPath('C:/work/b.md');
     pushRecent.mockClear();

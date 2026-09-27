@@ -113,7 +113,7 @@ describe('プレビュー内検索 (F-VIEW-10)', () => {
 
     type('見つからない語');
 
-    expect(counter()).toBe('見つかりません');
+    expect(counter()).toBe('一致なし');
     expect(panel().dataset['mxEmpty']).toBe('true');
   });
 

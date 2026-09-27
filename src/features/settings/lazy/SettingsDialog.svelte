@@ -325,7 +325,7 @@ Rust 側も拒否するが、UI が「保存できたように見せる」のを
     <ToggleField
       settingKey={entry.key}
       label={entry.label}
-      description={`${description}（既定値: ${String(DEFAULT_SETTINGS[entry.key])}）`}
+      description={`${description}（${ja.settings.defaultValue(DEFAULT_SETTINGS[entry.key])}）`}
       checked={values[entry.key]}
       onChange={(checked) => changeSetting(entry.key, checked)}
     />

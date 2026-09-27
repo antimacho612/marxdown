@@ -9,6 +9,7 @@
  * ラベルは遅延チャンク側（`features/palette/lazy/catalog.ts`）に置いてある。
  */
 import {
+  describeOpenError,
   documentStore,
   openPath,
   openViaDialog,
@@ -44,7 +45,6 @@ import {
   treeStore,
 } from '@/features/workspace';
 import { registerCommands, runCommand, type Command, type CommandId } from '@/lib/commands';
-import { toMessage } from '@/lib/error';
 import { bindKeys } from '@/lib/shortcuts';
 import { getPlatform } from '@/platform';
 
@@ -445,7 +445,7 @@ async function openViaDialogSafely(): Promise<void> {
   try {
     await openViaDialog();
   } catch (e) {
-    documentStore.notice = { level: 'error', message: toMessage(e) };
+    documentStore.notice = { level: 'error', message: describeOpenError(e, '') };
   }
 }
 
@@ -458,6 +458,6 @@ async function openFolderSafely(): Promise<void> {
   try {
     await openFolderViaDialog();
   } catch (e) {
-    documentStore.notice = { level: 'error', message: toMessage(e) };
+    documentStore.notice = { level: 'error', message: describeOpenError(e, '') };
   }
 }
