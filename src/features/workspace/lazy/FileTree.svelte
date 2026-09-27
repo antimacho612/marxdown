@@ -12,7 +12,7 @@
   ディレクトリは対象外なので、絞り込んでいても枝を辿れる。
 
   単一クリックで開く。
-  `explorer.temporaryTab` が ON なら仮タブで開き、ダブルクリックで通常のタブにする（ADR-0024）。
+  `explorer.temporaryTab` が ON なら仮タブで開き、ダブルクリックで通常のタブにする（ADR-0025）。
 
   フォーカス（`treeStore.focusPath`）と選択（`selection.svelte.ts`）を分けて持つ（§1.4）。
   表示中の文書は `aria-current` で表し、選択とは兼ねない。
@@ -234,7 +234,7 @@
     else void openPathInNewTab(entry.path);
   }
 
-  /** ファイルのダブルクリックは、単一クリックで開いた仮タブを通常のタブにする（ADR-0024）。 */
+  /** ファイルのダブルクリックは、単一クリックで開いた仮タブを通常のタブにする（ADR-0025）。 */
   function keep(entry: DirEntry, event: MouseEvent): void {
     if (entry.dir || event.ctrlKey || event.metaKey || event.shiftKey) return;
     void keepTabOf(entry.path);

@@ -287,7 +287,7 @@ export default defineConfig(({ mode }) => ({
           if (isPaletteOnly) return 'assets/palette-[hash].js';
 
           /*
-           * ファイルツリーとタブの右クリックメニューが共有する部分（仮タブ / ADR-0024）。palette と同じ事情で名前を付ける。
+           * ファイルツリーとタブの右クリックメニューが共有する部分（仮タブ / ADR-0025）。palette と同じ事情で名前を付ける。
            *
            * 入口を持つチャンク（`ExplorerBody` / `TabMenu` / `handoff`）は既定の名前のままにする。
            * `workspace-` で始まる名前は付けない。`dist/assets/workspace-*.css` の glob が critical path に含まれている。

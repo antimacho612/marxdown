@@ -414,7 +414,7 @@ HTML5 の drag イベントは使えない。
     text-overflow: ellipsis;
   }
 
-  /* 仮タブ（ADR-0024）。VS Code と同じく斜体で表す。 */
+  /* 仮タブ（ADR-0025）。VS Code と同じく斜体で表す。 */
   .mx-tab--temporary .mx-tab__name {
     font-style: italic;
   }
