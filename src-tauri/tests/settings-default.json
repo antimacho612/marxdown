@@ -26,6 +26,7 @@
   "editor.wordWrap": "on",
   "editor.wordWrapColumn": 80.0,
   "explorer.exclude": [],
+  "explorer.temporaryTab": true,
   "markdown.abbreviations": false,
   "markdown.definitionLists": false,
   "markdown.insertions": false,

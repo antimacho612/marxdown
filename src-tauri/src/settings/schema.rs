@@ -53,6 +53,8 @@ pub const KEY_EDITOR_WORD_WRAP_COLUMN: &str = "editor.wordWrapColumn";
 
 /// エクスプローラーから常に除外するパスの glob（`src/glob.rs`）。
 pub const KEY_EXPLORER_EXCLUDE: &str = "explorer.exclude";
+/// ファイルツリーの単一クリックで仮タブとして開くか（ADR-0024）。
+pub const KEY_EXPLORER_TEMPORARY_TAB: &str = "explorer.temporaryTab";
 
 /// 追加記法（`src/markdown/plugins/syntax.ts` の `SYNTAX_NAMES` と 1:1）。どれも既定 OFF。
 pub const KEY_MARKDOWN_ABBREVIATIONS: &str = "markdown.abbreviations";
@@ -334,6 +336,10 @@ pub struct Settings {
     /// 空なら追加の除外はしない。隠しファイルと `node_modules` は設定に関わらず除外される（`dir.rs`）。
     #[serde(rename = "explorer.exclude")]
     pub explorer_exclude: Vec<String>,
+    /// ファイルツリーの単一クリックで仮タブとして開くか（ADR-0024）。
+    /// 仮タブは次の単一クリックで置き換わり、編集・ダブルクリック・「保持」で通常のタブになる。
+    #[serde(rename = "explorer.temporaryTab")]
+    pub explorer_temporary_tab: bool,
 
     /// 設定で有効化する追加記法（04.tech-stack/04-markdown.md §3）。
     /// どれも既定 OFF である。
@@ -442,6 +448,7 @@ impl Default for Settings {
             // 既定では追加の除外をしない。
             // 隠しファイルと `node_modules` は設定に関わらず除外されるため（`dir.rs`）、ここに書き出すと同じ判断が 2 か所に分かれる。
             explorer_exclude: Vec::new(),
+            explorer_temporary_tab: true,
 
             markdown_abbreviations: false,
             markdown_definition_lists: false,
@@ -550,6 +557,8 @@ impl Settings {
             .unwrap_or(d.editor_word_wrap_column),
 
             explorer_exclude: take_exclude(&mut map).unwrap_or(d.explorer_exclude),
+            explorer_temporary_tab: take(&mut map, KEY_EXPLORER_TEMPORARY_TAB)
+                .unwrap_or(d.explorer_temporary_tab),
 
             markdown_abbreviations: take(&mut map, KEY_MARKDOWN_ABBREVIATIONS)
                 .unwrap_or(d.markdown_abbreviations),
