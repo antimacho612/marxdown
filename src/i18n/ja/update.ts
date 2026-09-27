@@ -1,9 +1,4 @@
-/**
- * 更新の通知だけが使う文言（ADR-0024）。
- *
- * `ja.ts` から分けてあるのは、使う側が遅延チャンク（`features/update/lazy/`）にだけあるためである（`ja-explorer.ts` と同じ理由）。
- * 更新が見つかるのは多くても 1 日 1 回であり、起動のたびに読み込む理由が無い。
- */
+/** 更新の通知だけが使う日本語の文言。`core.ts` と分けてある理由は `../update.ts` にある。 */
 export const jaUpdate = {
   available: (version: string) => `Marxdown ${version} を利用できます`,
   install: '更新して再起動',

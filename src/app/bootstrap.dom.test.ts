@@ -5,7 +5,7 @@ import { documentStore } from '@/features/document';
 import type * as editor from '@/features/editor';
 import { settingsStore } from '@/features/settings';
 import { resetTabs, tabsStore } from '@/features/workspace';
-import { ja } from '@/i18n/ja';
+import { t } from '@/i18n';
 import { resetCommands } from '@/lib/commands';
 import { resetShortcuts } from '@/lib/shortcuts';
 import { DEFAULT_PANES, DEFAULT_SETTINGS, getPlatform, setPlatform, type Bootstrap, type Platform } from '@/platform';
@@ -185,7 +185,7 @@ describe('startup', () => {
 
     await startup(() => {});
 
-    expect(documentStore.notice?.message).toBe(ja.settings.broken);
+    expect(documentStore.notice?.message).toBe(t.settings.broken);
   });
 
   it('本文を描くより前に、設定が見た目へ当たっている', async () => {

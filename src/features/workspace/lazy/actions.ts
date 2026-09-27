@@ -9,8 +9,8 @@
  * ここで行うのは、操作したウィンドウのツリーの読み直しと選択の移動だけである。
  */
 import { describeOpenError, documentStore, notifyStatus } from '@/features/document';
-import { ja } from '@/i18n/ja';
-import { jaExplorer } from '@/i18n/ja-explorer';
+import { t } from '@/i18n';
+import { loadExplorerMessages, tExplorer } from '@/i18n/explorer';
 import { dirOf, relocatePath, splitPath } from '@/lib/path';
 import { getPlatform, type DirEntry } from '@/platform';
 
@@ -24,7 +24,7 @@ import { withDefaultExtension } from './name';
 import { forgetPaths, selection, selectOnly } from './selection.svelte';
 
 function fail(e: unknown, subject: string): void {
-  documentStore.notice = { level: 'error', message: jaExplorer.operationFailed(describeOpenError(e, subject)) };
+  documentStore.notice = { level: 'error', message: tExplorer.operationFailed(describeOpenError(e, subject)) };
 }
 
 /** 読み込み済みの一覧から項目を探す。閉じた枝の中は探さない（見えていないものは操作の起点にならない）。 */
@@ -89,7 +89,7 @@ export async function commitCreate(parent: string, dir: boolean, typed: string):
     const created = await getPlatform().createEntry(parent, name, dir);
     await refreshDirs([parent]);
     if (name.startsWith('.')) {
-      notifyStatus(jaExplorer.hiddenCreated(name));
+      notifyStatus(tExplorer.hiddenCreated(name));
       return;
     }
     focusLater(created);
@@ -147,7 +147,7 @@ export async function trashTargets(paths: readonly string[]): Promise<void> {
   const platform = getPlatform();
   const names = targets.map((path) => splitPath(path).name);
   if (
-    !(await platform.confirmAction(jaExplorer.confirmTrash(names, hasDirtyTab(targets)), jaExplorer.confirmTrashButton))
+    !(await platform.confirmAction(tExplorer.confirmTrash(names, hasDirtyTab(targets)), tExplorer.confirmTrashButton))
   ) {
     return;
   }
@@ -161,7 +161,7 @@ export async function trashTargets(paths: readonly string[]): Promise<void> {
   try {
     const removed = await platform.trashEntries([...targets]);
     forgetPaths(removed);
-    if (removed.length > 0) notifyStatus(jaExplorer.trashed(removed.length));
+    if (removed.length > 0) notifyStatus(tExplorer.trashed(removed.length));
     if (next !== undefined) focusLater(next);
   } catch (e) {
     fail(e, names.join(', '));
@@ -200,7 +200,7 @@ export async function copyTo(paths: readonly string[], dest: string): Promise<vo
   try {
     const created = await getPlatform().copyEntries([...paths], dest);
     await refreshDirs([dest]);
-    notifyStatus(jaExplorer.copied(created.length));
+    notifyStatus(tExplorer.copied(created.length));
     const first = created[0];
     if (first !== undefined) focusLater(first);
   } catch (e) {
@@ -213,7 +213,7 @@ export async function copyTo(paths: readonly string[], dest: string): Promise<vo
 export async function moveTo(paths: readonly string[], dest: string): Promise<void> {
   try {
     const moved = await getPlatform().moveEntries([...paths], dest);
-    if (moved.length > 0) notifyStatus(jaExplorer.moved(moved.length));
+    if (moved.length > 0) notifyStatus(tExplorer.moved(moved.length));
     const first = moved[0];
     if (first !== undefined) focusLater(first.to);
   } catch (e) {
@@ -236,8 +236,7 @@ export async function dropEntries(paths: readonly string[], dest: string, copy: 
   }
   const names = paths.map((path) => splitPath(path).name);
   const destName = splitPath(dest).name || dest;
-  if (!(await getPlatform().confirmAction(jaExplorer.confirmMove(names, destName), jaExplorer.confirmMoveButton)))
-    return;
+  if (!(await getPlatform().confirmAction(tExplorer.confirmMove(names, destName), tExplorer.confirmMoveButton))) return;
   await moveTo(paths, dest);
 }
 
@@ -247,7 +246,7 @@ export async function importDropped(paths: readonly string[], dest: string): Pro
     const created = await getPlatform().importDropped([...paths], dest);
     if (dest !== treeStore.root) await expandDir(dest);
     await refreshDirs([dest]);
-    notifyStatus(jaExplorer.copied(created.length));
+    notifyStatus(tExplorer.copied(created.length));
     const first = created[0];
     if (first !== undefined) focusLater(first);
   } catch (e) {
@@ -255,7 +254,7 @@ export async function importDropped(paths: readonly string[], dest: string): Pro
   }
 }
 
-async function writeClipboard(text: string, done: string, failed: string = ja.status.pathCopyFailed): Promise<void> {
+async function writeClipboard(text: string, done: string, failed: string = t.status.pathCopyFailed): Promise<void> {
   try {
     await navigator.clipboard.writeText(text);
     notifyStatus(done);
@@ -269,7 +268,7 @@ async function writeClipboard(text: string, done: string, failed: string = ja.st
 export async function copyPaths(paths: readonly string[], relative: boolean): Promise<void> {
   const root = treeStore.root;
   const lines = paths.map((path) => (relative && root !== null ? relativeToRoot(path, root) : path));
-  await writeClipboard(lines.join('\n'), ja.status.pathCopied);
+  await writeClipboard(lines.join('\n'), t.status.pathCopied);
 }
 
 /**
@@ -281,7 +280,7 @@ export async function copyMarkdownLink(path: string): Promise<void> {
   const current = documentStore.meta?.path ?? null;
   const from = current === null ? treeStore.root : dirOf(current);
   if (from === null) return;
-  await writeClipboard(markdownLink(path, from), jaExplorer.linkCopied);
+  await writeClipboard(markdownLink(path, from), tExplorer.linkCopied);
 }
 
 /**
@@ -292,6 +291,9 @@ export async function copyMarkdownLink(path: string): Promise<void> {
  * 上限で打ち切られた場合は、貼り付けた木が一部であることを添える。
  */
 export async function copyTree(path: string): Promise<void> {
+  // NOTE: コマンドパレットからは、ツリーを一度も開いていない状態で呼ばれる。
+  // `tExplorer` はツリーかタブのメニューの入口が読み込むため、ここで待たないと通知の文言が空になる。
+  await loadExplorerMessages();
   const root = treeStore.root ?? path;
   let text: string;
   let truncated: boolean;
@@ -303,11 +305,7 @@ export async function copyTree(path: string): Promise<void> {
     fail(e, splitPath(path).name || path);
     return;
   }
-  await writeClipboard(
-    text,
-    truncated ? jaExplorer.treeCopiedPartial : jaExplorer.treeCopied,
-    jaExplorer.treeCopyFailed,
-  );
+  await writeClipboard(text, truncated ? tExplorer.treeCopiedPartial : tExplorer.treeCopied, tExplorer.treeCopyFailed);
 }
 
 /** OS のファイルマネージャで、その項目を選んだ状態で開く。 */

@@ -6,7 +6,7 @@
  * 本文のテキストをパースし直して切り離した要素に描き、画面では遅延している後処理（ハイライト・数式・図・画像）をすべて済ませる。
  */
 import { getDocumentText, getParseOptions, getParser } from '@/features/document';
-import { ja } from '@/i18n/ja';
+import { t } from '@/i18n';
 import { sanitize } from '@/markdown/sanitize';
 import { getPlatform } from '@/platform';
 
@@ -33,7 +33,7 @@ export async function render(options: RenderOptions): Promise<HTMLElement | null
 
   const parsed = await parser.parse(getDocumentText(), getParseOptions());
   // NOTE: Marp の文書を通常の本文として書き出すと、見ているものと違うものが渡る（OQ-47）。
-  if (parsed.marp) throw new Error(ja.export.marpUnsupported);
+  if (parsed.marp) throw new Error(t.export.marpUnsupported);
   const root = document.createElement('div');
 
   // `preview/paint.ts` と同じ構造にする。本文幅の規則が `.mx-content` を基準にしている。

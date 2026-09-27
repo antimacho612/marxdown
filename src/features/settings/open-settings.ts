@@ -9,5 +9,5 @@
 /** 設定ダイアログを開く。`settings` チャンクはここで初めて読み込まれる。 */
 export async function openSettingsLazily(): Promise<void> {
   const { openSettings } = await import('./lazy/panel');
-  openSettings();
+  await openSettings();
 }

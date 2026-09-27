@@ -9,7 +9,7 @@
   import type { Snippet } from 'svelte';
 
   import { viewStore } from '@/features/view';
-  import { ja } from '@/i18n/ja';
+  import { t } from '@/i18n';
 
   import { PANE_WIDTH_DEFAULT, PANE_WIDTH_MAX, PANE_WIDTH_MIN, setLeftPaneWidth } from './panes';
 
@@ -103,7 +103,7 @@
     role="slider"
     tabindex="0"
     aria-orientation="vertical"
-    aria-label={ja.pane.resizeLeft}
+    aria-label={t.pane.resizeLeft}
     aria-valuenow={width}
     aria-valuemin={PANE_WIDTH_MIN}
     aria-valuemax={PANE_WIDTH_MAX}

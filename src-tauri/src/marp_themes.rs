@@ -27,7 +27,7 @@ pub struct MarpTheme {
     pub css: String,
 }
 
-/// 読めなかった理由。文言はフロント側（`src/i18n/ja.ts`）が作る。
+/// 読めなかった理由。文言はフロント側（`src/i18n/`）が作る。
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum ProblemKind {

@@ -1,7 +1,7 @@
 //! コマンド境界のエラー型。
 //!
 //! 種別はフロントエンドが分岐できる最小限に留める。
-//! ユーザー向けの文言は TypeScript 側（`src/i18n/ja.ts`）が作る。
+//! ユーザー向けの文言は TypeScript 側（`src/i18n/`）が作る。
 
 use serde::Serialize;
 

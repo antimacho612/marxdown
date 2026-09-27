@@ -13,7 +13,7 @@
 <script lang="ts">
   import { onMount, tick } from 'svelte';
 
-  import { jaExplorer } from '@/i18n/ja-explorer';
+  import { tExplorer } from '@/i18n/explorer';
   import { splitPath } from '@/lib/path';
 
   import { treeStore } from '../tree.svelte';
@@ -70,20 +70,20 @@
   const groups: Item[][] = [
     file
       ? [
-          { id: 'open', label: jaExplorer.menu.open, disabled: !single, run: () => openEntry(entry.path) },
+          { id: 'open', label: tExplorer.menu.open, disabled: !single, run: () => openEntry(entry.path) },
           {
             id: 'satellite',
-            label: jaExplorer.menu.openSatellite,
+            label: tExplorer.menu.openSatellite,
             disabled: !single,
             run: () => openEntry(entry.path, true),
           },
         ]
       : [],
     [
-      { id: 'new-file', label: jaExplorer.menu.newFile, disabled: !single, run: () => void startCreate(false, base) },
+      { id: 'new-file', label: tExplorer.menu.newFile, disabled: !single, run: () => void startCreate(false, base) },
       {
         id: 'new-folder',
-        label: jaExplorer.menu.newFolder,
+        label: tExplorer.menu.newFolder,
         disabled: !single,
         run: () => void startCreate(true, base),
       },
@@ -91,13 +91,13 @@
     [
       ...(targets.length > 0
         ? [
-            { id: 'cut', label: jaExplorer.menu.cut, keys: 'Ctrl+X', run: () => setClipboard(targets, 'cut') },
-            { id: 'copy', label: jaExplorer.menu.copy, keys: 'Ctrl+C', run: () => setClipboard(targets, 'copy') },
+            { id: 'cut', label: tExplorer.menu.cut, keys: 'Ctrl+X', run: () => setClipboard(targets, 'cut') },
+            { id: 'copy', label: tExplorer.menu.copy, keys: 'Ctrl+C', run: () => setClipboard(targets, 'copy') },
           ]
         : []),
       {
         id: 'paste',
-        label: jaExplorer.menu.paste,
+        label: tExplorer.menu.paste,
         keys: 'Ctrl+V',
         disabled: selection.clipboard === null,
         run: () => void paste(base),
@@ -106,13 +106,13 @@
     [
       {
         id: 'copy-path',
-        label: jaExplorer.menu.copyPath,
+        label: tExplorer.menu.copyPath,
         keys: 'Shift+Alt+C',
         run: () => void copyPaths(targets.length > 0 ? targets : [base ?? ''], false),
       },
       {
         id: 'copy-relative',
-        label: jaExplorer.menu.copyRelativePath,
+        label: tExplorer.menu.copyRelativePath,
         keys: 'Ctrl+Shift+Alt+C',
         run: () => void copyPaths(targets.length > 0 ? targets : [base ?? ''], true),
       },
@@ -120,33 +120,33 @@
       file
         ? {
             id: 'copy-link',
-            label: jaExplorer.menu.copyLink,
+            label: tExplorer.menu.copyLink,
             disabled: !single,
             run: () => void copyMarkdownLink(entry.path),
           }
         : {
             id: 'copy-tree',
-            label: jaExplorer.menu.copyTree,
+            label: tExplorer.menu.copyTree,
             disabled: !single,
             run: () => void copyTree(base ?? ''),
           },
     ],
-    [{ id: 'reveal', label: jaExplorer.menu.reveal, keys: 'Shift+Alt+R', run: () => void revealEntry(base ?? '') }],
+    [{ id: 'reveal', label: tExplorer.menu.reveal, keys: 'Shift+Alt+R', run: () => void revealEntry(base ?? '') }],
     targets.length > 0
       ? [
           {
             id: 'rename',
-            label: jaExplorer.menu.rename,
+            label: tExplorer.menu.rename,
             keys: 'F2',
             disabled: !single,
             run: () => startRename(targets[0] ?? ''),
           },
-          { id: 'delete', label: jaExplorer.menu.delete, keys: 'Delete', run: () => void trashTargets(targets) },
+          { id: 'delete', label: tExplorer.menu.delete, keys: 'Delete', run: () => void trashTargets(targets) },
         ]
       : [],
   ].filter((group) => group.length > 0);
 
-  const label = jaExplorer.menu.label(splitPath(base ?? '').name || (base ?? ''));
+  const label = tExplorer.menu.label(splitPath(base ?? '').name || (base ?? ''));
 
   function buttons(): HTMLButtonElement[] {
     return [...panel.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')];

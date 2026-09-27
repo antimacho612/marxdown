@@ -2,7 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { recentStore, resetTabs, workspaceOpenerHooks } from '@/features/workspace';
-import { ja } from '@/i18n/ja';
+import { t } from '@/i18n';
 import type { MarkdownParser } from '@/markdown/parser';
 import type { ParseResult } from '@/markdown/protocol';
 import { getPlatform, setPlatform, type DocumentPayload, type Platform, type RecentEntry } from '@/platform';
@@ -159,10 +159,10 @@ describe('install', () => {
     await openPath('C:/work/photo.png');
 
     expect(documentStore.notice?.level).toBe('error');
-    expect(documentStore.notice?.message).toBe(ja.error.binary('C:/work/photo.png'));
+    expect(documentStore.notice?.message).toBe(t.error.binary('C:/work/photo.png'));
 
     const actions = documentStore.notice?.actions ?? [];
-    expect(actions.map((a) => a.label)).toEqual([ja.link.open, ja.link.reveal]);
+    expect(actions.map((a) => a.label)).toEqual([t.link.open, t.link.reveal]);
     actions[0]?.run();
     expect(openLocalFile).toHaveBeenCalledWith('C:/work/photo.png');
   });
@@ -298,7 +298,7 @@ describe('reloadCurrent', () => {
 
     await reloadCurrent();
 
-    expect(documentStore.statusMessage).toBe(ja.open.reloaded);
+    expect(documentStore.statusMessage).toBe(t.open.reloaded);
   });
 
   it('何も開いていなければ何もしない', async () => {

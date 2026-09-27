@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { documentStore } from '@/features/document';
-import { jaUpdate } from '@/i18n/ja-update';
+import { tUpdate } from '@/i18n/update';
 import { getPlatform, setPlatform, type InstallRefusal, type Platform, type UpdateInfo } from '@/platform';
 
 import { checkForUpdates, notifyAvailable } from './notice';
@@ -20,18 +20,18 @@ afterEach(() => {
 });
 
 describe('自動の確認', () => {
-  it('見つかった版を通知バーに出す', () => {
-    notifyAvailable(INFO);
+  it('見つかった版を通知バーに出す', async () => {
+    await notifyAvailable(INFO);
 
-    expect(documentStore.notice?.message).toBe(jaUpdate.available('0.2.0'));
-    expect(documentStore.notice?.actions?.map((a) => a.label)).toEqual([jaUpdate.install, jaUpdate.notes]);
+    expect(documentStore.notice?.message).toBe(tUpdate.available('0.2.0'));
+    expect(documentStore.notice?.actions?.map((a) => a.label)).toEqual([tUpdate.install, tUpdate.notes]);
   });
 
-  it('既に出ている通知を上書きしない', () => {
+  it('既に出ている通知を上書きしない', async () => {
     const existing = { level: 'warning' as const, message: '外部で変更されました' };
     documentStore.notice = existing;
 
-    notifyAvailable(INFO);
+    await notifyAvailable(INFO);
 
     expect(documentStore.notice).toStrictEqual(existing);
   });
@@ -43,7 +43,7 @@ describe('手動の確認', () => {
 
     await checkForUpdates();
 
-    expect(documentStore.statusMessage).toBe(jaUpdate.upToDate);
+    expect(documentStore.statusMessage).toBe(tUpdate.upToDate);
     expect(documentStore.notice).toBeNull();
   });
 
@@ -52,7 +52,7 @@ describe('手動の確認', () => {
 
     await checkForUpdates();
 
-    expect(documentStore.notice).toMatchObject({ level: 'error', message: jaUpdate.checkFailed });
+    expect(documentStore.notice).toMatchObject({ level: 'error', message: tUpdate.checkFailed });
   });
 });
 
@@ -69,14 +69,14 @@ describe('適用', () => {
     await pressInstall(() => Promise.resolve('dirty'));
 
     await vi.waitFor(() => expect(documentStore.notice?.level).toBe('warning'));
-    expect(documentStore.notice?.message).toBe(jaUpdate.dirty);
-    expect(documentStore.notice?.actions?.map((a) => a.label)).toEqual([jaUpdate.install]);
+    expect(documentStore.notice?.message).toBe(tUpdate.dirty);
+    expect(documentStore.notice?.actions?.map((a) => a.label)).toEqual([tUpdate.install]);
   });
 
   it('失敗は通知バーに出す', async () => {
     await pressInstall(() => Promise.reject(new Error('signature')));
 
     await vi.waitFor(() => expect(documentStore.notice?.level).toBe('error'));
-    expect(documentStore.notice?.message).toBe(jaUpdate.installFailed);
+    expect(documentStore.notice?.message).toBe(tUpdate.installFailed);
   });
 });

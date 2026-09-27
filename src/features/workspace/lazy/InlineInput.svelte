@@ -9,7 +9,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
 
-  import { jaExplorer } from '@/i18n/ja-explorer';
+  import { tExplorer } from '@/i18n/explorer';
 
   import { nameProblem, stemRange } from './name';
 
@@ -81,7 +81,7 @@
     type="text"
     spellcheck="false"
     autocomplete="off"
-    aria-label={jaExplorer.nameInput}
+    aria-label={tExplorer.nameInput}
     aria-invalid={shown !== null}
     aria-describedby={shown === null ? undefined : 'mx-inline-problem'}
     bind:this={input}
@@ -91,7 +91,7 @@
     onblur={() => settle(oncancel)}
   />
   {#if shown !== null}
-    <p id="mx-inline-problem" class="mx-inline__problem" role="alert">{jaExplorer.nameProblem[shown]}</p>
+    <p id="mx-inline-problem" class="mx-inline__problem" role="alert">{tExplorer.nameProblem[shown]}</p>
   {/if}
 </div>
 

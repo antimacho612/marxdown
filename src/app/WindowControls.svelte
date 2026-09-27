@@ -7,7 +7,7 @@
 -->
 <script lang="ts">
   import { viewStore } from '@/features/view';
-  import { ja } from '@/i18n/ja';
+  import { t } from '@/i18n';
 
   import CaptionButton from './CaptionButton.svelte';
   import { closeWindow, minimizeWindow, toggleMaximizeWindow, trackSnapLayoutsTarget } from './window';
@@ -35,7 +35,7 @@
 </script>
 
 <div class="mx-caption">
-  <CaptionButton label={ja.titlebar.minimize} onClick={minimizeWindow}>
+  <CaptionButton label={t.titlebar.minimize} onClick={minimizeWindow}>
     <svg viewBox="0 0 10 10" width="10" height="10" aria-hidden="true" focusable="false">
       <path d="M0 5h10" fill="none" stroke="currentColor" stroke-width="1" />
     </svg>
@@ -43,7 +43,7 @@
 
   <!-- 最大化中は「元のサイズに戻す」になる。名前とアイコンの両方を入れ替える（片方だけだと読み上げと表示が一致しない）。 -->
   <CaptionButton
-    label={maximized ? ja.titlebar.restore : ja.titlebar.maximize}
+    label={maximized ? t.titlebar.restore : t.titlebar.maximize}
     hovered={viewStore.maximizeHovered}
     bind:element={maximizeButton}
     onClick={toggleMaximizeWindow}
@@ -62,7 +62,7 @@
     {/if}
   </CaptionButton>
 
-  <CaptionButton close label={ja.titlebar.close} onClick={closeWindow}>
+  <CaptionButton close label={t.titlebar.close} onClick={closeWindow}>
     <svg viewBox="0 0 10 10" width="10" height="10" aria-hidden="true" focusable="false">
       <path d="M0.5 0.5l9 9M9.5 0.5l-9 9" fill="none" stroke="currentColor" stroke-width="1" />
     </svg>

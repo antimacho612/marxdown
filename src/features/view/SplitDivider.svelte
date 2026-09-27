@@ -4,7 +4,7 @@
   `role="slider"` にしているのは、Svelte の a11y 検査が `separator` を操作できない要素と判定するためである。
 -->
 <script lang="ts">
-  import { ja } from '@/i18n/ja';
+  import { t } from '@/i18n';
   import { SPLIT_MAX, SPLIT_MIN } from '@/platform';
 
   import { resetSplit, setSplit } from './split';
@@ -97,11 +97,11 @@
   role="slider"
   tabindex="0"
   aria-orientation="vertical"
-  aria-label={ja.split.resize}
+  aria-label={t.split.resize}
   aria-valuenow={percent}
   aria-valuemin={Math.round(SPLIT_MIN * 100)}
   aria-valuemax={Math.round(SPLIT_MAX * 100)}
-  aria-valuetext={ja.split.ratio(percent)}
+  aria-valuetext={t.split.ratio(percent)}
   onpointerdown={onPointerDown}
   onpointermove={onPointerMove}
   onpointerup={onPointerUp}

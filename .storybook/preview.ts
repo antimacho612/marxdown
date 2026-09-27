@@ -15,6 +15,11 @@ import '../src/styles/shell.css';
 import '../src/styles/preview/preview.css';
 
 import { registerAppCommands } from '../src/app/commands';
+import { loadMessages } from '../src/i18n';
+import { loadExplorerMessages } from '../src/i18n/explorer';
+import { loadMarpMessages } from '../src/i18n/marp';
+import { loadSettingsMessages } from '../src/i18n/settings';
+import { loadUpdateMessages } from '../src/i18n/update';
 
 /**
  * コマンドを登録する（`src/app/commands.ts`）。
@@ -54,6 +59,20 @@ const preview: Preview = {
     },
   },
   initialGlobals: { theme: 'light' },
+
+  // 実アプリでは `main.ts` と各遅延チャンクの入口が文言を読み込む。story は遅延チャンクの部品を直接描くため、すべて先に読み込む。
+  loaders: [
+    async () => {
+      await Promise.all([
+        loadMessages(),
+        loadExplorerMessages(),
+        loadMarpMessages(),
+        loadSettingsMessages(),
+        loadUpdateMessages(),
+      ]);
+      return {};
+    },
+  ],
 
   decorators: [
     (story, context) => {

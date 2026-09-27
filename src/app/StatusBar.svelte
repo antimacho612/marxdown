@@ -10,7 +10,7 @@
   import { documentStore, effectiveEol, nextEol as nextEolOf, notifyStatus, toggleEol } from '@/features/document';
   import { formatZoom } from '@/features/preview';
   import { viewStore } from '@/features/view';
-  import { ja } from '@/i18n/ja';
+  import { t } from '@/i18n';
   import { splitPath } from '@/lib/path';
 
   import StatusBarButton from './StatusBarButton.svelte';
@@ -58,10 +58,10 @@
     if (!full) return;
     try {
       await navigator.clipboard.writeText(full);
-      notifyStatus(ja.status.pathCopied);
+      notifyStatus(t.status.pathCopied);
     } catch {
       // 権限が無い場合やセキュアコンテキストでない場合に失敗する（`features/preview/enhance.ts` と同じ）。
-      notifyStatus(ja.status.pathCopyFailed);
+      notifyStatus(t.status.pathCopyFailed);
     }
   }
 </script>
@@ -72,31 +72,31 @@
       モードとエンコーディング（クリックでモード切替メニュー / 再解釈）。
       選択肢は押されるまでロードしない（`app/StatusMenuButton.svelte`）。
     -->
-    <StatusMenuButton kind="mode" label={ja.status.mode[viewStore.mode]} title={ja.status.modeSwitch} />
-    <StatusMenuButton kind="encoding" label={ja.status.encoding[meta.encoding]} title={ja.status.encodingReinterpret} />
+    <StatusMenuButton kind="mode" label={t.status.mode[viewStore.mode]} title={t.status.modeSwitch} />
+    <StatusMenuButton kind="encoding" label={t.status.encoding[meta.encoding]} title={t.status.encodingReinterpret} />
     <!--
       EOL。押した時点ではディスクを変更しない。
       次の保存で書き戻す改行コードが変わり、未保存の印が付く（`document/eol.ts`）。
       表示しているのは変換の指定を反映した現在値であり、`meta.eol`（ディスク上の値）ではない。
     -->
     {#if eol && nextEol}
-      <StatusBarButton onclick={() => toggleEol()} title={ja.status.eolConvert(nextEol)}>
+      <StatusBarButton onclick={() => toggleEol()} title={t.status.eolConvert(nextEol)}>
         {eol.toUpperCase()}
       </StatusBarButton>
     {/if}
     {#if meta.bom}<span>BOM</span>{/if}
-    {#if meta.readonly}<span>{ja.status.readonly}</span>{/if}
+    {#if meta.readonly}<span>{t.status.readonly}</span>{/if}
     <!--
       カーソル位置。押せない項目である。
       UX 仕様で操作先が決まっているのは倍率・EOL・エンコーディング・文字数・モードで、ここは表示だけである。
       行ジャンプは `Ctrl+G` とコマンドパレットから行う。
     -->
     {#if cursor}
-      <span class="mx-statusbar__cursor mx-statusbar__optional">{ja.status.cursor(cursor.line, cursor.column)}</span>
+      <span class="mx-statusbar__cursor mx-statusbar__optional">{t.status.cursor(cursor.line, cursor.column)}</span>
     {/if}
     {#if textStats}
-      <span class="mx-statusbar__optional">{ja.status.chars(textStats.chars)}</span>
-      <span class="mx-statusbar__optional">{ja.status.readingTime(textStats.readingMinutes)}</span>
+      <span class="mx-statusbar__optional">{t.status.chars(textStats.chars)}</span>
+      <span class="mx-statusbar__optional">{t.status.readingTime(textStats.readingMinutes)}</span>
     {/if}
   {/if}
 
@@ -111,9 +111,9 @@
     <StatusBarButton
       aria-pressed={viewStore.scrollSync}
       onclick={() => (viewStore.scrollSync = !viewStore.scrollSync)}
-      title={ja.split.toggleSync}
+      title={t.split.toggleSync}
     >
-      ⇄ {viewStore.scrollSync ? ja.split.syncOn : ja.split.syncOff}
+      ⇄ {viewStore.scrollSync ? t.split.syncOn : t.split.syncOff}
     </StatusBarButton>
   {/if}
 
@@ -123,7 +123,7 @@
     無題の文書にはパスが無く、項目ごと出さない。
   -->
   {#if path}
-    <StatusBarButton class="mx-statusbar__path" onclick={() => void copyPath()} title={ja.status.pathCopy}>
+    <StatusBarButton class="mx-statusbar__path" onclick={() => void copyPath()} title={t.status.pathCopy}>
       <!-- prettier-ignore -->
       <!-- 2 つの span の間に空白を入れない。読み上げにも `textContent` にも、パスに無い空白が混ざる。 -->
       <span class="mx-statusbar__path-dir">{path.dir}</span><span class="mx-statusbar__path-name">{path.name}</span>
@@ -143,8 +143,8 @@
 
   {#if import.meta.env.DEV && stats}
     {#if stats.chunks > 1}<span>{stats.chunks} chunks</span>{/if}
-    <span>{ja.status.parsedIn(stats.parseMs)}</span>
-    <span>{ja.status.paintedIn(stats.paintMs)}</span>
+    <span>{t.status.parsedIn(stats.parseMs)}</span>
+    <span>{t.status.paintedIn(stats.paintMs)}</span>
   {/if}
 
   <!--
@@ -157,7 +157,7 @@
     現在が等倍であると分かること、および操作できる場所が常に同じ位置にあることを、項目を 1 つ減らすことより優先する。
   -->
   {#if meta}
-    <StatusMenuButton kind="zoom" label={formatZoom(viewStore.zoom)} title={ja.status.zoomSelect} />
+    <StatusMenuButton kind="zoom" label={formatZoom(viewStore.zoom)} title={t.status.zoomSelect} />
   {/if}
 </footer>
 
