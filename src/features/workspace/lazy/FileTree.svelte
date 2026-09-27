@@ -12,8 +12,7 @@
   ディレクトリは対象外なので、絞り込んでいても枝を辿れる。
 
   単一クリックで開く。
-  VS Code の「プレビュー的に開く（イタリックのタブ）」は採らない。
-  タブの状態が 2 種類に増え、タブのモデルに例外を作ることになる割に、得られるのは「開きすぎたタブが自動で置き換わる」ことだけである。
+  `explorer.temporaryTab` が ON なら仮タブで開き、ダブルクリックで通常のタブにする（ADR-0024）。
 
   フォーカス（`treeStore.focusPath`）と選択（`selection.svelte.ts`）を分けて持つ（§1.4）。
   表示中の文書は `aria-current` で表し、選択とは兼ねない。
@@ -25,6 +24,7 @@
   import { tick } from 'svelte';
 
   import { documentStore } from '@/features/document';
+  import { settingsStore } from '@/features/settings';
   import { ja } from '@/i18n/ja';
   import ChevronIcon from '@/lib/ChevronIcon.svelte';
   import Icon from '@/lib/Icon.svelte';
@@ -41,6 +41,7 @@
   import { visibleEntries } from './filter.svelte';
   import InlineInput from './InlineInput.svelte';
   import { isCut, selection, selectOnly, selectRange, toggleSelected } from './selection.svelte';
+  import { keepTabOf, openPathInTemporaryTab } from './temporary-tab.svelte';
   import { consumeDragClick, pressItem } from './tree-drag';
   import { handleTreeKey } from './tree-keys';
 
@@ -229,7 +230,14 @@
       void openPathInSatellite(entry.path);
       return;
     }
-    void openPathInNewTab(entry.path);
+    if (settingsStore.values['explorer.temporaryTab']) void openPathInTemporaryTab(entry.path);
+    else void openPathInNewTab(entry.path);
+  }
+
+  /** ファイルのダブルクリックは、単一クリックで開いた仮タブを通常のタブにする（ADR-0024）。 */
+  function keep(entry: DirEntry, event: MouseEvent): void {
+    if (entry.dir || event.ctrlKey || event.metaKey || event.shiftKey) return;
+    void keepTabOf(entry.path);
   }
 
   /** 入れ子の枝からでも、木全体の見えている順を得る。範囲選択は枝を跨ぐ。 */
@@ -327,6 +335,7 @@
             style:padding-inline-start="calc(var(--mx-space-2) + {depth * 12}px)"
             title={entry.path}
             onclick={(event) => open(entry, event)}
+            ondblclick={(event) => keep(entry, event)}
             oncontextmenu={(event) => openMenu(entry, event)}
             onpointerdown={(event) => pressItem(event, entry.path, scrollerOf(event.currentTarget))}
           >

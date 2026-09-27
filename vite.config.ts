@@ -287,6 +287,20 @@ export default defineConfig(({ mode }) => ({
           if (isPaletteOnly) return 'assets/palette-[hash].js';
 
           /*
+           * ファイルツリーとタブの右クリックメニューが共有する部分（仮タブ / ADR-0024）。palette と同じ事情で名前を付ける。
+           *
+           * 入口を持つチャンク（`ExplorerBody` / `TabMenu` / `handoff`）は既定の名前のままにする。
+           * `workspace-` で始まる名前は付けない。`dist/assets/workspace-*.css` の glob が critical path に含まれている。
+           */
+          const isExplorerOnly =
+            !chunk.facadeModuleId &&
+            modules.length > 0 &&
+            modules.every((id) =>
+              /[\\/]src[\\/](?:features[\\/]workspace[\\/]lazy[\\/]|i18n[\\/]ja-explorer)/.test(id),
+            );
+          if (isExplorerOnly) return 'assets/explorer-[hash].js';
+
+          /*
            * ステータスバーのポップアップメニュー。他と同じく名前付けだけ。
            *
            * `src/features/status/lazy/` に置いてあるのは押されるまで要らないものだけで、`main` 側は `app/StatusMenuButton.svelte`（ボタン 1 つ）しか持たない。
