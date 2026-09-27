@@ -1,0 +1,74 @@
+import { documentStore } from '@/features/document';
+import { ja } from '@/i18n/ja';
+import { toMessage } from '@/lib/error';
+import { getPlatform, type UpdateInfo } from '@/platform';
+
+/**
+ * 自動の確認で見つかった版を通知バーに出す。起動時に 1 回だけ呼ぶ。
+ *
+ * 既に別の通知が出ているときは出さない。
+ * 外部での変更や保存の失敗は、利用者が選ぶまで残すべき通知であり、更新の案内で上書きしてはいけない。
+ * 出せなかった分は、次の確認（24 時間後）か手動の確認で改めて出る。
+ */
+export function installUpdateNotice(): void {
+  getPlatform().onUpdateAvailable((info) => {
+    if (documentStore.notice === null) showAvailable(info);
+  });
+}
+
+/**
+ * 手動の確認（コマンドパレットの「更新を確認」）。
+ *
+ * 利用者が求めた確認であるため、結果は必ず伝える。
+ * 新しい版が無いことは済んだことの報告としてステータスバーへ、失敗は通知バーへ出す（03.ux-spec/07-status-and-notifications.md §2.1）。
+ */
+export async function checkForUpdates(): Promise<void> {
+  try {
+    const info = await getPlatform().checkUpdate();
+    if (info) {
+      showAvailable(info);
+    } else {
+      documentStore.statusMessage = ja.update.upToDate;
+    }
+  } catch (error) {
+    documentStore.notice = { level: 'error', message: ja.update.checkFailed(toMessage(error)) };
+  }
+}
+
+function showAvailable(info: UpdateInfo): void {
+  documentStore.notice = {
+    level: 'info',
+    message: ja.update.available(info.version),
+    actions: [
+      { label: ja.update.install, run: () => void install() },
+      { label: ja.update.notes, run: () => void getPlatform().openExternal(info.notesUrl) },
+    ],
+  };
+}
+
+/**
+ * 更新を適用する。
+ *
+ * Windows では更新を始めた時点でプロセスが終わるため、ここへ戻るのは始めなかったときか失敗したときだけである。
+ * 未保存の変更があれば Rust 側が始めずに戻る。
+ * そのときは同じ操作を残し、保存してからもう一度押せるようにする（ADR-0020 §3.6）。
+ */
+async function install(): Promise<void> {
+  // ダウンロードには数秒かかる。押した結果が何も見えない時間を作らない。
+  documentStore.notice = { level: 'info', message: ja.update.downloading };
+  try {
+    const refusal = await getPlatform().installUpdate();
+    if (refusal === 'dirty') {
+      documentStore.notice = {
+        level: 'warning',
+        message: ja.update.dirty,
+        actions: [{ label: ja.update.install, run: () => void install() }],
+      };
+    } else {
+      documentStore.notice = null;
+      documentStore.statusMessage = ja.update.upToDate;
+    }
+  } catch (error) {
+    documentStore.notice = { level: 'error', message: ja.update.installFailed(toMessage(error)) };
+  }
+}

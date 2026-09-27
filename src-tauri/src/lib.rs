@@ -30,6 +30,7 @@ pub mod tab_drag;
 pub mod themes;
 pub mod trace;
 pub mod tray;
+pub mod update;
 pub mod watch;
 pub mod webview;
 pub mod window;
@@ -402,7 +403,10 @@ pub fn run() {
     builder
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
+        // 初期化で行うのは設定の読み取りだけで、通信は `ready` の後まで始まらない（`update.rs`）。
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .manage(state)
+        .manage(update::Updates::default())
         .manage(tab_drag::TabDrag::default())
         .invoke_handler(tauri::generate_handler![
             commands::read_document,
@@ -451,6 +455,8 @@ pub fn run() {
             commands::warm_done,
             commands::bench_input_done,
             commands::app_quit,
+            commands::check_update,
+            commands::install_update,
         ])
         .setup(move |app| {
             // T2b: Tauri のブートとプラグイン初期化が終わった時点。
@@ -530,6 +536,8 @@ pub fn run() {
             // 「外から 1 枚開かせる」経路の宛先を更新する（`target_window`）。
             if let tauri::WindowEvent::Focused(true) = event {
                 window.state::<state::AppState>().note_focused(&label);
+                // 常駐したまま使われ続ける場合の更新の確認（ADR-0020 §3.4）。行うのは時刻の比較だけである。
+                update::on_focus(window.app_handle());
                 return;
             }
 

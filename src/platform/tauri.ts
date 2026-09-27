@@ -18,6 +18,7 @@ import type {
   DocumentPayload,
   FileChange,
   FileList,
+  InstallRefusal,
   OpenRequest,
   Platform,
   RecentEntry,
@@ -25,6 +26,7 @@ import type {
   SettingsLoad,
   TabArrival,
   TraceMark,
+  UpdateInfo,
   UserTheme,
   WriteRequest,
 } from './types';
@@ -41,6 +43,7 @@ const EVENT_WINDOW_MAXIMIZED = 'marxdown://window-maximized';
 const EVENT_MAXIMIZE_HOVER = 'marxdown://maximize-hover';
 const EVENT_TAB_ARRIVE = 'marxdown://tab-arrive';
 const EVENT_TAB_DRAG_OVER = 'marxdown://tab-drag-over';
+const EVENT_UPDATE_AVAILABLE = 'marxdown://update-available';
 
 /**
  * このウィンドウ宛てのイベントだけを受け取る。
@@ -328,6 +331,18 @@ export const tauriPlatform: Platform = {
 
   openExternal(url) {
     return invoke<void>('open_external', { url });
+  },
+
+  checkUpdate() {
+    return invoke<UpdateInfo | null>('check_update');
+  },
+
+  installUpdate() {
+    return invoke<InstallRefusal>('install_update');
+  },
+
+  onUpdateAvailable(handler) {
+    return subscribe(() => listenHere<UpdateInfo>(EVENT_UPDATE_AVAILABLE, (event) => handler(event.payload)));
   },
 
   openLocalFile(path) {

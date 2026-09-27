@@ -120,6 +120,13 @@ export const LAYOUT = [
         label: ja.settings.window.closeToTray.label,
         description: ja.settings.window.closeToTray.description,
       },
+      {
+        kind: 'field',
+        key: 'update.autoCheck',
+        widget: 'toggle',
+        label: ja.settings.update.autoCheck.label,
+        description: ja.settings.update.autoCheck.description,
+      },
     ],
   },
   {

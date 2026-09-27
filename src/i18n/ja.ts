@@ -117,6 +117,7 @@ export const ja = {
     find: '検索',
     replace: '置換',
     quit: '終了',
+    checkUpdate: '更新を確認',
   },
 
   pane: {
@@ -210,6 +211,18 @@ export const ja = {
 
   notice: {
     dismiss: '通知を閉じる',
+  },
+
+  /** 自動更新（ADR-0020 / 03.ux-spec/07-status-and-notifications.md §2）。 */
+  update: {
+    available: (version: string) => `Marxdown ${version} を利用できます`,
+    install: '更新して再起動',
+    notes: '変更内容',
+    downloading: '更新をダウンロードしています…',
+    dirty: '保存していない変更があります。保存してから更新してください',
+    upToDate: 'Marxdown は最新です',
+    checkFailed: (message: string) => `更新を確認できませんでした: ${message}`,
+    installFailed: (message: string) => `更新できませんでした: ${message}`,
   },
 
   editor: {
@@ -416,6 +429,14 @@ export const ja = {
       maxDepth: {
         label: '表示する見出しの階層',
         description: 'アウトラインに表示する見出しの深さを制御します（h1〜h6）。それより深い見出しは一覧から外れます。',
+      },
+    },
+
+    update: {
+      autoCheck: {
+        label: '新しいバージョンを自動で確認する',
+        description:
+          '起動時とウィンドウを前面に出したときに、1 日 1 回まで確認します。オフにしても、コマンドパレットの「更新を確認」から確認できます。',
       },
     },
 

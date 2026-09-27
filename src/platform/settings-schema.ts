@@ -228,6 +228,9 @@ export const SETTINGS_SCHEMA = defineSettingsSchema({
    */
   'preview.theme': { kind: 'string', default: 'default' },
 
+  /** 新しい版を自動で確認するか（ADR-0020）。false でもコマンドパレットの「更新を確認」は使える。 */
+  'update.autoCheck': { kind: 'boolean', default: true },
+
   /** `✕` で閉じたときにトレイへ格納するか（ADR-0007）。false ならプロセスを終了する。 */
   'window.closeToTray': { kind: 'boolean', default: true },
 });

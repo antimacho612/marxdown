@@ -15,6 +15,7 @@
  * 領域はディレクトリ名ではなくユーザーから見た区分であり、`preview.zoomIn` が `features/preview/zoom.ts` にあるのは実装上の結果に過ぎない。
  */
 export type CommandId =
+  | 'app.checkUpdate'
   | 'app.quit'
   | 'document.new'
   | 'document.open'

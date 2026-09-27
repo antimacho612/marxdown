@@ -74,6 +74,8 @@ pub const KEY_PREVIEW_SOFT_BREAK: &str = "preview.softBreak";
 pub const KEY_PREVIEW_TABLE_STYLE: &str = "preview.tableStyle";
 pub const KEY_PREVIEW_THEME: &str = "preview.theme";
 
+pub const KEY_UPDATE_AUTO_CHECK: &str = "update.autoCheck";
+
 pub const KEY_WINDOW_CLOSE_TO_TRAY: &str = "window.closeToTray";
 
 /// プレビューの既定。`src/styles/tokens.css` と揃える。
@@ -375,6 +377,11 @@ pub struct Settings {
     #[serde(rename = "preview.theme")]
     pub preview_theme: String,
 
+    /// 新しい版を自動で確認するか（F-OS-06 / ADR-0020）。
+    /// `false` でも、コマンドパレットの「更新を確認」は使える。
+    #[serde(rename = "update.autoCheck")]
+    pub update_auto_check: bool,
+
     /// `✕` で閉じたときにトレイへ格納するか（F-OS-08 / ADR-0007）。
     /// 既定を `true` にしているのは、常駐してウォーム起動を利用することがプロダクトの中心価値だからである（ADR-0004）。
     #[serde(rename = "window.closeToTray")]
@@ -444,6 +451,8 @@ impl Default for Settings {
             preview_soft_break: false,
             preview_table_style: TableStyle::default(),
             preview_theme: DEFAULT_THEME_ID.to_owned(),
+
+            update_auto_check: true,
 
             window_close_to_tray: true,
 
@@ -561,6 +570,8 @@ impl Settings {
             preview_table_style: take(&mut map, KEY_PREVIEW_TABLE_STYLE)
                 .unwrap_or(d.preview_table_style),
             preview_theme: take_theme_id(&mut map, KEY_PREVIEW_THEME).unwrap_or(d.preview_theme),
+
+            update_auto_check: take(&mut map, KEY_UPDATE_AUTO_CHECK).unwrap_or(d.update_auto_check),
 
             window_close_to_tray: take(&mut map, KEY_WINDOW_CLOSE_TO_TRAY)
                 .unwrap_or(d.window_close_to_tray),
