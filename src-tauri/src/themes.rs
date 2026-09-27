@@ -384,9 +384,11 @@ mod tests {
         let d = temp_dir("ensure").join("themes");
 
         ensure_dir(&d).unwrap();
-        assert!(std::fs::read_to_string(d.join("README.css"))
-            .unwrap()
-            .contains("Marxdown の配色ファイル"));
+        // 雛形の言語は実行環境の OS の表示言語で決まる（`i18n.rs`）。
+        assert_eq!(
+            std::fs::read_to_string(d.join("README.css")).unwrap(),
+            crate::i18n::text().themes_template
+        );
 
         std::fs::write(d.join("README.css"), "書き換えた").unwrap();
         ensure_dir(&d).unwrap();
