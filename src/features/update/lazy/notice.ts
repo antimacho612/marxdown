@@ -1,18 +1,16 @@
 import { documentStore } from '@/features/document';
-import { ja } from '@/i18n/ja';
+import { jaUpdate } from '@/i18n/ja-update';
 import { getPlatform, type UpdateInfo } from '@/platform';
 
 /**
- * 自動の確認で見つかった版を通知バーに出す。起動時に 1 回だけ呼ぶ。
+ * 自動の確認で見つかった版を通知バーに出す。
  *
  * 既に別の通知が出ているときは出さない。
  * 外部での変更や保存の失敗は、利用者が選ぶまで残すべき通知であり、更新の案内で上書きしてはいけない。
  * 出せなかった分は、次の確認（24 時間後）か手動の確認で改めて出る。
  */
-export function installUpdateNotice(): void {
-  getPlatform().onUpdateAvailable((info) => {
-    if (documentStore.notice === null) showAvailable(info);
-  });
+export function notifyAvailable(info: UpdateInfo): void {
+  if (documentStore.notice === null) showAvailable(info);
 }
 
 /**
@@ -27,22 +25,22 @@ export async function checkForUpdates(): Promise<void> {
     if (info) {
       showAvailable(info);
     } else {
-      documentStore.statusMessage = ja.update.upToDate;
+      documentStore.statusMessage = jaUpdate.upToDate;
     }
   } catch (error) {
     // 詳細（reqwest のエラー文）は利用者に見せない（docs/conventions/02-ui-wording.md §1）。
     console.warn('[marxdown] 更新の確認に失敗した', error);
-    documentStore.notice = { level: 'error', message: ja.update.checkFailed };
+    documentStore.notice = { level: 'error', message: jaUpdate.checkFailed };
   }
 }
 
 function showAvailable(info: UpdateInfo): void {
   documentStore.notice = {
     level: 'info',
-    message: ja.update.available(info.version),
+    message: jaUpdate.available(info.version),
     actions: [
-      { label: ja.update.install, run: () => void install() },
-      { label: ja.update.notes, run: () => void getPlatform().openExternal(info.notesUrl) },
+      { label: jaUpdate.install, run: () => void install() },
+      { label: jaUpdate.notes, run: () => void getPlatform().openExternal(info.notesUrl) },
     ],
   };
 }
@@ -56,21 +54,21 @@ function showAvailable(info: UpdateInfo): void {
  */
 async function install(): Promise<void> {
   // ダウンロードには数秒かかる。押した結果が何も見えない時間を作らない。
-  documentStore.notice = { level: 'info', message: ja.update.downloading };
+  documentStore.notice = { level: 'info', message: jaUpdate.downloading };
   try {
     const refusal = await getPlatform().installUpdate();
     if (refusal === 'dirty') {
       documentStore.notice = {
         level: 'warning',
-        message: ja.update.dirty,
-        actions: [{ label: ja.update.install, run: () => void install() }],
+        message: jaUpdate.dirty,
+        actions: [{ label: jaUpdate.install, run: () => void install() }],
       };
     } else {
       documentStore.notice = null;
-      documentStore.statusMessage = ja.update.upToDate;
+      documentStore.statusMessage = jaUpdate.upToDate;
     }
   } catch (error) {
     console.warn('[marxdown] 更新の適用に失敗した', error);
-    documentStore.notice = { level: 'error', message: ja.update.installFailed };
+    documentStore.notice = { level: 'error', message: jaUpdate.installFailed };
   }
 }

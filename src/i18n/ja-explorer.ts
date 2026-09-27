@@ -11,6 +11,8 @@ export const jaExplorer = {
   refresh: '最新の情報に更新',
   collapseAll: 'すべて折りたたむ',
   nameInput: '名前',
+  /** 仮タブを通常のタブにする、タブの右クリックメニューの項目（ADR-0025）。仮タブはファイルツリーからしか作られない。 */
+  keepTab: '保持',
   /** 行内の入力欄に出す、名前を確定できない理由（03.ux-spec/06-panes.md §1.4）。 */
   nameProblem: {
     empty: '名前を入力してください',

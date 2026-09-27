@@ -7,7 +7,7 @@ import { initWindowRole, viewStore } from '@/features/view';
 import { recentStore } from '@/features/workspace';
 import type { DocumentMeta } from '@/platform';
 
-import { buildMenu, MENU_RECENT_SHOWN, type MenuGroup } from './items';
+import { buildMenu, MENU_RECENT_SHOWN, type MenuAction, type MenuGroup, type MenuItem } from './items';
 
 /**
  * 実物の表を使う。
@@ -27,6 +27,7 @@ const META: DocumentMeta = {
   readonly: false,
 };
 
+/** 親メニューに並ぶ行の id。サブメニューの中身は含めない。 */
 function ids(groups: MenuGroup[]): string[] {
   return groups.flatMap((g) => g.items.map((i) => i.id));
 }
@@ -35,8 +36,17 @@ function group(groups: MenuGroup[], id: string): MenuGroup | undefined {
   return groups.find((g) => g.id === id);
 }
 
+function item(groups: MenuGroup[], id: string): MenuItem | undefined {
+  return groups.flatMap((g) => g.items).find((i) => i.id === id);
+}
+
+function submenu(groups: MenuGroup[], id: string): MenuAction[] | undefined {
+  const found = item(groups, id);
+  return found?.kind === 'submenu' ? found.items : undefined;
+}
+
 function label(groups: MenuGroup[], itemId: string): string | undefined {
-  return groups.flatMap((g) => g.items).find((i) => i.id === itemId)?.label;
+  return item(groups, itemId)?.label;
 }
 
 beforeEach(() => {
@@ -44,6 +54,7 @@ beforeEach(() => {
   documentStore.meta = null;
   recentStore.entries = [];
   viewStore.mode = 'preview';
+  viewStore.zoom = 1;
   uninstall = registerAppCommands();
 });
 
@@ -61,9 +72,10 @@ describe('ハンバーガーメニューの項目 (03.ux-spec/01-screen-layout.m
 
     // 「新規ファイル」「設定」「終了」は文書に依存しないので、ここでも押せる。
     // タブを別ウィンドウへ移す操作は開いているときだけ。
-    expect(ids(groups)).toEqual(['open', 'open-folder', 'new', 'palette', 'settings', 'quit']);
+    // 「最近開いたファイル」は履歴が空でも親の行を残す。
+    expect(ids(groups)).toEqual(['open', 'open-folder', 'new', 'recent', 'palette', 'settings', 'quit']);
+    expect(group(groups, 'view')).toBeUndefined();
     expect(group(groups, 'document')).toBeUndefined();
-    expect(group(groups, 'zoom')).toBeUndefined();
   });
 
   it('ファイルを開くと、その文書に対する操作が増える', () => {
@@ -73,20 +85,18 @@ describe('ハンバーガーメニューの項目 (03.ux-spec/01-screen-layout.m
       'open',
       'open-folder',
       'new',
+      'recent',
       'save',
       'save-as',
-      'export-html',
-      'export-pdf',
+      'export',
       'move-to-new-window',
       'mode',
       'split',
-      'reload',
-      'search',
       'outline',
       'jump',
-      'zoom-in',
-      'zoom-out',
-      'zoom-reset',
+      'zoom',
+      'reload',
+      'search',
       'palette',
       'settings',
       'quit',
@@ -140,12 +150,47 @@ describe('ハンバーガーメニューの項目 (03.ux-spec/01-screen-layout.m
     expect(ids(buildMenu())).toContain('replace');
   });
 
-  /** 履歴が空でも見出しは出す。項目ではなく 1 行の文で埋める。 */
+  /** 履歴が空でも親の行は出す。サブメニューの中は項目ではなく 1 行の文で埋める。 */
   it('履歴が空のときは、押せない項目の代わりに文を出す', () => {
-    const recent = group(buildMenu(), 'recent');
+    const recent = item(buildMenu(), 'recent');
 
-    expect(recent?.items).toEqual([]);
-    expect(recent?.empty).toBeTruthy();
+    expect(recent?.kind).toBe('submenu');
+    expect(recent?.kind === 'submenu' && recent.items).toEqual([]);
+    expect(recent?.kind === 'submenu' && recent.empty).toBeTruthy();
+  });
+
+  /** 書き出しは形式ごとの項目をサブメニューに収める。形式が増えても親メニューの行数は変わらない。 */
+  it('書き出しの形式はサブメニューに並べる (F-VIEW-18)', () => {
+    documentStore.meta = META;
+
+    expect(submenu(buildMenu(), 'export')?.map((i) => i.id)).toEqual(['export-html', 'export-pdf']);
+  });
+
+  /** 拡大・縮小・等倍は 1 行に収め、現在値を中央に出す。 */
+  it('表示倍率は現在値つきの 1 行にまとめる (F-VIEW-11)', () => {
+    documentStore.meta = META;
+    viewStore.zoom = 1.25;
+
+    const zoom = item(buildMenu(), 'zoom');
+
+    expect(zoom?.kind).toBe('stepper');
+    if (zoom?.kind !== 'stepper') return;
+    expect(zoom.value).toBe('125%');
+    expect([zoom.decrease.id, zoom.reset.id, zoom.increase.id]).toEqual(['zoom-out', 'zoom-reset', 'zoom-in']);
+    expect(zoom.atMin).toBe(false);
+    expect(zoom.atMax).toBe(false);
+  });
+
+  it('表示倍率が端に達すると、その側のボタンを無効として示す', () => {
+    documentStore.meta = META;
+
+    viewStore.zoom = 0.5;
+    const min = item(buildMenu(), 'zoom');
+    expect(min?.kind === 'stepper' && min.atMin).toBe(true);
+
+    viewStore.zoom = 3;
+    const max = item(buildMenu(), 'zoom');
+    expect(max?.kind === 'stepper' && max.atMax).toBe(true);
   });
 
   /** ここが伸びると、メニューが履歴の一覧という別の役割を持つことになる。 */
@@ -155,13 +200,13 @@ describe('ハンバーガーメニューの項目 (03.ux-spec/01-screen-layout.m
       openedAtMs: i,
     }));
 
-    expect(group(buildMenu(), 'recent')?.items).toHaveLength(MENU_RECENT_SHOWN);
+    expect(submenu(buildMenu(), 'recent')).toHaveLength(MENU_RECENT_SHOWN);
   });
 
   it('最近開いたファイルは、名前とディレクトリに割って出す', () => {
     recentStore.entries = [{ path: META.path, openedAtMs: 0 }];
 
-    const [entry] = group(buildMenu(), 'recent')?.items ?? [];
+    const [entry] = submenu(buildMenu(), 'recent') ?? [];
 
     expect(entry?.label).toBe('README.md');
     expect(entry?.detail).toBe('C:\\Users\\me\\repos\\marxdown');
@@ -187,7 +232,10 @@ describe('ハンバーガーメニューの項目 (03.ux-spec/01-screen-layout.m
     documentStore.meta = META;
     recentStore.entries = [{ path: META.path, openedAtMs: 0 }];
 
-    const all = ids(buildMenu());
+    const groups = buildMenu();
+    const all = [...ids(groups), ...(submenu(groups, 'recent') ?? []), ...(submenu(groups, 'export') ?? [])].map((i) =>
+      typeof i === 'string' ? i : i.id,
+    );
 
     expect(new Set(all).size).toBe(all.length);
   });

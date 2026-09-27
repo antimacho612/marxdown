@@ -1,10 +1,10 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { documentStore } from '@/features/document';
-import { ja } from '@/i18n/ja';
+import { jaUpdate } from '@/i18n/ja-update';
 import { getPlatform, setPlatform, type InstallRefusal, type Platform, type UpdateInfo } from '@/platform';
 
-import { checkForUpdates, installUpdateNotice } from './update';
+import { checkForUpdates, notifyAvailable } from './notice';
 
 const original = getPlatform();
 const INFO: UpdateInfo = { version: '0.2.0', notesUrl: 'https://example.com/v0.2.0' };
@@ -21,34 +21,17 @@ afterEach(() => {
 
 describe('自動の確認', () => {
   it('見つかった版を通知バーに出す', () => {
-    let deliver: (info: UpdateInfo) => void = () => {};
-    usePlatform({
-      onUpdateAvailable: (handler) => {
-        deliver = handler;
-        return () => {};
-      },
-    });
+    notifyAvailable(INFO);
 
-    installUpdateNotice();
-    deliver(INFO);
-
-    expect(documentStore.notice?.message).toBe(ja.update.available('0.2.0'));
-    expect(documentStore.notice?.actions?.map((a) => a.label)).toEqual([ja.update.install, ja.update.notes]);
+    expect(documentStore.notice?.message).toBe(jaUpdate.available('0.2.0'));
+    expect(documentStore.notice?.actions?.map((a) => a.label)).toEqual([jaUpdate.install, jaUpdate.notes]);
   });
 
   it('既に出ている通知を上書きしない', () => {
-    let deliver: (info: UpdateInfo) => void = () => {};
-    usePlatform({
-      onUpdateAvailable: (handler) => {
-        deliver = handler;
-        return () => {};
-      },
-    });
     const existing = { level: 'warning' as const, message: '外部で変更されました' };
     documentStore.notice = existing;
 
-    installUpdateNotice();
-    deliver(INFO);
+    notifyAvailable(INFO);
 
     expect(documentStore.notice).toStrictEqual(existing);
   });
@@ -60,7 +43,7 @@ describe('手動の確認', () => {
 
     await checkForUpdates();
 
-    expect(documentStore.statusMessage).toBe(ja.update.upToDate);
+    expect(documentStore.statusMessage).toBe(jaUpdate.upToDate);
     expect(documentStore.notice).toBeNull();
   });
 
@@ -69,7 +52,7 @@ describe('手動の確認', () => {
 
     await checkForUpdates();
 
-    expect(documentStore.notice).toMatchObject({ level: 'error', message: ja.update.checkFailed });
+    expect(documentStore.notice).toMatchObject({ level: 'error', message: jaUpdate.checkFailed });
   });
 });
 
@@ -86,14 +69,14 @@ describe('適用', () => {
     await pressInstall(() => Promise.resolve('dirty'));
 
     await vi.waitFor(() => expect(documentStore.notice?.level).toBe('warning'));
-    expect(documentStore.notice?.message).toBe(ja.update.dirty);
-    expect(documentStore.notice?.actions?.map((a) => a.label)).toEqual([ja.update.install]);
+    expect(documentStore.notice?.message).toBe(jaUpdate.dirty);
+    expect(documentStore.notice?.actions?.map((a) => a.label)).toEqual([jaUpdate.install]);
   });
 
   it('失敗は通知バーに出す', async () => {
     await pressInstall(() => Promise.reject(new Error('signature')));
 
     await vi.waitFor(() => expect(documentStore.notice?.level).toBe('error'));
-    expect(documentStore.notice?.message).toBe(ja.update.installFailed);
+    expect(documentStore.notice?.message).toBe(jaUpdate.installFailed);
   });
 });

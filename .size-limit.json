@@ -66,6 +66,12 @@
     "gzip": true
   },
   {
+    "name": "update (更新の通知と操作。新しい版が見つかるか、「更新を確認」を選ぶまでロードしない — ADR-0024)",
+    "path": ["dist/assets/update-*.js"],
+    "limit": "2 KB",
+    "gzip": true
+  },
+  {
     "name": "bench input (--bench-input のときだけロードする計測経路)",
     "path": ["dist/assets/bench-*.js"],
     "limit": "4 KB",

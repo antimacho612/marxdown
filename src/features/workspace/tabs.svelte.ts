@@ -57,6 +57,8 @@ export interface Tab {
   textDirty: boolean;
   /** 保存時に書き戻す EOL の希望（F-EDIT-14）。 */
   eolOverride: Eol | null;
+  /** 仮タブか（ADR-0025）。開く・置き換える・固定する処理は `lazy/temporary-tab.svelte.ts` にある。 */
+  temporary?: boolean;
 }
 
 class TabsStore {

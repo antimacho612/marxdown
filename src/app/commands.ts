@@ -27,7 +27,7 @@ import { openCommandPaletteLazily, openQuickOpenLazily } from '@/features/palett
 import { toggleLeftPane, toggleRightPane } from '@/features/panes';
 import { zoomIn, zoomOut, zoomReset } from '@/features/preview';
 import { openSettingsLazily } from '@/features/settings';
-import { checkForUpdates } from '@/features/update';
+import { checkForUpdatesLazily } from '@/features/update';
 import { isSatellite, viewStore } from '@/features/view';
 import {
   closeTab,
@@ -248,7 +248,7 @@ const COMMANDS: Command[] = [
   // ダーティ状態の確認（03.ux-spec/07-status-and-notifications.md §1）もこの経路に入るため、確認を挟む場所は 1 か所で済む。
   { id: 'app.quit', run: () => void getPlatform().quitApp() },
   // 更新の確認（ADR-0024）。設定 `update.autoCheck` を切っていても、ここからは確認できる。
-  { id: 'app.checkUpdate', run: () => void checkForUpdates() },
+  { id: 'app.checkUpdate', run: () => void checkForUpdatesLazily() },
 ];
 
 interface KeyBinding {

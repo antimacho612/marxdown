@@ -839,7 +839,8 @@ export const webPlatform: Platform = {
 
   onUpdateAvailable(handler) {
     const info = fakeUpdate();
-    if (info) queueMicrotask(() => handler(info));
+    // 実機では通信を挟むため、起動直後の文書のオープン（通知をクリアする）より後に届く。
+    if (info) setTimeout(() => handler(info), 1000);
     return () => {};
   },
 

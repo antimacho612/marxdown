@@ -14,12 +14,14 @@
 
   import { isSatellite } from '@/features/view';
   import { ja } from '@/i18n/ja';
+  import { jaExplorer } from '@/i18n/ja-explorer';
   import { MAIN_WINDOW } from '@/platform';
 
   import { moveTabToSatellite } from '../new-window';
   import type { TabMenuProps } from '../tab-menu-props';
-  import { closeTab } from '../tabs.svelte';
+  import { closeTab, tabsStore } from '../tabs.svelte';
   import { moveTabToWindow } from './handoff';
+  import { keepTab } from './temporary-tab.svelte';
 
   const { tabId, name, x, y, onclose }: TabMenuProps = $props();
 
@@ -36,6 +38,9 @@
   let placed = $state<{ left: number; top: number } | null>(null);
 
   const items = [
+    ...(tabsStore.tabs.find((tab) => tab.id === tabId)?.temporary
+      ? [{ id: 'keep', label: jaExplorer.keepTab, run: () => keepTab(tabId) }]
+      : []),
     // サテライトからは主ウィンドウへ戻せる（OQ-43）。ドラッグで戻す操作の、キーボードからの入口でもある。
     ...(isSatellite()
       ? [{ id: 'to-main', label: ja.menu.moveToMainWindow, run: () => void moveTabToWindow(tabId, MAIN_WINDOW) }]

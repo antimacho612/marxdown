@@ -298,7 +298,12 @@ HTML5 の drag イベントは使えない。
   {#each tabsStore.tabs as tab (tab.id)}
     {@const name = nameOf(tab)}
     {@const active = tab.id === tabsStore.activeId}
-    <div class="mx-tab" class:mx-tab--active={active} class:mx-tab--dragging={dragging === tab.id && moved}>
+    <div
+      class="mx-tab"
+      class:mx-tab--active={active}
+      class:mx-tab--temporary={tab.temporary}
+      class:mx-tab--dragging={dragging === tab.id && moved}
+    >
       <button
         type="button"
         class="mx-tab__label"
@@ -306,6 +311,7 @@ HTML5 の drag イベントは使えない。
         aria-selected={active}
         title={tabMeta(tab).path ?? name}
         onclick={() => activate(tab)}
+        ondblclick={() => (tab.temporary = false)}
         oncontextmenu={(event) => openMenu(event, tab)}
         onpointerdown={(event) => grab(event, tab)}
         onpointermove={drag}
@@ -406,6 +412,11 @@ HTML5 の drag イベントは使えない。
     overflow: hidden;
     white-space: nowrap;
     text-overflow: ellipsis;
+  }
+
+  /* 仮タブ（ADR-0025）。VS Code と同じく斜体で表す。 */
+  .mx-tab--temporary .mx-tab__name {
+    font-style: italic;
   }
 
   /*

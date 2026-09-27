@@ -445,6 +445,13 @@ export const LAYOUT = [
         label: ja.settings.explorer.exclude.label,
         description: ja.settings.explorer.exclude.description,
       },
+      {
+        kind: 'field',
+        key: 'explorer.temporaryTab',
+        widget: 'toggle',
+        label: ja.settings.explorer.temporaryTab.label,
+        description: ja.settings.explorer.temporaryTab.description,
+      },
     ],
   },
   {

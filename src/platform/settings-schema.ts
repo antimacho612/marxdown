@@ -176,6 +176,11 @@ export const SETTINGS_SCHEMA = defineSettingsSchema({
    * 上限は `src-tauri/src/settings/schema.rs` の `EXCLUDE_MAX` と `glob.rs` の `MAX_PATTERN_LEN` に揃える。
    */
   'explorer.exclude': { kind: 'string[]', default: [], maxLength: 64, maxItemLength: 256 },
+  /**
+   * ファイルツリーの単一クリックで仮タブとして開くか（ADR-0025）。
+   * キーに `preview` を使わないのは、Marxdown の表示モード（Preview）と区別するためである。
+   */
+  'explorer.temporaryTab': { kind: 'boolean', default: true },
 
   /*
    * 追加記法（04.tech-stack/04-markdown.md §3）。どれも既定 OFF である。

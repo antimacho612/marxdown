@@ -96,6 +96,8 @@ export const ja = {
     moveToMainWindow: 'メインウィンドウに戻す',
     save: '保存',
     saveAs: '名前を付けて保存',
+    /** 書き出し形式を並べるサブメニューの見出し（F-VIEW-18）。 */
+    export: '書き出す',
     exportHtml: 'HTML として書き出す',
     exportPdf: 'PDF として書き出す',
     toEdit: '編集する',
@@ -221,18 +223,6 @@ export const ja = {
 
   notice: {
     dismiss: '通知を閉じる',
-  },
-
-  /** 自動更新（ADR-0024 / 03.ux-spec/07-status-and-notifications.md §2）。 */
-  update: {
-    available: (version: string) => `Marxdown ${version} を利用できます`,
-    install: '更新して再起動',
-    notes: '変更内容',
-    downloading: '更新をダウンロードしています…',
-    dirty: '保存していない変更があります。保存してから更新してください',
-    upToDate: 'Marxdown は最新です',
-    checkFailed: '更新を確認できませんでした。ネットワークの接続を確認してください',
-    installFailed: '更新できませんでした。時間をおいてもう一度お試しください',
   },
 
   editor: {
@@ -447,6 +437,11 @@ export const ja = {
           'エクスプローラーと「ファイルへ移動」に表示しないパスを、glob パターン（* などのワイルドカード）で指定します。カンマで区切って複数指定できます。/ を含まないパターンは、どの階層にある同じ名前にも一致します。隠しファイルと node_modules は、この設定に関係なく表示しません。',
         placeholder: '例: dist, *.tmp, docs/generated',
       },
+      temporaryTab: {
+        label: 'クリックしたファイルを仮タブで開く',
+        description:
+          '仮タブは名前が斜体で表示され、別のファイルをクリックすると置き換わります。編集するか、ダブルクリックすると通常のタブになります。',
+      },
     },
 
     outline: {
@@ -460,8 +455,7 @@ export const ja = {
     update: {
       autoCheck: {
         label: '新しいバージョンを自動で確認する',
-        description:
-          '起動時とウィンドウを前面に出したときに、1 日 1 回まで確認します。オフにしても、コマンドパレットの「更新を確認」から確認できます。',
+        description: '起動時とウィンドウを前面に出したときに、1 日 1 回まで確認します。',
       },
     },
 
