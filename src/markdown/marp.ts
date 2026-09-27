@@ -10,7 +10,7 @@ import { Marp } from '@marp-team/marp-core';
 import type { MarkdownIt, StateCore, Token } from 'markdown-it';
 
 import type { OutlineItem } from './plugins/line-map';
-import type { MarpRender } from './protocol';
+import type { MarpRender, MarpThemeProblem, MarpThemeSet } from './protocol';
 
 /**
  * pipeline チャンクから受け取る関数。
@@ -23,6 +23,8 @@ export interface MarpHelpers {
 }
 
 let marp: Marp | null = null;
+/** 登録済みの自作テーマ。読み込み結果が同じオブジェクトであれば登録し直さない。 */
+let registered: MarpThemeSet | null = null;
 
 function createMarp({ mathPlugin, extractOutline }: MarpHelpers): Marp {
   const instance = new Marp({
@@ -61,10 +63,33 @@ interface MarpEnv {
   outline?: MarpRender['outline'];
 }
 
-/** Marp の文書を描く。スライドごとの HTML を返し、出力はサニタイズしていない。 */
-export function renderMarp(text: string, helpers: MarpHelpers): MarpRender {
-  marp ??= createMarp(helpers);
+/**
+ * Marp の文書を描く。スライドごとの HTML を返し、出力はサニタイズしていない。
+ *
+ * `themes` が前回と違うオブジェクトであれば、インスタンスを作り直して自作テーマを登録する。
+ * 作り直すのは、組み込みと同じ名前（`default` など）で上書きしたテーマを元に戻すためである。
+ */
+export function renderMarp(text: string, helpers: MarpHelpers, themes: MarpThemeSet): MarpRender {
+  let themeProblems: MarpThemeProblem[] | undefined;
+  if (!marp || registered !== themes) {
+    marp = createMarp(helpers);
+    themeProblems = [...themes.problems, ...register(marp, themes)];
+    registered = themes;
+  }
   const env: MarpEnv = { htmlAsArray: true };
   const { html, css } = marp.render(text, env);
-  return { slides: html, css, outline: env.outline ?? [] };
+  return { slides: html, css, outline: env.outline ?? [], ...(themeProblems && { themeProblems }) };
+}
+
+/** 自作テーマを登録する。`/* @theme 名前 *\/` が無く marp-core が拒んだものを返す。 */
+function register(instance: Marp, themes: MarpThemeSet): MarpThemeProblem[] {
+  const problems: MarpThemeProblem[] = [];
+  for (const { path, css } of themes.themes) {
+    try {
+      instance.themeSet.add(css);
+    } catch {
+      problems.push({ path, kind: 'no-theme-name' });
+    }
+  }
+  return problems;
 }

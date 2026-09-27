@@ -9,6 +9,7 @@
  * 閉じ込めの判定は配色の注入（`features/theme/inject.ts`）と同じく、ブラウザに解釈させた規則の数とセレクタだけを見る。
  * 入れ子にすると ID の分だけ詳細度が上がり、アプリのプレビュー用の規則（`.mx-preview pre` など）より優先される。
  */
+import { jaMarp } from '@/i18n/ja-marp';
 import type { MarpRender } from '@/markdown/protocol';
 import { isAllowedUri, sanitizeMarp } from '@/markdown/sanitize';
 import { getPlatform } from '@/platform';
@@ -65,8 +66,12 @@ const resolved = new Map<string, Promise<string | null>>();
 
 /** `mountMarp` の結果。 */
 export interface MountResult {
-  /** テーマの CSS がスライドの外へ出るため適用しなかった。 */
-  styleRejected: boolean;
+  /**
+   * 通知バーに出す文言。無ければ `null`。
+   *
+   * テーマの CSS がスライドの外へ出る場合を、自作テーマを読み込めなかった場合より優先する。表示が崩れるのは前者だけである。
+   */
+  notice: string | null;
 }
 
 /**
@@ -90,7 +95,12 @@ export function mountMarp(container: HTMLElement, marp: MarpRender, baseDir: str
   container.append(style, deck);
 
   void resolveBackgrounds(deck, baseDir);
-  return { styleRejected: theme === null };
+  return { notice: theme === null ? jaMarp.styleRejected : themeNotice(marp.themeProblems ?? []) };
+}
+
+function themeNotice(problems: NonNullable<MarpRender['themeProblems']>): string | null {
+  const first = problems[0];
+  return first ? jaMarp.themeFailed(jaMarp.themeProblem[first.kind], first.path, problems.length - 1) : null;
 }
 
 /** 保持しているものを解放する（N-PERF-06）。文書を閉じたときに呼ぶ。 */

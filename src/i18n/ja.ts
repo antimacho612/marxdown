@@ -190,7 +190,6 @@ export const ja = {
     imageAllowHint: (dir: string) =>
       `アプリを終了するまで、${dir} にある画像の表示を許可します（サブフォルダーは含みません）`,
     imageAllowFailed: '表示を許可できませんでした',
-    marpStyleRejected: 'Marp のスタイルの { と } が対応していないため、適用できません',
   },
 
   search: {
@@ -416,6 +415,15 @@ export const ja = {
       scrollBeyondLastLine: {
         label: '最終行より下へのスクロール',
         description: '最終行が画面の上端に来るまでスクロールできるようにします。',
+      },
+    },
+
+    marp: {
+      themes: {
+        label: 'Marp のテーマ',
+        description:
+          'スライドの theme: で選べるテーマを、CSS ファイルかフォルダーの絶対パスで指定します。カンマで区切って複数指定できます。',
+        placeholder: '例: C:\\slides\\themes',
       },
     },
 

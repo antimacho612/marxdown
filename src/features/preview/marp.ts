@@ -10,8 +10,8 @@ import { paint, type PaintResult } from './paint';
 
 /** `paintMarp` の結果。 */
 export interface MarpPaintResult extends PaintResult {
-  /** テーマの CSS がスライドの外へ出るため適用しなかった。 */
-  styleRejected: boolean;
+  /** 通知バーに出す文言（`lazy/marp.ts` の `MountResult`）。 */
+  notice: string | null;
 }
 
 /** ロード済みの遅延チャンクの解放関数。`main` から遅延チャンクを静的に辿らせないため、関数だけを保持する。 */
@@ -28,9 +28,9 @@ export async function paintMarp(container: HTMLElement, marp: MarpRender, baseDi
 
   // 空のチャンク列で描くと、段階的描画の打ち切りと差分更新の基準の破棄も行われる。
   paint(container, []);
-  const { styleRejected } = mountMarp(container, marp, baseDir);
+  const { notice } = mountMarp(container, marp, baseDir);
   const firstChunkAt = performance.now();
-  return { firstChunkAt, done: Promise.resolve(firstChunkAt), styleRejected };
+  return { firstChunkAt, done: Promise.resolve(firstChunkAt), notice };
 }
 
 /** 遅延チャンクが保持しているもの（背景画像の解決結果とテーマの判定結果）を解放する（N-PERF-06）。 */

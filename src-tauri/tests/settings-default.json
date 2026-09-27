@@ -33,6 +33,7 @@
   "markdown.multilineTables": false,
   "markdown.subscript": false,
   "markdown.superscript": false,
+  "marp.themes": [],
   "outline.maxDepth": 6.0,
   "preview.codeFontFamily": "",
   "preview.fontFamily": "",

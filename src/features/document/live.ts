@@ -217,9 +217,9 @@ async function renderOnce(): Promise<void> {
       if (parsed.marp) {
         // NOTE: スライドは差分更新せず全体を入れ直す。同じタスク内で入れ直すため、通常はスクロール位置が保たれる。
         const scrollTop = container.scrollTop;
-        const { styleRejected } = await paintMarp(container, parsed.marp, dirOf(meta.path ?? ''));
+        const { notice } = await paintMarp(container, parsed.marp, dirOf(meta.path ?? ''));
         if (container.scrollTop !== scrollTop) container.scrollTop = scrollTop;
-        if (styleRejected) documentStore.notice = { level: 'warning', message: ja.preview.marpStyleRejected };
+        if (notice) documentStore.notice = { level: 'warning', message: notice };
       } else {
         patch(container, parsed.blocks, parsed.frontMatter);
       }

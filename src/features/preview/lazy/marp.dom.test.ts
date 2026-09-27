@@ -7,6 +7,7 @@
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { jaMarp } from '@/i18n/ja-marp';
 import type { MarpRender } from '@/markdown/protocol';
 import { getPlatform, setPlatform, type Platform } from '@/platform';
 
@@ -147,21 +148,38 @@ describe('style の url()', () => {
   });
 });
 
+describe('自作テーマの通知', () => {
+  it('読み込めなかった最初の 1 件と、残りの件数を出す', () => {
+    const { notice } = mountMarp(
+      container,
+      {
+        ...render([frame('<section></section>')]),
+        themeProblems: [
+          { path: 'C:/t/a.css', kind: 'missing' },
+          { path: 'C:/t/b.css', kind: 'no-theme-name' },
+        ],
+      },
+      '',
+    );
+    expect(notice).toBe(jaMarp.themeFailed(jaMarp.themeProblem.missing, 'C:/t/a.css', 1));
+  });
+});
+
 describe('テーマの CSS', () => {
   it('#mx-preview の入れ子にして本文の中に置く', () => {
-    const { styleRejected } = mountMarp(container, render([frame('<section></section>')], 'section{color:red}'), '');
-    expect(styleRejected).toBe(false);
+    const { notice } = mountMarp(container, render([frame('<section></section>')], 'section{color:red}'), '');
+    expect(notice).toBeNull();
     const style = container.querySelector('style');
     expect(style?.textContent).toContain('#mx-preview {\nsection{color:red}\n}');
   });
 
   it('波かっこを余分に閉じて外へ出るものは適用しない', () => {
-    const { styleRejected } = mountMarp(
+    const { notice } = mountMarp(
       container,
       render([frame('<section></section>')], '}\nbody { display: none; }\n#mx-preview {'),
       '',
     );
-    expect(styleRejected).toBe(true);
+    expect(notice).toBe(jaMarp.styleRejected);
     expect(container.querySelector('style')?.textContent).not.toContain('body {');
   });
 });

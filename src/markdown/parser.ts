@@ -8,7 +8,7 @@
  *
  * `pipeline` を動的 import にしているのは遅延のためではなく、`main` チャンクの予算計測を実態に合わせるためである（size-limit のクリティカルパスに名指しで入っている）。
  */
-import { DEFAULT_CHUNK_BLOCKS, DEFAULT_FIRST_CHUNK_BLOCKS, type ParseResult } from './protocol';
+import { DEFAULT_CHUNK_BLOCKS, DEFAULT_FIRST_CHUNK_BLOCKS, type MarpThemeSet, type ParseResult } from './protocol';
 
 /** チャンク分割の指定。省略時は `protocol.ts` の既定値を使う。 */
 export interface ParseOptions {
@@ -22,7 +22,15 @@ export interface ParseOptions {
    * 描画の前にここで読み込みを待つ。既定（空）では読み込むものが無く、往復も発生しない。
    */
   syntax?: readonly string[];
+  /**
+   * Marp の自作テーマ（`marp.themes`）を読む関数。Marp の文書を描くときだけ呼ぶ。
+   *
+   * 同じ読み込み結果（同じオブジェクト）を返す限り、テーマは登録し直さない。
+   */
+  marpThemes?: () => Promise<MarpThemeSet>;
 }
+
+const NO_THEMES: MarpThemeSet = { themes: [], problems: [] };
 
 /** パースのインタフェース。実体は `createParser` が返す。 */
 export interface MarkdownParser {
@@ -53,7 +61,7 @@ export function createParser(): MarkdownParser {
         // Marp の描画（F-VIEW-17）は `marp: true` の文書を開くまで読み込まない。
         const { renderMarp } = await import('./marp');
         const started = performance.now();
-        const rendered = renderMarp(text, { mathPlugin, extractOutline });
+        const rendered = renderMarp(text, { mathPlugin, extractOutline }, (await options.marpThemes?.()) ?? NO_THEMES);
         return {
           id,
           chunks: [],

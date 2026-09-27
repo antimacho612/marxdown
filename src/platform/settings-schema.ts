@@ -191,6 +191,8 @@ export const SETTINGS_SCHEMA = defineSettingsSchema({
   'markdown.multilineTables': { kind: 'boolean', default: false },
   'markdown.subscript': { kind: 'boolean', default: false },
   'markdown.superscript': { kind: 'boolean', default: false },
+  // Marp の自作テーマ。CSS ファイルかフォルダーの絶対パス（ADR-0023 §3.4）。上限は `src-tauri/src/settings/schema.rs` と揃える。
+  'marp.themes': { kind: 'string[]', default: [], maxLength: 32, maxItemLength: 1024 },
 
   /** アウトラインに表示する見出しの最大階層（`h1`〜`h6`）。6 は見出しの最大階層で、実質「制限なし」を意味する。 */
   'outline.maxDepth': { kind: 'number', default: 6, min: 1, max: 6 },

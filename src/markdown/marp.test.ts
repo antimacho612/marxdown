@@ -2,11 +2,53 @@ import { describe, expect, it } from 'vitest';
 
 import { renderMarp as render } from './marp';
 import { extractOutline, marpFrontMatter, mathPlugin } from './pipeline';
-import type { MarpRender } from './protocol';
+import type { MarpRender, MarpThemeSet } from './protocol';
 
-function renderMarp(text: string): MarpRender {
-  return render(text, { mathPlugin, extractOutline });
+const NO_THEMES: MarpThemeSet = { themes: [], problems: [] };
+
+function renderMarp(text: string, themes = NO_THEMES): MarpRender {
+  return render(text, { mathPlugin, extractOutline }, themes);
 }
+
+describe('自作テーマ', () => {
+  const deck = (theme: string): string => `---\nmarp: true\ntheme: ${theme}\n---\n\n# a\n`;
+
+  it('@theme の名前で登録し、文書の theme: から選べる', () => {
+    const themes: MarpThemeSet = {
+      themes: [{ path: 'C:/t/mine.css', css: '/* @theme mine */\nsection { background: #123456; }' }],
+      problems: [],
+    };
+    const { css, themeProblems } = renderMarp(deck('mine'), themes);
+    expect(css).toContain('#123456');
+    expect(themeProblems).toEqual([]);
+  });
+
+  it('@theme の無いものと、読めなかったものを返す', () => {
+    const themes: MarpThemeSet = {
+      themes: [{ path: 'C:/t/nameless.css', css: 'section { color: red; }' }],
+      problems: [{ path: 'C:/t/missing.css', kind: 'missing' }],
+    };
+    expect(renderMarp(deck('default'), themes).themeProblems).toEqual([
+      { path: 'C:/t/missing.css', kind: 'missing' },
+      { path: 'C:/t/nameless.css', kind: 'no-theme-name' },
+    ]);
+  });
+
+  it('同じ読み込み結果では登録し直さず、問題も繰り返し返さない', () => {
+    const themes: MarpThemeSet = { themes: [], problems: [{ path: 'C:/t/a.css', kind: 'missing' }] };
+    expect(renderMarp(deck('default'), themes).themeProblems).toHaveLength(1);
+    expect(renderMarp(deck('default'), themes).themeProblems).toBeUndefined();
+  });
+
+  it('組み込みの名前を上書きしたテーマは、外すと元に戻る', () => {
+    const override: MarpThemeSet = {
+      themes: [{ path: 'C:/t/default.css', css: '/* @theme default */\nsection { background: #abcdef; }' }],
+      problems: [],
+    };
+    expect(renderMarp(deck('default'), override).css).toContain('#abcdef');
+    expect(renderMarp(deck('default'), { themes: [], problems: [] }).css).not.toContain('#abcdef');
+  });
+});
 
 describe('marpFrontMatter', () => {
   const marp = (frontMatter: string): boolean => marpFrontMatter(`---\n${frontMatter}\n---\n\n# a\n`) !== null;

@@ -1,7 +1,7 @@
 /**
  * パースの結果そのものを変える設定を購読し、変更されたら本文を再描画する。
  *
- * 対象は `preview.softBreak` と追加記法（`markdown.*` / 04.tech-stack/04-markdown.md §3）である。
+ * 対象は `preview.softBreak` と追加記法（`markdown.*` / 04.tech-stack/04-markdown.md §3）と、Marp の自作テーマ（`marp.themes`）である。
  * どちらも HTML の生成に関わるため、CSS だけで反映できるテーマやフォントとは違い、反映するには再パースが要る。
  * `document` と `settings` はどちらも相手の feature を直接参照できないため（02.architecture/03-layers.md §3）、両方を知っている `app/` 層でこの購読をつなぐ。
  */
@@ -18,7 +18,7 @@ import type { Settings } from '@/platform';
  * `renderNow()` はプレビューの DOM を作り直すので、そのたびに本文が消えてから再描画される。
  */
 function renderSignature(values: Settings): string {
-  return `${String(values['preview.softBreak'])}\n${enabledSyntax(values).join(',')}`;
+  return [String(values['preview.softBreak']), enabledSyntax(values).join(','), ...values['marp.themes']].join('\n');
 }
 
 /** `startup()` から 1 回だけ呼ぶ。解除はしない（アプリの寿命いっぱい購読し続ける）。 */

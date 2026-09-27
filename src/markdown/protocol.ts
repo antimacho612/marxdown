@@ -39,6 +39,29 @@ export interface MarpRender {
   /** テーマと文書中の `<style>` をまとめた CSS。Marpit がスライドの中へ閉じ込めてある。 */
   css: string;
   outline: OutlineItem[];
+  /**
+   * 自作テーマ（`marp.themes`）のうち、登録できなかったもの。
+   *
+   * テーマを読み直したときだけ入る。打鍵ごとの再描画で同じ通知を繰り返さないためである。
+   */
+  themeProblems?: MarpThemeProblem[];
+}
+
+/** Marp の自作テーマの読み込み結果（`platform` の `MarpThemes` と同じ形）。 */
+export interface MarpThemeSet {
+  themes: { path: string; css: string }[];
+  problems: MarpThemeProblem[];
+}
+
+/**
+ * 自作テーマを登録できなかった理由。
+ *
+ * `no-theme-name` 以外は Rust 側が読むときに判定する（`src-tauri/src/marp_themes.rs`）。
+ * `no-theme-name` は `/* @theme 名前 *\/` が無く、marp-core が登録を拒んだものである。
+ */
+export interface MarpThemeProblem {
+  path: string;
+  kind: 'not-absolute' | 'missing' | 'not-css' | 'too-large' | 'too-many' | 'unreadable' | 'no-theme-name';
 }
 
 /** 段階的描画の既定値。最初のチャンクがおよそ 1 画面分になるように選ぶ。 */
