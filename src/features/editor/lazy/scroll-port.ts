@@ -1,9 +1,9 @@
 /**
- * スクロール同期の窓口の、Monaco 側の実装（`editor` チャンク）。
+ * スクロール同期のインタフェースの、Monaco 側の実装（`editor` チャンク）。
  *
  * 同期アルゴリズム（`features/view/scroll-sync.ts`）は行番号しか知らず、スクロール量との換算はエンジンごとに違うためここに閉じ込める（ADR-0009）。
  * `document/text.ts` の `EditorTextPort` と同じ形で、`main` 側が interface を持ち `editor` 側が実装を渡す。
- * CodeMirror では `scrollDOM.scrollTop` と `lineBlockAt*` の座標系がパディング分ズレていたが、Monaco の `getTopForLineNumber` / `getScrollTop` は同じ座標系なので補正が要らない。
+ * Monaco の `getTopForLineNumber` と `getScrollTop` は同じ座標系であるため、両者の間に補正は要らない。
  */
 import type { EditorScrollPort } from '@/features/view';
 
@@ -11,20 +11,18 @@ import type { monaco } from './monaco';
 
 type Editor = monaco.editor.IStandaloneCodeEditor;
 
-/** 行番号を 1〜行数に丸める。範囲外を弾くのはポート側の責務。 */
+/** 行番号を 1〜行数に丸める。範囲外の値を丸めるのはポート側の責務である。 */
 function clampLine(editor: Editor, line: number): number {
   const lines = editor.getModel()?.getLineCount() ?? 1;
   return Math.min(lines, Math.max(1, line));
 }
 
 /**
- * 高さ `offset` に載っている行番号。
+ * 高さ `offset` の位置にある行番号。
  *
- * `getVisibleRanges()` は使わない。返るのは描画されている範囲であり、
- * 上端に半分だけ隠れている行を含むかどうかがビューポートの状態に依る。
+ * `getVisibleRanges()` は使わない。返るのは描画されている範囲であり、上端に半分だけ隠れている行を含むかどうかがビューポートの状態に依る。
  * ここで必要なのは指定した高さにある行であるため、単調増加する `getTopForLineNumber` を二分探索する。
- * 折り返しがあっても正しく求められ、
- * `huge.md`（5 万行）でも 16 回で決まる。
+ * 折り返しがあっても正しく求められ、`huge.md`（5 万行）でも 16 回で決まる。
  */
 function lineAtOffset(editor: Editor, offset: number): number {
   let low = 1;

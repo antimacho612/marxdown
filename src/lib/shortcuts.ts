@@ -1,9 +1,9 @@
 /**
- * グローバルキーバインド（03.ux-spec/04-keybindings.md）。
+ * グローバルキーバインド。
  *
- * 和音（`Ctrl+K V` 等）は扱わない（§2）ので、1 イベント 1 判定で済む。
+ * 和音（`Ctrl+K V` 等）は扱わないので、1 イベント 1 判定で済む。
  * 「入力中かどうか」も見ない。
- * 境界は `app/commands.ts` の `KEY_BINDINGS`（アプリ操作、どこでも効く）と `features/editor/lazy/keymap.ts`（本文の編集、エディター内でのみ効く）のどちらに書いてあるかで決まり、両者は重ならない（`keymap.ts` が重複キーを外す）。
+ * 境界は `app/commands.ts` の `KEY_BINDINGS`（アプリ操作、どこでも有効）と `features/editor/lazy/keymap.ts`（本文の編集、エディター内でのみ有効）のどちらに書いてあるかで決まり、両者は重ならない（`keymap.ts` が重複キーを外す）。
  *
  * `Ctrl+=` / `Ctrl+-` / `Ctrl+F` は WebView 自身の機能にも割り当たっているため、一致したバインドでは必ず `preventDefault()` して二重動作を防ぐ。
  */
@@ -74,17 +74,18 @@ function dispatch(event: KeyboardEvent): void {
 }
 
 /**
- * イベントを `Ctrl+Shift+P` 形式に落とす。
+ * イベントを `Ctrl+Shift+P` 形式に変換する。
  *
  * `metaKey` を Ctrl と同一視しているのは、Windows を第一優先としたまま macOS でも動作させるためである。
- * macOS 固有の割り当ては M6 で扱う。
+ * macOS 固有の割り当ては macOS ビルド（F-OS-07）で扱う。
+ * ウィジェット内のキー（ファイルツリーの `F2` など / `features/workspace/lazy/tree-keys.ts`）も同じ表記で判定する。
  */
-function comboOf(event: KeyboardEvent): string {
+export function comboOf(event: KeyboardEvent): string {
   const key = canonicalKey(event.key);
   const parts: string[] = [];
   if (event.ctrlKey || event.metaKey) parts.push('Ctrl');
   // `=` は Shift の有無で `+` になる。
-  // 倍率の拡大はどちらでも動作させるため、Shift を修飾子として数えない（03.ux-spec/04-keybindings.md §3 の `Ctrl+=`）。
+  // 倍率の拡大はどちらでも動作させるため、Shift を修飾子として数えない（`Ctrl+=`）。
   if (event.shiftKey && key !== '=') parts.push('Shift');
   if (event.altKey) parts.push('Alt');
   parts.push(key);

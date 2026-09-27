@@ -1,8 +1,8 @@
 /**
  * Markdown の書式コマンド（F-EDIT-08 / `editor` チャンク）。
  *
- * `Ctrl+B` を VS Code のサイドバー切替ではなく太字に割り当てる決定の実体である（Markdown First が Familiar より優先順位が高いため / 03.ux-spec/04-keybindings.md §1）。
- * 押した反応は §5 が定める（選択なしは記号だけ挿入、選択ありは囲む、既に囲まれていれば外す、複数カーソルは全てに適用）。
+ * `Ctrl+B` を VS Code のサイドバー切替ではなく太字に割り当てる決定の実体である（Markdown First が Familiar より優先順位が高いため）。
+ * 押した反応は次のとおり（選択なしは記号だけ挿入、選択ありは囲む、既に囲まれていれば外す、複数カーソルは全てに適用）。
  * 「囲まれている」は記号ごと選んだ場合と中身だけ選んだ場合の 2 通りがあり、どちらも外せないと押すたびに記号が増えてしまう。
  *
  * 触るのは Monaco のモデル（＝ Markdown テキストそのもの）で AST でも DOM でもない（ADR-0002）。
@@ -18,7 +18,7 @@ interface Wrap {
    * その位置に記号があると見なすかを、記号文字の連続数から判定する。
    *
    * `*` は太字と斜体で共有されている。
-   * 単純に「`*` で始まるか」で見ると、`**bold**` に斜体を掛けたときに太字の記号を 1 つずつ剥がしてしまうため、CommonMark と同じく連続数（1 なら斜体、2 なら太字、3 なら両方）で見分ける。
+   * 単純に「`*` で始まるか」で見ると、`**bold**` に斜体を掛けたときに太字の記号を 1 つずつ取り除いてしまうため、CommonMark と同じく連続数（1 なら斜体、2 なら太字、3 なら両方）で見分ける。
    */
   present: (run: number) => boolean;
 }
@@ -48,7 +48,7 @@ function runAfter(model: monaco.editor.ITextModel, pos: number, char: string, li
  * 囲みをトグルする。
  *
  * カーソルが語の内側にあるだけでは記号を除去しない。
- * `**bo|ld**` で `Ctrl+B` を押した場合は §5 の「選択なし」に従って記号を挿入する。
+ * `**bo|ld**` で `Ctrl+B` を押した場合は「選択なし」に従って記号を挿入する。
  * 語の範囲を推測して除去する方式は、操作前に対象範囲を判断できない（Principle 3）。
  */
 function toggleWrap({ marker, present }: Wrap): MarkdownEdit {
@@ -88,7 +88,7 @@ function toggleWrap({ marker, present }: Wrap): MarkdownEdit {
         };
       }
 
-      // 3. 囲む。選択が無ければ記号だけを入れて、あいだにカーソルを置く（§5）
+      // 3. 囲む。選択が無ければ記号だけを入れて、あいだにカーソルを置く
       return {
         edits: [
           { from, to: from, text: marker },
@@ -106,9 +106,9 @@ export const toggleStrikethrough = toggleWrap(STRIKETHROUGH);
 export const toggleInlineCode = toggleWrap(CODE);
 
 /**
- * リンクを挿入する（`Ctrl+K` / 03.ux-spec/04-keybindings.md §3）。
+ * リンクを挿入する（`Ctrl+K`）。
  *
- * 選択範囲がリンクテキストになる（§3 の但し書き）。
+ * 選択範囲がリンクテキストになる。
  * URL は空のまま挿入し、そこへカーソルを置く。
  * 選択が無い場合は `[]()` を挿入し、`[]` の中へカーソルを置く。
  * 次に入力する対象が異なるため、カーソルの位置も変える。
@@ -146,7 +146,7 @@ function prefixLength(text: string, pattern: RegExp): number {
  * `build` は 1 行につき 1 回呼ばれ、その行に対する変更（`null` なら変えない）を返す。
  * 番号付きリストの連番のために `index` を渡す。
  *
- * 行を丸ごと差し替えるとカーソルが行頭へ飛び入力位置を見失うため、変えるのは記法の部分だけにして本文には触らない。
+ * 行を丸ごと差し替えるとカーソルが行頭へ移動して入力位置を見失うため、変えるのは記法の部分だけにして本文には触らない。
  * 選択範囲は指定せず Monaco に編集を通して移動させることで、記法だけを触っているかぎりカーソルは同じ場所に残る。
  *
  * 1 行も変わらなければ `null` を返す。
@@ -169,7 +169,7 @@ function lineCommand(
   };
 }
 
-/** 行頭の記法をすべて剥がして、インデントと素の本文に分ける。 */
+/** 行頭の記法をすべて取り除いて、インデントと素の本文に分ける。 */
 function stripMarkers(text: string): { indent: string; body: string } {
   const indent = /^[\t ]*/.exec(text)?.[0] ?? '';
   let body = text.slice(indent.length);
@@ -293,7 +293,7 @@ export const toggleCodeBlock: MarkdownEdit = (model, selections) => {
     };
   }
 
-  // 空行にカーソルを置いただけなら、空のブロックを入れて中へ運ぶ
+  // 空行にカーソルを置いただけなら、空のブロックを挿入してその中へカーソルを置く
   if (empty && first.text === '') {
     const at = first.from + FENCE.length + 1;
     return {

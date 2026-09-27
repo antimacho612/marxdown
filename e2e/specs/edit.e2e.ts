@@ -1,14 +1,14 @@
 /**
- * VS Code 互換の編集と、キーの衝突（F-EDIT-04〜07 / 03.ux-spec/04-keybindings.md）。
+ * VS Code 互換の編集と、キーの衝突（F-EDIT-04〜07）。
  *
- * `keymap.test.ts` が見ているのは表の中身（外したキーが実在し、外れていること）で、押したときに何が起きるかは見ていない。
- * ここで見るのはその先、実際の打鍵が Monaco のキーバインド経由でコマンド・本文に届く経路と、`globalThis` のリスナ経由でアプリのコマンドに届く経路である。
- * 2 つの経路が同じキーを取り合っていないことが Phase 3 の主題であり、それは本物のキーイベントを流さないと確かめられない。
+ * キーの表（`features/editor/lazy/keymap.ts`）は型で検証されるが、押したときに何が起きるかは単体テストでは確かめられない。
+ * ここで検証するのは、実際の打鍵が Monaco のキーバインド経由でコマンド・本文に届く経路と、`globalThis` のリスナ経由でアプリのコマンドに届く経路である。
+ * 2 つの経路が同じキーを奪い合っていないことは、実際のキーイベントを流さないと確かめられない。
  *
- * 未保存の確認（`confirm_discard`）はここでは見られない。
+ * 未保存の確認（`confirm_discard`）はここでは検証できない。
  * ネイティブのモーダルなので WebDriver から押せない（`quit.e2e.ts` と同じ制約）。
- * 出したまま先へ進めないので、この spec からはダーティのまま開く操作をしない。
- * 組み立ては `src/features/document/discard.dom.test.ts` が見ている。
+ * 表示したまま先へ進めないため、この spec からはダーティのまま開く操作をしない。
+ * 組み立ては `src/features/document/discard.dom.test.ts` が検証している。
  */
 import { Key } from 'webdriverio';
 
@@ -28,7 +28,7 @@ async function editorLines(): Promise<string[]> {
   return text.split('\n');
 }
 
-/** 本文が `before` から変わるまで待つ。**変わった中身は expect が読める形で出す。** */
+/** 本文が `before` から変わるまで待つ。変わった中身は expect が読める形で出す。 */
 async function waitForChange(before: string): Promise<void> {
   await browser.waitUntil(async () => (await editorText()) !== before, {
     timeout: 10_000,
@@ -44,19 +44,16 @@ async function rightPaneOpen(): Promise<boolean> {
 before(async () => {
   await openViaForward(WORK_DOC, '本文です。');
   await enterEditMode();
-  // 行操作は「どの行に居るか」で結果が変わる。毎回ここから始める。
+  // 行操作は「どの行にあるか」で結果が変わる。毎回ここから始める。
   await focusEditorSurface();
   await browser.keys([Key.Control, Key.Home]);
 });
 
 describe('行操作 (F-EDIT-07)', () => {
   /**
-   * **Monaco では既定で入っている。** CodeMirror のときは
-   * `@replit/codemirror-vscode-keymap` が `copyLineUp` / `copyLineDown` を
-   * `mac:` にしか割り当てておらず、Windows 用に自分で補っていた
-   * （[ADR-0009](../../docs/adr/0009-editor-engine-monaco.md) でその補いは畳んだ）。
+   * Monaco の既定のキーバインドである。
    *
-   * ここが落ちたら、**剥がすキーを増やしたときに巻き添えにした**ということ。
+   * ここが失敗したら、外すキーを増やしたときに誤って外したということである。
    */
   it('Shift+Alt+↓ で行を複製する', async () => {
     await browser.keys([Key.Shift, Key.Alt, Key.ArrowDown]);
@@ -67,11 +64,11 @@ describe('行操作 (F-EDIT-07)', () => {
   });
 
   /**
-   * **複製の直後に取り消す。** 2 つ操作してから 1 回取り消すのでは検証にならない。
+   * 複製の直後に取り消す。
+   * 2 つ操作してから 1 回取り消すのでは検証にならない。
    *
    * どのエンジンも、近い時刻の変更を 1 つの取り消し単位にまとめる。
-   * E2E の打鍵はその間隔を必ず下回るので、複製 → 削除 → `Ctrl+Z` と並べると
-   * **両方まとめて**取り消され、結果が「何も操作していない状態」と一致してしまう。
+   * E2E の打鍵はその間隔を必ず下回るので、複製 → 削除 → `Ctrl+Z` と並べると両方まとめて取り消され、結果が「何も操作していない状態」と一致してしまう。
    */
   it('Ctrl+Z で元に戻る (F-EDIT-04)', async () => {
     await browser.keys([Key.Control, 'z']);
@@ -92,8 +89,7 @@ describe('行操作 (F-EDIT-07)', () => {
 
 describe('検索と置換 (F-EDIT-05)', () => {
   it('Ctrl+F でエディターの検索パネルが開く', async () => {
-    // Preview を見ているときは本文検索が開く。**同じキーで別のものが開く**
-    // （`features/view/find.ts`）。ここは Edit なのでエディター側。
+    // Preview を見ているときは本文検索が開く。同じキーで別のものが開く（`features/mode/find.ts`）。ここは Edit なのでエディター側。
     await browser.keys([Key.Control, 'f']);
 
     await browser.waitUntil(() => isSearchPanelOpen(), {
@@ -113,12 +109,9 @@ describe('検索と置換 (F-EDIT-05)', () => {
   });
 
   /**
-   * **入力欄に居るまま閉じられること**が要点。
+   * 入力欄にフォーカスがあるまま閉じられることが要点である。
    *
-   * CodeMirror のときは `vscodeKeymap` の `Escape` が scope を持たず編集面でしか
-   * 効かなかったので、`keymap.ts` が scope 付きで足していた。
-   * **Monaco の `closeFindWidget` は「エディターにフォーカスがある」ことだけを見る**
-   * （ウィジェットの入力欄もその内側）ので、足すものが無くなった。
+   * Monaco の `closeFindWidget` は「エディターにフォーカスがある」ことだけを条件にする（ウィジェットの入力欄もその内側）。
    */
   it('置換欄に居るまま Escape で閉じられる', async () => {
     await browser.keys([Key.Escape]);
@@ -132,11 +125,8 @@ describe('検索と置換 (F-EDIT-05)', () => {
 
 describe('アプリのキーとエディターのキーが取り合わない', () => {
   /**
-   * Phase 1・2 では、`whenEditing` を立てたキーだけが Edit モードで効いた。
-   * ペイン・アウトライン・戻る/進むは**押しても何も起きない**状態だった。
-   *
-   * 境界を「入力中かどうか」から「どちらの表に書いてあるか」に変えた結果
-   * （`app/commands.ts` / `features/editor/keymap.ts`）、ここが効くようになった。
+   * キーの有効範囲は「入力中かどうか」ではなく「どちらの表に書いてあるか」で決まる（`app/commands.ts` / `features/editor/lazy/keymap.ts`）。
+   * Edit モードでも、アプリの表にあるキー（ペイン・アウトライン・戻る/進む）は有効である。
    */
   it('Edit モードでもアプリのキーが効く（Ctrl+Alt+B でペイン開閉）', async () => {
     const before = await rightPaneOpen();
@@ -153,8 +143,8 @@ describe('アプリのキーとエディターのキーが取り合わない', (
   });
 
   /**
-   * プレビュー内検索のパネルは `document.body` にある。閉じずに Edit へ移ると
-   * **隠れた面の上に浮いたまま残り**、`F3` / `Escape` がエディター側と食い合う。
+   * プレビュー内検索のパネルは `document.body` にある。
+   * 閉じずに Edit へ移ると非表示の面の上に残り、`F3` / `Escape` がエディター側と競合する。
    */
   it('Preview で開いた検索は、Edit へ切り替えると閉じる', async () => {
     await browser.keys([Key.Control, Key.Shift, 'v']);
@@ -178,19 +168,18 @@ describe('アプリのキーとエディターのキーが取り合わない', (
 });
 
 /**
- * Markdown の書式（F-EDIT-08〜10 / 03.ux-spec/04-keybindings.md §3「Markdown 書式」）。
+ * Markdown の書式（F-EDIT-08〜10）。
  *
- * **ここで見るのは「キーが届くか」だけ。** どんな文字列になるかの境目は
- * `src/features/editor/format.test.ts` と `list.test.ts` が全部見ている。
+ * ここで検証するのは「キーが届くか」だけである。
+ * どんな文字列になるかの境界条件は `src/features/editor/lazy/format.test.ts` と `list.test.ts` がすべて検証している。
  * E2E で 1 パターンずつ確かめるのは遅いうえ、届くことの証明にしかならない。
  *
- * 逆に**届くことは E2E でしか確かめられない**。`Ctrl+Alt+n` は Windows で
- * AltGr として扱われうるし、`` Ctrl+Shift+` `` は US 配列では `~` として届く。
+ * 逆に届くことは E2E でしか確かめられない。`Ctrl+Alt+n` は Windows で AltGr として扱われうるし、`` Ctrl+Shift+` `` は US 配列では `~` として届く。
  */
 describe('Markdown 書式 (F-EDIT-08)', () => {
   before(async () => {
-    // **先に編集面へフォーカスを戻す。** 直前の describe は検索パネルを
-    // 触っており、フォーカスがエディターから外れたままになっている。
+    // 先に編集面へフォーカスを戻す。
+    // 直前の describe は検索パネルを操作しており、フォーカスがエディターから外れたままになっている。
     await focusEditorSurface();
     await browser.keys([Key.Control, 'a']);
     await browser.keys('書式の確認');
@@ -206,7 +195,7 @@ describe('Markdown 書式 (F-EDIT-08)', () => {
     });
   });
 
-  it('もう一度押すと外れる (§5)', async () => {
+  it('もう一度押すと外れる', async () => {
     await browser.keys([Key.Control, 'a']);
     await browser.keys([Key.Control, 'b']);
 
@@ -216,7 +205,7 @@ describe('Markdown 書式 (F-EDIT-08)', () => {
     });
   });
 
-  /** `Ctrl+1`〜`9` はタブ切り替えに要るので、見出しは `Ctrl+Alt+n`（§3 の但し書き）。 */
+  /** `Ctrl+1`〜`9` はタブ切り替えに要るので、見出しは `Ctrl+Alt+n`。 */
   it('Ctrl+Alt+2 で見出しになる', async () => {
     await browser.keys([Key.Control, Key.Alt, '2']);
 
@@ -239,8 +228,8 @@ describe('Markdown 書式 (F-EDIT-08)', () => {
 /**
  * リストの継続入力と採番（F-EDIT-09, 10）。
  *
- * **実装は自前**（`features/editor/enter.ts`）。組み立ての正しさは
- * `enter.test.ts` が見ているので、**ここで見るのは「キーが本当に届くか」だけ。**
+ * 実装は自前（`features/editor/lazy/enter.ts`）である。
+ * 組み立ての正しさは `enter.test.ts` が検証しているため、ここで検証するのは「キーが本当に届くか」だけである。
  * `Enter` は Monaco の入力経路を横取りしているので、通しでしか確かめられない。
  */
 describe('リストの継続入力 (F-EDIT-09, 10)', () => {
@@ -261,15 +250,10 @@ describe('リストの継続入力 (F-EDIT-09, 10)', () => {
   });
 
   /**
-   * **続きの項目は振り直さない**（`src/features/editor/enter.ts` の決定）。
+   * 続きの項目は振り直さない（`src/features/editor/lazy/enter.ts` の決定）。
    *
    * 触れば「編集していない箇所のバイト列が変わる」ことになり、N-CMP-03 に反する。
    * Markdown は `1.` が並んでいても正しく採番して描くので、実害も無い。
-   *
-   * この 1 本は **CodeMirror の `renumberList` の挙動を書き写していた。**
-   * 依存が既定で持っていた振る舞いであって、Marxdown が決めたことではない
-   * （[ADR-0009](../../docs/adr/0009-editor-engine-monaco.md)）。
-   * **いまは「振り直さないこと」を留めるためにここに居る。**
    */
   it('途中に挿んでも、続きの番号は触らない', async () => {
     await browser.keys([Key.Control, Key.Home]);
@@ -283,13 +267,11 @@ describe('リストの継続入力 (F-EDIT-09, 10)', () => {
   });
 
   /**
-   * 空の項目で押したら、続けずに畳む。
+   * 空の項目で押したら、続けずにリストを終了する。
    *
-   * **最後の行が記法で始まっていないこと**だけを見る。ちょうどの文字列で
-   * 突き合わせると、リストの途中か末尾か・tight か loose かで結果が変わる
-   * 実装の細部まで書き写すことになり、**依存を上げるたびに落ちる**。
-   * F-EDIT-09 が求めているのは「リストを抜けられること」であって、
-   * 空行がどこに入るかではない。
+   * 最後の行が記法で始まっていないことだけを確認する。
+   * ちょうどの文字列で突き合わせると、リストの途中か末尾か・tight か loose かで結果が変わる実装の細部まで固定することになり、変更のたびに失敗する。
+   * F-EDIT-09 が求めているのは「リストを抜けられること」であって、空行がどこに入るかではない。
    */
   it('空の項目で Enter を押すとリストを抜ける', async () => {
     await browser.keys([Key.Control, Key.End]);

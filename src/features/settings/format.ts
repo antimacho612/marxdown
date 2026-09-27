@@ -3,11 +3,11 @@
  *
  * DOM には触らない。適用するのは `appearance.ts` と見本（`lazy/samples/`）である。
  * `@/platform` から値を取らないのは、見本のチャンクからこのモジュールを参照するためである。
- * 実行時の依存を持たせると `platform` の共有チャンクが分割し直され、クリティカルパスが太る（OQ-38）。
+ * 実行時の依存を持たせると `platform` の共有チャンクが分割し直され、クリティカルパスが増える。
  */
 
 /**
- * 見本に着せる配色（`data-mx-theme` / `data-mx-editor-theme` の値）。
+ * 見本に適用する配色（`data-mx-theme` / `data-mx-editor-theme` の値）。
  *
  * `default` のときは `undefined` を返し、属性を付けない（`appearance.ts` の `applyPalette` と同じ判断）。
  * 組み込みの列挙ではなく任意の文字列を取る（ADR-0014）。選択肢は `themes/` との合成であり、数え上げられない。
@@ -19,7 +19,7 @@ export function paletteAttr(palette: string): string | undefined {
 /**
  * フォント名を CSS の `font-family` に入れられる形にする。
  *
- * ウェブフォントは読み込めない（CSP の `font-src 'self'` / 02.architecture/10-theming.md §3）。
+ * ウェブフォントは読み込めない（CSP の `font-src 'self'`）。
  * ここに指定できるのは OS にインストールされているフォントのファミリ名だけで、見つからなければ後続のスタックにフォールバックする。
  *
  * すべて引用符で囲うのは、`Meiryo UI` のような空白を含む名前と `MS UI Gothic` のような数字で始まる名前を同じ扱いにするためである。

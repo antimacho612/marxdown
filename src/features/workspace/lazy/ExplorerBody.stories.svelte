@@ -1,8 +1,8 @@
 <!--
-  ツールバーと絞り込み（F-NAV-03 / 03.ux-spec/06-panes.md §1）。
+  ツールバーと絞り込み（F-NAV-03）。
 
   実アプリでこの状態を並べるにはボタンを押して回るしかないので、ここでは `loaders` でストアへ直接入れる。
-  ツールバー単体ではなく `ExplorerBody` を描いているのは、ボタンの状態と木の中身が噛み合っていることを 1 画面で見るためである。
+  ツールバー単体ではなく `ExplorerBody` を描画しているのは、ボタンの状態と木の中身が一致していることを 1 画面で確認するためである。
 -->
 <script module lang="ts">
   import { defineMeta } from '@storybook/addon-svelte-csf';
@@ -37,7 +37,7 @@
       treeStore.entries = { [ROOT]: filter.entries ?? ENTRIES };
       treeStore.expanded = [];
       treeStore.loading = [];
-      // 順路に載せる項目も戻す（`FileTree.stories.svelte` と同じ理由）。
+      // Tab の順路に置く項目も初期化する（`FileTree.stories.svelte` と同じ理由）。
       treeStore.focusPath = null;
 
       resetFilter();
@@ -51,7 +51,7 @@
 <!-- 絞り込んでいない状態。Markdown 以外も並び、淡い色で区別される。 -->
 <Story name="既定" loaders={[withFilter({})]} />
 
-<!-- Markdown だけ。ディレクトリは対象外なので残る（畳んだ枝の中身は開くまで分からない）。 -->
+<!-- Markdown だけ。ディレクトリは対象外なので残る（閉じた枝の中身は開くまで分からない）。 -->
 <Story name="Markdown だけ" loaders={[withFilter({ markdownOnly: true })]} />
 
 <!-- 拡張子の入力欄を開いた状態。入力欄はツールバーの下に出て、木を押し下げる。 -->

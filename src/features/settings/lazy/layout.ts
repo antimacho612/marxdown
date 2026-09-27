@@ -5,7 +5,7 @@
  * 定義とグループ分けを同じ構造にまとめると「同じキーが 2 つのカテゴリに出ていないか」を検査する義務が生まれるが、それは定義の問題ではなく並べ方の問題なので分けてある。
  *
  * 部品の種類はスキーマの `kind` と型で結ばれている。
- * 真偽値の項目に `<select>` を当てたり、選択肢のラベルを 1 つ書き忘れたりすると型が通らない。
+ * 真偽値の項目に `<select>` を割り当てたり、選択肢のラベルを 1 つ書き忘れたりすると型が通らない。
  * 網羅と重複は `layout.test.ts` が実行時に検証する（型で表現するとエラーの内容が読み取りにくくなる）。
  *
  * このファイルは遅延チャンク（`lazy/` の中）にあり、`ja` を引き込むためクリティカルパスからは参照しない。
@@ -17,12 +17,13 @@ import type { SettingKey, SettingKind, Settings } from '@/platform';
 type Labels<K extends SettingKey> = Readonly<Record<Settings[K] & string, string>>;
 
 /**
- * キーに当てられる部品。スキーマの `kind` から決まる。
+ * キーに割り当てられる部品。スキーマの `kind` から決まる。
  *
- * `number[]`（縦罫線）だけは入力欄の文字列と値が 1:1 でないため `custom` に落ち、ダイアログ側が個別に描く。
+ * 並び（`ruler[]` / `string[]`）は入力欄の文字列と値が 1:1 でないため `list` になる。
+ * 打っている途中の文字列を保持するのは `ListField.svelte` で、値としての解釈はダイアログ側が持つ。
  *
  * 文字列だけ 2 択にしてある。
- * 配色（ADR-0014）は値としては文字列だが、選択肢は組み込みと `themes/` の合成であり、`values` を持たないぶん `select` には載らない（`theme`）。
+ * 配色（ADR-0014）は値としては文字列だが、選択肢は組み込みと `themes/` の合成であり、`values` を持たないため `select` では扱えない（`theme`）。
  */
 type WidgetFor<K extends SettingKey> =
   SettingKind<K> extends 'enum'
@@ -33,7 +34,7 @@ type WidgetFor<K extends SettingKey> =
         ? { widget: 'toggle' }
         : SettingKind<K> extends 'string'
           ? { widget: 'text'; placeholder?: string } | { widget: 'theme' }
-          : { widget: 'custom' };
+          : { widget: 'list'; placeholder: string };
 
 type FieldOf<K extends SettingKey> = {
   kind: 'field';
@@ -44,18 +45,18 @@ type FieldOf<K extends SettingKey> = {
   visibleWhen?: (values: Settings) => boolean;
 } & WidgetFor<K>;
 
-/** 設定 1 項目の並べ方。キーごとに当てられる部品が型で決まる。 */
+/** 設定 1 項目の並べ方。キーごとに割り当てられる部品が型で決まる。 */
 export type FieldEntry = { [K in SettingKey]: FieldOf<K> }[SettingKey];
 
-/** エディターの中の節。項目が 22 個あるので、見出し無しでは探せない。 */
+/** エディターの中の節。項目が多いため、見出し無しでは探せない。 */
 interface SectionEntry {
   kind: 'section';
   label: string;
 }
 
 /**
- * 見本（ADR-0011）。モーダルにしたぶん背後の本文が見えないので、その場で確かめられるようにする。
- * 出せるのはフォントまわりだけで、本文幅や折り返しは真似ない。
+ * 見本（ADR-0011）。モーダルにしたことで背後の本文が見えないため、その場で確認できるようにする。
+ * 表示できるのはフォントまわりだけで、本文幅や折り返しは再現しない。
  */
 interface SampleEntry {
   kind: 'sample';
@@ -76,14 +77,13 @@ export interface Category {
 export type CategoryId = (typeof LAYOUT)[number]['id'];
 
 /**
- * 追加記法の項目（04.tech-stack/04-markdown.md §3）。
+ * 追加記法の項目。
  *
  * 7 つとも同じ形（トグル 1 つ）なので、名前を書き下さずに文言の側から作る。
  * 書き下すと、キーと文言の組み合わせを取り違えても型では気づけない。
  *
- * ここで作る `key` は `markdown.<名前>` であり、`SettingKey` に無い名前があれば
- * `LAYOUT` の `satisfies` が型エラーにする。
- * `markdown/plugins/syntax.ts` の `SYNTAX_NAMES` との一致は `features/settings/syntax.test.ts` が見張る。
+ * ここで作る `key` は `markdown.<名前>` であり、`SettingKey` に無い名前があれば `LAYOUT` の `satisfies` が型エラーにする。
+ * `markdown/plugins/syntax.ts` の `SYNTAX_NAMES` との一致は `features/settings/syntax.test.ts` が検証する。
  */
 const SYNTAX_FIELDS = (Object.keys(ja.settings.markdown) as (keyof typeof ja.settings.markdown)[]).map((name) => ({
   kind: 'field' as const,
@@ -102,8 +102,8 @@ function wrapsByColumn(values: Settings): boolean {
 /** 左のカテゴリ（ADR-0011）。並び順は使用頻度ではなく、設定が影響する範囲の大きさに従う。 */
 export const LAYOUT = [
   {
-    id: 'appearance',
-    label: ja.settings.categories.appearance,
+    id: 'application',
+    label: ja.settings.categories.application,
     entries: [
       {
         kind: 'field',
@@ -112,6 +112,27 @@ export const LAYOUT = [
         label: ja.settings.theme,
         description: ja.settings.themeHint,
         labels: { system: ja.settings.themeSystem, light: ja.settings.themeLight, dark: ja.settings.themeDark },
+      },
+      {
+        kind: 'field',
+        key: 'window.closeToTray',
+        widget: 'toggle',
+        label: ja.settings.window.closeToTray.label,
+        description: ja.settings.window.closeToTray.description,
+      },
+      {
+        kind: 'field',
+        key: 'window.launchAtLogin',
+        widget: 'toggle',
+        label: ja.settings.window.launchAtLogin.label,
+        description: ja.settings.window.launchAtLogin.description,
+      },
+      {
+        kind: 'field',
+        key: 'update.autoCheck',
+        widget: 'toggle',
+        label: ja.settings.update.autoCheck.label,
+        description: ja.settings.update.autoCheck.description,
       },
     ],
   },
@@ -172,6 +193,14 @@ export const LAYOUT = [
         widget: 'toggle',
         label: ja.settings.softBreak.label,
         description: ja.settings.softBreak.description,
+      },
+      {
+        kind: 'field',
+        key: 'preview.tableStyle',
+        widget: 'select',
+        label: ja.settings.tableStyle.label,
+        description: ja.settings.tableStyle.description,
+        labels: ja.settings.tableStyle.options,
       },
       { kind: 'sample', sample: 'content' },
     ],
@@ -282,8 +311,16 @@ export const LAYOUT = [
       },
       {
         kind: 'field',
+        key: 'editor.stickyScroll.enabled',
+        widget: 'toggle',
+        label: ja.settings.editor.stickyScroll.label,
+        description: ja.settings.editor.stickyScroll.description,
+      },
+      {
+        kind: 'field',
         key: 'editor.rulers',
-        widget: 'custom',
+        widget: 'list',
+        placeholder: ja.settings.editor.rulers.placeholder,
         label: ja.settings.editor.rulers.label,
         description: ja.settings.editor.rulers.description,
       },
@@ -330,6 +367,21 @@ export const LAYOUT = [
       },
       {
         kind: 'field',
+        key: 'editor.wordSeparators',
+        widget: 'text',
+        label: ja.settings.editor.wordSeparators.label,
+        description: ja.settings.editor.wordSeparators.description,
+      },
+      {
+        kind: 'field',
+        key: 'editor.wordSegmenterLocales',
+        widget: 'list',
+        placeholder: ja.settings.editor.wordSegmenterLocales.placeholder,
+        label: ja.settings.editor.wordSegmenterLocales.label,
+        description: ja.settings.editor.wordSegmenterLocales.description,
+      },
+      {
+        kind: 'field',
         key: 'editor.cursorStyle',
         widget: 'select',
         label: ja.settings.editor.cursorStyle,
@@ -361,16 +413,46 @@ export const LAYOUT = [
   },
   {
     /*
-     * 追加記法（04.tech-stack/04-markdown.md §3）。どれも既定 OFF である。
+     * 追加記法。どれも既定 OFF である。
      *
-     * カテゴリを分けているのは、プレビューの中に混ぜると
-     * 「見た目の調整」と「本文の解釈が変わる設定」が同じ並びに来るためである。
+     * カテゴリを分けているのは、プレビューの中に混ぜると「見た目の調整」と「本文の解釈が変わる設定」が同じ並びに来るためである。
      * 後者は押した結果が本文そのものに出る。
      */
     id: 'markdown',
     label: ja.settings.categories.markdown,
     // 節の見出しは置かない。カテゴリ自体が「記法」であり、7 項目に見出しを足しても分かれ目が増えるだけである。
-    entries: SYNTAX_FIELDS,
+    entries: [
+      ...SYNTAX_FIELDS,
+      {
+        kind: 'field',
+        key: 'marp.themes',
+        widget: 'list',
+        placeholder: ja.settings.marp.themes.placeholder,
+        label: ja.settings.marp.themes.label,
+        description: ja.settings.marp.themes.description,
+      },
+    ],
+  },
+  {
+    id: 'explorer',
+    label: ja.settings.categories.explorer,
+    entries: [
+      {
+        kind: 'field',
+        key: 'explorer.exclude',
+        widget: 'list',
+        placeholder: ja.settings.explorer.exclude.placeholder,
+        label: ja.settings.explorer.exclude.label,
+        description: ja.settings.explorer.exclude.description,
+      },
+      {
+        kind: 'field',
+        key: 'explorer.temporaryTab',
+        widget: 'toggle',
+        label: ja.settings.explorer.temporaryTab.label,
+        description: ja.settings.explorer.temporaryTab.description,
+      },
+    ],
   },
   {
     id: 'outline',
@@ -383,23 +465,6 @@ export const LAYOUT = [
         step: 1,
         label: ja.settings.outline.maxDepth.label,
         description: ja.settings.outline.maxDepth.description,
-      },
-    ],
-  },
-  {
-    id: 'window',
-    label: ja.settings.categories.window,
-    entries: [
-      {
-        kind: 'field',
-        key: 'window.closeBehavior',
-        widget: 'radio',
-        label: ja.settings.window.closeBehavior,
-        description: ja.settings.window.closeBehaviorHint,
-        labels: {
-          tray: ja.settings.window.closeBehaviorTray,
-          exit: ja.settings.window.closeBehaviorExit,
-        },
       },
     ],
   },

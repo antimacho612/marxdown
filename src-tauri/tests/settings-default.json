@@ -1,5 +1,4 @@
 {
-  "theme": "system",
   "editor.bracketPairColorization.enabled": false,
   "editor.cursorBlinking": "blink",
   "editor.cursorStyle": "line",
@@ -19,10 +18,15 @@
   "editor.renderWhitespace": "none",
   "editor.rulers": [],
   "editor.scrollBeyondLastLine": true,
-  "editor.theme": "default",
+  "editor.stickyScroll.enabled": true,
   "editor.tabSize": 2.0,
+  "editor.theme": "default",
+  "editor.wordSegmenterLocales": ["ja"],
+  "editor.wordSeparators": "`~!@#$%^&*()-=+[{]}\\|;:'\",.<>/?",
   "editor.wordWrap": "on",
   "editor.wordWrapColumn": 80.0,
+  "explorer.exclude": [],
+  "explorer.temporaryTab": true,
   "markdown.abbreviations": false,
   "markdown.definitionLists": false,
   "markdown.insertions": false,
@@ -30,6 +34,7 @@
   "markdown.multilineTables": false,
   "markdown.subscript": false,
   "markdown.superscript": false,
+  "marp.themes": [],
   "outline.maxDepth": 6.0,
   "preview.codeFontFamily": "",
   "preview.fontFamily": "",
@@ -37,6 +42,10 @@
   "preview.lineHeight": 1.75,
   "preview.maxWidth": 72.0,
   "preview.softBreak": false,
+  "preview.tableStyle": "lines",
   "preview.theme": "default",
-  "window.closeBehavior": "tray"
+  "theme": "system",
+  "update.autoCheck": true,
+  "window.closeToTray": true,
+  "window.launchAtLogin": false
 }

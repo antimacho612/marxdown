@@ -1,12 +1,12 @@
 //! コマンド境界のエラー型。
 //!
-//! 02.architecture/README.md 原則 C に従い、Rust 側は「速いこと」だけを担当する。
-//! エラーもフロントエンドが分岐できる最小限の種別に留める。
-//! ユーザー向けの文言生成は TypeScript 側（`src/i18n/ja.ts`）に置く。
+//! 種別はフロントエンドが分岐できる最小限に留める。
+//! ユーザー向けの文言は TypeScript 側（`src/i18n/ja.ts`）が作る。
 
 use serde::Serialize;
 
-/// フロントへ返すエラー。`kind` で分岐し、`message` は開発者向けの詳細。
+/// フロントへ返すエラー。
+/// `kind` で分岐し、`message` は開発者向けの詳細。
 #[derive(Debug, thiserror::Error)]
 pub enum CoreError {
     #[error("ファイルが見つからない: {0}")]
@@ -21,20 +21,26 @@ pub enum CoreError {
     #[error("ファイルが大きすぎる: {path} ({size} bytes)")]
     TooLarge { path: String, size: u64 },
 
-    /// テキストとして解釈できないファイル（N-REL-03）。
+    /// テキストとして解釈できないファイル。
     ///
-    /// 大きすぎるわけではないので [`Self::TooLarge`] とは分ける。
-    /// 前者は開くのを諦めてもらう他ないが、こちらは OS の既定アプリへ渡せば用が足りる（F-VIEW-06）。
+    /// [`Self::TooLarge`] とは対処が違うため分ける。
+    /// こちらは OS の既定アプリで開ける。
     #[error("テキストとして読めない: {0}")]
     Binary(String),
 
     #[error("外部で変更されている（保存の衝突）")]
     Conflict,
 
+    /// 作成・リネーム・移動の宛先に同じ名前がある（`fsops.rs`）。
+    ///
+    /// 上書きはしない。置き換えは元に戻せないためである（ADR-0020 §3.2）。
+    #[error("同じ名前が既にある: {0}")]
+    AlreadyExists(String),
+
     #[error("不正な引数: {0}")]
     InvalidArgument(String),
 
-    /// `settings.json` を読めていない状態での書き戻しを拒む（02.architecture/04-rust-responsibilities.md §5）。
+    /// `settings.json` を読めていない状態での書き戻しを拒む。
     ///
     /// これを「保存できなかった」一般の I/O エラーと混ぜてはいけない。
     /// ユーザーが手で直している最中であり、UI が出すべき文言も対処も違う。
@@ -46,11 +52,13 @@ pub enum CoreError {
 }
 
 impl CoreError {
-    /// 検証済みの解決先。プレースホルダに実際のパスを出すために使う（OQ-17）。
+    /// 検証済みの解決先。
+    /// 画像のプレースホルダに実際のパスを出すために使う。
     ///
-    /// [`Self::OutOfScope`] だけが持つ。`message` から切り出すと、文言を変えた瞬間に壊れる。
+    /// [`Self::OutOfScope`] だけが持つ。
+    /// `message` から切り出すと、文言を変えたときに取り出せなくなる。
     /// symlink を解決した後のパスであり、ドキュメントに書かれた文字列ではない。
-    /// 何を許可しようとしているのかを見せるには、解決後のほうでなければ意味がない。
+    /// 何を許可しようとしているのかを示すには、解決後のパスでなければならない。
     pub fn path(&self) -> Option<&str> {
         match self {
             Self::OutOfScope(path) => Some(path),
@@ -67,6 +75,7 @@ impl CoreError {
             Self::TooLarge { .. } => "too-large",
             Self::Binary(_) => "binary",
             Self::Conflict => "conflict",
+            Self::AlreadyExists(_) => "already-exists",
             Self::InvalidArgument(_) => "invalid-argument",
             Self::SettingsBroken(_) => "settings-broken",
             Self::Io(_) => "io",
@@ -97,5 +106,6 @@ impl Serialize for CoreError {
     }
 }
 
-/// コマンド境界の `Result`。エラー側は必ず [`CoreError`] にする。
+/// コマンド境界の `Result`。
+/// エラー側は必ず [`CoreError`] にする。
 pub type CoreResult<T> = Result<T, CoreError>;

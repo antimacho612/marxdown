@@ -1,10 +1,10 @@
-//! 永続化ストア（最近開いたファイル / 表示倍率 / ウィンドウ状態）。
+//! 永続化ストア（`state.json`: 最近開いたファイル / 表示倍率 / ウィンドウ / ペイン / 分割比 / セッション）。
 //!
-//! `tauri-plugin-window-state` は使わない（04.tech-stack/06-rust.md §5。`tauri-plugin-fs` を自作コマンドに置き換えたのと同じ構図）。
+//! `tauri-plugin-window-state` は使わない（`tauri-plugin-fs` を使わないのと同じ構図）。
 //! ウィンドウをコードで生成しているため（`window.rs`）、位置とサイズを `WebviewWindowBuilder` に直接渡せる。
-//! これにより、生成後に復元するプラグイン方式と違って「既定位置に表示されてから移動する」ちらつきが原理的に発生せず、`visible: false` から本文ごと表示する設計（04.tech-stack/09-tauri-config.md §1）と整合する。
+//! これにより、生成後に復元するプラグイン方式と違って「既定位置に表示されてから移動する」ちらつきが原理的に発生せず、`visible: false` から本文ごと表示する設計と整合する。
 //! また、最近開いたファイルと表示倍率でどのみち JSON ストアが必要になる。
-//! Welcome 画面（F-OPEN-09 / 03.ux-spec/08-empty-states.md §1）は起動直後に最近使ったファイルを表示するため、bootstrap に同梱できないと IPC 往復が 1 回増える。
+//! Welcome 画面（F-OPEN-09）は起動直後に最近使ったファイルを表示するため、bootstrap に同梱できないと IPC 往復が 1 回増える。
 //! 同じ用途のストアが 2 つある状態のほうが、依存が 1 つ増えるコストより大きい。
 //!
 //! このファイルはユーザーの成果物ではなく、いつでも破棄してよいキャッシュである。
@@ -17,14 +17,14 @@ use serde::{Deserialize, Serialize};
 use crate::document::atomic;
 
 /// ストアの構造版。互換性のない変更をしたら上げる。
-/// 版が違うストアは読み捨てて既定値に戻す。
+/// 版が違うストアは内容を使わずに既定値に戻す。
 pub const STORE_VERSION: u32 = 1;
 
 /// 最近開いたファイルの保持数。
-/// 03.ux-spec/08-empty-states.md §1 が表示するのは数件だが、存在しなくなったファイルを除外した後でも埋まるよう多めに保持する。
+/// Welcome 画面が表示するのは数件だが、存在しなくなったファイルを除外した後でも埋まるよう多めに保持する。
 pub const RECENT_LIMIT: usize = 20;
 
-/// セッションとして覚えるタブの上限（OQ-04 / M3 Phase 7）。
+/// セッションとして覚えるタブの上限。
 ///
 /// 引数なしで起動したときに開き直す枚数である。
 /// 起動直後に読み込むファイル数がそのまま増えるため、際限なく覚えない。
@@ -35,20 +35,20 @@ pub const ZOOM_MIN: f64 = 0.5;
 pub const ZOOM_MAX: f64 = 3.0;
 pub const ZOOM_DEFAULT: f64 = 1.0;
 
-/// ペインの幅（03.ux-spec/06-panes.md §3）。既定 240px、最小 180px。
+/// ペインの幅。既定 240px、最小 180px。
 pub const PANE_WIDTH_DEFAULT: f64 = 240.0;
 pub const PANE_WIDTH_MIN: f64 = 180.0;
-/// 上限は 03.ux-spec/06-panes.md §3 には無い。
-/// 本文を主役に保つため（Principle 2）の制限であり、手で書いた `state.json` や解像度の異なる環境から極端な幅が渡っても本文の領域が失われないようにする。
+/// 上限は UX 仕様には無い。
+/// 本文の領域を優先するため（Principle 2）の制限であり、手で書いた `state.json` や解像度の異なる環境から極端な幅が渡っても本文の領域が失われないようにする。
 pub const PANE_WIDTH_MAX: f64 = 640.0;
 
-/// Split の分割比（エディター側の取り分 / 03.ux-spec/03-split-mode.md §1）。
+/// Split の分割比（エディター側の取り分）。
 ///
 /// 比率で保持する。
 /// ピクセルで記録すると、解像度やペインの開閉によって左右の配分が変わってしまう。
 /// 既定は 50:50。
 pub const SPLIT_DEFAULT: f64 = 0.5;
-/// 端まで寄せて片方の領域を失わないようにする。
+/// 端まで動かして片方の領域を失わないようにする。
 /// 片方が失われると Split である意味が無くなり、元に戻すための操作対象も同時に消える。
 pub const SPLIT_MIN: f64 = 0.2;
 pub const SPLIT_MAX: f64 = 0.8;
@@ -84,10 +84,10 @@ pub struct WindowState {
     pub maximized: bool,
 }
 
-/// ペイン 1 枚の状態（03.ux-spec/06-panes.md §3 / 02.architecture/04-rust-responsibilities.md §5）。
+/// ペイン 1 枚の状態。
 ///
 /// 記録が無いときは閉じた状態にする。
-/// F-NAV-04 の「既定は非表示」は初回起動についての規定であり、一度開いた状態を維持できることと両立する（03.ux-spec/06-panes.md §3 の引用ブロック）。
+/// F-NAV-04 の「既定は非表示」は初回起動についての規定であり、一度開いた状態を維持できることと両立する。
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PaneState {
@@ -114,17 +114,16 @@ impl PaneState {
     }
 }
 
-/// 左右のペイン（03.ux-spec/06-panes.md §3）。
+/// 左右のペイン。
 ///
 /// 幅は左右で別々に記録する。
-/// 左（Explorer）は M3 で導入するが、後から追加するとどちらの幅か判別できない 1 つの値が先に永続化されるため、構造だけ先に用意する。
 #[derive(Debug, Clone, Copy, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Panes {
-    /// Explorer（M3）。それまでは誰も書き換えない。
+    /// 左ペイン（Explorer）。
     #[serde(default)]
     pub left: PaneState,
-    /// Outline（M1.5）。
+    /// 右ペイン（Outline）。
     #[serde(default)]
     pub right: PaneState,
 }
@@ -139,25 +138,24 @@ impl Panes {
     }
 }
 
-/// 前回開いていたタブ（OQ-04 / F-NAV-01）。
+/// 前回開いていたタブ（F-NAV-01）。
 ///
-/// **引数なしで起動したときだけ復元する**（[decided.md](../../docs/07.open-questions/decided.md) の OQ-04）。
+/// 引数なしで起動したときだけ復元する。
 /// `marxdown foo.md` には「foo.md を見たい」という意図があり、そこへ前回の 8 枚を混ぜない。
 ///
 /// 未保存の本文は持たない。パスだけである。
-/// 本文をここに置くと `state.json` がドキュメントの複製を抱えることになり、
-/// 触っていないバイト列を保持しないという方針（N-CMP-03）とも噛み合わない。
+/// 本文をここに置くと `state.json` がドキュメントの複製を抱えることになり、触っていないバイト列を保持しないという方針（N-CMP-03）とも整合しない。
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Session {
-    /// 開いていたファイル。**タブの並び順**である。
+    /// 開いていたファイル。タブの並び順である。
     pub paths: Vec<String>,
     /// 表示していたタブの位置（`paths` の添字）。
     pub active: usize,
 }
 
 impl Session {
-    /// 覚えている枚数を上限で切り、消えたファイルを落とす。
+    /// 覚えている枚数を上限で切り、消えたファイルを除く。
     ///
     /// 存在確認をここで行うのは、起動時に「開けなかった」通知が枚数ぶん出るのを避けるためである。
     /// 前回開いていたファイルが消えていることは、利用者にとって想定内の出来事でしかない。
@@ -180,28 +178,32 @@ pub struct StoreData {
     pub recent: Vec<RecentEntry>,
     pub zoom: f64,
     pub window: Option<WindowState>,
-    /// ペインの開閉と幅（02.architecture/04-rust-responsibilities.md §5 の表）。
+    /// ペインの開閉と幅。
     ///
     /// `#[serde(default)]` にしてあるため、`panes` を持たない古い `state.json` もそのまま読める。
     /// 版を上げると最近開いたファイルと倍率まで一緒に破棄することになり、キー 1 つの追加に対して代償が大きい。
     #[serde(default)]
     pub panes: Panes,
-    /// Split の分割比（03.ux-spec/03-split-mode.md §1）。`panes` と同じく `#[serde(default)]` で、
-    /// この値を持たない古い `state.json` も読める。
+    /// Split の分割比。`panes` と同じく `#[serde(default)]` で、この値を持たない古い `state.json` も読める。
     #[serde(default = "default_split")]
     pub split: f64,
     /// トレイ常駐の説明を一度でも出したか（ADR-0007 論点 4）。
     ///
     /// `✕` の意味が OS の慣習と変わる時点でだけモーダルを表示する。
-    /// 03.ux-spec/07-status-and-notifications.md §2 の「モーダルはデータ消失の可能性がある場面だけ」に対する意図的な例外である。
+    /// UX 仕様の「モーダルはデータ消失の可能性がある場面だけ」に対する意図的な例外である。
     /// 生涯 1 回であることが許容条件そのものであるため、フラグを永続化する。
-    /// `state.json` に置くのは、アプリが自動的に書く値だからである（02.architecture/04-rust-responsibilities.md §5）。
+    /// `state.json` に置くのは、アプリが自動的に書く値だからである。
     #[serde(default)]
     pub tray_intro_shown: bool,
-    /// 前回開いていたタブ（OQ-04 / M3 Phase 7）。
+    /// 前回開いていたタブ。
     /// `panes` と同じく `#[serde(default)]` で、この値を持たない古い `state.json` も読める。
     #[serde(default)]
     pub session: Session,
+    /// 最後に更新を自動で確認した時刻（UNIX 秒 / ADR-0024 §3.4）。
+    ///
+    /// メモリにだけ持つと、起動し直すたびに確認することになる。
+    #[serde(default)]
+    pub last_update_check: Option<u64>,
 }
 
 impl Default for StoreData {
@@ -215,6 +217,7 @@ impl Default for StoreData {
             split: SPLIT_DEFAULT,
             tray_intro_shown: false,
             session: Session::default(),
+            last_update_check: None,
         }
     }
 }
@@ -247,7 +250,7 @@ impl StoreData {
         self
     }
 
-    /// 最近開いたファイルの先頭に積む。同じパスは重複させず、先頭へ引き上げる。
+    /// 最近開いたファイルの先頭に加える。同じパスは重複させず、先頭へ引き上げる。
     pub fn push_recent(&mut self, path: String, now_ms: i64) {
         self.recent.retain(|e| !same_path(&e.path, &path));
         self.recent.insert(
@@ -284,7 +287,7 @@ pub fn store_path(identifier: &str) -> Option<PathBuf> {
     Some(config_dir(identifier)?.join(FILE_NAME))
 }
 
-/// アプリのデータ置き場。`settings/mod.rs` も同じディレクトリを使う（02.architecture/04-rust-responsibilities.md §5）。
+/// アプリのデータ置き場。`settings/mod.rs` も同じディレクトリを使う。
 /// 2 か所で辿ると、片方だけ規則が変わったときに設定と状態の保存先が分かれてしまう。
 pub fn config_dir(identifier: &str) -> Option<PathBuf> {
     #[cfg(windows)]
@@ -306,6 +309,33 @@ pub fn config_dir(identifier: &str) -> Option<PathBuf> {
         });
 
     Some(base?.join(identifier))
+}
+
+/// 古いバージョンの identifier。アプリのデータ置き場のフォルダー名がこれだった。
+const LEGACY_IDENTIFIER: &str = "Marxdown";
+
+/// 古い identifier の名前のデータ置き場を、現在の identifier の名前へ移す。
+///
+/// 起動時に 1 回だけ、ストア・設定・配色のどれを読むよりも前に呼ぶ。
+/// 移し先が既にあれば何もしない。
+/// どちらの内容を残すべきかを判断する材料が無く、既に使われている側を上書きしないためである。
+/// 失敗しても起動は止めない。古いフォルダーが残って既定の設定で起動するだけで、書いた内容は失われない。
+///
+/// NOTE: `%LOCALAPPDATA%` 側は移さない。
+/// 置かれているのは WebView2 のキャッシュだけで、次の起動で作り直される。
+/// また、古い名前のフォルダーは NSIS の既定のインストール先（`%LOCALAPPDATA%\Marxdown`）と同じフォルダーであり、丸ごと移すと本体まで移ってしまう。
+pub fn migrate_legacy_dir(identifier: &str) {
+    if let (Some(from), Some(to)) = (config_dir(LEGACY_IDENTIFIER), config_dir(identifier)) {
+        move_dir(&from, &to);
+    }
+}
+
+/// [`migrate_legacy_dir`] の本体。移したときだけ `true` を返す。
+fn move_dir(from: &Path, to: &Path) -> bool {
+    if !from.is_dir() || to.exists() {
+        return false;
+    }
+    std::fs::rename(from, to).is_ok()
 }
 
 /// ストアを読む。失敗しても既定値を返す。
@@ -358,6 +388,50 @@ mod tests {
     }
 
     #[test]
+    fn the_legacy_dir_is_moved_with_its_contents() {
+        let d = temp_dir("legacy-move");
+        let from = d.join(LEGACY_IDENTIFIER);
+        let to = d.join("com.antimacho612.marxdown");
+        std::fs::create_dir_all(from.join("themes")).unwrap();
+        std::fs::write(from.join("settings.json"), "{}").unwrap();
+        std::fs::write(from.join("themes").join("mine.css"), "").unwrap();
+
+        assert!(move_dir(&from, &to));
+        assert!(!from.exists());
+        assert!(to.join("settings.json").is_file());
+        assert!(to.join("themes").join("mine.css").is_file());
+        std::fs::remove_dir_all(&d).ok();
+    }
+
+    #[test]
+    fn the_legacy_dir_does_not_overwrite_the_current_one() {
+        let d = temp_dir("legacy-keep");
+        let from = d.join(LEGACY_IDENTIFIER);
+        let to = d.join("com.antimacho612.marxdown");
+        std::fs::create_dir_all(&from).unwrap();
+        std::fs::create_dir_all(&to).unwrap();
+        std::fs::write(from.join("settings.json"), "old").unwrap();
+        std::fs::write(to.join("settings.json"), "new").unwrap();
+
+        assert!(!move_dir(&from, &to));
+        assert_eq!(
+            std::fs::read_to_string(to.join("settings.json")).unwrap(),
+            "new"
+        );
+        assert!(from.join("settings.json").is_file(), "古い側も消さない");
+        std::fs::remove_dir_all(&d).ok();
+    }
+
+    #[test]
+    fn a_missing_legacy_dir_is_not_an_error() {
+        let d = temp_dir("legacy-none");
+        let to = d.join("com.antimacho612.marxdown");
+        assert!(!move_dir(&d.join(LEGACY_IDENTIFIER), &to));
+        assert!(!to.exists());
+        std::fs::remove_dir_all(&d).ok();
+    }
+
+    #[test]
     fn a_missing_store_is_not_an_error() {
         let d = temp_dir("missing");
         let data = load(Some(&d.join("nope.json")));
@@ -399,8 +473,7 @@ mod tests {
         std::fs::remove_dir_all(&d).ok();
     }
 
-    /// 03.ux-spec/06-panes.md §3 の引用ブロック。
-    /// **記録が無いときは左右とも閉じた状態で出る**（F-NAV-04 は初回起動の話）。
+    /// 記録が無いときは左右とも閉じた状態で出る（F-NAV-04 は初回起動の話）。
     #[test]
     fn panes_start_closed_when_nothing_was_recorded() {
         let data = StoreData::default();
@@ -410,7 +483,7 @@ mod tests {
     }
 
     /// 古い `state.json` には `panes` が無い。
-    /// **版を上げずに読めること**が、最近開いたファイルと倍率を守る条件になっている。
+    /// 版を上げずに読めることが、最近開いたファイルと倍率を守る条件になっている。
     #[test]
     fn a_store_written_before_panes_existed_is_still_readable() {
         let d = temp_dir("panes-missing");
@@ -443,7 +516,7 @@ mod tests {
         std::fs::remove_dir_all(&d).ok();
     }
 
-    /// 03.ux-spec/06-panes.md §3「幅は左右で別々に記憶する」。
+    /// 幅は左右で別々に記憶する。
     #[test]
     fn pane_widths_are_remembered_per_side() {
         let d = temp_dir("panes-roundtrip");
@@ -467,8 +540,7 @@ mod tests {
         std::fs::remove_dir_all(&d).ok();
     }
 
-    /// ADR-0007 論点 4。**生涯 1 回**であることがモーダルを許容する条件そのものなので、
-    /// フラグが往復で保たれることを機械的に見張る。
+    /// ADR-0007 論点 4。生涯 1 回であることがモーダルを許容する条件そのものなので、フラグが往復で保たれることを機械的に検証する。
     #[test]
     fn the_tray_intro_is_only_shown_once() {
         let d = temp_dir("tray-intro");
@@ -489,11 +561,10 @@ mod tests {
         std::fs::remove_dir_all(&d).ok();
     }
 
-    /// `trayIntroShown` を持たない古い `state.json` を読んでも、
-    /// 最近開いたファイルと倍率を捨てないこと。
+    /// `trayIntroShown` を持たない古い `state.json` を読んでも、最近開いたファイルと倍率を失わないこと。
     ///
-    /// **版を上げるとここが壊れる。** キー 1 つの追加に対して代償が大き過ぎるので、
-    /// `#[serde(default)]` で受ける判断が正しいままであることを固定する。
+    /// 版を上げるとここが壊れる。
+    /// キー 1 つの追加に対して代償が大き過ぎるので、`#[serde(default)]` で受ける判断が正しいままであることを固定する。
     #[test]
     fn a_store_written_before_the_tray_existed_still_loads() {
         let d = temp_dir("tray-compat");
@@ -565,7 +636,7 @@ mod tests {
         std::fs::remove_dir_all(&d).ok();
     }
 
-    /// セッション（OQ-04 / M3 Phase 7）。
+    /// セッション。
     mod session {
         use super::*;
 

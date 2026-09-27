@@ -1,8 +1,8 @@
 <!--
 @component
-ウィンドウ操作ボタン 1 つ（03.ux-spec/01-screen-layout.md §1）。
+ウィンドウ操作ボタン 1 つ。
 
-Windows の作法にそのまま合わせる（幅 46px・閉じるのホバーのみ赤 / Principle 5「Familiar Over Novel」）。
+Windows の標準にそのまま合わせる（幅 46px・閉じるのホバーのみ赤 / Principle 5「Familiar Over Novel」）。
 
 角まで押せるよう、内側に余白を作らない。
 最大化中は画面の右上隅がそのまま「閉じる」になり、端まで動かすだけで到達できる（Fitts の法則）。
@@ -16,7 +16,7 @@ Windows の作法にそのまま合わせる（幅 46px・閉じるのホバー�
   interface Props {
     /** 読み上げの名前とツールチップ。表示するのはアイコンだけであるため、両方をここから受け取る。 */
     label: string;
-    /** 閉じるボタン。ホバー時だけ赤くなる（Windows の作法）。 */
+    /** 閉じるボタン。ホバー時だけ赤くなる（Windows の標準）。 */
     close?: boolean;
     /**
      * 外から与えるホバー。

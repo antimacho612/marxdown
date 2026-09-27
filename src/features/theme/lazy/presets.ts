@@ -10,7 +10,7 @@
  * こちらのトークンは意味（`keyword` / `string` / `number` など）で切ってあり、配色側の色名（`red` / `mauve` など）とは粒度が違うためである。
  *
  * このファイル 1 枚が `theme` チャンクの実サイズをほぼ決める。
- * 予算は `.size-limit.json` の `editor themes` が見張っている。
+ * 予算は `.size-limit.json` の `themes` で検証する。
  */
 import type { Preset } from './preset';
 

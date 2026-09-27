@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { dirOf, isAbsolutePath, isMarkdownPath, joinPath, splitPath } from './path';
+import { dirOf, isAbsolutePath, isMarkdownPath, joinPath, relocatePath, splitPath } from './path';
 
 describe('splitPath', () => {
   it('Windows のパスを割る', () => {
@@ -27,7 +27,7 @@ describe('joinPath', () => {
   });
 
   it('`..` を畳まない（正規化は Rust の仕事 / N-SEC-05）', () => {
-    // JS が思う正規形と、実際に解決される先がずれると、そこがスコープ検証の穴になる
+    // JS 側の正規形と実際に解決される先がずれると、スコープ検証を通過する経路ができる
     expect(joinPath('C:\\work\\docs', '../a.md')).toBe('C:\\work\\docs\\../a.md');
   });
 
@@ -92,5 +92,40 @@ describe('isMarkdownPath', () => {
 describe('dirOf', () => {
   it('親ディレクトリを返す', () => {
     expect(dirOf('C:\\work\\a.md')).toBe('C:\\work');
+  });
+
+  it('ドライブ直下のファイルではドライブのルートを返す', () => {
+    expect(dirOf('C:\\sample.md')).toBe('C:\\');
+    expect(dirOf('C:/sample.md')).toBe('C:/');
+  });
+
+  it('POSIX のルート直下のファイルでは / を返す', () => {
+    expect(dirOf('/sample.md')).toBe('/');
+  });
+
+  it('区切りが無ければ空文字を返す', () => {
+    expect(dirOf('')).toBe('');
+    expect(dirOf('a.md')).toBe('');
+  });
+});
+
+describe('relocatePath', () => {
+  it('対象そのものを付け替える', () => {
+    expect(relocatePath('C:\\w\\a.md', 'C:\\w\\a.md', 'C:\\w\\b.md')).toBe('C:\\w\\b.md');
+  });
+
+  it('移したフォルダの配下を付け替える', () => {
+    expect(relocatePath('C:\\w\\docs\\x\\a.md', 'C:\\w\\docs', 'C:\\w\\notes')).toBe('C:\\w\\notes\\x\\a.md');
+    expect(relocatePath('/w/docs/a.md', '/w/docs', '/w/notes')).toBe('/w/notes/a.md');
+  });
+
+  it('名前の前方一致を配下と取り違えない', () => {
+    expect(relocatePath('C:\\w\\docs-old\\a.md', 'C:\\w\\docs', 'C:\\w\\notes')).toBeNull();
+    expect(relocatePath('C:\\w\\other.md', 'C:\\w\\docs', 'C:\\w\\notes')).toBeNull();
+  });
+
+  it('Windows のパスは大文字と小文字を区別しない', () => {
+    expect(relocatePath('c:\\W\\Docs\\a.md', 'C:\\w\\docs', 'C:\\w\\notes')).toBe('C:\\w\\notes\\a.md');
+    expect(relocatePath('/W/docs/a.md', '/w/docs', '/w/notes')).toBeNull();
   });
 });

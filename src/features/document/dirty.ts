@@ -1,5 +1,5 @@
 /**
- * 未保存の変更があるか（F-EDIT-03 / 03.ux-spec/07-status-and-notifications.md §1）。
+ * 未保存の変更があるか（F-EDIT-03）。
  *
  * `save.ts` から分けてあるのは依存の向きが逆だからである（open/editor/watch はダーティを触るだけで保存を知らず、save はダーティを clean にしつつ open を使う）。
  * ここに置くと `save.ts` ⇄ `open.ts` の循環になる。
@@ -15,18 +15,17 @@ import { syncDocumentText } from './text';
  * 本文がディスクと違うか。
  *
  * ダーティの源は 1 つではない。
- * 本文の他に、改行コードの変換（`document/eol.ts` / 03.ux-spec/07-status-and-notifications.md §3）がある。
- * 両方を 1 つの boolean に統合すると、例えば「LF → CRLF に変換してダーティが立った後、何か打って Undo で本文だけ基準に戻す」場合、そこで false を代入したときに CRLF の希望が残っているのにダーティが外れてしまう。
+ * 本文の他に、改行コードの変換（`document/eol.ts`）がある。
+ * 両方を 1 つの boolean に統合すると、例えば「LF → CRLF に変換してダーティになった後、何か打って Undo で本文だけ基準に戻す」場合、そこで false を代入したときに CRLF の指定が残っているのにダーティが解除されてしまう。
  * 源ごとに持ち、出力時に合成する。
  */
 let textDirty = false;
 
 /**
- * 本文がディスクと違うか。**合成前の値**である。
+ * 本文がディスクと違うか。合成前の値である。
  *
  * タブを切り替えるときの退避と復元に要る（`features/workspace/tabs.svelte.ts`）。
- * 合成後の `documentStore.isDirty` からは源を分けられないため、これが無いと
- * 「EOL だけ変えたタブ」を復元したときに本文側のダーティが立ってしまう。
+ * 合成後の `documentStore.isDirty` からは源を分けられないため、これが無いと「EOL だけ変えたタブ」を復元したときに本文側までダーティになってしまう。
  */
 export function isTextDirty(): boolean {
   return textDirty;

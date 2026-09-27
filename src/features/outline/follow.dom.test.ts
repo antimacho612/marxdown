@@ -6,8 +6,8 @@ import { followHeadings, headingAtLine } from './follow';
 /**
  * jsdom に `IntersectionObserver` は無い。
  *
- * ここで見たいのは「渡された交差情報から現在位置をどう決めるか」であって、
- * ブラウザが交差を検出できるかどうかではない。**交差そのものは手で流し込む。**
+ * 検証するのは「渡された交差情報から現在位置をどう決めるか」であり、ブラウザが交差を検出できるかどうかではない。
+ * 交差の情報はテストから直接渡す。
  */
 interface FakeEntry {
   target: Element;
@@ -46,7 +46,7 @@ class FakeObserver {
     return [];
   }
 
-  /** ブラウザの代わりに交差を流し込む。 */
+  /** ブラウザの代わりに交差の情報を渡す。 */
   emit(entries: FakeEntry[]): void {
     const payload = entries.map((entry) => ({
       target: entry.target,
@@ -85,14 +85,14 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-describe('アウトラインのスクロール追従 (03.ux-spec/06-panes.md §2 / N-PERF-05)', () => {
+describe('アウトラインのスクロール追従 (N-PERF-05)', () => {
   it('ポーリングではなく IntersectionObserver で見る', () => {
     seed(3);
     vi.useFakeTimers();
 
     const follower = followHeadings(container, (i) => active.push(i));
 
-    // 03.ux-spec/06-panes.md §2 が名指しで求めているのはこれ。タイマーを 1 本も足さない
+    // UX 仕様が明示的に求めている。タイマーを 1 つも追加しない
     expect(vi.getTimerCount()).toBe(0);
     expect(FakeObserver.latest?.observed).toHaveLength(3);
     // 本文のスクロールコンテナを root にしないと、ウィンドウ基準で判定してしまう
@@ -119,7 +119,7 @@ describe('アウトラインのスクロール追従 (03.ux-spec/06-panes.md §2
     observer?.emit([{ target: headings[1] as Element, top: 40 }]);
     expect(active.at(-1)).toBe(1);
 
-    // 3 つ目も越えた。**最後に越えたものが現在位置**
+    // 3 つ目も越えた。最後に越えたものが現在位置
     observer?.emit([{ target: headings[2] as Element, top: -20 }]);
     expect(active.at(-1)).toBe(2);
   });
@@ -153,7 +153,7 @@ describe('アウトラインのスクロール追従 (03.ux-spec/06-panes.md §2
   });
 
   /**
-   * 段階的描画（02.architecture/06-markdown-rendering-pipeline.md §4）。
+   * 段階的描画。
    * 後から入ったチャンクの見出しを観測しないと、後半で追従が止まる。
    */
   it('後から増えた見出しを refresh で拾い、現在位置を先頭へ跳ね返さない', () => {
@@ -190,12 +190,13 @@ describe('アウトラインのスクロール追従 (03.ux-spec/06-panes.md §2
     followHeadings(container, (i) => active.push(i));
 
     expect(FakeObserver.latest?.observed).toHaveLength(400);
-    // **観測者は 1 つ。** 見出しごとに作ると、その数だけコールバックが走る
+    // 観測者は 1 つ。
+    // 見出しごとに作ると、その数だけコールバックが実行される
     expect(FakeObserver.latest?.disconnectCount).toBe(1);
   });
 });
 
-describe('Edit の現在位置（カーソル行 / #59）', () => {
+describe('Edit の現在位置（カーソル行）', () => {
   /** `## a` が 3 行目、`## b` が 10 行目、`## c` が 20 行目（`line` は 0 始まり）。 */
   const items = [
     { line: 2, level: 2, text: 'a', slug: 'a' },

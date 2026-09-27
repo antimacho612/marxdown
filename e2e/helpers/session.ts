@@ -1,8 +1,8 @@
 /**
- * セッション復元の spec が使う前提（OQ-04 / M3 Phase 7）。
+ * セッション復元の spec が使う前提（F-NAV-01）。
  *
- * 仕込みは `wdio.conf.ts` の `beforeSession` から呼ぶ。spec の中では遅い。
- * 復元はアプリの起動時にしか効かず、そのアプリはセッションを張った時点で立ち上がっている。
+ * 準備は `wdio.conf.ts` の `beforeSession` から呼ぶ。spec の中では間に合わない。
+ * 復元はアプリの起動時にしか行われず、そのアプリはセッションを張った時点で立ち上がっている。
  */
 import path from 'node:path';
 
@@ -13,7 +13,7 @@ import { seedSession } from './store';
 export const RESTORED_FIRST = path.join(WORK_DIR, 'restored-a.md');
 export const RESTORED_SECOND = path.join(WORK_DIR, 'restored-b.md');
 
-/** 表示していたタブの位置。**先頭ではない**ので、並びと選択の両方を確かめられる。 */
+/** 表示していたタブの位置。先頭ではないので、並びと選択の両方を確かめられる。 */
 export const RESTORED_ACTIVE = 1;
 
 /** 前回のタブを用意する。`resetWorkspace()` の後に呼ぶこと。 */

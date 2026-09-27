@@ -1,9 +1,9 @@
 <!--
-  ライトペイン（03.ux-spec/06-panes.md §3）。
-  `shell.css` の `grid-template-areas` には最初から `rightpane` 列があり（列幅 `auto` で要素を置かなければ 0 幅に潰れる）、このコンポーネントを足すだけで展開状態になる。
+  ライトペイン。
+  `shell.css` の `grid-template-areas` には最初から `rightpane` 列があり（列幅 `auto` で要素を置かなければ幅 0 になる）、このコンポーネントを置くだけで展開状態になる。
 
-  §4 の「ペイン」と「ビュー」の分離により、ここは枠と幅だけを持ち、中身は関知しない（中身はスニペットとして `App.svelte` が渡す）。
-  直接 `Outline` を import していた時期は `panes → outline → panes` の循環参照が生じていたため、この形にしてある。
+  「ペイン」と「ビュー」の分離により、ここは枠と幅だけを持ち、中身は関知しない（中身はスニペットとして `App.svelte` が渡す）。
+  `Outline` を直接 import すると `panes → outline → panes` の循環参照が生じる。
 -->
 <script lang="ts">
   import type { Snippet } from 'svelte';
@@ -63,7 +63,7 @@
   }
 
   /**
-   * キーボードでも幅を変えられるようにする（03.ux-spec/10-accessibility.md）。
+   * キーボードでも幅を変えられるようにする。
    *
    * 左右キーで幅を変え、`Home` で既定に戻す。
    * ポインタ操作でしか扱えない要素を増やさない。
@@ -92,7 +92,7 @@
 
 <aside class="mx-rightpane" style:width="{width}px">
   <!--
-    掴む場所。ペインの左端に重ねてある。
+    ドラッグ領域。ペインの左端に重ねてある。
     `aria-*` を付けているのは、キーボードで操作できる以上、現在の幅が読み上げられないと増減を判断できないためである。
 
     ロールが `separator` ではなく `slider` なのは、フォーカス可能な separator（ウィンドウスプリッタ）を Svelte の a11y 検査が操作できない要素と判定するためである。
@@ -121,9 +121,9 @@
 <style>
   /*
    * 領域は名前で指す（`shell.css` の `grid-template-areas`）。
-   * 幅はインラインスタイルで当て、トークンにはしない（左右別々に記憶する値であり変数が増えても意味がないため）。
+   * 幅はインラインスタイルで指定し、トークンにはしない（左右別々に記憶する値であり変数が増えても意味がないため）。
    * 開閉にアニメーションは付けない。
-   * `width` を遷移させると本文全体の再レイアウトが毎フレーム走り、`huge.md` で処理が遅延するためである（N-PERF-03 / 03.ux-spec/09-motion.md §1）。
+   * `width` を遷移させると本文全体の再レイアウトが毎フレーム発生し、`huge.md` で処理が遅延するためである（N-PERF-03）。
    */
   .mx-rightpane {
     grid-area: rightpane;
@@ -147,7 +147,7 @@
     inset-inline-start: 0;
     width: 5px;
     cursor: col-resize;
-    /* 掴んだまま本文の上を通っても、テキスト選択を始めさせない */
+    /* ドラッグ中に本文の上を通っても、テキスト選択を始めさせない */
     touch-action: none;
     user-select: none;
   }

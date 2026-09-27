@@ -1,9 +1,9 @@
 /**
- * ユーザー設定のスキーマ（02.architecture/04-rust-responsibilities.md §5 / F-CONF-03）。
+ * ユーザー設定のスキーマ（F-CONF-03）。
  *
  * `src-tauri/src/settings/schema.rs` と 1:1 で対応する唯一の対応表であり、Rust 側を変えたらここも必ず変える。
  * キー・既定値・列挙の綴り・数値の許容範囲がここ 1 か所に集まっているため、`Settings` 型と `DEFAULT_SETTINGS` と範囲の表は全部ここから導出される。
- * 以前は 3 つが別々に書かれていて、キーを足すときに片方だけ直すと型は通るのに既定値が欠ける状態になっていた。
+ * 別々に書くと、キーを足すときに片方だけ直しても型は通り、既定値が欠ける状態になる。
  *
  * ここに置くのは Rust 側と対応が取れるものだけである。
  * 部品の種類（ラジオか `<select>` か）・入力欄の刻み幅・ラベル・カテゴリは UI の都合なので `features/settings/lazy/layout.ts` に置く。
@@ -22,7 +22,7 @@ interface EnumEntry {
 /**
  * 数値の項目。`min` / `max` は `src-tauri/src/settings/schema.rs` の `*_RANGE` と揃える。
  *
- * Rust 側は読んだ時点で潰しているので、こちらが効くのは設定 UI から直接入力された値に対してだけである。
+ * Rust 側は読んだ時点で範囲内に丸めているので、こちらが適用されるのは設定 UI から直接入力された値に対してだけである。
  */
 interface NumberEntry {
   kind: 'number';
@@ -41,20 +41,43 @@ interface StringEntry {
   default: string;
 }
 
-/** 数値の並び。`min` / `max` は要素 1 つあたりの範囲で、`maxLength` は本数の上限。 */
-interface NumberListEntry {
-  kind: 'number[]';
-  default: readonly number[];
+/** 色を持てる書き方の縦罫線。`color` を省くとテーマの罫線色になる。 */
+export interface StyledRuler {
+  column: number;
+  /** `#RGB` / `#RGBA` / `#RRGGBB` / `#RRGGBBAA`。それ以外は Rust 側で取り除かれる。 */
+  color?: string;
+}
+
+/**
+ * 縦罫線 1 本。VS Code の `editor.rulers` と同じく、桁だけの数値と色を持てるオブジェクトの 2 通りの書き方がある。
+ *
+ * 読んだときの書き方のまま書き戻すため、どちらか一方に正規化しない（`src-tauri/src/settings/schema.rs` の `Ruler`）。
+ */
+export type Ruler = number | StyledRuler;
+
+/** 縦罫線の並び。`min` / `max` は桁 1 つあたりの範囲で、`maxLength` は本数の上限。 */
+interface RulerListEntry {
+  kind: 'ruler[]';
+  default: readonly Ruler[];
   min: number;
   max: number;
   maxLength: number;
 }
 
+/** 文字列の並び。`maxLength` は本数の上限で、`maxItemLength` は 1 本あたりの長さの上限。 */
+interface StringListEntry {
+  kind: 'string[]';
+  default: readonly string[];
+  maxLength: number;
+  maxItemLength: number;
+}
+
 /** スキーマ 1 項目。種別ごとに持つ情報が違うため判別可能なユニオンにしてある。 */
-export type SettingSchemaEntry = EnumEntry | NumberEntry | BooleanEntry | StringEntry | NumberListEntry;
+export type SettingSchemaEntry =
+  EnumEntry | NumberEntry | BooleanEntry | StringEntry | RulerListEntry | StringListEntry;
 
 /**
- * 既定値が選択肢の中にあることを型で縛る。
+ * 既定値が選択肢の中にあることを型で保証する。
  *
  * 外れているときに `never` ではなく選択肢そのものを返すのは、エラーが「`'foo'` は `'a' | 'b'` に代入できない」の形で該当キーの位置に出るため。
  * `never` を返すとオブジェクト全体が赤くなり、どのキーが悪いのか分からなくなる。
@@ -112,21 +135,32 @@ export const SETTINGS_SCHEMA = defineSettingsSchema({
     default: 'none',
   },
   /**
-   * 縦罫線を引く桁。空なら引かない。`preview.maxWidth` と対で使う。
+   * 縦罫線。空なら引かない。`preview.maxWidth` と対で使う。
    * 本数に上限があるのは、手書きの長い配列がそのまま描画コストになるため。
    */
-  'editor.rulers': { kind: 'number[]', default: [], min: 1, max: 500, maxLength: 8 },
+  'editor.rulers': { kind: 'ruler[]', default: [], min: 1, max: 500, maxLength: 8 },
   'editor.scrollBeyondLastLine': { kind: 'boolean', default: true },
+  /** 見出しを編集面の上端に固定する。固定する範囲は見出しの折りたたみと同じ（`features/editor/lazy/folding.ts`）。 */
+  'editor.stickyScroll.enabled': { kind: 'boolean', default: true },
   /**
-   * エディターの配色（ADR-0014）。列挙ではなく文字列である。
+   * エディターの配色。列挙ではなく文字列である。
    *
    * 選択肢は組み込みの 50 枚（`features/theme/lazy/presets.ts`）と `themes/` に置かれたファイルの合成であり、ここで数え上げられない。
-   * 数え上げようとすると 50 個の綴りがクリティカルパスに載る。それは配色そのものを遅延チャンクへ追い出した意味を失わせる。
+   * 数え上げようとすると 50 個の綴りがクリティカルパスに載り、配色を遅延チャンクに置いた意味が失われる。
    *
-   * 知らない綴りは既定へ落とさず保持する（Rust 側も同じ）。落とすと、名前の打ち間違いと未適用をユーザーが区別できない。
+   * 知らない綴りは既定に戻さず保持する（Rust 側も同じ）。戻すと、名前の打ち間違いと未適用をユーザーが区別できない。
    */
   'editor.theme': { kind: 'string', default: 'default' },
   'editor.tabSize': { kind: 'number', default: 2, min: 1, max: 8 },
+  /**
+   * 単語単位の移動・選択で、区切りを `Intl.Segmenter` で決めるロケール（BCP 47）。
+   *
+   * VS Code の既定は空だが、空のままでは日本語の文が句読点か空白まで 1 語として扱われる。
+   * UI が日本語のみであるため（OQ-11）、既定を `ja` にしてある。
+   */
+  'editor.wordSegmenterLocales': { kind: 'string[]', default: ['ja'], maxLength: 8, maxItemLength: 35 },
+  /** 単語単位のカーソル移動（`ctrl + ←` / `ctrl + →`）で区切りとして扱う文字。既定値は VS Code と同じ。 */
+  'editor.wordSeparators': { kind: 'string', default: '`~!@#$%^&*()-=+[{]}\\|;:\'",.<>/?' },
   'editor.wordWrap': {
     kind: 'enum',
     values: ['off', 'on', 'wordWrapColumn', 'bounded'],
@@ -134,8 +168,22 @@ export const SETTINGS_SCHEMA = defineSettingsSchema({
   },
   'editor.wordWrapColumn': { kind: 'number', default: 80, min: 20, max: 500 },
 
+  /**
+   * エクスプローラーとクイックオープンから常に除外するパスの glob。
+   *
+   * 隠しファイルと `node_modules` は設定に関わらず除外される（`src-tauri/src/dir.rs`）。
+   * 判定は Rust 側にある（`src-tauri/src/glob.rs`）。フロントへ渡してから隠すと、画面に出ないものまで IPC に載る。
+   * 上限は `src-tauri/src/settings/schema.rs` の `EXCLUDE_MAX` と `glob.rs` の `MAX_PATTERN_LEN` に揃える。
+   */
+  'explorer.exclude': { kind: 'string[]', default: [], maxLength: 64, maxItemLength: 256 },
+  /**
+   * ファイルツリーの単一クリックで仮タブとして開くか（ADR-0025）。
+   * キーに `preview` を使わないのは、Marxdown の表示モード（Preview）と区別するためである。
+   */
+  'explorer.temporaryTab': { kind: 'boolean', default: true },
+
   /*
-   * 追加記法（04.tech-stack/04-markdown.md §3）。**どれも既定 OFF である。**
+   * 追加記法。どれも既定 OFF である。
    *
    * 標準的でない記法が意図せず発火して本文が壊れるほうが、ユーザーの認知負荷が高い（Principle 3）。
    * ON にしたものだけが動的 import される（`markdown/plugins/syntax.ts`）。既定では 1 バイトも読み込まない。
@@ -148,6 +196,8 @@ export const SETTINGS_SCHEMA = defineSettingsSchema({
   'markdown.multilineTables': { kind: 'boolean', default: false },
   'markdown.subscript': { kind: 'boolean', default: false },
   'markdown.superscript': { kind: 'boolean', default: false },
+  // Marp の自作テーマ。CSS ファイルかフォルダーの絶対パス（ADR-0023 §3.4）。上限は `src-tauri/src/settings/schema.rs` と揃える。
+  'marp.themes': { kind: 'string[]', default: [], maxLength: 32, maxItemLength: 1024 },
 
   /** アウトラインに表示する見出しの最大階層（`h1`〜`h6`）。6 は見出しの最大階層で、実質「制限なし」を意味する。 */
   'outline.maxDepth': { kind: 'number', default: 6, min: 1, max: 6 },
@@ -162,27 +212,37 @@ export const SETTINGS_SCHEMA = defineSettingsSchema({
   'preview.fontSize': { kind: 'number', default: 16, min: 8, max: 72 },
   'preview.lineHeight': { kind: 'number', default: 1.75, min: 1, max: 3 },
   /**
-   * 本文幅。単位は `ch`（02.architecture/10-theming.md §2）。
+   * 本文幅。単位は `ch`。
    *
-   * 既定の 72ch は、実測で 1 行あたり欧文 78 字・全角 39 字にあたる（Segoe UI Variable Text 16px で 1ch = 8.63px）。
+   * 既定の 72ch は、1 行あたり欧文 78 字・全角 39 字にあたる（Segoe UI Variable Text 16px で 1ch = 8.63px）。
    * 長文の推奨測度は 60〜75 字で、100ch では欧文 108 字に達し、次の行頭を追いにくくなる。
    * 既定値は `styles/tokens.css` の `--mx-content-width` と一致させる（設定を書いていない利用者はそちらを見る）。
    */
   'preview.maxWidth': { kind: 'number', default: 72, min: 20, max: 200 },
-  /** 段落内の単独の改行を `<br>` として描画するか（`markdown-it` の `breaks` / #45）。既定は CommonMark 準拠で false。 */
+  /** 段落内の単独の改行を `<br>` として描画するか（`markdown-it` の `breaks`）。既定は CommonMark 準拠で false。 */
   'preview.softBreak': { kind: 'boolean', default: false },
   /**
-   * 本文の配色（ADR-0014）。`editor.theme` と同じくカタログを共有する文字列である。
+   * 表の罫線の引き方。
    *
-   * 選択肢は組み込みの 50 枚（`features/theme/lazy/presets.ts`）と `themes/` に置かれたファイルの合成であり、ここで数え上げられない。
-   * 数え上げようとすると 50 個の綴りがクリティカルパスに載る。それは配色そのものを遅延チャンクへ追い出した意味を失わせる。
+   * 既定の `lines` は横罫線だけを引く。全セルを囲むと、数行の表でも格子が本文の中で最も強い図形になる。
+   * 列が多い表では行を追いにくくなるため、格子（`grid`）と交互の塗り（`zebra`）を選べるようにしてある。
+   */
+  'preview.tableStyle': { kind: 'enum', values: ['lines', 'grid', 'zebra'], default: 'lines' },
+  /**
+   * 本文の配色。`editor.theme` と同じくカタログを共有する文字列である。
    *
-   * 知らない綴りは既定へ落とさず保持する（Rust 側も同じ）。落とすと、名前の打ち間違いと未適用をユーザーが区別できない。
+   * 選択肢と綴りの扱いは `editor.theme` と同じである。
    */
   'preview.theme': { kind: 'string', default: 'default' },
 
-  /** ウィンドウを閉じたときの挙動（ADR-0007）。 */
-  'window.closeBehavior': { kind: 'enum', values: ['tray', 'exit'], default: 'tray' },
+  /** 新しい版を自動で確認するか（ADR-0024）。false でもコマンドパレットの「更新を確認」は使える。 */
+  'update.autoCheck': { kind: 'boolean', default: true },
+
+  /** `✕` で閉じたときにトレイへ格納するか（ADR-0007）。false ならプロセスを終了する。 */
+  'window.closeToTray': { kind: 'boolean', default: true },
+
+  /** ログイン時にトレイへ常駐した状態で起動するか（ADR-0022）。`window.closeToTray` が false のときは効果が無い。 */
+  'window.launchAtLogin': { kind: 'boolean', default: false },
 });
 
 type Schema = typeof SETTINGS_SCHEMA;
@@ -195,9 +255,11 @@ type ValueOf<E> = E extends { kind: 'enum'; values: readonly (infer V)[] }
       ? boolean
       : E extends { kind: 'string' }
         ? string
-        : E extends { kind: 'number[]' }
-          ? number[]
-          : never;
+        : E extends { kind: 'ruler[]' }
+          ? Ruler[]
+          : E extends { kind: 'string[]' }
+            ? string[]
+            : never;
 
 /**
  * `settings.json` の値の形。スキーマから導出されるため、ここに手で追記しない。
@@ -226,7 +288,7 @@ export type BooleanKey = { [K in keyof Schema]: Schema[K] extends { kind: 'boole
 
 /** 個々の設定値の型。UI 側が `Settings` のキーを覚えずに済むよう、別名を切ってある。 */
 export type Theme = Settings['theme'];
-export type WindowCloseBehavior = Settings['window.closeBehavior'];
+export type TableStyle = Settings['preview.tableStyle'];
 export type WordWrap = Settings['editor.wordWrap'];
 export type LineNumbers = Settings['editor.lineNumbers'];
 export type RenderWhitespace = Settings['editor.renderWhitespace'];
@@ -238,7 +300,7 @@ export type CursorBlinking = Settings['editor.cursorBlinking'];
  * 既定値。`src-tauri/src/settings/schema.rs` の `Settings::default()` と 1:1 で対応する。
  *
  * 実際に届く値は Rust 側で既定値を埋めた後のものなので、これが要るのは bootstrap を持たない経路（`dev:web` の初回・テスト）だけ。
- * 一致は `settings-schema.test.ts` が `src-tauri/tests/settings-default.json` 越しに機械的に見張っている。
+ * 一致は `settings-schema.test.ts` が `src-tauri/tests/settings-default.json` 越しに機械的に検証している。
  */
 export const DEFAULT_SETTINGS: Settings = Object.fromEntries(
   // 配列は複製する。共有するとスキーマ側の既定値が書き換わりうる
@@ -254,9 +316,9 @@ export function isNumericKey(key: SettingKey): key is NumericKey {
 }
 
 /**
- * 数値を許容範囲に収める。範囲外の値がそのまま CSS / Monaco に流れるとレイアウトが壊れる。
+ * 数値を許容範囲に収める。範囲外の値がそのまま CSS / Monaco に渡るとレイアウトが壊れる。
  *
- * 有限でない値（`NaN` / `Infinity`）は既定値に落とす。潰しようがないため。
+ * 有限でない値（`NaN` / `Infinity`）は丸めようがないため、既定値に戻す。
  */
 export function clampSetting(key: NumericKey, value: number): number {
   const { min, max } = SETTINGS_SCHEMA[key];

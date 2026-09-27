@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { render, renderChunks, slugifyHeading } from './pipeline';
 import { splitFrontMatter } from './plugins/front-matter';
+import { LINE_HEAD } from './protocol';
 
 describe('CommonMark / GFM', () => {
   it('見出しと段落を描画する', () => {
@@ -26,11 +27,11 @@ describe('CommonMark / GFM', () => {
   });
 
   it('既定では単独の改行を <br> にしない', () => {
-    // CommonMark 準拠。`preview.softBreak` を true にすると LLM 生成の折り返しが全部改行になる（#45）。
+    // CommonMark 準拠。`preview.softBreak` を true にすると LLM 生成の折り返しが全部改行になる。
     expect(render('a\nb').html).not.toContain('<br>');
   });
 
-  it('preview.softBreak が true なら単独の改行を <br> にする (#45)', () => {
+  it('preview.softBreak が true なら単独の改行を <br> にする', () => {
     expect(render('a\nb', { breaks: true }).html).toContain('<br>');
   });
 
@@ -39,7 +40,7 @@ describe('CommonMark / GFM', () => {
   });
 });
 
-describe('data-line 行マッピング (02.architecture/06-markdown-rendering-pipeline.md §3)', () => {
+describe('data-line 行マッピング', () => {
   it('ブロック要素に開始行を付ける', () => {
     const { html } = render('# h\n\npara\n\n- item\n');
     expect(html).toContain('data-line="0"'); // 見出し
@@ -154,6 +155,43 @@ describe('段階的描画のチャンク分割 (N-PERF-04)', () => {
   });
 });
 
+describe('差分更新の単位 (#159)', () => {
+  it('連結すると分割なしの結果と一致する', () => {
+    const text = '# a\n\nb\n\n```js\nc\n```\n\n- d\n- e\n\n> [!NOTE]\n> f\n';
+    const { blocks } = renderChunks(text, 1, 1);
+    expect(blocks).toHaveLength(5);
+    expect(blocks.join('')).toBe(render(text).html);
+  });
+
+  it('どのブロックも data-line を持つ要素で始まる', () => {
+    const { blocks } = renderChunks('# a\n\n```js\nb\n```\n\n$$\nc\n$$\n\n---\n', 1, 1);
+    expect(blocks.every((block) => LINE_HEAD.test(block))).toBe(true);
+  });
+
+  it('data-line を持たないブロック（生の HTML・脚注）は直前に連結する', () => {
+    const text = 'a[^1]\n\n<div>raw</div>\n\nb\n\n[^1]: note\n';
+    const { blocks } = renderChunks(text, 1, 1);
+    expect(blocks).toHaveLength(2);
+    expect(blocks[0]).toContain('<div>raw</div>');
+    expect(blocks[1]).toContain('<section class="footnotes">');
+    expect(blocks.join('')).toBe(render(text).html);
+  });
+
+  it('先頭が生の HTML なら、それが先頭のブロックになる', () => {
+    const { blocks } = renderChunks('<div>raw</div>\n\na\n', 1, 1);
+    expect(blocks).toHaveLength(2);
+    expect(LINE_HEAD.test(blocks[0] ?? '')).toBe(false);
+  });
+
+  it('行番号がずれても、data-line を除けば同じ文字列になる', () => {
+    const before = renderChunks('a\n\nb\n', 1, 1).blocks;
+    const after = renderChunks('a\n\n\n\nb\n', 1, 1).blocks;
+    const strip = (html: string | undefined): string => (html ?? '').replaceAll(/data-line="\d+"/g, '');
+    expect(after[1]).not.toBe(before[1]);
+    expect(strip(after[1])).toBe(strip(before[1]));
+  });
+});
+
 describe('壊れた入力に耐える (N-REL-04)', () => {
   it.each([
     ['閉じないコードフェンス', '```ts\nconst a = 1\n'],
@@ -167,7 +205,7 @@ describe('壊れた入力に耐える (N-REL-04)', () => {
   });
 });
 
-describe('OQ-27 で前倒した記法 (06.roadmap/m2-editor.md §1.4)', () => {
+describe('GitHub 由来の拡張記法（Alerts / 脚注 / タスクリスト）', () => {
   it('GitHub Alerts を描画する (F-VIEW-14)', () => {
     const { html } = render('> [!TIP]\n> 役に立つ話。\n');
     expect(html).toContain('class="markdown-alert markdown-alert-tip"');
@@ -182,9 +220,8 @@ describe('OQ-27 で前倒した記法 (06.roadmap/m2-editor.md §1.4)', () => {
   });
 
   it('Alerts にも data-line が付く（スクロール同期の基盤）', () => {
-    // `alert_open` は `blockquote_open` を書き換えて作られるうえ、
-    // レンダラがトークンの属性を見ない。ここが落ちると Split の同期が
-    // アラートの上で飛ぶ（plugins/line-map.ts）。
+    // `alert_open` は `blockquote_open` を書き換えて作られるうえ、レンダラがトークンの属性を見ない。
+    // ここで `data-line` が欠けると、Split の同期がアラートの上で位置を失う（plugins/line-map.ts）。
     const { html } = render('段落\n\n> [!NOTE]\n> 本文\n');
     expect(html).toContain('<div data-line="2" class="markdown-alert');
   });
@@ -203,7 +240,7 @@ describe('OQ-27 で前倒した記法 (06.roadmap/m2-editor.md §1.4)', () => {
     expect(html).toContain('role="checkbox"');
   });
 
-  it('チェックボックスに input を使わない (OQ-05)', () => {
+  it('チェックボックスに input を使わない', () => {
     // 生 HTML を書いたドキュメントが本文へ操作可能なフォーム部品を持ち込む経路を塞いである。
     expect(render('- [x] 完了\n').html).not.toContain('<input');
   });
@@ -235,7 +272,7 @@ describe('OQ-27 で前倒した記法 (06.roadmap/m2-editor.md §1.4)', () => {
   });
 
   it('タスクリストの li にも data-line が残る', () => {
-    // プラグインは `list_item_open` の class を書き換える。data-line まで巻き添えにしていないことを見張る。
+    // プラグインは `list_item_open` の class を書き換える。data-line まで書き換えていないことを検証する。
     expect(render('- [ ] a\n').html).toContain('data-line="0"');
   });
 });
@@ -292,7 +329,7 @@ describe('数式のプレースホルダ (F-VIEW-13)', () => {
   });
 
   it('通貨の表記を数式にしない', () => {
-    // 終了記号の直前が空白であるか、直後が数字であるものを弾く。
+    // 終了記号の直前が空白であるか、直後が数字であるものを除外する。
     expect(render('$5 と $10 です').html).not.toContain('mx-math');
     expect(render('$5$10').html).not.toContain('mx-math');
   });
@@ -312,7 +349,7 @@ describe('数式のプレースホルダ (F-VIEW-13)', () => {
   });
 
   it('閉じていない $$ は本文のまま残す', () => {
-    // 末尾まで飲み込む実装にすると、記号を 1 つ書き損なっただけで以降の本文が消える。
+    // 末尾まで取り込む実装にすると、記号を 1 つ書き損なっただけで以降の本文が消える。
     const { html } = render('$$\na = b\n\n次の段落\n');
     expect(html).not.toContain('mx-math');
     expect(html).toContain('次の段落');

@@ -1,9 +1,9 @@
 // @vitest-environment jsdom
 /**
- * 改行コードの変換（F-EDIT-14 / 03.ux-spec/07-status-and-notifications.md §3）。
+ * 改行コードの変換（F-EDIT-14）。
  *
  * 見たいのは、ダーティの源が 2 つあることである。
- * 本文と改行コードは別々に変わるため、1 つの boolean に統合すると打鍵して Undo で戻しただけで変換の希望が黙って捨てられる（`dirty.ts` の `refreshDirty`）。
+ * 本文と改行コードは別々に変わるため、1 つの boolean に統合すると打鍵して Undo で戻しただけで変換の指定が通知なく破棄される（`dirty.ts` の `refreshDirty`）。
  * 保存すると変換されないのに未保存の印だけが消えるため、画面からは気づけない。
  */
 import { beforeEach, describe, expect, it } from 'vitest';
@@ -41,7 +41,8 @@ describe('EOL の変換', () => {
 
     expect(effectiveEol()).toBe('crlf');
     expect(documentStore.isDirty).toBe(true);
-    // **ディスクの姿は触らない。** `meta` は読み込んだときのままである。
+    // ディスク上の状態は変えない。
+    // `meta` は読み込んだときのままである。
     expect(documentStore.meta?.eol).toBe('lf');
   });
 

@@ -1,33 +1,41 @@
 /**
- * Markdown のパース窓口。
+ * Markdown のパースのインタフェース。
  *
- * かつては Worker で実行していたが、実測でその根拠（Split の入力レスポンス）が成り立たなかったため撤去した（ADR-0010 / measurements/11-input-response.md）。
+ * パースはメインスレッドで実行する（ADR-0010）。
  *
  * `parse` は同期的に返せるが `Promise` を保っている。
- * 呼び出し側はパースを投げてから結果を待つ間にシェルを描く構造になっており（02.architecture/05-startup-sequence.md §1）、同期にするとこの並行処理が成立しなくなる。
+ * 呼び出し側はパースを開始してから結果を待つ間にシェルを描く構造になっており、同期にするとこの並行処理が成立しなくなる。
  *
  * `pipeline` を動的 import にしているのは遅延のためではなく、`main` チャンクの予算計測を実態に合わせるためである（size-limit のクリティカルパスに名指しで入っている）。
  */
-import { DEFAULT_CHUNK_BLOCKS, DEFAULT_FIRST_CHUNK_BLOCKS, type ParseResult } from './protocol';
+import { DEFAULT_CHUNK_BLOCKS, DEFAULT_FIRST_CHUNK_BLOCKS, type MarpThemeSet, type ParseResult } from './protocol';
 
 /** チャンク分割の指定。省略時は `protocol.ts` の既定値を使う。 */
 export interface ParseOptions {
   firstChunkBlocks?: number;
   chunkBlocks?: number;
-  /** 単独の改行を `<br>` にするか（`preview.softBreak` / #45）。省略時は false。 */
+  /** 単独の改行を `<br>` にするか（`preview.softBreak`）。省略時は false。 */
   breaks?: boolean;
   /**
-   * 有効にする追加記法（`markdown.*` / 04.tech-stack/04-markdown.md §3）。省略時は無し。
+   * 有効にする追加記法（`markdown.*`）。省略時は無し。
    *
    * 描画の前にここで読み込みを待つ。既定（空）では読み込むものが無く、往復も発生しない。
    */
   syntax?: readonly string[];
+  /**
+   * Marp の自作テーマ（`marp.themes`）を読む関数。Marp の文書を描くときだけ呼ぶ。
+   *
+   * 同じ読み込み結果（同じオブジェクト）を返す限り、テーマは登録し直さない。
+   */
+  marpThemes?: () => Promise<MarpThemeSet>;
 }
 
-/** パースの窓口。実体は `createParser` が返す。 */
+const NO_THEMES: MarpThemeSet = { themes: [], problems: [] };
+
+/** パースのインタフェース。実体は `createParser` が返す。 */
 export interface MarkdownParser {
   parse(text: string, options?: ParseOptions): Promise<ParseResult>;
-  /** M3 でタブを閉じるときに呼ぶ（N-PERF-06）。いまは解放するものが無い。 */
+  /** 破棄する（N-PERF-06）。パーサは解放するものを持たないため、何もしない。 */
   dispose(): void;
 }
 
@@ -45,8 +53,26 @@ export function createParser(): MarkdownParser {
   return {
     async parse(text, options = {}) {
       const id = nextId++;
-      const { renderChunks, resetMarkdownIt, loadSyntax } = await pipeline;
+      const { renderChunks, resetMarkdownIt, loadSyntax, marpFrontMatter, mathPlugin, extractOutline } = await pipeline;
       const { measure } = await textStats;
+
+      const frontMatter = marpFrontMatter(text);
+      if (frontMatter !== null) {
+        // Marp の描画（F-VIEW-17）は `marp: true` の文書を開くまで読み込まない。
+        const { renderMarp } = await import('./marp');
+        const started = performance.now();
+        const rendered = renderMarp(text, { mathPlugin, extractOutline }, (await options.marpThemes?.()) ?? NO_THEMES);
+        return {
+          id,
+          chunks: [],
+          blocks: [],
+          outline: rendered.outline,
+          frontMatter,
+          parseMs: performance.now() - started,
+          textStats: measure(text),
+          marp: rendered,
+        };
+      }
 
       // 追加記法は ON のものだけを動的 import する（`plugins/syntax.ts`）。
       // 既定では空であり、`loadSyntax` は何も読み込まずに返る。
@@ -71,6 +97,7 @@ export function createParser(): MarkdownParser {
       return {
         id,
         chunks: result.chunks,
+        blocks: result.blocks,
         outline: result.outline,
         frontMatter: result.frontMatter,
         parseMs,

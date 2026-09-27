@@ -1,12 +1,9 @@
 <!--
-  パレットの器（コマンドパレット `Ctrl+Shift+P` / 見出しジャンプ `Ctrl+Shift+O`）。
+  パレットの外枠（コマンドパレット `Ctrl+Shift+P` / クイックオープン `Ctrl+P` / 見出しジャンプ `Ctrl+Shift+O`）。
 
   中身を知らない。何を並べるかは呼び出し側が `items` で渡し、選ばれたら `onselect` が呼ばれる。
-  以前は見出しジャンプが器と中身を両方持っており（`outline/lazy/JumpPalette.svelte`）、
-  そこには「機能を登録できる仕組みは作らない。作ると M3 で 2 つのパレットを統合し直すことになる」と書いてあった。
-  M3 でコマンドパレットが入ったので、その統合をここで行っている。
 
-  あいまい検索は `fuzzy.ts`（同じ遅延チャンクの中）。fzf 系のライブラリは入れない（04.tech-stack/05-frontend.md）。
+  あいまい検索は `fuzzy.ts`（同じ遅延チャンクの中）。fzf 系のライブラリは入れない。
 -->
 <script lang="ts">
   import { splitShortcutKeys } from '@/lib/shortcuts';
@@ -19,6 +16,14 @@
     id: string;
     /** 表示と照合に使う文字列。 */
     label: string;
+    /**
+     * 表示しない照合用の別名（コマンドの英語キーワードなど）。
+     *
+     * ラベルで一致したものが常に上に来る（`fuzzyFilter`）。
+     * 一致した語は表示しないので、なぜその行が出ているのかは利用者からは見えない。
+     * 表示しても読むものが増えるだけであり、上位に並ぶのはラベルで一致したものである。
+     */
+    keywords?: string;
     /** 右端に薄く出す補足（ディレクトリや見出しレベルなど）。 */
     detail?: string;
     /** 右端に出すキー。メニューと表示形式を揃えるため、`detail` とは別に持つ。 */
@@ -47,8 +52,7 @@
   /**
    * 一度に描く件数。
    *
-   * `huge.md` の見出しは数百個ある。すべて描画しても動作するが、1 打鍵ごとに数百のノードを
-   * 作り直す必要はない。絞り込めば目的の行は上位に表示される。
+   * `huge.md` の見出しは数百個ある。すべて描画しても動作するが、1 打鍵ごとに数百のノードを作り直す必要はない。絞り込めば目的の行は上位に表示される。
    */
   const SHOWN = 50;
 
@@ -57,7 +61,11 @@
   let input: HTMLInputElement | null = $state(null);
   let list: HTMLElement | null = $state(null);
 
-  const matches = $derived(fuzzyFilter(items, query, (item) => item.label).slice(0, SHOWN));
+  const matches = $derived(
+    fuzzyFilter(items, query, (item) =>
+      item.keywords === undefined ? [item.label] : [item.label, item.keywords],
+    ).slice(0, SHOWN),
+  );
 
   /** 絞り込みが変わると、いま選んでいる行は意味を失う。先頭へ戻す。 */
   let seenQuery = '';
@@ -148,9 +156,8 @@
     <p class="mx-palette__empty">{items.length === 0 ? emptyText : noMatchText}</p>
   {:else}
     <!--
-      選択肢は `<button>` にしておく。`tabindex="-1"` で Tab の順路からは外し、
-      移動は上下キー（入力欄から）に一本化する。押せるものが `<button>` である、
-      という当たり前をここでも崩さない。
+      選択肢は `<button>` にしておく。`tabindex="-1"` で Tab の順路からは外し、移動は上下キー（入力欄から）に一本化する。
+      押せるものは `<button>` にするという原則をここでも守る。
     -->
     <div class="mx-palette__list" id="mx-palette-list" role="listbox" bind:this={list}>
       {#each matches as item, offset (item.id)}
@@ -181,7 +188,7 @@
 <style>
   /*
    * 上寄せの中央に配置する。
-   * 03.ux-spec/09-motion.md の「パレットの出現 100ms」に合わせるが、変化させるのはパレット自身の不透明度と位置だけで、本文には影響しない。
+   * モーションの規則の「パレットの出現 100ms」に合わせるが、変化させるのはパレット自身の不透明度と位置だけで、本文には影響しない。
    */
   .mx-palette {
     position: fixed;
@@ -281,7 +288,7 @@
 
   /*
    * 現在の候補。印はアウトライン・メニュー・タブと同じものを使う（`--mx-current-marker`）。
-   * 以前はここだけ淡い塗り（`--mx-color-selection`）で、同じ意味が一覧ごとに違う見た目になっていた。
+   * 同じ意味の印を、一覧ごとに違う見た目にしない。
    */
   .mx-palette__item--selected {
     box-shadow: var(--mx-current-marker);

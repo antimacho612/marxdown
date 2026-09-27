@@ -3,15 +3,15 @@
  *
  * データを CSS ではなく TypeScript で持つのは 2 つの理由による。
  * 1 つは `[data-mx-editor-theme='...']` というセレクタと `--mx-color-*` という変数名を 50 回書き写さずに済むこと。
- * もう 1 つは、キーの過不足を型検査が捕まえること。
+ * もう 1 つは、キーの過不足を型検査で検出できること。
  * 手で書いた 50 枚の配色のうち 1 枚だけ変数が欠けている状態は、実行するまで気づけない。
  */
 
 /**
  * 配色が上書きするトークン。
  *
- * `tokens.css` の `--mx-color-*` から接頭辞を落とした名前にしてある。
- * 上書きの範囲は ADR-0013 §3.3 の 18 個から変えていない。
+ * `tokens.css` の `--mx-color-*` から接頭辞を除いた名前にしてある。
+ * 上書きの範囲は ADR-0013 §3.3 の 18 個である。
  * `--mx-color-danger` のような意味を持つ色は配色では動かさない。
  */
 export type TokenKey =
@@ -70,7 +70,7 @@ export interface PairPreset {
 /**
  * 明暗のどちらか一方しか持たない配色。面に `color-scheme` を固定する（ADR-0014 §3.2）。
  *
- * Dracula や Monokai のようにライト版が存在しない配色を、本家に無い変種を捏造せずに載せるための形である。
+ * Dracula や Monokai のようにライト版が存在しない配色を、本家に無い変種を作らずに含めるための形である。
  * `theme` 設定がライトでも、この配色を選んだエディターだけは指定した側で表示される。
  */
 export interface PinnedPreset {
@@ -102,7 +102,7 @@ export interface ThemeSummary {
  * 配色 1 枚を宣言の並びにする。セレクタは含まない。
  *
  * `--mx-color-selection` は accent から導出する。
- * 50 枚ぶんを手で書くと、accent と噛み合わない値が紛れ込む余地だけが増える。
+ * 50 枚ぶんを手で書くと、accent と整合しない値が混入する余地だけが増える。
  */
 export function declarations(preset: Preset): string {
   const lines: string[] = [];
@@ -113,6 +113,6 @@ export function declarations(preset: Preset): string {
     lines.push(`${name}:${typeof value === 'string' ? value : `light-dark(${value[0]},${value[1]})`};`);
   }
 
-  lines.push(`--mx-color-selection:color-mix(in srgb,var(--mx-color-accent) 22%,transparent);`);
+  lines.push(`--mx-color-selection:color-mix(in srgb,var(--mx-color-accent) 32%,transparent);`);
   return lines.join('');
 }

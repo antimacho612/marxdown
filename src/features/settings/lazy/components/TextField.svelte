@@ -20,7 +20,7 @@
   interface Props {
     /**
      * どの項目か。値の型は縛らない。
-     * 文字列の項目のほか、縦罫線（`number[]`）が打っている途中の文字列を流し込む先でもある。
+     * 文字列の項目のほか、縦罫線（`ruler[]`）が打っている途中の文字列を流し込む先でもある。
      */
     settingKey: SettingKey;
     label: string;

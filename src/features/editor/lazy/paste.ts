@@ -1,10 +1,10 @@
 /**
  * 貼り付けの横取り（F-EDIT-12 / F-EDIT-13 / `editor` チャンク）。
  * 選択範囲への URL 貼り付けで `[選択文字](URL)` になる。
- * CodeMirror では `pasteURLAsLink` が既定で持っていたが Monaco には無いため自作した（ADR-0009 の受け入れコスト 1）。
+ * Monaco には無いため自作した（ADR-0009 の受け入れコスト 1）。
  *
- * Monaco の `onDidPaste` は貼り終わってから飛ぶため、そこで直すと Undo が 2 回に割れ選択範囲も消えている。
- * DOM の `paste` を先に捕まえて `preventDefault()` すれば 1 回の編集で済む。
+ * Monaco の `onDidPaste` は貼り付けの完了後に発火するため、そこで書き換えると Undo が 2 回に分かれ、選択範囲も失われている。
+ * DOM の `paste` イベントを先に受け取って `preventDefault()` すれば 1 回の編集で済む。
  * 判定はスキーム付きで空白を含まない 1 行に限り、緩めると普通の文字列貼り付けまでリンク化されてしまう。
  */
 import { documentStore } from '@/features/document';
@@ -84,7 +84,7 @@ export function imageLink(relativePath: string): MarkdownEdit {
 async function pasteImage(editor: monaco.editor.IStandaloneCodeEditor, file: File, extension: string): Promise<void> {
   const path = documentStore.meta?.path ?? null;
   if (path === null || path === '') {
-    documentStore.notice = { level: 'info', message: ja.editor.pasteImageUntitled };
+    documentStore.statusMessage = ja.editor.pasteImageUntitled;
     return;
   }
 
@@ -102,13 +102,12 @@ async function pasteImage(editor: monaco.editor.IStandaloneCodeEditor, file: Fil
 /**
  * 貼り付けを監視する。`mountEditor` から 1 回だけ呼ぶ。
  *
- * 拾うのは 2 つだけである。選択範囲への URL（F-EDIT-12）と、画像（F-EDIT-13）。
+ * 処理するのは 2 つだけである。選択範囲への URL（F-EDIT-12）と、画像（F-EDIT-13）。
  * どちらでもなければ何もしないため、通常の貼り付けはそのまま Monaco が処理する。
  *
- * **登録先は `editor.getDomNode()` ではなく、マウント先の要素である。**
- * `mountEditor` は `model: null` でエディターを作るため（どのタブのものかは後から決まる）、
- * この時点では Monaco がビューを構築しておらず `getDomNode()` は `null` を返す。
- * そちらに登録する形にすると**登録そのものが行われず、URL の貼り付けも画像の貼り付けも動かない。**
+ * 登録先は `editor.getDomNode()` ではなく、マウント先の要素である。
+ * `mountEditor` は `model: null` でエディターを作るため（どのタブのものかは後から決まる）、この時点では Monaco がビューを構築しておらず `getDomNode()` は `null` を返す。
+ * そちらに登録する形にすると登録そのものが行われず、URL の貼り付けも画像の貼り付けも動かない。
  */
 export function installPaste(editor: monaco.editor.IStandaloneCodeEditor, host: HTMLElement): void {
   host.addEventListener(
@@ -135,7 +134,7 @@ export function installPaste(editor: monaco.editor.IStandaloneCodeEditor, host: 
       event.preventDefault();
       // `preventDefault()` だけでは足りない。
       // Monaco はブラウザの既定動作に任せず、自分のハンドラで `clipboardData` を読んで貼り付ける。
-      // 捕獲フェーズで先に実行しても、伝播を止めなければその後に URL がそのまま貼り付けられる（実測で確認）。
+      // 捕獲フェーズで先に実行しても、伝播を止めなければその後に URL がそのまま貼り付けられる。
       event.stopPropagation();
       runEdit(editor, linkFromUrl(url), 'markdown.paste');
     },

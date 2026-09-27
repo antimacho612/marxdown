@@ -1,15 +1,12 @@
 /**
- * 表示モードの切り替え（F-MODE-06 / M2 Phase 1）。
+ * 表示モードの切り替え（F-MODE-06）。
  *
- * **ここでしか確かめられないのは「遅延チャンクが本物のビルドで載る」こと。**
- * Vitest では `features/editor/open-editor` をモックしており、`editor` チャンク
- * が実際に取得・評価されるかは見ていない。分割の境界を壊すと
- * 起動が太るか、切り替えたときに何も出ないかのどちらかになる。
+ * ここでしか確かめられないのは「遅延チャンクが実際のビルドで読み込まれる」ことである。
+ * Vitest では `features/editor/open-editor` をモックしており、`editor` チャンクが実際に取得・評価されるかは検証していない。
+ * 分割の境界を壊すと、起動が遅くなるか、切り替えたときに何も表示されないかのどちらかになる。
  *
- * **Monaco になってから、ここは重くなった。** 792KB（raw 3.0MB）の取得と評価が
- * 切り替えの瞬間に入るので、待ち時間の上限を広げてある（`waitForEditorMounted`）。
- * この 1 本が落ちるということは、idle プリロードが効いていないということでもある
- * （[ADR-0009](../../docs/adr/0009-editor-engine-monaco.md) の根拠 2）。
+ * Monaco の取得と評価（raw 3.0MB）が切り替えの瞬間に入りうるため、待ち時間の上限を広げてある（`waitForEditorMounted`）。
+ * この 1 本が失敗する場合は、idle プリロードが機能していない可能性もある（ADR-0009 の根拠 2）。
  */
 import { Key } from 'webdriverio';
 
@@ -31,8 +28,7 @@ describe('Preview と Edit を行き来する', () => {
   });
 
   it('起動直後は Preview で、エディターは載っていない', async () => {
-    // 既定が Preview であることが `editor` チャンクを分ける境界そのもの
-    // （02.architecture/05-startup-sequence.md §1 の要点 3）。
+    // 既定が Preview であることが `editor` チャンクを分ける境界そのもの。
     expect(await mode()).toBe('preview');
     expect(await mountedEditorCount()).toBe(0);
   });
@@ -59,7 +55,7 @@ describe('Preview と Edit を行き来する', () => {
   });
 
   it('もう一度押すと Preview に戻り、エディターは壊されない', async () => {
-    // 03.ux-spec/02-view-modes.md §4。破棄すると Undo 履歴が消える。
+    // 破棄すると Undo 履歴が消える。
     await pressTogglePreview();
 
     await browser.waitUntil(async () => (await mode()) === 'preview', {

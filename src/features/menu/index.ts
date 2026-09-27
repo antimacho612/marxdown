@@ -1,5 +1,5 @@
 /**
- * menu feature の公開面（02.architecture/03-layers.md §2）。
+ * menu feature の公開面。
  *
  * 公開するのは型だけである。
  * 中身（`lazy/`）は操作されるまで読み込まないものであり、値を再エクスポートするとボタン側（`app/MenuButton.svelte`）から静的に参照できてしまう（`features/status` と同じ形）。

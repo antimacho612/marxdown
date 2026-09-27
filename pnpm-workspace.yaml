@@ -1,8 +1,8 @@
 allowBuilds:
-  # WebdriverIO の推移的依存。**どちらも false で正しい。**
-  # E2E は `tauri-driver` 経由で WebView2 を操作する（02.architecture/12-testing-strategy.md）ので、
-  # ブラウザ用のドライバは要らない。postinstall を許すと、
-  # 入れた覚えのないドライバを毎回ダウンロードしに行く。
+  # WebdriverIO の推移的依存。
+  # どちらも false で正しい。
+  # E2E は `tauri-driver` 経由で WebView2 を操作する（02.architecture/12-testing-strategy.md）ので、ブラウザ用のドライバは要らない。
+  # postinstall を許すと、入れた覚えのないドライバを毎回ダウンロードしに行く。
   # msedgedriver は WebView2 ランタイムと版を合わせて `e2e/.drivers/` に置く（e2e/README.md）。
   edgedriver: false
   esbuild: true

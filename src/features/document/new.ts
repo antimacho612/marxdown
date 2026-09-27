@@ -1,10 +1,10 @@
 /**
- * 新規ファイル（`Ctrl+N` / 03.ux-spec/04-keybindings.md §3 / 03.ux-spec/08-empty-states.md §1）。
+ * 新規ファイル（`Ctrl+N`）。
  *
- * 無題の文書は「パスを持たない文書」であり、ストアの `meta.path` が `null` を取れる以外は既存の文書と同じ開く経路に載る。
+ * 無題の文書は「パスを持たない文書」であり、ストアの `meta.path` が `null` を取れる以外は既存の文書と同じ開く経路を通る。
  * パス無しによる分岐（最近のファイル・履歴・監視・相対パス画像を扱わない）はすべて `open.ts` 側にある。
  *
- * **開く先は新しいタブである**（M3 Phase 2b / `features/workspace`）。
+ * 開く先は新しいタブである（`features/workspace`）。
  * いまの文書を置き換えないので、破棄の確認（`confirmDiscard`）は要らない。
  * 同じタブに重ねると、Undo で前の文書の本文が編集面へ入る経路も生まれる（`document/text.ts` の `switchTo`）。
  * 空の本文は Preview で読めないため、開いた後に編集できるモードへ移す（実行するのは `app/commands.ts`）。

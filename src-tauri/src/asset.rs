@@ -1,7 +1,7 @@
 //! 貼り付けた画像の保存（F-EDIT-13 / N-SEC-05）。
 //!
 //! 保存先は開いているファイルの隣に作る `<ファイル名>.assets/` に限る。
-//! 場所を選ばせない代わりに、**どこに置かれるかを操作の前に判断できる**（Design Brief Principle 3）。
+//! 場所を選ばせない代わりに、どこに置かれるかを操作の前に判断できる（Design Brief Principle 3）。
 //!
 //! 書き込みを許すディレクトリは 1 つだけであり、フロントから場所を受け取らない。
 //! 受け取る形にすると、そこがスコープ検証の対象になる。
@@ -17,7 +17,7 @@ use crate::scope;
 /// 保存を許す拡張子。
 ///
 /// `svg` を含めない。中身が実行可能なマークアップであり、クリップボードから来る形式としても稀である。
-/// 表示の側は DOMPurify を通すが、**ディスクへ書く時点で通さない**ほうが層が 1 つ増える。
+/// 表示の側は DOMPurify を通すが、ディスクへ書く時点で通さないほうが層が 1 つ増える。
 const ALLOWED: [&str; 5] = ["png", "jpg", "jpeg", "gif", "webp"];
 
 /// 1 枚あたりの上限。クリップボードの中身は際限なく大きくなりうる。
@@ -25,7 +25,7 @@ const MAX_BYTES: usize = 20 * 1024 * 1024;
 
 /// 保存先ディレクトリの接尾辞。`spec.md` なら `spec.md.assets/` になる。
 ///
-/// 拡張子を落として `spec.assets/` にしない。
+/// 拡張子を除いて `spec.assets/` にしない。
 /// `spec.md` と `spec.txt` を同じディレクトリに置いている場合に、保存先が衝突する。
 const SUFFIX: &str = ".assets";
 
@@ -52,7 +52,7 @@ fn normalize_extension(extension: &str) -> CoreResult<String> {
 /// 衝突しないファイル名を作る。
 ///
 /// 連番だけにすると、別の文書から貼った画像と混ざったときに順序が読めない。
-/// 時刻を先に置き、同じ秒に複数枚貼った場合だけ連番で逃がす。
+/// 時刻を先に置き、同じ秒に複数枚貼った場合だけ連番で区別する。
 fn unique_name(dir: &Path, stamp: &str, extension: &str) -> CoreResult<PathBuf> {
     let first = dir.join(format!("{stamp}.{extension}"));
     if !first.exists() {
@@ -69,8 +69,7 @@ fn unique_name(dir: &Path, stamp: &str, extension: &str) -> CoreResult<PathBuf> 
 
 /// ファイル名の先頭に置く時刻。
 ///
-/// 日付の形（`20260909-2245`）にはしない。カレンダー計算は std に無く、
-/// **ファイル名を読みやすくするためだけに依存を 1 つ増やす**ことになる。
+/// 日付の形（`20260909-2245`）にはしない。カレンダー計算は std に無く、ファイル名を読みやすくするためだけに依存を 1 つ増やすことになる。
 /// Unix 秒でも、並べ替えれば貼った順になるという用途は満たす。
 fn timestamp() -> String {
     let seconds = SystemTime::now()
@@ -83,10 +82,10 @@ fn timestamp() -> String {
 /// 画像を `<ファイル名>.assets/` へ保存する（F-EDIT-13）。
 ///
 /// `document_path` は開いているファイルの絶対パスである。
-/// 無題の文書には基点が無いため、呼び出し側がここへ来る前に断る（`features/editor/lazy/paste.ts`）。
+/// 無題の文書には基点が無いため、呼び出し側がここへ来る前に拒否する（`features/editor/lazy/paste.ts`）。
 ///
 /// 保存先ディレクトリは必要なら作る。
-/// 作った後に canonicalize して、**ドキュメントの親ディレクトリの配下にあることを確かめる**。
+/// 作った後に canonicalize して、ドキュメントの親ディレクトリの配下にあることを確かめる。
 /// 親が symlink である場合に、解決先が別の木へ出ていないことを見るためである。
 pub fn save(document_path: &str, extension: &str, data: &[u8]) -> CoreResult<SavedAsset> {
     if data.is_empty() {
@@ -223,7 +222,7 @@ mod tests {
         assert!(save("/does/not/exist.md", "png", &[1]).is_err());
     }
 
-    /// 拡張子を落とさない。`spec.md` と `spec.txt` の保存先が衝突する。
+    /// 拡張子を除かない。`spec.md` と `spec.txt` の保存先が衝突する。
     #[test]
     fn the_directory_keeps_the_full_file_name() {
         let dir = temp_dir("full-name");

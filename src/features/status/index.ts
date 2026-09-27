@@ -1,5 +1,5 @@
 /**
- * status feature の公開面（02.architecture/03-layers.md §2）。
+ * status feature の公開面。
  *
  * 公開するのは型だけである。
  * 中身（`lazy/`）は操作されるまで読み込まないものであり、値を再エクスポートするとボタン側（`app/StatusMenuButton.svelte`）から静的に参照できてしまう。

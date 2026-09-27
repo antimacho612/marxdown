@@ -1,11 +1,11 @@
 //! アプリケーション全体で共有する状態。
 //!
-//! 02.architecture/README.md 原則 C に従い、ここに置くのは Rust 側の処理に必要なものだけである。
+//! ここに置くのは Rust 側の処理に必要なものだけである。
 //! タブ・カーソル・設定などの UI 状態は TypeScript 側にある。
 
 use std::collections::HashMap;
 use std::path::PathBuf;
-use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Mutex;
 use std::time::Instant;
 
@@ -16,16 +16,18 @@ use crate::settings::{Settings, SettingsLoad};
 use crate::store::{RecentEntry, StoreData};
 use crate::trace::Trace;
 
-/// アプリデータ領域（`%APPDATA%\com.antimacho612.marxdown\`）に置くもの（`state.json`: アプリが自動的に書く、`settings.json` / `themes/`: 人が書く（F-CONF-08 / ADR-0014））の場所（02.architecture/04-rust-responsibilities.md §5 / 02.architecture/10-theming.md §3）。
+/// アプリデータ領域（`%APPDATA%\com.antimacho612.marxdown\`）に置くものの場所。
+///
+/// `state.json` はアプリが自動的に書き、`settings.json` と `themes/` は人が書く。
 ///
 /// 1 つの構造体にまとめてある。
 /// どれも `identifier` から同じ規則で決まり、`AppState::new` に個別の `Option<PathBuf>` を並べると引数が際限なく増える。
-/// `None` は「置き場所が決まらなかった」ことを示し、その機能を諦める合図になる。
+/// `None` は「置き場所が決まらなかった」ことを示し、その機能を使わないという意味になる。
 #[derive(Debug, Clone, Default)]
 pub struct ConfigPaths {
     pub store: Option<PathBuf>,
     pub settings: Option<PathBuf>,
-    /// ユーザーが追加した配色の置き場所（`themes/`。ADR-0014）。
+    /// ユーザーが追加した配色の置き場所（`themes/`）。
     pub themes: Option<PathBuf>,
 }
 
@@ -33,41 +35,72 @@ pub struct ConfigPaths {
 pub struct AppState {
     pub args: CliArgs,
     pub trace: Trace,
-    /// 永続化ストア（最近開いたファイル / 表示倍率 / ウィンドウ状態）。
+    /// 永続化ストア（`state.json`）。
     /// 起動時に 1 回読み、変更のたびに書き戻す。
     store: Mutex<StoreData>,
     /// 設定ファイルたちの置き場所。
     paths: ConfigPaths,
-    /// ユーザー設定（02.architecture/04-rust-responsibilities.md §5）。
+    /// ユーザー設定。
     /// 「壊れている」という事実も一緒に保持し、書き戻しの可否をこれで決める。
     settings: Mutex<SettingsLoad>,
     /// アセット参照を許可するディレクトリ（N-SEC-05）。
     /// 開いたドキュメントの親ディレクトリを追加していく。
     asset_roots: Mutex<Vec<PathBuf>>,
-    /// 利用者が 1 件ずつ許可した画像のディレクトリ（OQ-17）。
+    /// 利用者が 1 件ずつ許可した画像のディレクトリ。
     ///
-    /// `asset_roots` と分けてある。こちらは**再帰しない**（直下だけ）うえ、
-    /// ファイルツリー（`list_dir` / `list_files`）からは辿れない。
+    /// `asset_roots` と分けてある。こちらは再帰しない（直下だけ）うえ、ファイルツリー（`list_dir` / `list_files`）からは辿れない。
     /// 画像 1 枚のために押したボタンで、フォルダが閲覧できるようになってはいけない。
     ///
     /// 永続化しない。誤って押した許可を次の起動へ持ち越さない。
     image_dirs: Mutex<Vec<PathBuf>>,
-    /// ウォーム起動（S6）の計測。argv 転送を受けた時刻を要求 ID ごとに保持する。
+    /// ウォーム起動の計測。argv 転送を受けた時刻を要求 ID ごとに保持する。
     warm: Mutex<HashMap<u64, Instant>>,
     warm_counter: AtomicU64,
-    /// 最後にフロントへ知らせた「最大化されているか」。
+    /// 最後にフロントへ知らせた「最大化されているか」。ウィンドウごとに持つ。
     ///
     /// `Resized` はドラッグ中に毎フレーム発火する。
     /// 変化したときだけイベントを出すために、直前の値をここに保持する。
-    maximized: AtomicBool,
-    /// 未保存の変更があるか（F-EDIT-03 / 03.ux-spec/07-status-and-notifications.md §1）。
+    ///
+    /// 1 つの値で共有してはいけない（F-OPEN-06）。
+    /// 別のウィンドウを最大化した時点で直前の値が書き換わり、こちらのウィンドウは次に変化しても「変化なし」と判定されてボタンの表示が取り残される。
+    maximized: Mutex<HashMap<String, bool>>,
+    /// 未保存の変更があるか（F-EDIT-03）。ウィンドウごとに持つ。
     ///
     /// 値の所有者はフロントである。
     /// ここに複製があるのは、終了の 3 経路（トレイメニュー / ハンバーガーメニュー / `Ctrl+Q`）が Rust 側で合流しており（`close.rs`）、トレイメニューからの終了がフロントを経由しないためである。
     /// 確認をフロントに置くと、その経路だけ確認せずに終了することになる。
     ///
     /// 更新は `false` と `true` の変わり目だけで、打鍵ごとの IPC にはならない（`features/document/save.ts`）。
-    dirty: AtomicBool,
+    ///
+    /// ウィンドウごとに分けるのは、プロセスの終了（どれか 1 つでもダーティなら確認する）と、ウィンドウ 1 枚を閉じる操作（そのウィンドウだけを見る）で必要な答えが違うためである。
+    dirty: Mutex<HashMap<String, bool>>,
+    /// 最後にフォーカスされたウィンドウのラベル。
+    ///
+    /// 「外から 1 枚開かせる」経路（argv 転送 / トレイの最近開いたファイル）の宛先になる。
+    /// 主ウィンドウ（`MAIN_LABEL`）へ固定で送ると、ウィンドウが複数あるときにユーザーが見ている手前のウィンドウではない場所にタブが増える。
+    focused: Mutex<String>,
+    /// 追加ウィンドウのラベルに使う連番（`main-2`, `main-3`, ...）。
+    ///
+    /// 閉じたラベルは再利用しない。
+    /// 同じラベルのウィンドウを作り直すと、破棄の途中で届いたイベントが新しいウィンドウのものとして扱われうる。
+    window_counter: AtomicU64,
+    /// サテライトへ移すタブの本文（F-OPEN-06 / ADR-0016 §3.4）。
+    ///
+    /// 未保存のタブはパスだけでは渡せない。
+    /// 移す側が本文をここへ預け、新しいウィンドウが起動直後に 1 回だけ引き取る。
+    ///
+    /// 中身は解釈しない。
+    /// フロントが組み立てた JSON 文字列をそのまま運ぶだけである（Markdown の意味解釈は TypeScript 側が担う）。
+    ///
+    /// 1 件しか持たない。
+    /// 同時に 2 枚移す操作が無いため、新しい転送で上書きし、引き取りで空にすれば取りこぼしも漏れも起きない。
+    transfer: Mutex<Option<(u64, String)>>,
+    transfer_counter: AtomicU64,
+    /// OS のドロップイベントで直近に受け取ったパス。ウィンドウごとに 1 回分だけ持つ。
+    ///
+    /// 外部からのドロップをファイルツリーへ取り込むとき、コピー元はこの中にあるものに限る。
+    /// フロントが渡すパスを信用すると、許可範囲の外のファイルを配下へ複製して読めるようになる。
+    drops: Mutex<HashMap<String, Vec<PathBuf>>>,
 }
 
 impl AppState {
@@ -87,7 +120,7 @@ impl AppState {
                 roots.push(parent.to_path_buf());
             }
         }
-        // `marxdown <dir>` で開いたフォルダも許可範囲に入れる（F-OPEN-02 / OQ-17）。
+        // `marxdown <dir>` で開いたフォルダも許可範囲に入れる（F-OPEN-02）。
         // ファイルツリーがそこを辿る以上、辿れる範囲と読める範囲は一致していなければならない。
         if let Some(root) = bootstrap.workspace_root.as_ref() {
             roots.push(PathBuf::from(root));
@@ -102,9 +135,39 @@ impl AppState {
             image_dirs: Mutex::new(Vec::new()),
             warm: Mutex::new(HashMap::new()),
             warm_counter: AtomicU64::new(1),
-            maximized: AtomicBool::new(false),
-            dirty: AtomicBool::new(false),
+            maximized: Mutex::new(HashMap::new()),
+            dirty: Mutex::new(HashMap::new()),
+            focused: Mutex::new(crate::window::MAIN_LABEL.to_owned()),
+            window_counter: AtomicU64::new(1),
+            transfer: Mutex::new(None),
+            transfer_counter: AtomicU64::new(1),
+            drops: Mutex::new(HashMap::new()),
         }
+    }
+
+    /// 移す本文を預かる。引き取りに使う ID を返す（F-OPEN-06 / ADR-0016 §3.4）。
+    ///
+    /// 前の預かりものは破棄する。
+    /// 引き取られないまま残るのは、ウィンドウの生成に失敗した場合だけである。
+    /// その 1 件を次の転送まで抱えることになるが、次の転送で必ず置き換わる。
+    pub fn stash_transfer(&self, payload: String) -> u64 {
+        let id = self.transfer_counter.fetch_add(1, Ordering::Relaxed);
+        if let Ok(mut slot) = self.transfer.lock() {
+            *slot = Some((id, payload));
+        }
+        id
+    }
+
+    /// 預かった本文を引き取る。1 回しか取れない。
+    ///
+    /// ID が一致しなければ何も返さず、預かりものも消さない。
+    /// 起動が前後した場合に、別のウィンドウ宛ての本文を取ってしまわないようにする。
+    pub fn take_transfer(&self, id: u64) -> Option<String> {
+        let mut slot = self.transfer.lock().ok()?;
+        if slot.as_ref().is_some_and(|(stored, _)| *stored == id) {
+            return slot.take().map(|(_, payload)| payload);
+        }
+        None
     }
 
     /// ストアを書き換えて永続化する。
@@ -114,7 +177,7 @@ impl AppState {
     pub fn update_store<T>(&self, f: impl FnOnce(&mut StoreData) -> T) -> T {
         let (result, snapshot) = {
             let Ok(mut store) = self.store.lock() else {
-                // ロックが poisoned でも起動は止めない。永続化だけを諦める。
+                // ロックが poisoned でも起動は止めない。永続化だけを行わない。
                 return f(&mut StoreData::default());
             };
             let result = f(&mut store);
@@ -122,6 +185,19 @@ impl AppState {
         };
         crate::store::save(self.paths.store.as_deref(), &snapshot);
         result
+    }
+
+    /// ストアの複製。サテライトの bootstrap を組み立てるために使う（`crate::open_satellite`）。
+    pub fn store_snapshot(&self) -> StoreData {
+        self.store.lock().map(|s| s.clone()).unwrap_or_default()
+    }
+
+    /// メモリ上の設定の複製。ディスクは読まない。
+    ///
+    /// 追加ウィンドウの bootstrap に載せるために使う。
+    /// 外部エディターでの編集はファイル監視が既に取り込んでいるため、ここで読み直す理由がない（`close_behavior` と同じ判断）。
+    pub fn settings_snapshot(&self) -> SettingsLoad {
+        self.settings.lock().map(|s| s.clone()).unwrap_or_default()
     }
 
     /// 最近開いたファイルの一覧。ロックを取れない場合は空を返す。
@@ -132,7 +208,7 @@ impl AppState {
             .unwrap_or_default()
     }
 
-    /// 設定を読み直す（02.architecture/04-rust-responsibilities.md §5）。
+    /// 設定を読み直す。
     ///
     /// 読めない内容に変わったときは既定値に戻さない。
     /// 直前に読めていた値を保持し、壊れている事実だけを添えて返す。
@@ -151,9 +227,9 @@ impl AppState {
         current.clone()
     }
 
-    /// 変更したキーだけを当てて書き戻す（02.architecture/04-rust-responsibilities.md §1 `write_settings`）。
+    /// 変更したキーだけを反映して書き戻す。
     ///
-    /// 壊れている間は拒否する（02.architecture/04-rust-responsibilities.md §5 の 3 番目）。
+    /// 壊れている間は拒否する。
     /// これが無いと、ユーザーが修正している最中に設定 UI がファイルの内容を丸ごと消してしまう。
     pub fn patch_settings(
         &self,
@@ -184,10 +260,41 @@ impl AppState {
     ///
     /// ディスクを読み直さないのは、外部エディターでの編集をファイル監視が既に取り込んでいるためである。
     /// `✕` を押すたびにファイル I/O を行うのは、得られる結果に対してコストが高い。
-    pub fn close_behavior(&self) -> crate::settings::CloseBehavior {
+    pub fn closes_to_tray(&self) -> bool {
         self.settings
             .lock()
-            .map(|s| s.values.window_close_behavior)
+            .map(|s| s.values.window_close_to_tray)
+            .unwrap_or(true)
+    }
+
+    /// 新しい版を自動で確認するか（設定 `update.autoCheck` / ADR-0024）。メモリ上の設定を見る。
+    ///
+    /// フォーカスのたびに呼ばれるため、ディスクは読まない（`closes_to_tray` と同じ理由）。
+    pub fn auto_checks_updates(&self) -> bool {
+        self.settings
+            .lock()
+            .map(|s| s.values.update_auto_check)
+            .unwrap_or(false)
+    }
+
+    /// 最後に更新を確認した時刻（UNIX 秒）。
+    pub fn last_update_check(&self) -> Option<u64> {
+        self.store.lock().ok().and_then(|s| s.last_update_check)
+    }
+
+    /// 更新を確認した時刻を記録する。`state.json` に永続化する。
+    pub fn mark_update_checked(&self, at: u64) {
+        self.update_store(|s| s.last_update_check = Some(at));
+    }
+
+    /// エクスプローラーから除外する glob（`explorer.exclude`）。メモリ上の設定を見る。
+    ///
+    /// `closes_to_tray` と同じ理由でディスクを読み直さない。
+    /// 外部エディターでの編集はファイル監視が既に取り込んでおり、一覧を開くたびにファイル I/O を挟む理由がない。
+    pub fn exclude_patterns(&self) -> Vec<String> {
+        self.settings
+            .lock()
+            .map(|s| s.values.explorer_exclude.clone())
             .unwrap_or_default()
     }
 
@@ -209,7 +316,7 @@ impl AppState {
         self.paths.settings.as_deref()
     }
 
-    /// ユーザーが追加した配色の置き場所（ADR-0014）。
+    /// ユーザーが追加した配色の置き場所。
     ///
     /// パスをフロントには渡さない。
     /// 開くのも読むのも Rust 側の 1 か所に閉じており、`open_settings_file` と同じ理由で、任意のパスを受け取る経路を作らずに済む。
@@ -219,7 +326,7 @@ impl AppState {
 
     /// argv 転送を受けた瞬間に呼ぶ。返した ID をフロントへ渡す。
     ///
-    /// これが 02.architecture/05-startup-sequence.md §2 のウォーム起動の起点（W0）。
+    /// これがウォーム起動の起点（W0）。
     pub fn begin_warm(&self) -> u64 {
         let id = self.warm_counter.fetch_add(1, Ordering::Relaxed);
         if let Ok(mut w) = self.warm.lock() {
@@ -234,23 +341,157 @@ impl AppState {
         Some(started.elapsed().as_secs_f64() * 1000.0)
     }
 
-    /// 最大化状態が変化していれば true を返し、新しい値を保持する。
+    /// そのウィンドウの最大化状態が変化していれば true を返し、新しい値を保持する。
     ///
     /// `WindowEvent::Resized` はウィンドウをドラッグしている間ずっと発火する。
     /// そのたびにイベントを出すと、フロントに不要な IPC が毎フレーム届く。
     /// 変化したときだけ通知する判定をここに閉じ込める。
-    pub fn note_maximized(&self, now: bool) -> bool {
-        self.maximized.swap(now, Ordering::Relaxed) != now
+    pub fn note_maximized(&self, label: &str, now: bool) -> bool {
+        let Ok(mut map) = self.maximized.lock() else {
+            // 判定できないなら通知する側に倒す。余分な IPC 1 回のほうが、ボタンの表示がずれたままになるより害が小さい。
+            return true;
+        };
+        map.insert(label.to_owned(), now) != Some(now)
     }
 
     /// 未保存の変更があるか（F-EDIT-03）。フロントが変わり目だけ知らせてくる。
-    pub fn set_dirty(&self, dirty: bool) {
-        self.dirty.store(dirty, Ordering::Relaxed);
+    pub fn set_dirty(&self, label: &str, dirty: bool) {
+        if let Ok(mut map) = self.dirty.lock() {
+            map.insert(label.to_owned(), dirty);
+        }
     }
 
-    /// 未保存の変更があるか。終了の確認（`close::request_quit`）の判断材料になる。
+    /// そのウィンドウに未保存の変更があるか。ウィンドウ 1 枚を閉じるときの判断材料になる。
+    pub fn is_window_dirty(&self, label: &str) -> bool {
+        self.dirty
+            .lock()
+            .map(|m| m.get(label).copied().unwrap_or(false))
+            .unwrap_or(false)
+    }
+
+    /// どれか 1 つでも未保存の変更があるか。終了の確認（`close::request_quit`）の判断材料になる。
     pub fn is_dirty(&self) -> bool {
-        self.dirty.load(Ordering::Relaxed)
+        self.dirty
+            .lock()
+            .map(|m| m.values().any(|d| *d))
+            .unwrap_or(false)
+    }
+
+    /// 未保存の変更を抱えているウィンドウのラベル。`close.rs` が保存を依頼する宛先になる。
+    pub fn dirty_labels(&self) -> Vec<String> {
+        self.dirty
+            .lock()
+            .map(|m| {
+                m.iter()
+                    .filter(|(_, dirty)| **dirty)
+                    .map(|(label, _)| label.clone())
+                    .collect()
+            })
+            .unwrap_or_default()
+    }
+
+    /// ウィンドウが閉じたら、そのウィンドウの分の記録を破棄する。
+    ///
+    /// 残すと、閉じたウィンドウのダーティが `is_dirty()` に影響し続けて終了できなくなる。
+    pub fn forget_window(&self, label: &str) {
+        if let Ok(mut map) = self.dirty.lock() {
+            map.remove(label);
+        }
+        if let Ok(mut map) = self.maximized.lock() {
+            map.remove(label);
+        }
+        if let Ok(mut map) = self.drops.lock() {
+            map.remove(label);
+        }
+    }
+
+    /// OS のドロップイベントで受け取ったパスを記録する。前の回の分は置き換える。
+    pub fn note_drop(&self, label: &str, paths: Vec<PathBuf>) {
+        if let Ok(mut map) = self.drops.lock() {
+            map.insert(label.to_owned(), paths);
+        }
+    }
+
+    /// 直近のドロップで受け取ったパスのうち、`requested` に含まれるものを返す。
+    ///
+    /// 含まれないパスが 1 つでもあれば全体を拒む。
+    /// 一部だけ通すと、フロントの不整合を黙って飲み込むことになる。
+    pub fn dropped(&self, label: &str, requested: &[String]) -> CoreResult<Vec<PathBuf>> {
+        let map = self
+            .drops
+            .lock()
+            .map_err(|_| CoreError::Io("ドロップの記録を読めない".into()))?;
+        let known = map.get(label).map(Vec::as_slice).unwrap_or_default();
+        requested
+            .iter()
+            .map(|path| {
+                known
+                    .iter()
+                    .find(|k| k.as_os_str() == std::ffi::OsStr::new(path))
+                    .cloned()
+                    .ok_or_else(|| CoreError::OutOfScope(path.clone()))
+            })
+            .collect()
+    }
+
+    /// ゴミ箱へ移した項目（フォルダならその配下も）を、最近開いたファイルから外す。更新後の一覧を返す。
+    pub fn forget_recent(&self, removed: &[String]) -> Vec<RecentEntry> {
+        self.update_store(|s| {
+            s.recent.retain(|entry| {
+                !removed.iter().any(|path| {
+                    crate::scope::is_within(
+                        std::path::Path::new(path),
+                        std::path::Path::new(&entry.path),
+                    )
+                })
+            });
+            s.recent.clone()
+        })
+    }
+
+    /// 移動・リネームしたファイルを、最近開いたファイルの中でも付け替える。更新後の一覧を返す。
+    ///
+    /// 開いた日時はそのまま残す。
+    /// 消して積み直すと、リネームしただけで一覧の先頭へ上がる。
+    pub fn relocate_recent(&self, moves: &[crate::fsops::Moved]) -> Vec<RecentEntry> {
+        self.update_store(|s| {
+            for entry in &mut s.recent {
+                if let Some(to) = moves
+                    .iter()
+                    .find_map(|m| crate::fsops::relocate(&entry.path, &m.from, &m.to))
+                {
+                    entry.path = to;
+                }
+            }
+            s.recent.clone()
+        })
+    }
+
+    /// 最後にフォーカスされたウィンドウを記録する。
+    pub fn note_focused(&self, label: &str) {
+        if let Ok(mut current) = self.focused.lock() {
+            *current = label.to_owned();
+        }
+    }
+
+    /// 「外から 1 枚開かせる」経路の宛先（argv 転送 / トレイ）。
+    ///
+    /// ここは記録を返すだけである。
+    /// そのウィンドウが既に閉じている可能性があるため、存在の確認は呼び出し側で行う（`crate::target_window`）。
+    pub fn focused_label(&self) -> String {
+        self.focused
+            .lock()
+            .map(|l| l.clone())
+            .unwrap_or_else(|_| crate::window::MAIN_LABEL.to_owned())
+    }
+
+    /// 次の追加ウィンドウのラベル（`main-2`, `main-3`, ...）。
+    ///
+    /// `main-*` は capabilities が許可している形である（`capabilities/default.json`）。
+    /// ここから外れたラベルを付けると、そのウィンドウからは IPC が 1 つも通らない。
+    pub fn next_window_label(&self) -> String {
+        let n = self.window_counter.fetch_add(1, Ordering::Relaxed) + 1;
+        format!("{}-{n}", crate::window::MAIN_LABEL)
     }
 
     /// アセット参照を許可するディレクトリを 1 件加える（N-SEC-05）。同じパスは重複させない。
@@ -262,10 +503,9 @@ impl AppState {
         }
     }
 
-    /// 利用者が許可した画像のディレクトリを 1 件加える（OQ-17）。同じパスは重複させない。
+    /// 利用者が許可した画像のディレクトリを 1 件加える。同じパスは重複させない。
     ///
-    /// 効果はそのディレクトリの直下だけで、配下のディレクトリには及ばない
-    /// （検証は `scope::resolve_in_dirs`）。
+    /// 効果はそのディレクトリの直下だけで、配下のディレクトリには及ばない（検証は `scope::resolve_in_dirs`）。
     pub fn allow_image_dir(&self, dir: PathBuf) {
         if let Ok(mut dirs) = self.image_dirs.lock() {
             if !dirs.contains(&dir) {
@@ -326,7 +566,7 @@ mod tests {
         )
     }
 
-    /// 02.architecture/04-rust-responsibilities.md §5 の 3 番目。ユーザーが直している最中に設定 UI がファイルごと吹き飛ばさない。
+    /// ユーザーが直している最中に設定 UI がファイルの内容を丸ごと消さない。
     #[test]
     fn writing_is_refused_while_the_settings_file_is_broken() {
         let d = temp_dir("refuse");
@@ -370,8 +610,8 @@ mod tests {
         std::fs::remove_dir_all(&d).ok();
     }
 
-    /// 02.architecture/04-rust-responsibilities.md §5「読めない内容に変わったときは既定値に戻さない」。
-    /// 編集途中の中間状態でテーマが飛ぶのを防ぐ。
+    /// 読めない内容に変わったときは既定値に戻さない。
+    /// 編集途中の中間状態でテーマが既定値に戻るのを防ぐ。
     #[test]
     fn a_reload_of_a_broken_file_keeps_the_last_readable_values() {
         let d = temp_dir("reload");
@@ -386,5 +626,108 @@ mod tests {
         assert_eq!(reloaded.values.theme, crate::settings::Theme::Dark);
         assert!(reloaded.broken.is_some());
         std::fs::remove_dir_all(&d).ok();
+    }
+
+    /// 設定ファイルを見ない検査のための `AppState`。
+    fn bare_state() -> AppState {
+        let trace = Trace::start(Instant::now());
+        let loaded = SettingsLoad::default();
+        let bootstrap = crate::bootstrap::build(
+            &CliArgs::default(),
+            &trace,
+            &StoreData::default(),
+            &loaded,
+            None,
+        );
+        AppState::new(
+            CliArgs::default(),
+            trace,
+            &bootstrap,
+            StoreData::default(),
+            loaded,
+            ConfigPaths::default(),
+        )
+    }
+
+    /// 終了の確認は全ウィンドウを見て、ウィンドウ 1 枚を閉じる判断はそのウィンドウだけを見る（F-OPEN-06 / `close.rs`）。
+    #[test]
+    fn dirty_is_tracked_per_window() {
+        let state = bare_state();
+
+        state.set_dirty("main", true);
+
+        assert!(
+            state.is_dirty(),
+            "どれか 1 つでもダーティなら終了時に確認する"
+        );
+        assert!(state.is_window_dirty("main"));
+        assert!(
+            !state.is_window_dirty("main-2"),
+            "別のウィンドウの未保存は、こちらを閉じる判断に影響しない"
+        );
+        assert_eq!(state.dirty_labels(), vec!["main".to_string()]);
+    }
+
+    /// 閉じたウィンドウのダーティが残ると、二度と終了できなくなる。
+    #[test]
+    fn a_closed_window_stops_blocking_quit() {
+        let state = bare_state();
+        state.set_dirty("main-2", true);
+
+        state.forget_window("main-2");
+
+        assert!(!state.is_dirty());
+        assert!(state.dirty_labels().is_empty());
+    }
+
+    /// 最大化の通知は変化したときだけ出す。判定がウィンドウごとに独立していないと、別のウィンドウの操作で取り残される。
+    #[test]
+    fn the_maximize_notice_is_decided_per_window() {
+        let state = bare_state();
+
+        assert!(state.note_maximized("main", true), "初回は変化として扱う");
+        assert!(!state.note_maximized("main", true), "同じ値なら通知しない");
+        assert!(
+            state.note_maximized("main-2", true),
+            "別のウィンドウの初回は、こちらの値に影響されない"
+        );
+    }
+
+    /// 受け渡し箱は 1 回しか取れない（F-OPEN-06 / ADR-0016 §3.4）。
+    /// 二度取れると、同じ未保存の本文が 2 つのウィンドウに現れる。
+    #[test]
+    fn a_transfer_can_only_be_taken_once() {
+        let state = bare_state();
+        let id = state.stash_transfer("{\"text\":\"hello\"}".to_owned());
+
+        assert_eq!(
+            state.take_transfer(id).as_deref(),
+            Some("{\"text\":\"hello\"}")
+        );
+        assert_eq!(state.take_transfer(id), None, "2 回目は空");
+    }
+
+    /// 起動が前後したときに、別のウィンドウ宛ての本文を取ってしまわない。
+    #[test]
+    fn a_transfer_is_not_handed_to_the_wrong_window() {
+        let state = bare_state();
+        let first = state.stash_transfer("最初".to_owned());
+        let second = state.stash_transfer("次".to_owned());
+
+        assert_eq!(state.take_transfer(first), None, "上書きされた分は取れない");
+        assert_eq!(state.take_transfer(second).as_deref(), Some("次"));
+    }
+
+    /// ラベルは capabilities が許可している `main-*` の形でなければ、そのウィンドウから IPC が 1 つも通らない。
+    #[test]
+    fn additional_windows_get_capability_matching_labels() {
+        let state = bare_state();
+
+        assert_eq!(state.next_window_label(), "main-2");
+        assert_eq!(
+            state.next_window_label(),
+            "main-3",
+            "閉じても番号は戻さない"
+        );
     }
 }

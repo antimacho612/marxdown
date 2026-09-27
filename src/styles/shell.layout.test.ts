@@ -1,9 +1,9 @@
 /**
- * 本文の面に重ねる要素の置き場所を見張る。
+ * 本文の面に重ねる要素の置き場所を検証する。
  *
  * `grid-area: main` は Preview / Edit でしか解決しない。
- * Split の `grid-template-areas` に `main` は無く、解決できない要素は自動配置に落ちて暗黙の行と列を作る。
- * 実測では、エディターとプレビューの列が 121px まで潰れ、通知バーはステータスバーの外へ出ていた。
+ * Split の `grid-template-areas` に `main` は無く、解決できない要素は自動配置になって暗黙の行と列を作る。
+ * その結果、エディターとプレビューの列が 121px まで縮み、通知バーはステータスバーの外へ出る。
  *
  * jsdom は grid のレイアウトを計算しないため、配置そのものは検査できない。
  * 代わりに「どの規則で置いているか」を突き合わせる（`features/document/store.test.ts` と同じ考え方）。
@@ -25,7 +25,7 @@ const OVERLAYS = [
   ['Welcome', '../features/workspace/Welcome.svelte'],
 ] as const;
 
-describe('本文の面に重ねる要素の配置 (02.architecture/03-layers.md)', () => {
+describe('本文の面に重ねる要素の配置', () => {
   it('shell.css が置き場所を 1 か所で決めている', () => {
     expect(SHELL).toContain('.mx-over-main');
   });

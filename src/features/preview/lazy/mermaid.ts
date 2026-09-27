@@ -1,11 +1,11 @@
 /**
- * Mermaid ダイアグラムの描画（F-VIEW-12 / 04.tech-stack/04-markdown.md §4）。
+ * Mermaid ダイアグラムの描画（F-VIEW-12）。
  *
- * このモジュール自体は小さく、**Mermaid 本体はさらに動的 import する。**
+ * このモジュール自体は小さく、Mermaid 本体はさらに動的 import する。
  * フェンスが 1 つあるだけでビューポート外の図まで含めて 400KB 超を読み込む形にしないためである。
  * 実際にロードされるのは、図が 1 つでも画面に入ったときになる。
  *
- * 04.tech-stack/04-markdown.md §4 が課す 5 つの制約がそのままこのファイルの構造である。
+ * 技術選定で課した 5 つの制約がそのままこのファイルの構造である。
  * 完全な動的 import / `IntersectionObserver` / 解放 / 1 図ずつ非同期 / 失敗時はコードブロック。
  */
 import type mermaid from 'mermaid';
@@ -14,7 +14,7 @@ import { sanitizeSvg } from '@/markdown/sanitize';
 
 import '@/styles/preview/mermaid.css';
 
-/** 処理の状態。`data-mx-mermaid-state` として要素に載る。 */
+/** 処理の状態。`data-mx-mermaid-state` として要素に付く。 */
 const STATE = 'mxMermaidState';
 
 type State = 'pending' | 'done' | 'error';
@@ -27,10 +27,10 @@ function stateOf(element: HTMLElement): State | undefined {
  * 描画済み SVG のキャッシュ。キーはフェンスの中身そのものである。
  *
  * Split で編集している間、`live.ts` は打鍵ごと（debounce 120ms）に `paint` と `enhance` を呼ぶ。
- * キャッシュが無いと、本文のどこか 1 文字を直すたびに全部の図が描き直される。
+ * キャッシュが無いと、本文のどこか 1 文字を直すたびにすべての図が再描画される。
  *
  * 上限を置いているのは、常駐アプリだからである（N-PERF-06）。
- * 文書を渡り歩くあいだ、開いたことのある図の SVG 文字列を無制限に抱えることになる。
+ * 文書を渡り歩くあいだ、開いたことのある図の SVG 文字列を無制限に保持することになる。
  */
 const cache = new Map<string, string>();
 const CACHE_LIMIT = 32;
@@ -39,7 +39,7 @@ const CACHE_LIMIT = 32;
  * 要素ごとの元の記述。
  *
  * 描画に成功するとプレースホルダの中身は SVG に置き換わり、元の記述はどこにも残らない。
- * 配色が変わったときに描き直すにはそれが要る（`resetForTheme`）。
+ * 配色が変わったときに再描画するにはそれが必要になる（`resetForTheme`）。
  * `WeakMap` にしてあるのは、`paint` が本文を差し替えた時点で要素ごと解放されるようにするためである。
  */
 const sources = new WeakMap<HTMLElement, string>();
@@ -67,9 +67,9 @@ let sequence = 0;
  *
  * 呼ばれるたびに監視をやり直す。
  * `paint` は本文を差し替えるため、前回観測していた要素は既に DOM から外れている。
- * `IntersectionObserver` は観測対象を強く持つので、入れ替えないとその要素が解放されない（OQ-18 と同じ形の保持）。
+ * `IntersectionObserver` は観測対象を強く参照するため、入れ替えないとその要素が解放されない。
  *
- * 段階的描画では `enhance` が 2 回呼ばれるが、未描画のものを毎回すべて観測し直すため、1 回目の分が落ちることはない。
+ * 段階的描画では `enhance` が 2 回呼ばれるが、未描画のものを毎回すべて観測し直すため、1 回目の分が漏れることはない。
  */
 export function observeMermaid(container: HTMLElement): void {
   const targets = [...container.querySelectorAll<HTMLElement>('.mx-mermaid')].filter(
@@ -89,10 +89,10 @@ export function observeMermaid(container: HTMLElement): void {
 }
 
 /**
- * 抱えているものを全部捨てる（N-PERF-06 / 04.tech-stack/04-markdown.md §4-3）。
+ * 保持しているものをすべて解放する（N-PERF-06）。
  *
  * 呼ぶのは文書を閉じたときだけである。
- * `paint` のたびに呼ぶとキャッシュが毎回空になり、Split の編集中に全図が描き直される。
+ * `paint` のたびに呼ぶとキャッシュが毎回空になり、Split の編集中に全図が再描画される。
  */
 export function disposeMermaid(): void {
   observer?.disconnect();
@@ -100,7 +100,7 @@ export function disposeMermaid(): void {
   unwatchTheme?.();
   unwatchTheme = null;
   cache.clear();
-  // Mermaid 本体の参照も落とす。次に必要になったときは import が解決済みのため、再取得のコストはほぼ無い。
+  // Mermaid 本体の参照も解放する。次に必要になったときは import が解決済みのため、再取得のコストはほぼ無い。
   engine = null;
 }
 
@@ -116,10 +116,56 @@ function onIntersect(entries: IntersectionObserverEntry[]): void {
 }
 
 /**
+ * Mermaid のテーマを図ごとに既定（明るい配色）へ固定する指定。
+ *
+ * `initialize` のテーマはモジュール全体の状態であり、書き出しのために切り替えると画面の図まで描き直しになる。
+ * 図の先頭に置く指定は、その図にだけ効く。
+ */
+const LIGHT_DIRECTIVE = '%%{init: {"theme": "default"}}%%';
+
+/**
+ * 書き出し用の本文（`root`）にある図をすべて描く（F-VIEW-18）。
+ *
+ * `root` は画面とは別に描いた未処理の本文で、各図の中身は元の記述のままである。
+ * `light` のときは画面の配色に関係なく明るい配色で描く（PDF）。
+ * 描けなかった図はコードブロックとして残す（画面と同じ / N-REL-04）。
+ */
+export async function renderForExport(root: HTMLElement, light: boolean): Promise<void> {
+  for (const element of root.querySelectorAll<HTMLElement>('.mx-mermaid')) {
+    const source = element.textContent ?? '';
+    if (source.trim() === '') continue;
+
+    const cached = light ? undefined : cache.get(source);
+    if (cached !== undefined) {
+      element.innerHTML = cached;
+      element.dataset[STATE] = 'done';
+      continue;
+    }
+
+    sequence += 1;
+    const id = `mx-mermaid-${sequence}`;
+    // 1 図ずつ描く。Mermaid は描画のたびに `body` へ測定用の要素を置くため、並行すると片付けが干渉する（`removeScratch`）。
+    try {
+      // eslint-disable-next-line no-await-in-loop -- 上記
+      const mermaid = await load();
+      // eslint-disable-next-line no-await-in-loop -- 上記
+      const { svg } = await mermaid.render(id, light ? `${LIGHT_DIRECTIVE}\n${source}` : source);
+      element.innerHTML = sanitizeSvg(svg);
+      // 状態の属性で中央寄せなどの見た目が決まる（`mermaid.css`）。
+      element.dataset[STATE] = 'done';
+    } catch {
+      fallbackToCodeBlock(element, source);
+    } finally {
+      removeScratch(id);
+    }
+  }
+}
+
+/**
  * 図を 1 つ描く。
  *
- * `await` を挟むため、同じ要素に対して 2 回走らないよう先に印を付ける。
- * 描画そのものは Mermaid が 1 図ずつ処理する形になっており、メインスレッドを長時間占有しない（§4-4）。
+ * `await` を挟むため、同じ要素に対して 2 回実行されないよう先に印を付ける。
+ * 描画そのものは Mermaid が 1 図ずつ処理する形になっており、メインスレッドを長時間占有しない。
  */
 async function render(element: HTMLElement): Promise<void> {
   if (stateOf(element) !== undefined) return;
@@ -146,14 +192,14 @@ async function render(element: HTMLElement): Promise<void> {
     const mermaid = await load();
     const { svg } = await mermaid.render(id, source);
 
-    // 描画のあいだに次の文書が開かれていることがある。切り離された要素には入れない（OQ-18）。
+    // 描画のあいだに次の文書が開かれていることがある。切り離された要素には挿入しない。
     if (!element.isConnected) {
       delete element.dataset[STATE];
       return;
     }
 
     // Mermaid 自身も内部でサニタイズするが、それは Mermaid の許可リストであってこちらの許可リストではない。
-    // 「DOM に入る HTML は必ず Layer 3 を通る」を例外なく適用する（ADR-0006 / §4 の注意書き）。
+    // 「DOM に入る HTML は必ず Layer 3 を通る」を例外なく適用する（ADR-0006）。
     const safe = sanitizeSvg(svg);
     remember(source, safe);
     sources.set(element, source);
@@ -171,7 +217,7 @@ async function render(element: HTMLElement): Promise<void> {
  * Mermaid が描画のために `body` へ置いた要素を片付ける。
  *
  * `render` は測定用の要素を `body` 直下に作る。
- * 成功時は自分で消すが、**記述が誤っていたときは「Syntax error in text」の図を置いたまま残す。**
+ * 成功時は自分で消すが、記述が誤っていたときは「Syntax error in text」の図を置いたまま残す。
  * 常駐アプリなので、消さないと本文の上にその図が重なったまま蓄積する。
  *
  * `d` 付きの id は Mermaid が内部で使う別名である。
@@ -184,10 +230,9 @@ function removeScratch(id: string): void {
 }
 
 /**
- * 描けなかった図をコードブロックとして見せる（N-REL-04 / §4-5）。
+ * 描画できなかった図をコードブロックとして表示する（N-REL-04）。
  *
- * 空欄にはしない。中心ユースケースは「LLM が生成した Markdown を読む」ことであり、
- * 描けない図の記述こそ、読んで直す対象である。
+ * 空欄にはしない。中心ユースケースは「LLM が生成した Markdown を読む」ことであり、描画できない図の記述こそ、読んで修正する対象である。
  */
 function fallbackToCodeBlock(element: HTMLElement, source: string): void {
   const pre = document.createElement('pre');
@@ -208,27 +253,27 @@ async function load(): Promise<typeof mermaid> {
 async function initialize(): Promise<typeof mermaid> {
   const module = await import('mermaid');
   module.default.initialize({
-    // 自動描画は使わない。どの図をいつ描くかはこちら側が決める（§4-2）。
+    // 自動描画は使わない。どの図をいつ描くかはこちら側が決める。
     startOnLoad: false,
-    // `securityLevel` は Mermaid 側の防御。こちらの `sanitizeSvg` と二重に効く。
+    // `securityLevel` は Mermaid 側の防御。こちらの `sanitizeSvg` と二重に機能する。
     securityLevel: 'strict',
     theme: isDarkSurface() ? 'dark' : 'default',
     fontFamily: readToken('--mx-font-content'),
     // ラベルを SVG の `<text>` として出力させる。
     //
     // 既定では `<foreignObject>` の中の HTML になる。
-    // `foreignObject` は mXSS の経路として知られており `sanitizeSvg` が落とすため、そのままでは**ラベルが消えた図**になる。
-    // サニタイザを広げる側では直さない（ADR-0006 の多層防御を薄くしない）。
+    // `foreignObject` は mXSS の経路として知られており `sanitizeSvg` が除去するため、そのままではラベルが消えた図になる。
+    // サニタイザの許可範囲を広げて対応することはしない（ADR-0006 の多層防御を弱めない）。
     //
-    // **図種ごとの `flowchart.htmlLabels` では効かない。** 11.17 で確認した範囲では、
-    // そちらを false にしても `foreignObject` は出力され、`<text>` は空のまま残る。
+    // 図種ごとの `flowchart.htmlLabels` では効果が無い。
+    // Mermaid 11.17 では、そちらを false にしても `foreignObject` は出力され、`<text>` は空のまま残る。
     // 効果があるのはこの最上位のキーだけである。
     htmlLabels: false,
   });
   return module.default;
 }
 
-/** プレビュー面。配色はここに乗る（ADR-0013）。 */
+/** プレビュー面。配色はここに適用される（ADR-0013）。 */
 function previewRoot(): HTMLElement | null {
   return document.querySelector<HTMLElement>('#mx-preview');
 }
@@ -242,7 +287,7 @@ function readToken(name: string): string {
  * 明暗の判定。
  *
  * テーマ名ではなく解決後の背景色の明度で見る（`features/editor/lazy/theme.ts` と同じ理由）。
- * `theme` が `system` のときや配色でトークンを上書きしたとき、名前を見る分岐は外れる。
+ * `theme` が `system` のときや配色でトークンを上書きしたとき、名前で判定する方法では誤る。
  */
 function isDarkSurface(): boolean {
   const root = previewRoot();
@@ -258,9 +303,8 @@ function isDarkSurface(): boolean {
 /**
  * 配色の変更に追従する。
  *
- * Mermaid のテーマは `initialize` の時点で SVG に焼き付くため、切り替えても描き直さなければ古い色のまま残る。
- * 監視するのは `<html>` の `data-theme`（F-CONF-01）、プレビュー面の `data-mx-theme`（F-CONF-08）、
- * および OS 側の設定（`theme` が `system` のときは属性が付かない）である。
+ * Mermaid のテーマは `initialize` の時点で SVG に固定されるため、切り替えても再描画しなければ古い色のまま残る。
+ * 監視するのは `<html>` の `data-theme`（F-CONF-01）、プレビュー面の `data-mx-theme`（F-CONF-08）、および OS 側の設定（`theme` が `system` のときは属性が付かない）である。
  */
 function watchTheme(): void {
   if (unwatchTheme !== null) return;
@@ -289,9 +333,9 @@ function watchTheme(): void {
 }
 
 /**
- * 描画済みの図を捨てて描き直させる。
+ * 描画済みの図を破棄して再描画させる。
  *
- * キャッシュも Mermaid 本体の参照も落とす。
+ * キャッシュも Mermaid 本体の参照も破棄する。
  * `initialize` はモジュールの内部状態を書き換えるため、テーマを変えるには読み込み直すのが最も確実である。
  */
 function resetForTheme(): void {
@@ -304,7 +348,7 @@ function resetForTheme(): void {
   for (const element of container.querySelectorAll<HTMLElement>('.mx-mermaid')) {
     if (stateOf(element) !== 'done') continue;
 
-    // 中身は SVG に置き換わっているので、元の記述へ戻してから未処理に落とす。
+    // 中身は SVG に置き換わっているので、元の記述へ戻してから未処理の状態に戻す。
     const source = sources.get(element);
     if (source === undefined) continue;
     element.textContent = source;

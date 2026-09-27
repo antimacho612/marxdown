@@ -1,9 +1,13 @@
-//! トレイ格納中の WebView2 サスペンド（ADR-0007 論点 7）。
+//! WebView2 に直接触る処理。いずれも `with_webview` 経由の COM 呼び出しであり、Windows 以外では何もしない。
+//!
+//! 扱うのは 2 つである。
+//! 既定のコンテキストメニューの抑止（[`disable_default_context_menu`]）と、トレイ格納中のサスペンド（[`suspend`] / [`resume`] / ADR-0007 論点 7）である。
+//! 前者の背景は関数側に書いてある。後者は以下のとおり。
 //!
 //! ウィンドウを破棄してはいけない。
-//! WebView2 の再初期化（実測 392.1ms）が発生し、常駐している意味がほぼ失われる。
+//! WebView2 の再初期化が発生し、常駐している意味がほぼ失われる。
 //! トレイ常駐は Cold Start を 1 日 1 回に減らすための仕組みであり、初期化コストをユーザーに見えない形で繰り返し発生させるためのものではない。
-//! 一方、`hide()` だけでは WebView2 のメモリ（起動直後で 161.5MB）がそのまま残る。
+//! 一方、`hide()` だけでは WebView2 のメモリがそのまま残る。
 //! 数時間で終わるプロセスなら誤差だが、常駐すると解放されないまま残り続ける。
 //!
 //! そこで [`ICoreWebView2_3::TrySuspend`] を使う。
@@ -23,6 +27,41 @@
 //! [`ICoreWebView2_3::TrySuspend`]: https://learn.microsoft.com/microsoft-edge/webview2/reference/win32/icorewebview2_3
 
 use tauri::{Runtime, WebviewWindow};
+
+/// WebView2 既定のコンテキストメニューを無効にする。ウィンドウを生成した直後に呼ぶ。
+///
+/// 本文の上で右クリックすると「戻る」「最新の情報に更新」「名前を付けて保存」「印刷」といった Chromium 由来の項目が並ぶ。
+/// いずれも Reader として意味を持たず、「最新の情報に更新」に至っては本文の再読み込み（`F5`）とは別物である。
+/// 独自のコンテキストメニューを用意する計画は無いため、ここでは既定のメニューを出さないことだけを行う。
+///
+/// DOM の `contextmenu` イベントは通常どおり発火する。
+/// この設定が抑止するのはネイティブのメニューだけであり、Monaco が自前の DOM で描くメニューは影響を受けない。
+///
+/// デバッグビルドでは何もしない。「開発者ツールで調査する」を残すためである（開発者ツールの扱いそのものは未決）。
+#[cfg(windows)]
+pub fn disable_default_context_menu<R: Runtime>(window: &WebviewWindow<R>) {
+    if cfg!(debug_assertions) {
+        return;
+    }
+
+    // 失敗しても起動は続ける。既定のメニューが出るだけで、本文の表示も編集も成立する。
+    let _ = window.with_webview(|webview| {
+        let controller = webview.controller();
+        unsafe {
+            let Ok(core) = controller.CoreWebView2() else {
+                return;
+            };
+            let Ok(settings) = core.Settings() else {
+                return;
+            };
+            let _ = settings.SetAreDefaultContextMenusEnabled(false);
+        }
+    });
+}
+
+/// Windows 以外では何もしない。WebView2 固有の設定であり、同等の窓口が無い。
+#[cfg(not(windows))]
+pub fn disable_default_context_menu<R: Runtime>(_window: &WebviewWindow<R>) {}
 
 /// トレイへ格納する直前に呼ぶ。`hide()` の後に呼ぶこと。
 ///
@@ -46,7 +85,7 @@ pub fn suspend<R: Runtime>(window: &WebviewWindow<R>) {
                 return;
             };
             let Ok(core3) = core.cast::<ICoreWebView2_3>() else {
-                // WebView2 ランタイムが古い。サスペンドを諦めるだけで、格納自体は成立する。
+                // WebView2 ランタイムが古い。サスペンドしないだけで、格納自体は成立する。
                 return;
             };
             let handler = TrySuspendCompletedHandler::create(Box::new(|result, succeeded| {

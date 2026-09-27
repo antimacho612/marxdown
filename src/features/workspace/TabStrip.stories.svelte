@@ -1,9 +1,7 @@
 <!--
-  タブストリップ（F-NAV-01, 02 / 03.ux-spec/01-screen-layout.md §2）。
+  タブストリップ（F-NAV-01, 02）。
 
   実アプリで枚数を揃えるにはファイルを開いて回るしかないので、ここでは `loaders` でストアへ直接入れる。
-  1 枚のときの見た目はここに無い。差し込む側が `center` を渡さず、タイトルバーが既定の
-  ファイル名表示のままになるためである（`app/App.svelte`）。
 -->
 <script module lang="ts">
   import { defineMeta } from '@storybook/addon-svelte-csf';
@@ -38,7 +36,13 @@
   const DIR = 'C:\\Users\\me\\repos\\marxdown';
 </script>
 
-<!-- 名前が数字で始まると Storybook の索引が作れない（識別子にならない）。`exportName` を明示する。 -->
+<!--
+  1 枚。枚数で表示は変わらない。
+  閉じる `✕` も選択中の印もそのまま出る。
+  名前が数字で始まると Storybook の索引が作れない（識別子にならない）ため、`exportName` を明示する。
+-->
+<Story name="1 枚" exportName="OneTab" loaders={[withTabs([tab(1, `${DIR}\\README.md`)], 1)]} />
+
 <Story
   name="2 枚"
   exportName="TwoTabs"

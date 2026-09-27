@@ -1,7 +1,7 @@
 /**
- * 本文中のリンククリックの分岐（F-VIEW-05, 06, 07 / N-SEC-04 / 02.architecture/09-security.md §2）。
+ * 本文中のリンククリックの分岐（F-VIEW-05, 06, 07 / N-SEC-04）。
  * `#anchor` はページ内スクロール、`./x.md` はアプリ内で開く、他のローカルパスは確認の上で既定アプリ、`http(s)`/`mailto` は既定ブラウザ・メーラー、未知のスキームは何もしない。
- * 許可リスト方式であり、中心ユースケースが信頼できない Markdown を開くことのため、「危険なものを弾く」方式だと未知のスキームで安全性の欠陥が生じる（ADR-0006）。
+ * 許可リスト方式であり、中心ユースケースが信頼できない Markdown を開くことのため、「危険なものを除外する」方式だと未知のスキームで安全性の欠陥が生じる（ADR-0006）。
  *
  * どの分岐でも必ず `preventDefault()` する。
  * WebView がページ遷移するとアプリのシェルごと差し替わり復帰できないためである（N-SEC-04）。
@@ -22,14 +22,20 @@ const SCHEME = /^([a-z][a-z0-9+.-]*):/i;
  * リンクから本文の外へ移動するときの処理（`app/bootstrap.ts` が起動時に渡す）。
  *
  * 開く処理も通知も `document` が担当するが、`document` は本文を描画するためにこの feature を参照している。
- * 直接呼び返すと feature 単位で循環するため、依存の向きを `document → preview` の一方向に保つ目的で注入にしてある
- * （`features/history` の `configureHistory` と同じ形）。
+ * 直接呼び返すと feature 単位で循環するため、依存の向きを `document → preview` の一方向に保つ目的で注入にしてある（`features/history` の `configureHistory` と同じ形）。
  */
 export interface LinkTargets {
   /** いま開いているファイルのパス。相対リンクの基点。無題なら空文字。 */
   currentPath: () => string;
   /** Markdown をアプリ内で開く。 */
   open: (path: string, anchor: string | undefined) => void;
+  /**
+   * Markdown を別ウィンドウで開く（F-OPEN-06 / `Shift+Click`）。
+   *
+   * アンカーは渡さない。
+   * 起動時に開くファイルへ節を指定する経路が無く（`marxdown foo.md#section` は無い）、渡せるのはパスだけである。
+   */
+  openInNewWindow: (path: string) => void;
   /**
    * 通知バーに出す。構造だけを `documentStore.notice` に合わせてある。
    * 渡す側の代入が型で検査されるため、食い違えば `bootstrap.ts` で型エラーになる。
@@ -53,8 +59,6 @@ export function installLinkHandler(container: HTMLElement, next: LinkTargets): (
   targets = next;
 
   const onClick = (event: MouseEvent) => {
-    // 修飾クリックと中クリックは別の場所で開く操作を意図している。
-    // タブが実装されるまでは何もしないほうが、既定の遷移が発生するより安全である。
     if (event.defaultPrevented) return;
 
     const anchor = (event.target as Element | null)?.closest('a');
@@ -67,14 +71,18 @@ export function installLinkHandler(container: HTMLElement, next: LinkTargets): (
     // 二重に判定するのは、DOMPurify の既定が変わった場合の影響を受けないためである。
     if (href === null || href === '') return;
 
-    handle(href, container);
+    // `Shift+Click` は別ウィンドウ（F-OPEN-06）。ブラウザの慣習に合わせてある。
+    //
+    // `Ctrl+Click`（新しいタブ）は割り当てない。リンクを新しいタブで開くかどうかは未決である（OQ-41）。
+    // ここで先に決めてしまうと、未決のまま既定の振る舞いが 1 つ増える。
+    handle(href, container, event.shiftKey);
   };
 
   container.addEventListener('click', onClick);
   return () => container.removeEventListener('click', onClick);
 }
 
-function handle(href: string, container: HTMLElement): void {
+function handle(href: string, container: HTMLElement, newWindow = false): void {
   // ページ内アンカー（F-VIEW-07）
   if (href.startsWith('#')) {
     scrollToAnchor(container, href.slice(1));
@@ -98,11 +106,11 @@ function handle(href: string, container: HTMLElement): void {
 
   if (isMarkdownPath(resolved)) {
     // `./other.md#section` の `#` 以降はパスの一部ではない。
-    // 付けたまま渡すと Rust 側で not-found になるため、開いた後のスクロール先として別に渡す
-    // （相互にリンクされた文書群では、節を指定するリンクが頻繁に現れる）。
+    // 付けたまま渡すと Rust 側で not-found になるため、開いた後のスクロール先として別に渡す（相互にリンクされた文書群では、節を指定するリンクが頻繁に現れる）。
     const [path, anchor] = splitFragment(resolved);
     // 相対パスの正規化は Rust 側（`read_document` の canonicalize）に任せる。
-    targets?.open(path, anchor);
+    if (newWindow) targets?.openInNewWindow(path);
+    else targets?.open(path, anchor);
     return;
   }
 
@@ -114,7 +122,7 @@ function handle(href: string, container: HTMLElement): void {
  *
  * 確認してから開く。
  * OS の既定アプリに渡す操作は取り消せないため、本文に書かれているだけのパスを確認なしに起動しない。
- * モーダルにしないのは、データ消失の可能性が無いためである（03.ux-spec/07-status-and-notifications.md §2）。
+ * モーダルにしないのは、データ消失の可能性が無いためである。
  */
 function confirmOpenExternally(path: string): void {
   targets?.notify({

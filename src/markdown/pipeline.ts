@@ -1,10 +1,8 @@
 /**
- * markdown-it の構築（02.architecture/06-markdown-rendering-pipeline.md §1 / ADR-0003）。
+ * markdown-it の構築（ADR-0003）。
  *
  * この層は文字列の変換だけを行い、DOM には触れない（サニタイズは `paint.ts` が呼ぶ DOMPurify の担当 / ADR-0006）。
- * プラグイン構成は 04.tech-stack/04-markdown.md §2 の既定に従う。
- * 脚注・タスクリスト・GitHub Alerts は M4 から M2 へ前倒し済みである（OQ-27 / 06.roadmap/m2-editor.md §1.4）。
- * タスクリストは M4 でプレビュー上の操作を入れたため自作へ置き換えた（OQ-05 / `plugins/task-list.ts`）。
+ * プラグイン構成は技術選定の既定に従う。
  *
  * `use` の順序は仕様であり、`lineMapPlugin` を最後に置くこと。
  * `md.renderer.rules[...]` をその時点の中身ごと包むため、先に置くと後続プラグインの代入で上書きされる。
@@ -16,12 +14,17 @@ import githubAlerts from 'markdown-it-github-alerts';
 
 import { splitFrontMatter } from './plugins/front-matter';
 import { extractOutline, lineMapPlugin, type OutlineItem } from './plugins/line-map';
+import { linkTitlePlugin } from './plugins/link-title';
 import { mathPlugin } from './plugins/math';
 import { mermaidPlugin } from './plugins/mermaid';
 import { useSyntax } from './plugins/syntax';
+import { tablePlugin } from './plugins/table';
 import { taskListPlugin } from './plugins/task-list';
+import { LINE_HEAD } from './protocol';
 
 export { loadSyntax, SYNTAX_NAMES, type SyntaxName } from './plugins/syntax';
+export { extractOutline } from './plugins/line-map';
+export { mathPlugin } from './plugins/math';
 
 /** `render` の結果。HTML と、そこから導出した派生値をまとめて返す。 */
 export interface RenderResult {
@@ -36,16 +39,15 @@ export interface RenderResult {
  * 描画に影響するユーザー設定。
  *
  * ここに入るのは「CSS では表現できない、パースの結果そのものが変わるもの」だけである。
- * 文字サイズや配色はトークン層で当たるため、パイプラインは知らなくてよい。
+ * 文字サイズや配色はトークン層で適用されるため、パイプラインは知らなくてよい。
  */
 export interface RenderConfig {
-  /** 単独の改行を `<br>` にするか（`preview.softBreak` / #45）。 */
+  /** 単独の改行を `<br>` にするか（`preview.softBreak`）。 */
   breaks?: boolean;
   /**
-   * 有効にする追加記法（`markdown.*` / 04.tech-stack/04-markdown.md §3）。
+   * 有効にする追加記法（`markdown.*`）。
    *
-   * **実際に適用されるのは `loadSyntax` で読み込み済みのものだけである。**
-   * 読み込みは呼び出し側（`markdown/parser.ts`）が描画の前に待つ。
+   * 実際に適用されるのは `loadSyntax` で読み込み済みのものだけである。読み込みは呼び出し側（`markdown/parser.ts`）が描画の前に待つ。
    */
   syntax?: readonly string[];
 }
@@ -61,12 +63,12 @@ function configKey(config: RenderConfig): string {
 /**
  * markdown-it を組み立てる。`use` の順序は仕様である（モジュール冒頭を参照）。
  *
- * `breaks` はユーザー設定 `preview.softBreak`（#45）。既定は CommonMark 準拠の false で、
- * 単独の改行を `<br>` にしない。日本語文書では改行がそのまま反映されるほうを好む場合があるため選べるようにしてある。
+ * `breaks` はユーザー設定 `preview.softBreak`。既定は CommonMark 準拠の false で、単独の改行を `<br>` にしない。
+ * 日本語文書では改行がそのまま反映されるほうを好む場合があるため選べるようにしてある。
  */
 export function createMarkdownIt(config: RenderConfig = {}): MarkdownIt {
   const md = new MarkdownItCallable({
-    // 02.architecture/09-security.md §1 Layer 2: html は通すが、出力は必ず Layer 3 (DOMPurify) を通す。
+    // 多層防御の Layer 2: html は通すが、出力は必ず Layer 3 (DOMPurify) を通す。
     // ここで false にすると、生 HTML を書いた正当なドキュメントが壊れる。
     html: true,
     linkify: true, // GFM の自動リンク
@@ -88,17 +90,23 @@ export function createMarkdownIt(config: RenderConfig = {}): MarkdownIt {
   md.use(footnote);
 
   // タスクリスト（F-VIEW-01 の GFM 相当）。`<input>` ではなく `role="checkbox"` の `<span>` を出す。
-  // プレビュー上でのチェックを許可すると決めた（OQ-05）ため、`markdown-it-task-lists` から自作へ置き換えてある。
-  // 理由は `plugins/task-list.ts` の冒頭にある。
+  // 自作である理由は `plugins/task-list.ts` の冒頭にある。
   md.use(taskListPlugin);
 
   // 数式（F-VIEW-13）。ここではプレースホルダを出すだけで、KaTeX は `features/preview/lazy/math.ts` が遅延ロードする。
-  // critical path の残余が 23.64KB しかないため、パーサ側のプラグインを載せる選択肢が無い（06.roadmap/m4-markdown.md §1.2）。
+  // パーサ側のプラグインを載せるほどの残余が critical path に無い。
   md.use(mathPlugin);
 
   // Mermaid（F-VIEW-12）。`mermaid` フェンスの型を差し替えてプレースホルダにするだけで、描画は遅延チャンクが行う。
-  // Mermaid は全依存の中で突出して重い（04.tech-stack/04-markdown.md §4）。
+  // Mermaid は全依存の中で突出して重い。
   md.use(mermaidPlugin);
+
+  // 表（F-VIEW-01）。包む要素と揃えの属性を足すだけで、表の解釈そのものは変えない。
+  // `multilineTables`（追加記法）が差し替えるのはブロックルールであり、ここが見るトークンの形は変わらない。
+  md.use(tablePlugin);
+
+  // リンクのホバー時に行き先を表示する。オートリンク・linkify は対象外（`plugins/link-title.ts`）。
+  md.use(linkTitlePlugin);
 
   // 設定で有効化された追加記法（`markdown.*`）。既定では 1 つも入らない。
   // 標準の記法より後に置く。定義リストや上付き下付きが、既定の記法の解釈を変えないようにするためである。
@@ -125,7 +133,7 @@ export function getMarkdownIt(config: RenderConfig = {}): MarkdownIt {
 }
 
 /**
- * キャッシュを捨てる。
+ * キャッシュを破棄する。
  *
  * 追加記法は非同期に読み込まれるため、読み込みが済んだ時点で組み立て直す必要がある。
  * 設定キーが同じでも、`useSyntax` が返すものが変わっているためキャッシュは使えない。
@@ -182,10 +190,14 @@ function shiftTokenLines(tokens: Token[], offset: number): void {
 }
 
 /**
- * 段階的描画（N-PERF-04 / 02.architecture/06-markdown-rendering-pipeline.md §4）のためにチャンク分割する。
+ * 段階的描画（N-PERF-04）のためにチャンク分割する。
  *
  * トップレベルのブロック境界でのみ切る。要素の途中で切ると HTML が壊れる。
  * 最初のチャンクだけを同期的に DOM へ入れ、残りは `requestIdleCallback` で足す。
+ *
+ * `blocks` は Split の再描画で差分を取るための単位で、連結すると `chunks` の連結と一致する。
+ * `data-line` を持つ要素で始まらないブロック（生の HTML・脚注）は直前のブロックに連結する。
+ * DOM 側で境界を `data-line` から復元できるようにするためである。
  */
 export function renderChunks(
   text: string,
@@ -194,6 +206,7 @@ export function renderChunks(
   config: RenderConfig = {},
 ): {
   chunks: string[];
+  blocks: string[];
   outline: OutlineItem[];
   frontMatter: string | null;
 } {
@@ -205,9 +218,21 @@ export function renderChunks(
   if (bodyStartLine > 0) shiftTokenLines(tokens, bodyStartLine);
 
   const chunks: string[] = [];
+  const blocks: string[] = [];
+  /** 現在のチャンクに入るブロックの HTML。チャンクの区切りと `blocks` の区切りは一致しないため、別に持つ。 */
+  let pending: string[] = [];
   let start = 0;
-  let blocks = 0;
+  let count = 0;
   let limit = firstChunkBlocks;
+
+  const pushBlock = (end: number): void => {
+    const html = md.renderer.render(tokens.slice(start, end), md.options, env);
+    start = end;
+    pending.push(html);
+    const last = blocks.length - 1;
+    if (last >= 0 && !LINE_HEAD.test(html)) blocks[last] += html;
+    else blocks.push(html);
+  };
 
   // 脚注ブロック（`markdown-it-footnote` が末尾に追加する）より手前でしか分割しない。
   //
@@ -222,19 +247,32 @@ export function renderChunks(
     if (!token) continue;
     // level 0 かつ nesting が閉じた位置がトップレベルブロックの終端になる
     if (token.level === 0 && token.nesting <= 0) {
-      blocks++;
-      if (blocks >= limit) {
-        chunks.push(md.renderer.render(tokens.slice(start, i + 1), md.options, env));
-        start = i + 1;
-        blocks = 0;
+      pushBlock(i + 1);
+      count++;
+      if (count >= limit) {
+        chunks.push(pending.join(''));
+        pending = [];
+        count = 0;
         limit = chunkBlocks;
       }
     }
   }
 
-  if (start < tokens.length) {
-    chunks.push(md.renderer.render(tokens.slice(start), md.options, env));
-  }
+  if (start < tokens.length) pushBlock(tokens.length);
+  if (pending.length > 0) chunks.push(pending.join(''));
 
-  return { chunks, outline: extractOutline(tokens), frontMatter };
+  return { chunks, blocks, outline: extractOutline(tokens), frontMatter };
+}
+
+/**
+ * Marp の文書（Front Matter の最上位に `marp: true`）なら Front Matter を、そうでなければ `null` を返す（F-VIEW-17）。
+ *
+ * 判定は Marp for VS Code と同じである。
+ * YAML は解釈しない（`plugins/front-matter.ts` と同じ理由）。
+ * Front Matter で始まらない文書では、全行の分割（`splitFrontMatter`）を実行しない。
+ */
+export function marpFrontMatter(text: string): string | null {
+  if (!/^\u{FEFF}?---/u.test(text)) return null;
+  const { frontMatter } = splitFrontMatter(text);
+  return frontMatter !== null && /^marp[ \t]*:[ \t]*true[ \t]*(?:#.*)?$/m.test(frontMatter) ? frontMatter : null;
 }

@@ -1,8 +1,8 @@
 /**
- * Mermaid のフェンスをプレースホルダにする markdown-it プラグイン（F-VIEW-12 / 04.tech-stack/04-markdown.md §4）。
+ * Mermaid のフェンスをプレースホルダにする markdown-it プラグイン（F-VIEW-12）。
  *
  * `math.ts` と同じ立場で、ここは記法を見分けるだけで Mermaid を呼ばない。
- * Mermaid は全依存の中で突出して重く、pipeline チャンクはクリティカルパスにある（06.roadmap/m4-markdown.md §1.2）。
+ * Mermaid は全依存の中で突出して重く、pipeline チャンクはクリティカルパスにある。
  *
  * `fence` トークンの型を差し替えるだけにしてある。
  * 独自のブロックルールを足すと、コードフェンスの終端判定を二重に持つことになる。

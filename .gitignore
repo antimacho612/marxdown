@@ -33,14 +33,16 @@ bench/.tabs/
 *.trace.json
 /measurements-tmp/
 
-# Storybook のビルド成果物
+# Storybook
 storybook-static/
 
-# E2E。msedgedriver は 11MB で、WebView2 ランタイムと版を合わせる必要がある
-# （環境ごとに違う）。作業ファイルは毎回作り直す。揃え方は e2e/README.md。
+# E2E
 e2e/.drivers/
 e2e/.work/
 
 # Claude
 CLAUDE.local.md
 .claude/worktrees/
+
+# 設計ドキュメント（非公開の marxdown-docs を手元で clone する場所）
+/design/

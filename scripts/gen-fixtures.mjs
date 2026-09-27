@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * 05.performance-budget/03-fixtures.md の基準ファイルセットを生成する。
+ * 性能計測に使う基準ファイルセットを生成する。
  *
  * 生成物は Git に入れない（huge.md 2MB / extreme.md 10MB のため）。
  * 代わりに本スクリプトを唯一の真実とし、シードを固定して再現性を担保する。
@@ -98,8 +98,6 @@ function list(rng, items = 5, ordered = false) {
   }
   return out.join('\n');
 }
-
-/* ------------------------------------------------------------------ */
 
 function tiny(rng) {
   const out = ['# tiny.md — LLM の短い回答を模したファイル', ''];
@@ -287,8 +285,6 @@ function math(rng) {
   while (bytesOf(out) < 20 * 1024) out.push(paragraph(rng, 2), '');
   return out.join('\n');
 }
-
-/* ------------------------------------------------------------------ */
 
 const FIXTURES = [
   ['tiny.md', () => tiny(makeRng(1))],

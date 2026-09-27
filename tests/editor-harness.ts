@@ -1,9 +1,8 @@
 /**
- * 書式コマンドをテストから回すための道具
- * （`src/features/editor/format.test.ts` / `list.test.ts`）。
+ * 書式コマンドをテストから実行するための道具（`src/features/editor/lazy/format.test.ts` / `list.test.ts`）。
  *
- * 2 つに割ってあり、`marks.ts` が `|` 記法の読み書き（エンジンを知らない）、こちらの `editor-harness.ts` がコマンドを 1 回流すアダプタ（ここだけがエンジンを知る）を担う。
- * エンジンを差し替えたときに書き直したのはこのファイルだけで、テスト本体（`run` / `runAt` の呼び出しと `|` の期待値）は 1 行も変わっていない（[ADR-0009](../docs/adr/0009-editor-engine-monaco.md)）。
+ * 2 つに分けてあり、`marks.ts` が `|` 記法の読み書き（エンジンを知らない）、こちらの `editor-harness.ts` がコマンドを 1 回流すアダプタ（ここだけがエンジンを知る）を担う。
+ * エンジンを差し替えるときに書き直すのはこのファイルだけで、テスト本体（`run` / `runAt` の呼び出しと `|` の期待値）は変わらない（ADR-0009）。
  *
  * 本物のエディターを 1 つだけ作る。
  * コマンドが「編集の後にカーソルがどこへ行くか」まで決めている以上、選択範囲の移動もテストの対象である。
@@ -12,8 +11,7 @@
  * そこで `runEdit` をそのまま通す。
  * エディターはファイル全体で 1 つを使い回し、1 件ごとには `setValue` で中身だけ入れ替える（毎回作ると 1 件 250ms かかる）。
  *
- * jsdom に無いもの（`ResizeObserver` / `matchMedia` / `queryCommandSupported`）は
- * `tests/setup.ts` にある。`overviewRulerLanes: 0` は canvas を触らせないため。
+ * jsdom に無いもの（`ResizeObserver` / `matchMedia` / `queryCommandSupported`）は `tests/setup.ts` にある。`overviewRulerLanes: 0` は canvas を使わせないため。
  */
 import { offsetsOf, runEdit, selectionAt, type MarkdownEdit } from '@/features/editor/lazy/edits';
 import { monaco } from '@/features/editor/lazy/monaco';
@@ -50,7 +48,8 @@ function apply(edit: MarkdownEdit, doc: string, ranges: readonly MarkedRange[]):
   const model = currentModel();
 
   model.setValue(doc);
-  // **LF を明示する。** `setValue` はモデルの EOL を推定し直す（N-CMP-03）。
+  // LF を明示する。
+  // `setValue` はモデルの EOL を推定し直す（N-CMP-03）。
   model.setEOL(monaco.editor.EndOfLineSequence.LF);
   target.setSelections(ranges.map((range) => selectionAt(model, range.from, range.to)));
 
@@ -61,10 +60,9 @@ function apply(edit: MarkdownEdit, doc: string, ranges: readonly MarkedRange[]):
 }
 
 /**
- * コマンドを 1 回流す。**手を引いた（`null` を返した）ときは `null`。**
+ * コマンドを 1 回流す。処理しなかった（`null` を返した）ときは `null`。
  *
- * `Enter` と `Tab` は「リストでなければ既定の動作へ渡す」ことが要件なので、
- * 手を引いたことと、何も起きなかったことを取り違えられない形にしてある。
+ * `Enter` と `Tab` は「リストでなければ既定の動作へ渡す」ことが要件なので、処理しなかったことと、何も起きなかったことを取り違えられない形にしてある。
  */
 export function run(edit: MarkdownEdit, source: string): string | null {
   const { doc, ranges } = parseMarks(source);
@@ -78,7 +76,7 @@ export function runAt(edit: MarkdownEdit, doc: string, ranges: number[][]): stri
 }
 
 /**
- * コマンドを 1 回流し、**本文だけ**を返す（表の整形 / F-EDIT-11）。
+ * コマンドを 1 回流し、本文だけを返す（表の整形 / F-EDIT-11）。
  *
  * `|` 記法を使わない。表の本文にも `|` が現れ、カーソルの印と区別が付かなくなる。
  * カーソルの行き先を見たいコマンドでは `run` / `runAt` を使うこと。
@@ -101,7 +99,7 @@ export function runTextAt(edit: MarkdownEdit, doc: string, cursor: number): stri
  * `|` 記法は使わない。表の本文にも `|` が現れ、区別が付かなくなる。
  * 位置は `doc` に対する数値で渡し、結果も数値で返す。
  *
- * **手を引いた（`false` を返した）ときは `null`。**
+ * 処理しなかった（`false` を返した）ときは `null`。
  * `Tab` は表でなければ既定の動作へ渡す必要があり、そこを取り違えられない形にしてある。
  */
 export function runMoveAt(

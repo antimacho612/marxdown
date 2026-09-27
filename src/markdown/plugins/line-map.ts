@@ -1,5 +1,5 @@
 /**
- * すべてのブロックレベル要素に `data-line="開始行"` を付ける markdown-it プラグイン（02.architecture/06-markdown-rendering-pipeline.md §3 / VS Code の Markdown プレビューと同じ手法）。
+ * すべてのブロックレベル要素に `data-line="開始行"` を付ける markdown-it プラグイン（VS Code の Markdown プレビューと同じ手法）。
  * スクロール同期・クリックジャンプ・編集位置ハイライト・アウトラインジャンプの基盤である。
  *
  * 他のプラグインより後に `use` すること。
@@ -8,7 +8,7 @@
 import type { MarkdownIt, RendererRule, Token } from 'markdown-it';
 
 /**
- * `data-line` を付ける対象。インライン要素には付けない（数が爆発するため）。
+ * `data-line` を付ける対象。インライン要素には付けない（数が膨大になるため）。
  *
  * これらは `renderToken` を通るので、トークンに属性を足せばそのまま出力に載る。
  */

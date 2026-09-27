@@ -1,11 +1,9 @@
 // @vitest-environment jsdom
 /**
- * スコープ外の画像を許可する導線（OQ-17 / ADR-0006 / 02.architecture/09-security.md §3）。
+ * スコープ外の画像を許可する導線（ADR-0006）。
  *
- * 見たいのは 3 つ。
- * **解決後のパスを出していること**（何を許可するのか判断できないと意味がない）、
- * **見つからないだけの画像には許可ボタンを出さないこと**、
- * そして**許可の単位がディレクトリなので 1 クリックで同じ場所の他の画像も表示されること**である。
+ * 検証するのは 3 つである。
+ * 解決後のパスを出していること（何を許可するのか判断できないと意味がない）、見つからないだけの画像には許可ボタンを出さないこと、そして許可の単位がディレクトリなので 1 クリックで同じ場所の他の画像も表示されることである。
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -135,7 +133,60 @@ describe('拒まれた画像', () => {
     element.querySelector<HTMLButtonElement>('.mx-image-blocked__allow')?.click();
 
     await vi.waitFor(() => {
-      expect(element.querySelector('.mx-image-blocked__reason')?.textContent).toBe('許可できませんでした');
+      expect(element.querySelector('.mx-image-blocked__reason')?.textContent).toBe('表示を許可できませんでした');
+    });
+  });
+});
+
+describe('<picture><source srcset> のダークモード用画像', () => {
+  it('相対パスの srcset を解決する', async () => {
+    setPlatform({
+      ...original,
+      resolveAsset: (href: string) => Promise.resolve(`asset://${href.replace('../assets/', 'C:/assets/')}`),
+    } as Platform);
+
+    const element = container(
+      '<picture><source media="(prefers-color-scheme: dark)" srcset="../assets/logo-dark.svg" /><img src="../assets/logo-light.svg" alt="logo" /></picture>',
+    );
+    enhance(element, { baseDir: 'C:/work/docs' });
+
+    await vi.waitFor(() => {
+      expect(element.querySelector('source')?.getAttribute('srcset')).toBe('asset://C:/assets/logo-dark.svg');
+      expect(element.querySelector('img')?.getAttribute('src')).toBe('asset://C:/assets/logo-light.svg');
+    });
+  });
+
+  it('記述子つきの複数候補もそれぞれ解決する', async () => {
+    setPlatform({
+      ...original,
+      resolveAsset: (href: string) => Promise.resolve(`asset://${href}`),
+    } as Platform);
+
+    const element = container('<picture><source srcset="a.png 1x, b.png 2x" /><img src="a.png" /></picture>');
+    enhance(element, { baseDir: 'C:/work/docs' });
+
+    await vi.waitFor(() => {
+      expect(element.querySelector('source')?.getAttribute('srcset')).toBe('asset://a.png 1x, asset://b.png 2x');
+    });
+  });
+
+  it('解決に失敗した候補だけを外し、全滅すれば source ごと外す', async () => {
+    setPlatform({
+      ...original,
+      resolveAsset: (href: string) =>
+        href === 'missing.svg'
+          ? Promise.reject({ kind: 'not-found', message: '無い' })
+          : Promise.resolve(`asset://${href}`),
+    } as Platform);
+
+    const element = container(
+      '<picture><source srcset="missing.svg" /><img src="../assets/logo-light.svg" alt="logo" /></picture>',
+    );
+    enhance(element, { baseDir: 'C:/work/docs' });
+
+    await vi.waitFor(() => {
+      expect(element.querySelector('source')).toBeNull();
+      expect(element.querySelector('img')).not.toBeNull();
     });
   });
 });

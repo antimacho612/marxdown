@@ -2,18 +2,17 @@
  * 保存（F-EDIT-02, 03, 14 / N-REL-01, 02）。
  *
  * 原子的書き込み・衝突検知・EOL/BOM の復元は Rust 側（`src-tauri/src/document/`）が済ませてあるため、ここの責務は WriteRequest の組み立て・結果の通知・`expectedMtimeMs` の更新の 3 つだけである。
- * mtime の更新を忘れると、外部の変更が無くても 2 回目の保存が必ず衝突として弾かれる。
+ * mtime の更新を忘れると、外部の変更が無くても 2 回目の保存が必ず衝突として拒否される。
  * ダーティ状態は `dirty.ts` にある（依存の向きが違うため）。
  */
 import { ja } from '@/i18n/ja';
-import { toMessage } from '@/lib/error';
 import { getPlatform, type Eol, type SaveResult, type WriteRequest } from '@/platform';
 
 import { markClean } from './dirty';
 import { registerSaver } from './discard';
 import { effectiveEol } from './eol';
 import { describeOpenError, openPath } from './open';
-import { documentStore, notifyInfo } from './store.svelte';
+import { documentStore, notifyStatus } from './store.svelte';
 import { getDocumentText } from './text';
 
 // 「保存してから別の文書へ移る」の実体を登録する（`discard.ts`）。
@@ -119,7 +118,7 @@ function applySaved(path: string, mtimeMs: number, size: number, eol: Eol): void
 }
 
 /**
- * 衝突したときの選択（03.ux-spec/07-status-and-notifications.md §2 の「警告」）。
+ * 衝突したときの選択。
  * 「保存できませんでした: 別のプロセスが変更しています」+ 上書き / 再読み込み、を消えない通知として出す。
  * データ消失に直結する選択なので、3 秒で消えて「無かったこと」になってはいけない。
  */
@@ -147,7 +146,7 @@ function offerConflictChoice(path: string, diskMtimeMs: number): void {
 async function discardAndReload(path: string): Promise<void> {
   markClean();
   const outcome = await openPath(path, { resetScroll: false, remember: false, history: false });
-  if (outcome) notifyInfo(ja.open.reloadedExternal);
+  if (outcome) notifyStatus(ja.open.reloadedExternal);
 }
 
 /**
@@ -163,12 +162,25 @@ export async function saveThenQuit(): Promise<void> {
   await getPlatform().quitApp();
 }
 
+/**
+ * 「保存して閉じる」（F-OPEN-06 / `close.rs` の `ask_then_close`）。
+ *
+ * `saveThenQuit` と同じ構造で、保存した後の行き先だけが違う。
+ * 他にウィンドウが残っているときの `✕` がここへ来る。
+ * 保存に失敗した場合は閉じない（N-REL-01）。
+ */
+export async function saveThenCloseWindow(): Promise<void> {
+  const saved = await saveCurrent();
+  if (!saved) return;
+  await getPlatform().closeWindow();
+}
+
 /** 保存の失敗を通知に出すためのラッパー。メニューとキーの両方から呼ばれる。 */
 export async function saveSafely(): Promise<void> {
   try {
     await saveCurrent();
   } catch (e) {
-    documentStore.notice = { level: 'error', message: `${ja.save.failed}: ${toMessage(e)}` };
+    documentStore.notice = { level: 'error', message: `${ja.save.failed}: ${describeOpenError(e, '')}` };
   }
 }
 
@@ -177,6 +189,6 @@ export async function saveAsSafely(): Promise<void> {
   try {
     await saveAs();
   } catch (e) {
-    documentStore.notice = { level: 'error', message: `${ja.save.failed}: ${toMessage(e)}` };
+    documentStore.notice = { level: 'error', message: `${ja.save.failed}: ${describeOpenError(e, '')}` };
   }
 }

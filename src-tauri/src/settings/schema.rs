@@ -1,4 +1,4 @@
-//! 設定の形（02.architecture/04-rust-responsibilities.md §5 / F-CONF-03）。
+//! 設定の形（F-CONF-03）。
 //!
 //! I/O は持たない。
 //! ファイルの読み書きと「壊れているときの振る舞い」は親モジュール（`settings/mod.rs`）の担当で、ここにあるのはキーの名前・型・既定値・許容範囲だけである。
@@ -10,7 +10,7 @@
 //! 前 2 者の一致は `the_defaults_match_the_frontend_table` が `tests/settings-default.json` 越しに固定している。
 //! プレビューの 3 項目（文字サイズ・行間・本文幅）だけはトークン層にも既定があり、ここがずれると設定ファイルが無いときと「既定値を明示的に書いたとき」で見た目が変わる。
 //! エディターの既定値はトークン層に無い。
-//! M2 まではプレビューのトークンをそのまま使用していたが、読む面と書く面でタイポグラフィを分けた（ADR-0012）。
+//! 読む面と書く面でタイポグラフィを分けているためである（ADR-0012）。
 
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
@@ -43,10 +43,18 @@ pub const KEY_EDITOR_RENDER_LINE_HIGHLIGHT: &str = "editor.renderLineHighlight";
 pub const KEY_EDITOR_RENDER_WHITESPACE: &str = "editor.renderWhitespace";
 pub const KEY_EDITOR_RULERS: &str = "editor.rulers";
 pub const KEY_EDITOR_SCROLL_BEYOND_LAST_LINE: &str = "editor.scrollBeyondLastLine";
+pub const KEY_EDITOR_STICKY_SCROLL_ENABLED: &str = "editor.stickyScroll.enabled";
 pub const KEY_EDITOR_THEME: &str = "editor.theme";
 pub const KEY_EDITOR_TAB_SIZE: &str = "editor.tabSize";
+pub const KEY_EDITOR_WORD_SEGMENTER_LOCALES: &str = "editor.wordSegmenterLocales";
+pub const KEY_EDITOR_WORD_SEPARATORS: &str = "editor.wordSeparators";
 pub const KEY_EDITOR_WORD_WRAP: &str = "editor.wordWrap";
 pub const KEY_EDITOR_WORD_WRAP_COLUMN: &str = "editor.wordWrapColumn";
+
+/// エクスプローラーから常に除外するパスの glob（`src/glob.rs`）。
+pub const KEY_EXPLORER_EXCLUDE: &str = "explorer.exclude";
+/// ファイルツリーの単一クリックで仮タブとして開くか（ADR-0025）。
+pub const KEY_EXPLORER_TEMPORARY_TAB: &str = "explorer.temporaryTab";
 
 /// 追加記法（`src/markdown/plugins/syntax.ts` の `SYNTAX_NAMES` と 1:1）。どれも既定 OFF。
 pub const KEY_MARKDOWN_ABBREVIATIONS: &str = "markdown.abbreviations";
@@ -57,6 +65,9 @@ pub const KEY_MARKDOWN_MULTILINE_TABLES: &str = "markdown.multilineTables";
 pub const KEY_MARKDOWN_SUBSCRIPT: &str = "markdown.subscript";
 pub const KEY_MARKDOWN_SUPERSCRIPT: &str = "markdown.superscript";
 
+/// Marp の自作テーマの参照先（`crate::marp_themes` / ADR-0023 §3.4）。
+pub const KEY_MARP_THEMES: &str = "marp.themes";
+
 pub const KEY_OUTLINE_MAX_DEPTH: &str = "outline.maxDepth";
 
 pub const KEY_PREVIEW_CODE_FONT_FAMILY: &str = "preview.codeFontFamily";
@@ -65,9 +76,13 @@ pub const KEY_PREVIEW_FONT_SIZE: &str = "preview.fontSize";
 pub const KEY_PREVIEW_LINE_HEIGHT: &str = "preview.lineHeight";
 pub const KEY_PREVIEW_MAX_WIDTH: &str = "preview.maxWidth";
 pub const KEY_PREVIEW_SOFT_BREAK: &str = "preview.softBreak";
+pub const KEY_PREVIEW_TABLE_STYLE: &str = "preview.tableStyle";
 pub const KEY_PREVIEW_THEME: &str = "preview.theme";
 
-pub const KEY_WINDOW_CLOSE_BEHAVIOR: &str = "window.closeBehavior";
+pub const KEY_UPDATE_AUTO_CHECK: &str = "update.autoCheck";
+
+pub const KEY_WINDOW_CLOSE_TO_TRAY: &str = "window.closeToTray";
+pub const KEY_WINDOW_LAUNCH_AT_LOGIN: &str = "window.launchAtLogin";
 
 /// プレビューの既定。`src/styles/tokens.css` と揃える。
 pub const DEFAULT_FONT_SIZE: f64 = 16.0;
@@ -77,13 +92,18 @@ pub const DEFAULT_MAX_WIDTH: f64 = 72.0;
 /// エディターの既定（ADR-0012）。プレビューとは別の値を使う。
 ///
 /// 16px / 1.75 は読むためのタイポグラフィであり、書く面では行間が広すぎて視線の移動量が増える。
-/// VS Code の既定（14px）に寄せ、行間だけ日本語のために少し広げている。
+/// VS Code の既定（14px）に合わせ、行間だけ日本語のために少し広げている。
 pub const DEFAULT_EDITOR_FONT_SIZE: f64 = 14.0;
 pub const DEFAULT_EDITOR_LINE_HEIGHT: f64 = 1.6;
 /// 1 行目がウィンドウの縁に貼り付かないだけの余白。
 pub const DEFAULT_EDITOR_PADDING_TOP: f64 = 12.0;
 pub const DEFAULT_EDITOR_TAB_SIZE: f64 = 2.0;
+/// VS Code の `editor.wordSeparators` の既定値と同じ（Monaco も同じ値を使う）。
+pub const DEFAULT_EDITOR_WORD_SEPARATORS: &str = r#"`~!@#$%^&*()-=+[{]}\|;:'",.<>/?"#;
 pub const DEFAULT_EDITOR_WORD_WRAP_COLUMN: f64 = 80.0;
+/// 単語の分割に使うロケール。
+/// VS Code の既定は空だが、Marxdown の UI は日本語のみであり（OQ-11）、空のままでは日本語の文が句読点か空白まで 1 語として扱われる。
+pub const DEFAULT_EDITOR_WORD_SEGMENTER_LOCALE: &str = "ja";
 
 /// アウトラインの既定。6（`h6`）は見出しの最大階層であり、実質「制限なし」を意味する。
 pub const DEFAULT_OUTLINE_MAX_DEPTH: f64 = 6.0;
@@ -111,6 +131,21 @@ const OUTLINE_MAX_DEPTH_RANGE: (f64, f64) = (1.0, 6.0);
 /// 上限を置かないと、手で書いた `[1,2,3,...]` がそのまま描画コストになる。
 const RULERS_MAX: usize = 8;
 
+/// 単語分割のロケールの本数と 1 本あたりの長さの上限。
+/// 長さは BCP 47 の実装が最低限扱うべき長さ（RFC 5646 §4.4.1 の 35 文字）に揃える。
+const WORD_SEGMENTER_LOCALES_MAX: usize = 8;
+const LOCALE_TAG_MAX_LEN: usize = 35;
+
+/// 除外パターンの本数の上限。
+/// 1 エントリごとに全パターンを試すため、本数がそのまま一覧の走査コストになる。
+/// `src/glob.rs` の `MAX_PATTERNS` と揃える。
+const EXCLUDE_MAX: usize = 64;
+
+/// Marp のテーマの参照先の本数と、1 本あたりの長さの上限。
+/// 長さは Windows の長いパス（32767 文字）ではなく、設定 UI の入力欄で扱える長さで切る。
+const MARP_THEMES_MAX: usize = 32;
+const MARP_THEME_PATH_MAX_LEN: usize = 1024;
+
 /// 明暗の指定（F-CONF-01）。配色そのものは `preview.theme` / `editor.theme` が持つ。
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -122,14 +157,15 @@ pub enum Theme {
     Dark,
 }
 
-/// ウィンドウを閉じたときの挙動（F-WIN-* / ADR-0007）。
-/// 既定を `Tray` にしているのは、常駐してウォーム起動を利用することがプロダクトの中心価値だからである（ADR-0004）。
+/// 表の罫線の引き方（F-VIEW-01）。
+/// 既定の `Lines` は横罫線だけを引く。全セルを囲むと、数行の表でも格子が本文の中で最も強い図形になる。
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
-pub enum CloseBehavior {
+pub enum TableStyle {
     #[default]
-    Tray,
-    Exit,
+    Lines,
+    Grid,
+    Zebra,
 }
 
 /// 折り返し（VS Code `editor.wordWrap`）。
@@ -207,10 +243,26 @@ pub enum CursorBlinking {
     Solid,
 }
 
+/// 縦罫線 1 本（VS Code `editor.rulers` の要素）。
+///
+/// 桁だけの数値と、色を持てるオブジェクトの 2 通りの書き方がある。
+/// 読んだときの書き方のまま書き戻すため、どちらか一方に正規化しない。
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum Ruler {
+    Column(f64),
+    Styled {
+        column: f64,
+        /// `None` はテーマの罫線色を使う。
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        color: Option<String>,
+    },
+}
+
 /// 設定の全体。既定値で埋めた後の状態であり、ファイルの中身そのものではない。
 ///
 /// `flatten` した `extra` に未知のキーが入る。
-/// シリアライズすると既知のキーと同じ階層に並ぶため、書き戻しても失われない（02.architecture/04-rust-responsibilities.md §5）。
+/// シリアライズすると既知のキーと同じ階層に並ぶため、書き戻しても失われない。
 ///
 /// フィールドの並びがそのまま書き出したときのキーの並びになる。
 /// `theme` を先頭に置き、以降はドット区切りのグループごとに辞書順で並べる。
@@ -254,27 +306,46 @@ pub struct Settings {
     pub editor_render_line_highlight: RenderLineHighlight,
     #[serde(rename = "editor.renderWhitespace")]
     pub editor_render_whitespace: RenderWhitespace,
-    /// 縦罫線を引く桁。空なら引かない。`preview.maxWidth` と対で使う。
+    /// 縦罫線。空なら引かない。`preview.maxWidth` と対で使う。
     #[serde(rename = "editor.rulers")]
-    pub editor_rulers: Vec<f64>,
+    pub editor_rulers: Vec<Ruler>,
     #[serde(rename = "editor.scrollBeyondLastLine")]
     pub editor_scroll_beyond_last_line: bool,
-    /// エディターの配色（[ADR-0014](../../docs/adr/0014-editor-theme-catalog.md)）。
+    /// 見出しを編集面の上端に固定する（折りたたみの範囲から決まる / `features/editor/lazy/folding.ts`）。
+    #[serde(rename = "editor.stickyScroll.enabled")]
+    pub editor_sticky_scroll_enabled: bool,
+    /// エディターの配色。
     ///
     /// 列挙ではなく文字列である。
     /// 選択肢は組み込みの 50 枚と `themes/` に置かれたファイルの合成であり、Rust 側で数え上げられない。
-    /// 知らない綴りを既定へ落とさないのもそのためで、`themes/` の読み込みが済むまでは選択中の配色が存在するかどうかを判定できない。
+    /// 知らない綴りを既定に戻さないのもそのためで、`themes/` の読み込みが済むまでは選択中の配色が存在するかどうかを判定できない。
     #[serde(rename = "editor.theme")]
     pub editor_theme: String,
     #[serde(rename = "editor.tabSize")]
     pub editor_tab_size: f64,
+    /// 単語単位の移動・選択で、区切りを `Intl.Segmenter` で決めるロケール（BCP 47）。空なら `editor.wordSeparators` だけで区切る。
+    #[serde(rename = "editor.wordSegmenterLocales")]
+    pub editor_word_segmenter_locales: Vec<String>,
+    /// 単語単位のカーソル移動（`Ctrl+←` / `Ctrl+→`）で区切りとして扱う文字。
+    #[serde(rename = "editor.wordSeparators")]
+    pub editor_word_separators: String,
     #[serde(rename = "editor.wordWrap")]
     pub editor_word_wrap: WordWrap,
     #[serde(rename = "editor.wordWrapColumn")]
     pub editor_word_wrap_column: f64,
 
-    /// 設定で有効化する追加記法（04.tech-stack/04-markdown.md §3）。
-    /// **どれも既定 OFF である。** 標準的でない記法が意図せず発火して本文が壊れるほうが、認知負荷が高い。
+    /// エクスプローラーとクイックオープンから常に除外するパスの glob。
+    /// 空なら追加の除外はしない。隠しファイルと `node_modules` は設定に関わらず除外される（`dir.rs`）。
+    #[serde(rename = "explorer.exclude")]
+    pub explorer_exclude: Vec<String>,
+    /// ファイルツリーの単一クリックで仮タブとして開くか（ADR-0025）。
+    /// 仮タブは次の単一クリックで置き換わり、編集・ダブルクリック・「保持」で通常のタブになる。
+    #[serde(rename = "explorer.temporaryTab")]
+    pub explorer_temporary_tab: bool,
+
+    /// 設定で有効化する追加記法。
+    /// どれも既定 OFF である。
+    /// 標準的でない記法が意図せず発火して本文が壊れるほうが、認知負荷が高い。
     #[serde(rename = "markdown.abbreviations")]
     pub markdown_abbreviations: bool,
     #[serde(rename = "markdown.definitionLists")]
@@ -290,6 +361,10 @@ pub struct Settings {
     #[serde(rename = "markdown.superscript")]
     pub markdown_superscript: bool,
 
+    /// Marp の自作テーマ。CSS ファイルかディレクトリの絶対パス（ADR-0023 §3.4）。
+    #[serde(rename = "marp.themes")]
+    pub marp_themes: Vec<String>,
+
     /// アウトラインに表示する見出しの最大階層（`h1`〜`h6`）。それより深い見出しは一覧から外れる。
     #[serde(rename = "outline.maxDepth")]
     pub outline_max_depth: f64,
@@ -303,23 +378,39 @@ pub struct Settings {
     pub preview_font_size: f64,
     #[serde(rename = "preview.lineHeight")]
     pub preview_line_height: f64,
-    /// 本文幅。単位は `ch`（02.architecture/10-theming.md §2）。
+    /// 本文幅。単位は `ch`。
     /// px ではないのは、フォントサイズを変えても 1 行あたりの文字数が変わらないようにするためである。
     #[serde(rename = "preview.maxWidth")]
     pub preview_max_width: f64,
-    /// 段落内の単独の改行を `<br>` として描画するか（`markdown-it` の `breaks` / #45）。
+    /// 段落内の単独の改行を `<br>` として描画するか（`markdown-it` の `breaks`）。
     #[serde(rename = "preview.softBreak")]
     pub preview_soft_break: bool,
-    /// 本文の配色（[ADR-0014](../../docs/adr/0014-editor-theme-catalog.md)）。
+    /// 表の罫線の引き方（F-VIEW-01）。
+    #[serde(rename = "preview.tableStyle")]
+    pub preview_table_style: TableStyle,
+    /// 本文の配色。
     ///
     /// `editor.theme` と同じくカタログを共有する文字列である。
     /// 選択肢は組み込みの 50 枚と `themes/` に置かれたファイルの合成であり、Rust 側で数え上げられない。
-    /// 知らない綴りを既定へ落とさないのもそのためで、`themes/` の読み込みが済むまでは選択中の配色が存在するかどうかを判定できない。
+    /// 知らない綴りを既定に戻さないのもそのためで、`themes/` の読み込みが済むまでは選択中の配色が存在するかどうかを判定できない。
     #[serde(rename = "preview.theme")]
     pub preview_theme: String,
 
-    #[serde(rename = "window.closeBehavior")]
-    pub window_close_behavior: CloseBehavior,
+    /// 新しい版を自動で確認するか（F-OS-06 / ADR-0024）。
+    /// `false` でも、コマンドパレットの「更新を確認」は使える。
+    #[serde(rename = "update.autoCheck")]
+    pub update_auto_check: bool,
+
+    /// `✕` で閉じたときにトレイへ格納するか（F-OS-08 / ADR-0007）。
+    /// 既定を `true` にしているのは、常駐してウォーム起動を利用することがプロダクトの中心価値だからである（ADR-0004）。
+    #[serde(rename = "window.closeToTray")]
+    pub window_close_to_tray: bool,
+
+    /// ログイン時にトレイへ常駐した状態で起動するか（ADR-0022）。
+    /// 既定を `false` にしているのは、使わない人のログインを遅くし、メモリを占めるためである。
+    /// `window.closeToTray` が `false` のときは効果が無い（`autostart.rs`）。
+    #[serde(rename = "window.launchAtLogin")]
+    pub window_launch_at_login: bool,
 
     /// Marxdown が解釈しないキー。破棄せず保持することだけが役目である。
     #[serde(flatten)]
@@ -331,9 +422,8 @@ impl Default for Settings {
         Self {
             theme: Theme::default(),
 
-            // Monaco の既定と変えている 3 つ（記号の色分け・ミニマップ・空白の可視化）は、
-            // いずれも Markdown の構造に対して意味を持たない情報で画面を埋めるものである。
-            // 既定では無効にし、必要な人だけが有効にする（ADR-0001 から引き継ぐ判断）。
+            // Monaco の既定と変えている 3 つ（記号の色分け・ミニマップ・空白の可視化）は、いずれも Markdown の構造に対して意味を持たない情報で画面を埋めるものである。
+            // 既定では無効にし、必要な人だけが有効にする。
             editor_bracket_pair_colorization_enabled: false,
             editor_cursor_blinking: CursorBlinking::default(),
             editor_cursor_style: CursorStyle::default(),
@@ -354,10 +444,18 @@ impl Default for Settings {
             editor_render_whitespace: RenderWhitespace::default(),
             editor_rulers: Vec::new(),
             editor_scroll_beyond_last_line: true,
+            editor_sticky_scroll_enabled: true,
             editor_theme: DEFAULT_THEME_ID.to_owned(),
             editor_tab_size: DEFAULT_EDITOR_TAB_SIZE,
+            editor_word_segmenter_locales: vec![DEFAULT_EDITOR_WORD_SEGMENTER_LOCALE.to_owned()],
+            editor_word_separators: DEFAULT_EDITOR_WORD_SEPARATORS.to_owned(),
             editor_word_wrap: WordWrap::default(),
             editor_word_wrap_column: DEFAULT_EDITOR_WORD_WRAP_COLUMN,
+
+            // 既定では追加の除外をしない。
+            // 隠しファイルと `node_modules` は設定に関わらず除外されるため（`dir.rs`）、ここに書き出すと同じ判断が 2 か所に分かれる。
+            explorer_exclude: Vec::new(),
+            explorer_temporary_tab: true,
 
             markdown_abbreviations: false,
             markdown_definition_lists: false,
@@ -367,6 +465,8 @@ impl Default for Settings {
             markdown_subscript: false,
             markdown_superscript: false,
 
+            marp_themes: Vec::new(),
+
             outline_max_depth: DEFAULT_OUTLINE_MAX_DEPTH,
 
             // 具体的なフォント名を既定に書くと、そのフォントが存在しない環境で `tokens.css` の混植スタックがすべて無効になる（F-CONF-04）。
@@ -375,11 +475,15 @@ impl Default for Settings {
             preview_font_size: DEFAULT_FONT_SIZE,
             preview_line_height: DEFAULT_LINE_HEIGHT,
             preview_max_width: DEFAULT_MAX_WIDTH,
-            // CommonMark 準拠。改行を <br> にしない（#45）。
+            // CommonMark 準拠。改行を <br> にしない。
             preview_soft_break: false,
+            preview_table_style: TableStyle::default(),
             preview_theme: DEFAULT_THEME_ID.to_owned(),
 
-            window_close_behavior: CloseBehavior::default(),
+            update_auto_check: true,
+
+            window_close_to_tray: true,
+            window_launch_at_login: false,
 
             extra: Map::new(),
         }
@@ -390,7 +494,7 @@ impl Settings {
     /// JSON オブジェクトから読む。既知のキーを取り除いた残りが `extra` になる。
     ///
     /// 値の型が違うキーは既定値に戻す。ファイル全体を壊れているとは見なさない。
-    /// `version` を持たない以上、互換性はキー単位で保つ（02.architecture/04-rust-responsibilities.md §5）。
+    /// `version` を持たない以上、互換性はキー単位で保つ。
     pub(super) fn from_map(mut map: Map<String, Value>) -> Self {
         let d = Self::default();
         Self {
@@ -444,9 +548,15 @@ impl Settings {
             editor_rulers: take_rulers(&mut map).unwrap_or(d.editor_rulers),
             editor_scroll_beyond_last_line: take(&mut map, KEY_EDITOR_SCROLL_BEYOND_LAST_LINE)
                 .unwrap_or(d.editor_scroll_beyond_last_line),
+            editor_sticky_scroll_enabled: take(&mut map, KEY_EDITOR_STICKY_SCROLL_ENABLED)
+                .unwrap_or(d.editor_sticky_scroll_enabled),
             editor_theme: take_theme_id(&mut map, KEY_EDITOR_THEME).unwrap_or(d.editor_theme),
             editor_tab_size: take_int(&mut map, KEY_EDITOR_TAB_SIZE, TAB_SIZE_RANGE)
                 .unwrap_or(d.editor_tab_size),
+            editor_word_segmenter_locales: take_word_segmenter_locales(&mut map)
+                .unwrap_or(d.editor_word_segmenter_locales),
+            editor_word_separators: take(&mut map, KEY_EDITOR_WORD_SEPARATORS)
+                .unwrap_or(d.editor_word_separators),
             editor_word_wrap: take(&mut map, KEY_EDITOR_WORD_WRAP).unwrap_or(d.editor_word_wrap),
             editor_word_wrap_column: take_int(
                 &mut map,
@@ -454,6 +564,10 @@ impl Settings {
                 WORD_WRAP_COLUMN_RANGE,
             )
             .unwrap_or(d.editor_word_wrap_column),
+
+            explorer_exclude: take_exclude(&mut map).unwrap_or(d.explorer_exclude),
+            explorer_temporary_tab: take(&mut map, KEY_EXPLORER_TEMPORARY_TAB)
+                .unwrap_or(d.explorer_temporary_tab),
 
             markdown_abbreviations: take(&mut map, KEY_MARKDOWN_ABBREVIATIONS)
                 .unwrap_or(d.markdown_abbreviations),
@@ -468,6 +582,8 @@ impl Settings {
                 .unwrap_or(d.markdown_subscript),
             markdown_superscript: take(&mut map, KEY_MARKDOWN_SUPERSCRIPT)
                 .unwrap_or(d.markdown_superscript),
+
+            marp_themes: take_marp_themes(&mut map).unwrap_or(d.marp_themes),
 
             outline_max_depth: take_int(&mut map, KEY_OUTLINE_MAX_DEPTH, OUTLINE_MAX_DEPTH_RANGE)
                 .unwrap_or(d.outline_max_depth),
@@ -484,10 +600,16 @@ impl Settings {
                 .unwrap_or(d.preview_max_width),
             preview_soft_break: take(&mut map, KEY_PREVIEW_SOFT_BREAK)
                 .unwrap_or(d.preview_soft_break),
+            preview_table_style: take(&mut map, KEY_PREVIEW_TABLE_STYLE)
+                .unwrap_or(d.preview_table_style),
             preview_theme: take_theme_id(&mut map, KEY_PREVIEW_THEME).unwrap_or(d.preview_theme),
 
-            window_close_behavior: take(&mut map, KEY_WINDOW_CLOSE_BEHAVIOR)
-                .unwrap_or(d.window_close_behavior),
+            update_auto_check: take(&mut map, KEY_UPDATE_AUTO_CHECK).unwrap_or(d.update_auto_check),
+
+            window_close_to_tray: take(&mut map, KEY_WINDOW_CLOSE_TO_TRAY)
+                .unwrap_or(d.window_close_to_tray),
+            window_launch_at_login: take(&mut map, KEY_WINDOW_LAUNCH_AT_LOGIN)
+                .unwrap_or(d.window_launch_at_login),
 
             extra: map,
         }
@@ -502,7 +624,7 @@ impl Settings {
         }
     }
 
-    /// 変更したキーだけを当てる（02.architecture/04-rust-responsibilities.md §1 `write_settings`）。
+    /// 変更したキーだけを反映する。
     ///
     /// 値が `null` のキーは削除する。設定 UI の「既定に戻す」がこれにあたる。
     pub fn patched(&self, patch: Map<String, Value>) -> Self {
@@ -537,11 +659,11 @@ fn take_int(map: &mut Map<String, Value>, key: &str, range: (f64, f64)) -> Optio
 /// 配色の id（`preview.theme` / `editor.theme`）。
 ///
 /// 綴りが選択肢に存在するかは調べない。
-/// 組み込みの一覧はフロント側にあり、`themes/` の中身は読み込むまで分からない（[ADR-0014](../../docs/adr/0014-editor-theme-catalog.md)）。
-/// ここで弾くのは、属性セレクタへ埋め込めない文字を含むものだけである（`themes::valid_id` と同じ判定）。
+/// 組み込みの一覧はフロント側にあり、`themes/` の中身は読み込むまで分からない（ADR-0014）。
+/// ここで除外するのは、属性セレクタへ埋め込めない文字を含むものだけである（`themes::valid_id` と同じ判定）。
 ///
 /// 存在しない配色を選んだ状態は保持したまま UI へ渡す。
-/// 既定へ落とすと、ファイル名の打ち間違いと未適用をユーザーが区別できない。
+/// 既定に戻すと、ファイル名の打ち間違いと未適用をユーザーが区別できない。
 fn take_theme_id(map: &mut Map<String, Value>, key: &str) -> Option<String> {
     let value: String = take(map, key)?;
     let ok = !value.is_empty()
@@ -552,18 +674,100 @@ fn take_theme_id(map: &mut Map<String, Value>, key: &str) -> Option<String> {
     ok.then_some(value)
 }
 
-/// 縦罫線。要素ごとに範囲へ丸め、本数も上限で切る。
+/// 縦罫線。要素ごとに桁を範囲へ丸め、本数も上限で切る。
 ///
 /// 型が違う要素が 1 つでもあれば、配列ごと既定（引かない）に戻す。
 /// 部分的に採用すると、指定したのに 1 本足りない状態になり原因が追いにくい。
-fn take_rulers(map: &mut Map<String, Value>) -> Option<Vec<f64>> {
-    let values: Vec<f64> = take(map, KEY_EDITOR_RULERS)?;
+/// 色だけが解釈できない場合は、その色だけを捨てて罫線は残す。
+fn take_rulers(map: &mut Map<String, Value>) -> Option<Vec<Ruler>> {
+    let values: Vec<Ruler> = take(map, KEY_EDITOR_RULERS)?;
     Some(
         values
             .into_iter()
-            .filter(|v| v.is_finite())
-            .map(|v| v.clamp(RULER_RANGE.0, RULER_RANGE.1).round())
+            .filter_map(sanitize_ruler)
             .take(RULERS_MAX)
+            .collect(),
+    )
+}
+
+fn sanitize_ruler(ruler: Ruler) -> Option<Ruler> {
+    let clamp = |v: f64| {
+        v.is_finite()
+            .then(|| v.clamp(RULER_RANGE.0, RULER_RANGE.1).round())
+    };
+    match ruler {
+        Ruler::Column(column) => clamp(column).map(Ruler::Column),
+        Ruler::Styled { column, color } => Some(Ruler::Styled {
+            column: clamp(column)?,
+            color: color.filter(|c| is_hex_color(c)),
+        }),
+    }
+}
+
+/// `#RGB` / `#RGBA` / `#RRGGBB` / `#RRGGBBAA` か。VS Code のスキーマ（`color-hex`）と同じ範囲である。
+///
+/// Monaco は色の文字列を検証せずに `box-shadow` の値へ埋め込む。
+/// 任意の文字列を通すと `red, 0 0 0 9999px red` のように影を追加でき、編集面を塗りつぶせる。
+fn is_hex_color(value: &str) -> bool {
+    value.strip_prefix('#').is_some_and(|hex| {
+        matches!(hex.len(), 3 | 4 | 6 | 8) && hex.bytes().all(|b| b.is_ascii_hexdigit())
+    })
+}
+
+/// 単語分割のロケール。
+///
+/// VS Code は文字列 1 つでも受け付けるため、`"ja"` も `["ja"]` と同じに扱う（VS Code の `settings.json` から転記できるようにする / F-CONF-06）。
+/// BCP 47 の文字（英数字と `-`）以外を含むものと長すぎるものは 1 本ずつ除く。
+/// 実在するロケールかは調べない。Monaco が `Intl.Segmenter.supportedLocalesOf` で判定し、扱えないものを無視する。
+/// 型が違う要素が 1 つでもあれば、配列ごと既定に戻す（`take_rulers` と同じ判断）。
+fn take_word_segmenter_locales(map: &mut Map<String, Value>) -> Option<Vec<String>> {
+    let values: Vec<String> = match map.remove(KEY_EDITOR_WORD_SEGMENTER_LOCALES)? {
+        Value::String(one) => vec![one],
+        other => serde_json::from_value(other).ok()?,
+    };
+    Some(
+        values
+            .into_iter()
+            .map(|v| v.trim().to_owned())
+            .filter(|v| {
+                !v.is_empty()
+                    && v.len() <= LOCALE_TAG_MAX_LEN
+                    && v.chars().all(|c| c.is_ascii_alphanumeric() || c == '-')
+            })
+            .take(WORD_SEGMENTER_LOCALES_MAX)
+            .collect(),
+    )
+}
+
+/// 除外パターン。空文字と空白だけのものを除き、本数を上限で切る。
+///
+/// 型が違う要素が 1 つでもあれば、配列ごと既定（除外しない）に戻す（`take_rulers` と同じ判断）。
+/// 綴りが glob として読めるかはここでは調べない。
+/// 判定は `crate::glob` にあり、読めなかった 1 本だけがそこで無視される。
+fn take_exclude(map: &mut Map<String, Value>) -> Option<Vec<String>> {
+    let values: Vec<String> = take(map, KEY_EXPLORER_EXCLUDE)?;
+    Some(
+        values
+            .into_iter()
+            .filter(|v| !v.trim().is_empty())
+            .take(EXCLUDE_MAX)
+            .collect(),
+    )
+}
+
+/// Marp のテーマの参照先。空白だけのものと長すぎるものを除き、本数を上限で切る。
+///
+/// 型が違う要素が 1 つでもあれば、配列ごと既定（参照しない）に戻す（`take_exclude` と同じ判断）。
+/// 絶対パスかどうかと、存在するかどうかはここでは調べない。
+/// 読むときに `crate::marp_themes` が 1 本ずつ判定し、読めなかったものをフロントへ知らせる。
+fn take_marp_themes(map: &mut Map<String, Value>) -> Option<Vec<String>> {
+    let values: Vec<String> = take(map, KEY_MARP_THEMES)?;
+    Some(
+        values
+            .into_iter()
+            .map(|v| v.trim().to_owned())
+            .filter(|v| !v.is_empty() && v.chars().count() <= MARP_THEME_PATH_MAX_LEN)
+            .take(MARP_THEMES_MAX)
             .collect(),
     )
 }
@@ -572,10 +776,9 @@ fn take_rulers(map: &mut Map<String, Value>) -> Option<Vec<f64>> {
 mod tests {
     use super::*;
 
-    /// 既定値がフロント側（`src/platform/settings-schema.ts`）と一致することを、
-    /// 突き合わせ用の JSON 1 枚を挟んで固定する。
+    /// 既定値がフロント側（`src/platform/settings-schema.ts`）と一致することを、突き合わせ用の JSON 1 枚を挟んで固定する。
     /// 反対側から同じファイルを読むのは `src/platform/settings-schema.test.ts` である。
-    /// 食い違ったときは、どちらが正しいかを決めてから `UPDATE_SETTINGS_FIXTURE=1 cargo test` で焼き直す。
+    /// 食い違ったときは、どちらが正しいかを決めてから `UPDATE_SETTINGS_FIXTURE=1 cargo test` で作り直す。
     #[test]
     fn the_defaults_match_the_frontend_table() {
         let path =
@@ -603,14 +806,14 @@ mod tests {
         assert_eq!(s.theme, Theme::Dark);
         assert_eq!(s.preview_font_size, DEFAULT_FONT_SIZE);
         assert_eq!(s.editor_font_size, DEFAULT_EDITOR_FONT_SIZE);
-        assert_eq!(
-            s.window_close_behavior,
-            CloseBehavior::Tray,
-            "常駐が既定（ADR-0004）"
+        assert!(s.window_close_to_tray, "常駐が既定（ADR-0004）");
+        assert!(
+            !s.window_launch_at_login,
+            "自動起動は既定で OFF（ADR-0022）"
         );
     }
 
-    /// ADR-0012。**読む面と書く面でタイポグラフィが別**であること自体を固定する。
+    /// ADR-0012。読む面と書く面でタイポグラフィが別であること自体を固定する。
     #[test]
     fn the_editor_does_not_inherit_the_preview_typography() {
         let d = Settings::default();
@@ -629,7 +832,7 @@ mod tests {
     }
 
     /// VS Code の綴りをそのまま受ける。
-    /// ここがずれると「VS Code から写したのに効かない」になる（F-CONF-06）。
+    /// ここがずれると「VS Code から写したのに動作しない」状態になる（F-CONF-06）。
     #[test]
     fn vscode_spellings_are_accepted() {
         let s = Settings::from_map(
@@ -681,7 +884,7 @@ mod tests {
         assert_eq!(Settings::from_map(map), s);
     }
 
-    /// ADR-0014。**面ごとに独立して選べること**と、既定が「属性なし」であること。
+    /// ADR-0014。面ごとに独立して選べることと、既定が「属性なし」であること。
     /// カタログは共通だが、選択は面ごとに別の値である。
     #[test]
     fn the_two_surfaces_pick_palettes_independently() {
@@ -697,7 +900,7 @@ mod tests {
         assert_eq!(s.editor_theme, "dracula");
     }
 
-    /// **知らない綴りも保持する**（ADR-0014）。両面とも同じ扱いである。
+    /// 知らない綴りも保持する（ADR-0014）。両面とも同じ扱いである。
     /// 組み込みの一覧はフロント側にあり、`themes/` の中身は読み込むまで分からないため、ここで存在を判定できない。
     #[test]
     fn an_unknown_theme_is_kept() {
@@ -711,8 +914,8 @@ mod tests {
         assert_eq!(s.to_map()[KEY_EDITOR_THEME], Value::from("another"));
     }
 
-    /// 属性セレクタへ埋め込めない綴りだけは既定へ落とす（`themes::valid_id` と同じ判定）。
-    /// **ファイル全体は壊さない。**
+    /// 属性セレクタへ埋め込めない綴りだけは既定に戻す（`themes::valid_id` と同じ判定）。
+    /// ファイル全体は壊さない。
     #[test]
     fn a_theme_that_could_escape_the_selector_falls_back() {
         for bad in ["dark';}html{display:none}", "", "a b", "../../etc"] {
@@ -761,16 +964,162 @@ mod tests {
 
         assert_eq!(
             s.editor_rulers,
-            [80.0, 101.0, 500.0, 1.0, 2.0, 3.0, 4.0, 5.0]
+            [80.0, 101.0, 500.0, 1.0, 2.0, 3.0, 4.0, 5.0].map(Ruler::Column)
         );
     }
 
     #[test]
     fn a_ruler_list_with_a_bad_element_falls_back_to_none() {
-        let s =
-            Settings::from_map(serde_json::from_str(r#"{"editor.rulers":[80,"ひゃく"]}"#).unwrap());
+        for bad in [
+            r#"[80,"ひゃく"]"#,
+            r##"[80,{"color":"#ff0000"}]"##,
+            r#"[80,{"column":"100"}]"#,
+            r#"[80,{"column":100,"color":255}]"#,
+        ] {
+            let s = Settings::from_map(
+                serde_json::from_str(&format!(r#"{{"editor.rulers":{bad}}}"#)).unwrap(),
+            );
+            assert!(s.editor_rulers.is_empty(), "部分的に拾わない: {bad}");
+        }
+    }
 
-        assert!(s.editor_rulers.is_empty(), "部分的に拾わない");
+    /// VS Code と同じく、数値とオブジェクトを混在させられる。
+    /// 書き戻すときも読んだときの書き方を保つ。
+    #[test]
+    fn rulers_keep_their_shape_and_color() {
+        let json =
+            r##"{"editor.rulers":[80,{"column":100.4,"color":"#ff000080"},{"column":120}]}"##;
+        let s = Settings::from_map(serde_json::from_str(json).unwrap());
+
+        assert_eq!(
+            s.editor_rulers,
+            [
+                Ruler::Column(80.0),
+                Ruler::Styled {
+                    column: 100.0,
+                    color: Some("#ff000080".into())
+                },
+                Ruler::Styled {
+                    column: 120.0,
+                    color: None
+                },
+            ]
+        );
+        assert_eq!(
+            s.to_map()[KEY_EDITOR_RULERS],
+            serde_json::json!([80.0, { "column": 100.0, "color": "#ff000080" }, { "column": 120.0 }])
+        );
+    }
+
+    /// 色だけが読めない場合は罫線を残し、テーマの色で引く。
+    #[test]
+    fn a_ruler_color_that_is_not_hex_is_dropped() {
+        for bad in [
+            "red",
+            "#ff000",
+            "#gggggg",
+            "ff0000",
+            "red, 0 0 0 9999px red",
+            "#fff; x",
+        ] {
+            let json = serde_json::json!({ KEY_EDITOR_RULERS: [{ "column": 80, "color": bad }] });
+            let s = Settings::from_map(json.as_object().unwrap().clone());
+
+            assert_eq!(
+                s.editor_rulers,
+                [Ruler::Styled {
+                    column: 80.0,
+                    color: None
+                }],
+                "{bad}"
+            );
+        }
+
+        for good in ["#fff", "#ffff", "#A0b1C2", "#a0b1c2d3"] {
+            assert!(is_hex_color(good), "{good}");
+        }
+    }
+
+    #[test]
+    fn exclude_patterns_drop_the_blank_ones_and_are_capped() {
+        let mut list: Vec<String> = (0..EXCLUDE_MAX + 4).map(|i| format!("d{i}")).collect();
+        list.insert(0, "  ".into());
+        let json = serde_json::json!({ KEY_EXPLORER_EXCLUDE: list });
+
+        let s = Settings::from_map(json.as_object().unwrap().clone());
+
+        assert_eq!(s.explorer_exclude.len(), EXCLUDE_MAX);
+        assert_eq!(s.explorer_exclude[0], "d0", "空白だけの行は落ちる");
+    }
+
+    #[test]
+    fn marp_themes_drop_the_blank_ones_and_are_capped() {
+        let mut list: Vec<String> = (0..MARP_THEMES_MAX + 4)
+            .map(|i| format!("C:\\themes\\{i}.css"))
+            .collect();
+        list.insert(0, "  ".into());
+        list.insert(1, "a".repeat(MARP_THEME_PATH_MAX_LEN + 1));
+        let json = serde_json::json!({ KEY_MARP_THEMES: list });
+
+        let s = Settings::from_map(json.as_object().unwrap().clone());
+
+        assert_eq!(s.marp_themes.len(), MARP_THEMES_MAX);
+        assert_eq!(s.marp_themes[0], "C:\\themes\\0.css");
+    }
+
+    #[test]
+    fn an_exclude_list_with_a_bad_element_falls_back_to_none() {
+        let s =
+            Settings::from_map(serde_json::from_str(r#"{"explorer.exclude":["dist",3]}"#).unwrap());
+
+        assert!(s.explorer_exclude.is_empty(), "部分的に拾わない");
+    }
+
+    #[test]
+    fn a_single_locale_string_is_read_as_a_list() {
+        let s = Settings::from_map(
+            serde_json::from_str(r#"{"editor.wordSegmenterLocales":"zh-CN"}"#).unwrap(),
+        );
+
+        assert_eq!(s.editor_word_segmenter_locales, vec!["zh-CN".to_owned()]);
+    }
+
+    #[test]
+    fn locales_drop_malformed_tags_and_are_capped() {
+        let mut list: Vec<String> = (0..WORD_SEGMENTER_LOCALES_MAX + 2)
+            .map(|i| format!("x-{i}"))
+            .collect();
+        list.insert(0, " ja ".into());
+        list.insert(1, "ja;drop".into());
+        list.insert(2, "a".repeat(LOCALE_TAG_MAX_LEN + 1));
+        let json = serde_json::json!({ KEY_EDITOR_WORD_SEGMENTER_LOCALES: list });
+
+        let s = Settings::from_map(json.as_object().unwrap().clone());
+
+        assert_eq!(
+            s.editor_word_segmenter_locales.len(),
+            WORD_SEGMENTER_LOCALES_MAX
+        );
+        assert_eq!(
+            s.editor_word_segmenter_locales[0], "ja",
+            "前後の空白は取り除く"
+        );
+        assert_eq!(
+            s.editor_word_segmenter_locales[1], "x-0",
+            "記号を含むものと長すぎるものは除外する"
+        );
+    }
+
+    #[test]
+    fn an_empty_locale_list_is_kept() {
+        let s = Settings::from_map(
+            serde_json::from_str(r#"{"editor.wordSegmenterLocales":[]}"#).unwrap(),
+        );
+
+        assert!(
+            s.editor_word_segmenter_locales.is_empty(),
+            "空は既定に戻さない（分割しない指定）"
+        );
     }
 
     #[test]

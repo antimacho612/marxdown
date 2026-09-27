@@ -24,13 +24,14 @@ function payload(path: string): DocumentPayload {
   };
 }
 
-/** Worker を立てずに `MarkdownParser` の形だけ満たす（`open.dom.test.ts` と同じ）。 */
+/** `MarkdownParser` の形だけを満たす偽物（`open.dom.test.ts` と同じ）。 */
 function fakeParser(): MarkdownParser {
   return {
     parse: (text) =>
       Promise.resolve({
         id: 1,
         chunks: [`<h1>${text.length}</h1>`],
+        blocks: [`<h1>${text.length}</h1>`],
         outline: [],
         frontMatter: null,
         parseMs: 0.1,
@@ -67,7 +68,7 @@ beforeEach(() => {
 
   document.body.innerHTML = '<div id="mx-preview"></div>';
   container = document.querySelector('#mx-preview') as HTMLElement;
-  // jsdom の scrollTop は常に 0 に落ちるので、素直な数値として振る舞わせる
+  // jsdom の scrollTop は常に 0 になるため、通常の数値として振る舞わせる
   let scrollTop = 0;
   Object.defineProperty(container, 'scrollTop', {
     get: () => scrollTop,
@@ -78,7 +79,7 @@ beforeEach(() => {
 
   resetTabs();
   configureOpener({ parser: fakeParser(), softBreak: () => false, syntax: () => [], ...workspaceOpenerHooks() });
-  // 開き直しの手は `app/bootstrap.ts` が渡す。ここでは同じ形を組み立てる。
+  // 開き直しの処理は `app/bootstrap.ts` が渡す。ここでは同じ形を組み立てる。
   configureHistory({
     scrollTop: previewScrollTop,
     reopen: async (path, scrollTop) =>
@@ -108,7 +109,7 @@ describe('戻る / 進む (F-NAV-07 / Alt+← / Alt+→)', () => {
     expect(documentStore.meta?.path).toBe('b.md');
   });
 
-  /** 06.roadmap/m1.5-shell-and-settings.md §2「スクロール位置も一緒に戻すこと」。 */
+  /** F-NAV-07。スクロール位置も一緒に戻す。 */
   it('読んでいた位置ごと戻る', async () => {
     await openPath('a.md');
     setScroll(1400);
@@ -131,7 +132,7 @@ describe('戻る / 進む (F-NAV-07 / Alt+← / Alt+→)', () => {
 
     await goBack(tabsStore.activeId);
 
-    // 積んでいたら、ここで b.md のまま止まる
+    // 記録していたら、ここで b.md のまま止まる
     expect(documentStore.meta?.path).toBe('a.md');
     expect(canGoBack(tabsStore.activeId)).toBe(false);
   });
@@ -143,7 +144,7 @@ describe('戻る / 進む (F-NAV-07 / Alt+← / Alt+→)', () => {
     await goBack(tabsStore.activeId);
     await goBack(tabsStore.activeId);
 
-    // 1 枚目より前へは行けない。**積んでいたら往復し続けられてしまう**
+    // 1 枚目より前へは行けない。記録していたら往復し続けられてしまう
     expect(documentStore.meta?.path).toBe('a.md');
   });
 
@@ -159,7 +160,7 @@ describe('戻る / 進む (F-NAV-07 / Alt+← / Alt+→)', () => {
     expect(documentStore.meta?.path).toBe('c.md');
     expect(documentStore.notice?.level).toBe('error');
 
-    // もう一度押せば、同じ b.md を試す（黙って a.md へ飛び越えない）
+    // もう一度押せば、同じ b.md を試す（a.md へ飛ばさない）
     expect(canGoBack(tabsStore.activeId)).toBe(true);
   });
 });

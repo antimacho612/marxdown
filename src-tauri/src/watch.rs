@@ -1,17 +1,15 @@
-//! ファイル監視（02.architecture/04-rust-responsibilities.md §4 / §5 / F-EDIT-16）。
+//! ファイル監視（F-EDIT-16）。
 //!
-//! 監視対象は開いているファイルと、`settings.json` と、配色のディレクトリ（`themes/`）だけである。
-//! ディレクトリ全体は監視しない（N-PERF-05）。
-//! 中心ユースケースは「LLM が書き換えたファイルを開いたまま閲覧する」ことであり、周辺のファイルが変わったかどうかは不要な情報でしかない。
-//! ファイルツリー（M3）が入ったら、開いているディレクトリの追加監視がここに載る。
-//! その時点でも「開いていないものは見ない」という方針は変えない。
+//! 監視対象は開いているファイルと、`settings.json` と、配色のディレクトリ（`themes/`）と、ファイルツリーで開いている枝だけである。
+//! ディレクトリを再帰的に監視することはしない（N-PERF-05）。
+//! ファイルツリーの枝は見えている範囲だけを非再帰で監視し、閉じれば解放する（ADR-0021）。
 //!
-//! 監視しているファイルはアプリ自身も書き込む（設定 UI からの保存、M2 以降の本文保存）。
+//! 監視しているファイルはアプリ自身も書き込む（設定 UI からの保存、本文の保存）。
 //! そのため、書き込み直後のイベントをそのまま処理すると、保存するたびに再読み込みが発生してしまう。
-//! この自己イベントの除外は「最後に自分が把握しているファイルの状態」との照合として一般化してある（02.architecture/04-rust-responsibilities.md §4 の「直前に自分が書いた mtime との照合」）。
+//! この自己イベントの除外は「最後に自分が把握しているファイルの状態」との照合として一般化してある。
 //! 保存直後は `note_self_write` がこの状態を更新するため自己イベントは除外され、実体が変わっていないイベント（属性の変更、一時ファイル作成に伴う付随イベント）も同じ経路で除外される。
 //!
-//! ここにタイマーもポーリングも置かない（05.performance-budget/04-targets.md §5）。
+//! ここにタイマーもポーリングも置かない。
 //! OS の変更通知で起きるスレッドが 1 本あるだけで、待機中の CPU 使用率は 0 になる。
 //! ただしデバウンス処理自体は `notify-debouncer-full` の内部スレッドが `TICK` ごとに溜まったイベントをまとめて処理する構造になっている。
 //! この定期的な起動はクレートの構造によるものであり、こちらが追加したものではない（`TICK` の項を参照）。
@@ -28,14 +26,16 @@ use tauri::{AppHandle, Emitter};
 
 use crate::document;
 
-/// 外部変更の通知（02.architecture/04-rust-responsibilities.md §1）。
+/// 外部変更の通知。
 pub const EVENT_FILE_CHANGED: &str = "marxdown://file-changed";
-/// `settings.json` の外部変更（02.architecture/04-rust-responsibilities.md §5）。フロントは受け取ったら `read_settings` で読み直す。
+/// `settings.json` の外部変更。フロントは受け取ったら `read_settings` で読み直す。
 pub const EVENT_SETTINGS_CHANGED: &str = "marxdown://settings-changed";
-/// `themes/` の中身の変更（ADR-0014）。フロントは `list_user_themes` で読み直して当て直す。
+/// `themes/` の中身の変更。フロントは `list_user_themes` で読み直して適用し直す。
 pub const EVENT_THEMES_CHANGED: &str = "marxdown://themes-changed";
+/// ファイルツリーで開いている枝の中身の変更（ADR-0021）。フロントはそのディレクトリを 1 階層読み直す。
+pub const EVENT_DIR_CHANGED: &str = "marxdown://dir-changed";
 
-/// 変更が落ち着いたと見なすまでの時間（02.architecture/04-rust-responsibilities.md §4）。
+/// 変更が落ち着いたと見なすまでの時間。
 ///
 /// エディターの保存は 1 回の操作でも複数のイベントになる（一時ファイルの作成、rename、属性の変更）。
 /// ここを短くすると、書き換えの途中の状態を読みに行くことになる。
@@ -55,13 +55,18 @@ const TICK: Duration = Duration::from_millis(150);
 pub enum Role {
     /// 開いているドキュメント（F-EDIT-16 / N-REL-02）。
     Document,
-    /// `settings.json`（02.architecture/04-rust-responsibilities.md §5）。
+    /// `settings.json`。
     Settings,
-    /// ユーザーが追加した配色（`themes/`。ADR-0014）。
+    /// ユーザーが追加した配色（`themes/`）。
     ///
-    /// **ここだけ対象がディレクトリである。**
-    /// 1 枚ごとに登録すると、後から置かれたファイルを拾えない。
+    /// ここだけ対象がディレクトリである。
+    /// 1 枚ごとに登録すると、後から置かれたファイルを検出できない。
     Themes,
+    /// ファイルツリーで開いている枝（ADR-0021）。対象はディレクトリで、ウィンドウに属する。
+    ///
+    /// 通知にはディレクトリ自身のパスを載せる。
+    /// 受け取る側は中身をすべて読み直すだけであり、どの項目が変わったかでは処理が分かれない。
+    Tree,
 }
 
 impl Role {
@@ -70,6 +75,7 @@ impl Role {
             Self::Document => EVENT_FILE_CHANGED,
             Self::Settings => EVENT_SETTINGS_CHANGED,
             Self::Themes => EVENT_THEMES_CHANGED,
+            Self::Tree => EVENT_DIR_CHANGED,
         }
     }
 }
@@ -85,7 +91,7 @@ pub enum ChangeKind {
     Removed,
 }
 
-/// フロントへ渡す変更（02.architecture/04-rust-responsibilities.md §1 の `path, mtime, kind`）。
+/// フロントへ渡す変更（`path, mtime, kind`）。
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct FileChange {
@@ -121,6 +127,13 @@ struct Target {
     seen: Option<Stamp>,
     /// 対象がディレクトリか（`Role::Themes`）。中身のパスが届く。
     directory: bool,
+    /// この対象を必要としているウィンドウのラベル（F-OPEN-06）。
+    ///
+    /// `Role::Document` と `Role::Tree` でのみ使う。`settings.json` と `themes/` はウィンドウに属さないため空のままである。
+    ///
+    /// 集合で持つ必要がある。
+    /// 同じファイルを 2 つのウィンドウで開くと 1 つの対象を共有するため、片方が閉じただけで解除するともう片方の自動再読み込みが止まる。
+    owners: HashSet<String>,
 }
 
 /// 監視対象の台帳。Tauri に依存しない。
@@ -151,11 +164,17 @@ impl Registry {
         // 中身の増減も編集も、受け取る側にとっては「全部読み直せ」でしかなく、どの枚が変わったかで処理が分かれない。
         // 覚えないぶん自分が書いた直後のイベントも通るが、通った先で読み直して同じ結果になるだけである。
         if target.directory {
-            let stamp = stamp_of(path);
+            // ファイルツリーはディレクトリ単位で読み直すため、中身ではなくディレクトリ自身を渡す（ADR-0021）。
+            let reported = if target.role == Role::Tree {
+                key.as_path()
+            } else {
+                path
+            };
+            let stamp = stamp_of(reported);
             return Some((
                 target.role,
                 FileChange {
-                    path: path.display().to_string(),
+                    path: reported.display().to_string(),
                     mtime_ms: stamp.map(|s| s.mtime_ms).unwrap_or(0),
                     kind: if stamp.is_some() {
                         ChangeKind::Modified
@@ -184,6 +203,36 @@ impl Registry {
                 },
             },
         ))
+    }
+
+    /// [`decide`](Self::decide) に加えて、そのパスを中身に持つファイルツリーの枝にも知らせる。
+    ///
+    /// 開いている文書が枝の中にあると、`decide` は文書の側だけを返す。
+    /// その文書が消えたり作られたりしたことは、枝の一覧にとっても変化である。
+    fn decide_all(&mut self, path: &Path) -> Vec<(Role, FileChange)> {
+        let mut decided = self.decide(path).into_iter().collect::<Vec<_>>();
+        if decided.iter().any(|(role, _)| *role == Role::Tree) {
+            return decided;
+        }
+        let tree = self
+            .directory_of(path)
+            .filter(|dir| self.targets.get(dir).is_some_and(|t| t.role == Role::Tree));
+        if let Some(dir) = tree {
+            let stamp = stamp_of(&dir);
+            decided.push((
+                Role::Tree,
+                FileChange {
+                    path: dir.display().to_string(),
+                    mtime_ms: stamp.map(|s| s.mtime_ms).unwrap_or(0),
+                    kind: if stamp.is_some() {
+                        ChangeKind::Modified
+                    } else {
+                        ChangeKind::Removed
+                    },
+                },
+            ));
+        }
+        decided
     }
 
     /// イベントのパスを、登録済みのキーに合わせる。
@@ -254,10 +303,19 @@ impl FileWatcher {
             paths.sort_unstable();
             paths.dedup();
 
+            // ディレクトリの監視では、中身の数だけ同じ通知ができる。1 回にまとめてから流す。
+            let mut emitted: Vec<(Role, FileChange)> = Vec::new();
             for path in paths {
-                let decided = for_handler.lock().ok().and_then(|mut r| r.decide(&path));
-                if let Some((role, change)) = decided {
-                    let _ = app.emit(role.event(), &change);
+                let decided = for_handler
+                    .lock()
+                    .map(|mut r| r.decide_all(&path))
+                    .unwrap_or_default();
+                for item in decided {
+                    if emitted.contains(&item) {
+                        continue;
+                    }
+                    let _ = app.emit(item.0.event(), &item.1);
+                    emitted.push(item);
                 }
             }
         })
@@ -276,14 +334,22 @@ impl FileWatcher {
     /// 監視を始める。既に同じ役割で見ているパスなら何もしない。
     ///
     /// ファイルがまだ存在しない場合は親ディレクトリを監視し、届いたイベントをパスで絞り込む。
-    /// `settings.json` は最初の保存まで存在しないため、この扱いが無いと手で作成された時点を検出できない（02.architecture/04-rust-responsibilities.md §5）。
+    /// `settings.json` は最初の保存まで存在しないため、この扱いが無いと手で作成された時点を検出できない。
     pub fn watch(&self, path: &Path, role: Role) -> bool {
+        self.watch_for(path, role, None)
+    }
+
+    /// 監視を始め、必要としているウィンドウを記録する。
+    ///
+    /// `owner` を渡すのは `Role::Document` だけである（`watch_document`）。
+    /// 既に同じパスを見ている場合でも、記録だけは追加する。
+    fn watch_for(&self, path: &Path, role: Role, owner: Option<&str>) -> bool {
         let Ok(key) = document::canonicalize(path) else {
             return false;
         };
 
         // ディレクトリはそれ自身を監視元にする（中身のイベントが届く）。
-        // ファイルは、まだ存在しないうちは親を見る（後から作られたときに拾うため）。
+        // ファイルは、まだ存在しないうちは親を見る（後から作られたときに検出するため）。
         let directory = key.is_dir();
         let root = if directory || key.is_file() {
             key.clone()
@@ -304,12 +370,13 @@ impl FileWatcher {
             return false;
         };
 
-        if registry
-            .targets
-            .get(&key)
-            .is_some_and(|t| t.role == role && t.root == root)
-        {
-            return true;
+        if let Some(target) = registry.targets.get_mut(&key) {
+            if target.role == role && target.root == root {
+                if let Some(owner) = owner {
+                    target.owners.insert(owner.to_owned());
+                }
+                return true;
+            }
         }
 
         // 同じ監視元に既にぶら下がっているなら、notify への登録は 1 回で足りる。
@@ -326,6 +393,9 @@ impl FileWatcher {
                 root: root.clone(),
                 seen,
                 directory,
+                owners: owner
+                    .map(|o| HashSet::from([o.to_owned()]))
+                    .unwrap_or_default(),
             },
         );
         registry.roots.entry(root).or_default().insert(key);
@@ -335,12 +405,22 @@ impl FileWatcher {
     /// 監視をやめる。
     ///
     /// 解除の経路は必ず用意しておく。
-    /// タブ（M3）が入ると開いた数だけ監視が積算し、常駐しているため解放されないまま残る（ADR-0004 / 02.architecture/04-rust-responsibilities.md §4）。
+    /// 常駐アプリであるため、解除しなかった監視はプロセスが終わるまで残る（ADR-0004）。
     pub fn unwatch(&self, path: &Path) {
         let Ok(key) = document::canonicalize(path) else {
             return;
         };
         self.unwatch_key(&key);
+    }
+
+    /// そのウィンドウがそのパスを必要としなくなったことを伝える（タブを閉じたとき）。
+    ///
+    /// [`unwatch`](Self::unwatch) と違い、他のウィンドウが同じファイルを開いている間は監視を解除しない。
+    pub fn release(&self, label: &str, path: &Path) {
+        let Ok(key) = document::canonicalize(path) else {
+            return;
+        };
+        self.release_key(label, &key);
     }
 
     fn unwatch_key(&self, key: &Path) {
@@ -370,30 +450,105 @@ impl FileWatcher {
         }
     }
 
-    /// 「いま開いているドキュメント」を差し替える（02.architecture/04-rust-responsibilities.md §4「タブを閉じたらウォッチャを解除する」）。
+    /// そのウィンドウが表示しているドキュメントを差し替える。
     ///
-    /// M3 でタブが入るまで、開いているドキュメントは 1 つだけである。
-    /// 前のファイルの監視をここで必ず解除することで、開き直すたびに監視が積み上がらない。
-    pub fn watch_document(&self, path: &Path) -> bool {
+    /// 1 つのウィンドウが表示しているドキュメントは 1 つだけである。
+    /// 前のドキュメントの監視をここで必ず解除することで、タブを切り替えるたびに監視が蓄積しない。
+    ///
+    /// 解除するのはそのウィンドウが持っていた監視だけである（F-OPEN-06）。
+    /// ウィンドウの区別なく解除すると、別のウィンドウでファイルを開いた時点でこちらの自動再読み込みが止まる。
+    pub fn watch_document(&self, label: &str, path: &Path) -> bool {
         let keep = document::canonicalize(path).ok();
 
         let stale = match self.registry.lock() {
             Ok(registry) => registry
                 .targets
                 .iter()
-                .filter(|(p, t)| t.role == Role::Document && Some(*p) != keep.as_ref())
+                .filter(|(p, t)| {
+                    t.role == Role::Document
+                        && t.owners.contains(label)
+                        && Some(*p) != keep.as_ref()
+                })
                 .map(|(p, _)| p.clone())
                 .collect::<Vec<_>>(),
             Err(_) => return false,
         };
         for path in stale {
-            self.unwatch_key(&path);
+            self.release_key(label, &path);
         }
 
-        self.watch(path, Role::Document)
+        self.watch_for(path, Role::Document, Some(label))
     }
 
-    /// 自分がファイルを書いた直後に呼ぶ（02.architecture/04-rust-responsibilities.md §4 の「直前の保存 mtime と照合」）。
+    /// そのウィンドウのファイルツリーで開いている枝を差し替える（ADR-0021）。
+    ///
+    /// 渡した集合がそのまま監視の対象になる。
+    /// 含まれなくなった枝（閉じた枝・基点が変わる前の枝）はここで解放し、空を渡せばすべて手放す。
+    pub fn watch_tree(&self, label: &str, dirs: &[PathBuf]) {
+        let keep = dirs
+            .iter()
+            .filter_map(|dir| document::canonicalize(dir).ok())
+            .filter(|dir| dir.is_dir())
+            .collect::<Vec<_>>();
+
+        let stale = match self.registry.lock() {
+            Ok(registry) => registry
+                .targets
+                .iter()
+                .filter(|(p, t)| {
+                    t.role == Role::Tree && t.owners.contains(label) && !keep.contains(p)
+                })
+                .map(|(p, _)| p.clone())
+                .collect::<Vec<_>>(),
+            Err(_) => return,
+        };
+        for path in stale {
+            self.release_key(label, &path);
+        }
+        for dir in keep {
+            self.watch_for(&dir, Role::Tree, Some(label));
+        }
+    }
+
+    /// 閉じたウィンドウが持っていたドキュメントの監視をすべて手放す。
+    ///
+    /// 常駐するアプリであるため、ウィンドウを閉じただけでは監視スレッドは止まらない（ADR-0004 / N-PERF-06）。
+    /// ここで解除しないと、ウィンドウを開き閉じした回数だけ監視が増え続ける。
+    pub fn release_window(&self, label: &str) {
+        let owned = match self.registry.lock() {
+            Ok(registry) => registry
+                .targets
+                .iter()
+                .filter(|(_, t)| {
+                    matches!(t.role, Role::Document | Role::Tree) && t.owners.contains(label)
+                })
+                .map(|(p, _)| p.clone())
+                .collect::<Vec<_>>(),
+            Err(_) => return,
+        };
+        for path in owned {
+            self.release_key(label, &path);
+        }
+    }
+
+    /// そのウィンドウの分の記録を破棄し、誰も必要としなくなったら監視を解除する。
+    fn release_key(&self, label: &str, key: &Path) {
+        let abandoned = match self.registry.lock() {
+            Ok(mut registry) => match registry.targets.get_mut(key) {
+                Some(target) => {
+                    target.owners.remove(label);
+                    target.owners.is_empty()
+                }
+                None => false,
+            },
+            Err(_) => false,
+        };
+        if abandoned {
+            self.unwatch_key(key);
+        }
+    }
+
+    /// 自分がファイルを書いた直後に呼ぶ。
     ///
     /// これを忘れると、設定 UI から保存するたびに「外部で変更された」通知が発生する。
     pub fn note_self_write(&self, path: &Path) {
@@ -434,6 +589,7 @@ mod tests {
                 root: key.clone(),
                 seen: stamp_of(&key),
                 directory: key.is_dir(),
+                owners: HashSet::new(),
             },
         );
         registry.roots.entry(key.clone()).or_default().insert(key);
@@ -441,7 +597,7 @@ mod tests {
     }
 
     /// 中身が変わっていないイベントは流さない。
-    /// 保存直後の自己イベント（02.architecture/04-rust-responsibilities.md §4）が落ちるのはこの性質による。
+    /// 保存直後の自己イベントが落ちるのはこの性質による。
     #[test]
     fn an_event_without_a_real_change_is_dropped() {
         let d = temp_dir("noop");
@@ -471,7 +627,7 @@ mod tests {
         std::fs::remove_dir_all(&d).ok();
     }
 
-    /// 02.architecture/04-rust-responsibilities.md §4 の自己イベント排除。保存した側が姿を教えておけば、続くイベントは落ちる。
+    /// 自己イベントの排除。保存した側が姿を教えておけば、続くイベントは落ちる。
     #[test]
     fn a_self_write_is_not_reported() {
         let d = temp_dir("self");
@@ -506,7 +662,7 @@ mod tests {
         std::fs::remove_dir_all(&d).ok();
     }
 
-    /// 親ディレクトリごと見ているときの巻き添え（`state.json` の保存など）を落とす。
+    /// 親ディレクトリごと見ているときに届く無関係なイベント（`state.json` の保存など）を除外する。
     #[test]
     fn an_event_for_an_unwatched_path_is_dropped() {
         let d = temp_dir("other");
@@ -527,12 +683,58 @@ mod tests {
         assert_eq!(Role::Document.event(), EVENT_FILE_CHANGED);
         assert_eq!(Role::Settings.event(), EVENT_SETTINGS_CHANGED);
         assert_eq!(Role::Themes.event(), EVENT_THEMES_CHANGED);
+        assert_eq!(Role::Tree.event(), EVENT_DIR_CHANGED);
+    }
+
+    /// ファイルツリーの枝には、中身ではなく枝自身のパスを渡す（ADR-0021）。
+    #[test]
+    fn a_tree_is_told_its_own_path() {
+        let d = temp_dir("tree");
+        let mut registry = registry_with(&d, Role::Tree);
+        let created = d.join("new.md");
+        std::fs::write(&created, "# new").unwrap();
+
+        let decided = registry.decide_all(&created);
+        assert_eq!(decided.len(), 1);
+        assert_eq!(decided[0].0, Role::Tree);
+        assert_eq!(decided[0].1.path, d.display().to_string());
+        std::fs::remove_dir_all(&d).ok();
+    }
+
+    /// 開いている文書が枝の中にあっても、枝への通知は落とさない。
+    #[test]
+    fn a_document_inside_a_tree_notifies_both() {
+        let d = temp_dir("tree-doc");
+        let doc = d.join("open.md");
+        std::fs::write(&doc, "# a").unwrap();
+
+        let mut registry = registry_with(&d, Role::Tree);
+        let key = document::canonicalize(&doc).unwrap();
+        registry.targets.insert(
+            key.clone(),
+            Target {
+                role: Role::Document,
+                root: key.clone(),
+                seen: stamp_of(&key),
+                directory: false,
+                owners: HashSet::new(),
+            },
+        );
+        std::fs::remove_file(&doc).unwrap();
+
+        let roles = registry
+            .decide_all(&doc)
+            .into_iter()
+            .map(|(role, _)| role)
+            .collect::<Vec<_>>();
+        assert_eq!(roles, vec![Role::Document, Role::Tree]);
+        std::fs::remove_dir_all(&d).ok();
     }
 
     /// 同じフォルダーの 2 枚を開いたときの帰結。
     ///
     /// まだ無いファイルは親ディレクトリを見るため、監視元を共有することがある。
-    /// 共有しているので、**片方を外したときにもう片方まで落ちない**ことを台帳の側で担保する必要がある。
+    /// 共有しているので、片方を外したときにもう片方の監視まで解除されないことを台帳の側で担保する必要がある。
     #[test]
     fn two_targets_can_share_one_root() {
         let d = temp_dir("shared-root");
@@ -548,6 +750,7 @@ mod tests {
                     root: d.clone(),
                     seen: stamp_of(path),
                     directory: false,
+                    owners: HashSet::new(),
                 },
             );
             registry
@@ -557,7 +760,7 @@ mod tests {
                 .insert(path.clone());
         }
 
-        // 後から作られたファイルも拾える（親ディレクトリを見ているため）。
+        // 後から作られたファイルも検出できる（親ディレクトリを見ているため）。
         std::fs::write(&second, "# 後から作られた").unwrap();
 
         let (role, change) = registry.decide(&second).expect("後から作られても拾う");

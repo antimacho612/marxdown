@@ -1,6 +1,6 @@
 //! エンコーディングの検出とデコード / エンコード。
 //!
-//! 02.architecture/04-rust-responsibilities.md §2 の `DocumentPayload` が要求する `bom` / `encoding` を扱う。
+//! `DocumentPayload` が要求する `bom` / `encoding` を扱う。
 //! 保存時に読み込み時と同じバイト列へ戻せることが要件（N-CMP-03）。
 
 use serde::{Deserialize, Serialize};
@@ -99,7 +99,7 @@ pub const SNIFF_BYTES: u64 = 8 * 1024;
 /// テキストとして扱えないバイト列か（N-REL-03）。
 ///
 /// 判定は NUL バイトの有無だけで行う。画像・書庫・実行ファイルはいずれも先頭付近に NUL を含み、テキストは含まない。
-/// 制御文字の割合などは見ない。ここで要るのは「Markdown として解釈してよいか」の可否だけであり、種別を当てる必要はない。
+/// 制御文字の割合などは見ない。ここで要るのは「Markdown として解釈してよいか」の可否だけであり、種別を推定する必要はない。
 ///
 /// BOM 付きの UTF-16 は本文に NUL を含むため対象から外す。
 /// BOM の無い UTF-16 はバイナリとして扱われるが、[`detect`] も UTF-16 とは推定しないため、元から読めない。
@@ -110,7 +110,7 @@ pub fn looks_binary(head: &[u8]) -> bool {
     head.contains(&0)
 }
 
-/// エンコーディングを指定して読み直す（03.ux-spec/07-status-and-notifications.md §3「クリックでエンコーディング再解釈」）。
+/// エンコーディングを指定して読み直す。
 ///
 /// `detect` を経由しないのは、再解釈を選ぶのが推定の外れたファイルを人が見て指定し直す場面だからである。
 /// ここでもう一度推定を挟むと、指定する意味がなくなる。
@@ -224,10 +224,9 @@ mod tests {
         }
     }
 
-    /// 再解釈（03.ux-spec/07-status-and-notifications.md §3）。**推定を素通りする。**
+    /// 再解釈。推定を経由しない。
     ///
-    /// 推定が外れたファイルを人が見て直すための操作なので、
-    /// ここでもう一度推定を混ぜてはいけない。
+    /// 推定が外れたファイルを人が見て直すための操作なので、ここでもう一度推定を混ぜてはいけない。
     #[test]
     fn forcing_an_encoding_skips_detection() {
         // UTF-8 として妥当なので、`detect` は必ず UTF-8 と答えるバイト列。
@@ -244,8 +243,8 @@ mod tests {
         );
     }
 
-    /// **BOM だけは指定に従って見る。** 剥がさないと本文の先頭に見えない文字が残り、
-    /// 保存時に付け直すかどうかの記録（`encode`）も失われる。
+    /// BOM だけは指定に従って判定する。
+    /// 取り除かないと本文の先頭に不可視の文字が残り、保存時に付け直すかどうかの記録（`encode`）も失われる。
     #[test]
     fn forcing_still_strips_a_matching_bom() {
         let mut bytes = BOM_UTF8.to_vec();
@@ -286,7 +285,7 @@ c"
         ));
     }
 
-    /// BOM 付き UTF-16 は本文に NUL を含む。ここで弾くと読めていたファイルが読めなくなる。
+    /// BOM 付き UTF-16 は本文に NUL を含む。ここで除外すると読めるはずのファイルが読めなくなる。
     #[test]
     fn utf16_with_a_bom_is_not_binary() {
         let mut le = BOM_UTF16LE.to_vec();

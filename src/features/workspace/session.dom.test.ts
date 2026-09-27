@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
 /**
- * 前回のタブの記録と復元（OQ-04 / M3 Phase 7）。
+ * 前回のタブの記録と復元（F-NAV-01）。
  *
- * 見たいのは 2 つ。**並び順が戻ること**と、**覚えないものを覚えないこと**である。
+ * 検証するのは 2 つである。並び順が戻ることと、記録しないものを記録しないことである。
  * 引数があるときに復元しないという判断は Rust 側にあり（`bootstrap.rs`）、ここには届かない。
  */
 import { flushSync } from 'svelte';
@@ -33,6 +33,7 @@ function fakeParser(): MarkdownParser {
       Promise.resolve({
         id: 1,
         chunks: [`<p>${text.length}</p>`],
+        blocks: [`<p>${text.length}</p>`],
         outline: [],
         frontMatter: null,
         parseMs: 0.1,
@@ -94,6 +95,21 @@ describe('復元', () => {
     expect(tabsStore.active?.meta.path).toBe('C:/work/b.md');
   });
 
+  it('手前のタブが開けなくても、残りは元の並びで開き、表示していたタブへ戻る', async () => {
+    setPlatform({
+      ...getPlatform(),
+      readDocument: (path: string) =>
+        path === 'C:/work/a.md' ? Promise.reject(new Error('not found')) : Promise.resolve(payload(path)),
+    } as Platform);
+    await openPath('C:/work/c.md');
+
+    await restoreSession(['C:/work/a.md', 'C:/work/b.md', 'C:/work/c.md', 'C:/work/d.md'], 2);
+
+    // a.md の分だけ後ろのタブが 1 枚ずつ前へ詰まる。元の添字のまま挿入・選択すると、並びも表示もずれる。
+    expect(tabPaths()).toEqual(['C:/work/b.md', 'C:/work/c.md', 'C:/work/d.md']);
+    expect(tabsStore.active?.meta.path).toBe('C:/work/c.md');
+  });
+
   it('最近開いたファイルには積み直さない', async () => {
     await openPath('C:/work/b.md');
     pushRecent.mockClear();
@@ -126,7 +142,7 @@ describe('記録', () => {
 
     // タブは増えている。
     expect(tabsStore.tabs).toHaveLength(2);
-    // それでも記録は変わらない。新規ファイルは開き直せないので、載せても復元できない 1 枚が増えるだけである。
+    // それでも記録は変わらない。新規ファイルは開き直せないので、記録しても復元できない 1 枚が増えるだけである。
     expect(setSession).not.toHaveBeenCalled();
   });
 

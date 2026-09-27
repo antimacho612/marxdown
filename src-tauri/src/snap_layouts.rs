@@ -5,20 +5,19 @@
 //! `Win+←` などキーボードによるスナップは装飾を切っても機能する（`WS_THICKFRAME` と `WS_MAXIMIZEBOX` が残るため）。
 //! ここで補うのはマウスでの Snap Layouts だけである。
 //!
-//! 最初の実装は親ウィンドウを `SetWindowSubclass` して `WM_NCHITTEST` に `HTMAXBUTTON` を返していたが、Microsoft の手順どおりのこの構成では機能しなかった（実測）。
-//! `SendMessage(hwnd, WM_NCHITTEST, ...)` で確かめると、親ウィンドウは最大化ボタンの上で正しく `HTMAXBUTTON`（9）を返していたが、それでもフライアウトは表示されない。
-//! 機能しない理由は、クライアント領域全体を WebView2 の子ウィンドウが覆っているためである。
+//! 親ウィンドウを `SetWindowSubclass` して `WM_NCHITTEST` に `HTMAXBUTTON` を返すだけでは、Microsoft の手順どおりでもフライアウトは表示されない。
+//! クライアント領域全体を WebView2 の子ウィンドウが覆っているためである。
 //! シェルがフライアウトの判定に使うのはカーソル直下の最も深いウィンドウのヒットテストであり、そこに位置するのは WebView2 の子（`HTCLIENT` を返す）である。
 //! 親が返す `HTMAXBUTTON` は自分あてのマウスメッセージの経路を変えるだけで、シェルの判定対象には含まれない。
 //!
-//! そこで最大化ボタンとぴったり重なる `WS_CHILD` を 1 枚作り、そのウィンドウ自身が `WM_NCHITTEST` に `HTMAXBUTTON` を返す形にした。
+//! HACK: 最大化ボタンとぴったり重なる `WS_CHILD` を 1 枚作り、そのウィンドウ自身が `WM_NCHITTEST` に `HTMAXBUTTON` を返す。
 //! これでカーソル直下の最も深いウィンドウが `HTMAXBUTTON` を返す状態になり、シェルがフライアウトを表示する。
-//! Tauri 界隈で動いている実装（`tauri-plugin-frame` / `tauri-plugin-decoration`）はいずれもこの形を採っている。
-//! tauri#4531 が `upstream` のまま閉じていないのも同じ理由である。
+//! Tauri 向けの既存実装（`tauri-plugin-frame` / `tauri-plugin-decoration`）も同じ形を採っている。
+//! Tauri 本体はこの経路を提供していない（tauri#4531）。
 //!
 //! このモジュールが無くても他の機能は全部動く。
 //! 失敗したら何もしないで戻る（`install` の返り値は無視してよい）。
-//! そのときに起きるのは「最大化ボタンにホバーしてもフライアウトが表示されない」ことだけで、ボタン自体はフロントの `<button>` として今までどおり押せる。
+//! そのときに起きるのは「最大化ボタンにホバーしてもフライアウトが表示されない」ことだけで、ボタン自体はフロントの `<button>` として通常どおり押せる。
 //!
 //! 実装の要点は次のとおりである。
 //! オーバーレイは矩形が届くまで表示しない（`WS_VISIBLE` を付けずに作成する。壊れたときの最悪の結果を「フライアウトが表示されない」に限定し、「見当違いの場所が押せなくなる」を防ぐため）。
@@ -28,12 +27,13 @@
 //!
 //! ホバー時の描画が自前で必要になるのは、オーバーレイが被った領域には WebView のマウスイベントが届かず、CSS の `:hover` が機能しなくなるためである。
 //! 最大化ボタンだけ反応しないのは目立つため、出入りしたときだけ `marxdown://maximize-hover` を送ってフロント側に描画させる。
-//! クリックも同じ理由で `onclick` が発火しない（キーボードからは今までどおり発火する）。
+//! クリックも同じ理由で `onclick` が発火しない（キーボードからは通常どおり発火する）。
 #![cfg(windows)]
 
+use std::collections::HashMap;
 use std::ffi::c_void;
 use std::sync::atomic::{AtomicBool, AtomicIsize, AtomicU64, Ordering};
-use std::sync::{Arc, Once};
+use std::sync::{Arc, Mutex, Once};
 
 use tauri::{Emitter, WebviewWindow};
 use windows::core::{w, PCWSTR};
@@ -77,7 +77,7 @@ pub struct SnapTarget {
     rect: AtomicU64,
     hovered: AtomicBool,
     /// オーバーレイの上で押し下げたか。
-    /// 押した場所と離した場所が一致したときだけ最大化する（Windows の作法）。
+    /// 押した場所と離した場所が一致したときだけ最大化する（Windows の標準の挙動）。
     pressed: AtomicBool,
     /// オーバーレイを作り終えたか。
     /// 受け皿の生成（`prepare`）と作成（`install`）が別のタイミングであるため、状態の有無では代用できない。
@@ -154,6 +154,9 @@ impl SnapTarget {
     }
 
     /// ホバー状態が変わったときだけフロントへ通知する。
+    ///
+    /// 宛先はこのオーバーレイが属するウィンドウ 1 枚に限る。
+    /// `emit` は全ウィンドウへ配るため、ウィンドウが複数あるときに使うと、ホバーしていない側の最大化ボタンまで反応する。
     fn set_hovered(&self, overlay: HWND, now: bool) {
         if self.hovered.swap(now, Ordering::Relaxed) == now {
             return;
@@ -161,7 +164,24 @@ impl SnapTarget {
         if now {
             track_leave(overlay);
         }
-        let _ = self.window.emit(EVENT_MAXIMIZE_HOVER, now);
+        let _ = self
+            .window
+            .emit_to(self.window.label(), EVENT_MAXIMIZE_HOVER, now);
+    }
+}
+
+/// ウィンドウごとの受け皿（F-OPEN-06）。
+///
+/// 1 つの `SnapTarget` をプロセスで共有することはできない。
+/// オーバーレイは親ウィンドウの子として作られるため、ウィンドウの枚数だけ必要になる。
+#[derive(Default)]
+struct SnapTargets(Mutex<HashMap<String, Arc<SnapTarget>>>);
+
+impl SnapTargets {
+    fn get(app: &tauri::AppHandle, label: &str) -> Option<Arc<SnapTarget>> {
+        let targets = tauri::Manager::try_state::<SnapTargets>(app)?;
+        let map = targets.0.lock().ok()?;
+        map.get(label).cloned()
     }
 }
 
@@ -187,12 +207,18 @@ fn track_leave(hwnd: HWND) {
 /// その 1 度を受け取れないと矩形は 0 のままになる。
 /// 受け皿だけならイベントループを必要としないため、先に用意しておけば取りこぼさない。
 pub fn prepare(app: &tauri::AppHandle, window: &WebviewWindow) {
-    if tauri::Manager::try_state::<Arc<SnapTarget>>(app).is_some() {
-        return;
+    if tauri::Manager::try_state::<SnapTargets>(app).is_none() {
+        tauri::Manager::manage(app, SnapTargets::default());
     }
 
-    tauri::Manager::manage(
-        app,
+    let Some(targets) = tauri::Manager::try_state::<SnapTargets>(app) else {
+        return;
+    };
+    let Ok(mut map) = targets.0.lock() else {
+        return;
+    };
+
+    map.entry(window.label().to_owned()).or_insert_with(|| {
         Arc::new(SnapTarget {
             rect: AtomicU64::new(0),
             hovered: AtomicBool::new(false),
@@ -200,24 +226,37 @@ pub fn prepare(app: &tauri::AppHandle, window: &WebviewWindow) {
             installed: AtomicBool::new(false),
             overlay: AtomicIsize::new(0),
             window: window.clone(),
-        }),
-    );
+        })
+    });
+}
+
+/// 閉じたウィンドウの受け皿を解放する。
+///
+/// オーバーレイ自体は親ウィンドウと一緒に破棄され、`WM_NCDESTROY` がプロシージャ側の参照も解放する。
+/// ここで解放するのは表に残る `Arc` だけである。残すとウィンドウを開き閉じするたびに `WebviewWindow` の参照が増え続ける（N-PERF-06）。
+pub fn forget(app: &tauri::AppHandle, label: &str) {
+    let Some(targets) = tauri::Manager::try_state::<SnapTargets>(app) else {
+        return;
+    };
+    let Ok(mut map) = targets.0.lock() else {
+        return;
+    };
+    map.remove(label);
 }
 
 /// オーバーレイを作る。失敗しても呼び出し側で対処する必要はない。
 ///
 /// `setup()` から呼んではいけない。
-/// `hwnd()` はイベントループへ問い合わせるゲッターであり、ループが動き出す前は結果が返らない（実測で失敗した）。
+/// `hwnd()` はイベントループへ問い合わせるゲッターであり、ループが動き出す前は結果が返らない。
 /// `ready` コマンドの中、`show()` の後に呼ぶこと。
-/// ここで行うのは Win32 の呼び出し数回だけであり、本文が読める時点に間に合う必要もない（02.architecture/05-startup-sequence.md §1 の判断基準）。
-pub fn install(app: &tauri::AppHandle) {
-    let Some(state) = tauri::Manager::try_state::<Arc<SnapTarget>>(app) else {
+/// ここで行うのは Win32 の呼び出し数回だけであり、本文が読める時点に間に合う必要もない。
+pub fn install(app: &tauri::AppHandle, label: &str) {
+    let Some(target) = SnapTargets::get(app, label) else {
         // `prepare` が呼ばれていない。
-        // ここで作るとそれまでに届いた矩形を捨てることになるため、何もせずに戻る。
-        eprintln!("[marxdown] Snap Layouts: 受け皿が無いので諦める");
+        // ここで作るとそれまでに届いた矩形を破棄することになるため、何もせずに戻る。
+        eprintln!("[marxdown] Snap Layouts: 受け皿が無いので諦める（{label}）");
         return;
     };
-    let target = state.inner().clone();
 
     // 二重に作らない。作り直すと、前の参照が解放されずに残る。
     if target.installed.swap(true, Ordering::Relaxed) {
@@ -232,7 +271,7 @@ pub fn install(app: &tauri::AppHandle) {
 
     register_class();
 
-    // プロシージャへ渡す参照。オーバーレイの `WM_NCDESTROY` で `Arc::from_raw` して落とす。
+    // プロシージャへ渡す参照。オーバーレイの `WM_NCDESTROY` で `Arc::from_raw` して解放する。
     let raw = Arc::into_raw(Arc::clone(&target)) as *const c_void;
 
     // `WS_VISIBLE` を付けない。矩形が届いて `reposition` が呼ばれるまでは表示しない。
@@ -280,9 +319,9 @@ pub fn install(app: &tauri::AppHandle) {
 /// 最大化ボタンの矩形（CSS px）を覚える。フロントのレイアウトが変わるたびに呼ばれる。
 ///
 /// オーバーレイの作成前に届くのが通常の順序であり、取りこぼさないために `prepare` が受け皿を先に用意してある。
-pub fn set_target(app: &tauri::AppHandle, x: f64, y: f64, width: f64, height: f64) {
-    // `prepare` に失敗していれば `manage` されていない。この場合は何もしない。
-    let Some(target) = tauri::Manager::try_state::<Arc<SnapTarget>>(app) else {
+pub fn set_target(app: &tauri::AppHandle, label: &str, x: f64, y: f64, width: f64, height: f64) {
+    // `prepare` に失敗していれば表に無い。この場合は何もしない。
+    let Some(target) = SnapTargets::get(app, label) else {
         return;
     };
 
@@ -304,7 +343,7 @@ fn register_class() {
             cbSize: std::mem::size_of::<WNDCLASSEXW>() as u32,
             lpfnWndProc: Some(overlay_proc),
             hInstance: instance.into(),
-            // 背景ブラシがあると本文の描画が隠れるため、塗らせない。
+            // 背景ブラシがあると本文の描画が隠れるため、描画させない。
             hbrBackground: HBRUSH(unsafe { GetStockObject(NULL_BRUSH) }.0),
             lpszClassName: OVERLAY_CLASS,
             ..Default::default()
@@ -379,7 +418,7 @@ unsafe extern "system" fn overlay_proc(
             LRESULT(0)
         }
 
-        // 塗ると WebView が描いた最大化ボタンの表示が隠れるため、何もしない。
+        // 描画すると WebView が描いた最大化ボタンの表示が隠れるため、何もしない。
         WM_ERASEBKGND => LRESULT(1),
 
         WM_NCDESTROY => {

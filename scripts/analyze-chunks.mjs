@@ -1,10 +1,9 @@
 #!/usr/bin/env node
 /**
- * `dist/stats.html`（rollup-plugin-visualizer の出力）から
- * チャンクごとの内訳を取り出して表にする。
+ * `dist/stats.html`（rollup-plugin-visualizer の出力）からチャンクごとの内訳を取り出して表にする。
  *
- * 05.performance-budget/05-operations.md §1 の予算超過時に「何が重いのか」を
- * 目で見るためのもの。判断材料であって、CI の判定は size-limit が行う。
+ * バンドル予算の超過時に「何が重いのか」を確認するためのもの。
+ * 判断材料であって、CI の判定は size-limit が行う。
  *
  * 使い方:
  *   pnpm analyze && node scripts/analyze-chunks.mjs

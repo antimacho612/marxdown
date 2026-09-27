@@ -1,13 +1,13 @@
 //! ウィンドウ生成と、位置・サイズの復元（F-CONF-10）。
 //!
-//! ウィンドウを `tauri.conf.json` の宣言ではなくコードで生成するのは、`initialization_script` に CLI 引数から作った bootstrap を載せる必要があるためである（02.architecture/05-startup-sequence.md §1）。
+//! ウィンドウを `tauri.conf.json` の宣言ではなくコードで生成するのは、`initialization_script` に CLI 引数から作った bootstrap を載せる必要があるためである。
 //! 宣言的なウィンドウでは注入するタイミングがない。
 //!
 //! この構造は復元にも有効である。
 //! 位置とサイズを `WebviewWindowBuilder` に直接渡せるため、既定位置に表示してから復元先へ移動する際のちらつきが発生しない。
-//! `visible: false` から本文ごと表示する設計（04.tech-stack/09-tauri-config.md §1）とも整合する。
+//! `visible: false` から本文ごと表示する設計とも整合する。
 //!
-//! タイトルバーは自前で描く（03.ux-spec/01-screen-layout.md §1）。
+//! タイトルバーは自前で描く。
 //! `decorations(false)` にして、`─ □ ✕` もファイル名も Svelte 側が描く。
 //! OS 標準のタイトルバーとタブが二段になることを避け、縦 30px を本文に割り当てるためである。
 //!
@@ -28,7 +28,7 @@ use crate::store::WindowState;
 /// メインウィンドウのラベル。イベントの宛先指定とウィンドウの取得に使う。
 pub const MAIN_LABEL: &str = "main";
 
-/// ウィンドウが見えないままになる上限（04.tech-stack/09-tauri-config.md §1）。
+/// ウィンドウが見えないままになる上限。
 /// これを超えたら本文が未完成でも表示する。「起動失敗に見える」ほうが害が大きい。
 pub const SHOW_FALLBACK_MS: u64 = 400;
 
@@ -38,14 +38,24 @@ pub const DEFAULT_HEIGHT: f64 = 720.0;
 
 /// 復元位置を採用するために、いずれかのモニタと重なっていてほしい最小の面積（論理 px）。
 ///
-/// タイトルバーを掴めない位置に復元されると、ユーザーはウィンドウを動かせなくなる。
+/// タイトルバーをドラッグできない位置に復元されると、ユーザーはウィンドウを動かせなくなる。
 /// ディスプレイ構成が変わった後の起動で最も起きやすい。
 const MIN_VISIBLE: f64 = 80.0;
+
+/// 追加ウィンドウを元のウィンドウからずらす量（論理 px）。
+///
+/// 完全に重ねると、開いた本人に新しいウィンドウが出たことが伝わらない。
+/// タイトルバーの高さ（30px）より少し小さくして、下のウィンドウのタイトルバーをドラッグできる状態を残す。
+const CASCADE_OFFSET: f64 = 28.0;
 
 /// ウィンドウを生成する。`visible: false` の状態で返る。
 ///
 /// 表示するのは `ready` コマンド、または [`SHOW_FALLBACK_MS`] 経過後のフォールバックである。
 /// `restore` がモニタ外を指している場合は破棄し、中央に既定サイズで生成する。
+///
+/// 起動時の 1 枚目と、サテライト（F-OPEN-06 / `crate::open_satellite`）が同じ経路を通る。
+/// サテライトでは `restore` に [`cascade_from`] の結果か、タブをドロップした位置から作った矩形を渡す。
+/// `label` は `main` または `main-*` でなければならない（`capabilities/default.json` が許可している形）。
 pub fn create(
     app: &tauri::AppHandle,
     label: &str,
@@ -67,7 +77,7 @@ pub fn create(
         // ドラッグ＆ドロップはネイティブのハンドラに任せる（F-OPEN-08）。
         //
         // `disable_drag_drop_handler()` を呼んで HTML5 のドロップイベントで扱うと、WebView の `DataTransfer` がファイルの絶対パスを渡さない。
-        // パスが無いと最近開いたファイルにも積めず、相対パスの画像も解決できない（F-VIEW-08 / N-SEC-05）。
+        // パスが無いと最近開いたファイルにも記録できず、相対パスの画像も解決できない（F-VIEW-08 / N-SEC-05）。
         // Tauri のドラッグ＆ドロップイベントは実パスを渡す。
         .initialization_script(&script)
         // ナビゲーション禁止（N-SEC-04 / ADR-0006 の多層防御 Layer 2）。
@@ -93,8 +103,13 @@ pub fn create(
     let restore = restore.filter(|s| is_on_some_monitor(app, s));
     // T2c: ウィンドウ状態の復元判定が終わった時点。
     // `available_monitors()` は OS への問い合わせで、環境によっては速くない。
-    if let Some(state) = app.try_state::<crate::state::AppState>() {
-        state.trace.mark("T2c", None);
+    //
+    // 起動時の 1 枚目だけを打つ。
+    // 追加ウィンドウでも打つと、計測中に別ウィンドウを開いただけで同じ ID の点が 2 つ現れ、内訳が読めなくなる。
+    if label == MAIN_LABEL {
+        if let Some(state) = app.try_state::<crate::state::AppState>() {
+            state.trace.mark("T2c", None);
+        }
     }
 
     match restore {
@@ -111,7 +126,18 @@ pub fn create(
 
     let window = builder.build()?;
 
-    spawn_show_fallback(app.clone(), label.to_string());
+    // Chromium 既定のコンテキストメニューを抑止する（`webview.rs`）。
+    // ウィンドウは `visible: false` で生成されるため、ここで設定しておけば表示されている間は一度も出ない。
+    crate::webview::disable_default_context_menu(&window);
+
+    // `--background`（ADR-0022）では表示しない。`ready` が来なくても、表示を強制すればログインのたびにウィンドウが現れる。
+    let background = label == MAIN_LABEL
+        && app
+            .try_state::<crate::state::AppState>()
+            .is_some_and(|s| s.args.background);
+    if !background {
+        spawn_show_fallback(app.clone(), label.to_string());
+    }
     Ok(window)
 }
 
@@ -121,7 +147,7 @@ pub fn create(
 /// 論理ピクセルで保持している `WindowState`（`store.rs`）と比較する前に、モニタ側を論理ピクセルへ変換して揃える。
 fn is_on_some_monitor(app: &tauri::AppHandle, state: &WindowState) -> bool {
     let Ok(monitors) = app.available_monitors() else {
-        // モニタ情報が取れないなら復元を諦める。中央に出るほうが安全。
+        // モニタ情報が取れないなら復元しない。中央に出るほうが安全。
         return false;
     };
 
@@ -137,6 +163,26 @@ fn is_on_some_monitor(app: &tauri::AppHandle, state: &WindowState) -> bool {
     })
 }
 
+/// サテライト（F-OPEN-06）の初期矩形を、元のウィンドウから少しずらして作る。
+///
+/// 元が最大化されているときは `None` を返す。
+/// `capture` が返すのは最大化後の矩形であり、それをずらすと画面からはみ出した「ほぼ全画面だが最大化ではない」ウィンドウになる。
+/// その場合は既定サイズで中央に出すほうが扱いやすい。
+///
+/// モニタからはみ出す位置になっても、ここでは除外しない。
+/// 採否は [`create`] が `is_on_some_monitor` で判定し、外れていれば中央の既定サイズへ倒す。
+pub fn cascade_from<R: tauri::Runtime>(source: &WebviewWindow<R>) -> Option<WindowState> {
+    let base = capture(source)?;
+    if base.maximized {
+        return None;
+    }
+    Some(WindowState {
+        x: base.x + CASCADE_OFFSET,
+        y: base.y + CASCADE_OFFSET,
+        ..base
+    })
+}
+
 /// 現在のウィンドウ位置・サイズを、保存できる形（論理ピクセル）で取り出す。
 ///
 /// 最大化中は最大化後の矩形が返る。
@@ -147,7 +193,7 @@ pub fn capture<R: tauri::Runtime>(window: &WebviewWindow<R>) -> Option<WindowSta
     let position = window.outer_position().ok()?.to_logical::<f64>(scale);
     let size = window.inner_size().ok()?.to_logical::<f64>(scale);
 
-    // 最小化中は位置が画面外の番兵値になる環境がある。保存すると次回復元に失敗するので捨てる。
+    // 最小化中は位置が画面外の番兵値になる環境がある。保存すると次回復元に失敗するので破棄する。
     if window.is_minimized().unwrap_or(false) {
         return None;
     }
@@ -163,7 +209,7 @@ pub fn capture<R: tauri::Runtime>(window: &WebviewWindow<R>) -> Option<WindowSta
 
 /// 一定時間経っても `ready` が来なければ、こちらから表示する。
 ///
-/// ポーリングではなく 1 回だけのタイマーであることが重要（05.performance-budget/04-targets.md §5「アイドル時のタイマーを増やさない」）。
+/// ポーリングではなく 1 回だけのタイマーであることが重要。
 fn spawn_show_fallback(app: tauri::AppHandle, label: String) {
     std::thread::spawn(move || {
         std::thread::sleep(std::time::Duration::from_millis(SHOW_FALLBACK_MS));

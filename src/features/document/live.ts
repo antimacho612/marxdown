@@ -2,16 +2,17 @@
  * Split で本文を打ち替えたときのプレビュー更新（F-MODE-03 / N-PERF-03）。
  *
  * `open.ts`（メタ情報・履歴・監視・ダーティ状態を扱う）とは別にしてある。
- * ここは同じファイルを見続けたまま描き直すだけの担当である。
+ * ここは同じファイルを見続けたまま再描画するだけの担当である。
  * 本文の DOM 再構築はパース本体よりコストが高いため、打鍵ごとには描かず打ち終わりを待つ（N-PERF-03）。
- * `paint` は受け皿を差し替えて表示位置を先頭に戻すため、スクロール位置は自分で保持して再設定する。
+ * 本文は作り直さず、変わったブロックだけを差し替える（`preview/paint.ts` の `patch` / #159）。
  */
-import { enhance, paint } from '@/features/preview';
-import { viewStore } from '@/features/view';
+import { enhance, paintMarp, patch } from '@/features/preview';
+import { takeEditorLead, viewStore } from '@/features/view';
 import { ja } from '@/i18n/ja';
 import { toMessage } from '@/lib/error';
 import { dirOf } from '@/lib/path';
 import { isOutlineOnScreen, refreshOutline, refreshSearch } from '@/lib/refresh';
+import type { OutlineItem } from '@/markdown/plugins/line-map';
 
 import { getParseOptions, getParser } from './open';
 import { documentStore } from './store.svelte';
@@ -29,13 +30,21 @@ const DEBOUNCE_MS = 120;
 
 let timer: ReturnType<typeof setTimeout> | null = null;
 /** 実行中の再描画。並行して実行しない（後から要求されたほうが正しい）。 */
-let running = false;
+let inflight: Promise<void> | null = null;
 let again = false;
 
 /**
- * 描き直し 1 回ぶんの時刻（`features/bench/input.ts` が読む / 計測専用）。
+ * 見出し（`documentStore.outline`）が本文より古いか。
  *
- * OQ-15 の判定基準は入力を終えてから画面が変わるまでであり、そこには debounce・パース・paint が含まれる。
+ * Edit ではアウトラインを閉じているとパースしないため、打鍵のたびに古くなる。
+ * 折りたたみ（`features/editor/lazy/folding.ts`）はそれを知って取り直す必要がある（`latestOutline`）。
+ */
+let outlineStale = false;
+
+/**
+ * 再描画 1 回ぶんの時刻（`features/bench/input.ts` が読む / 計測専用）。
+ *
+ * 「編集 → プレビュー更新」は入力を終えてから画面が変わるまでであり、そこには debounce・パース・paint が含まれる。
  * 内訳が無いと、差が出たときにパースと paint のどちらが原因か判別できない。
  */
 export interface LiveRenderTiming {
@@ -67,7 +76,7 @@ let scheduledAt = 0;
 /**
  * 診断用の内訳（`features/bench/input.ts` / 計測専用）。
  *
- * 再描画が発生しなかったときに、どこで止まったか判別できない問題が実際に発生した。
+ * 再描画が発生しなかったときに、どこで止まったかを判別するために持つ。
  * 予約されていないのか、開始後に失敗したのかで原因が異なる。
  */
 const debug = { scheduled: 0, started: 0, finished: 0, lastError: null as string | null };
@@ -83,13 +92,14 @@ export function observeLiveRender(next: ((timing: LiveRenderTiming) => void) | n
 }
 
 /**
- * 描き直す（あるいはパースし直す）予約をする。
+ * 再描画（あるいはパースのやり直し）を予約する。
  *
  * 打った内容を反映する対象が存在するときだけ動作する。
  * Split では右のプレビュー（パース + paint）、Edit ではアウトラインが出ていればパースだけを行い、Preview では何もしない。
- * Edit で paint しないのは見えない面に CPU を使わないためだが（N-PERF-05）、見出しは表示されているのでそちらだけ取り直す（#59。アウトラインが閉じていれば不要）。
+ * Edit で paint しないのは見えない面に CPU を使わないためだが（N-PERF-05）、見出しは表示されているのでそちらだけ取り直す（アウトラインが閉じていれば不要）。
  */
 export function scheduleLiveRender(): void {
+  outlineStale = true;
   if (!wantsRender()) return;
 
   debug.scheduled++;
@@ -103,7 +113,7 @@ export function scheduleLiveRender(): void {
 }
 
 /**
- * いま打った内容を追いかける相手が居るか（上の表）。
+ * いま打った内容を反映する対象があるか（上の説明）。
  *
  * ペインの開閉を直接参照しない。
  * アウトラインが表示されているかどうかはアウトライン側から登録してもらう（`lib/refresh.ts`）。
@@ -133,32 +143,65 @@ export function cancelLiveRender(): void {
 }
 
 /**
- * いますぐ描き直す。プレビューの面へ戻った直後に 1 回だけ呼ぶ（`features/mode/mode.ts`）。
+ * いまの本文に対応する見出しを返す（`features/editor/lazy/folding.ts` が折りたたみの範囲に使う）。
+ *
+ * 予約中の再描画は前倒しし、実行中の再描画は終わるのを待つ。それでも見出しが古ければ 1 回だけパースし直す。
+ * Preview ではパースしない。
+ * 面が表示されている間に本文が変わるのはタスクの反転（見出しの位置は変わらない）と読み直し（開く経路が見出しを入れ直す）だけである。
+ */
+export async function latestOutline(): Promise<readonly OutlineItem[]> {
+  if (viewStore.mode === 'preview') return documentStore.outline;
+  cancelLiveRender();
+  if (inflight) await inflight;
+  if (outlineStale) await renderNow();
+  return documentStore.outline;
+}
+
+/**
+ * いますぐ再描画する。プレビューの面へ戻った直後に 1 回だけ呼ぶ（`features/mode/mode.ts`）。
  *
  * Edit では paint を行わない。
  * 表示していない面の DOM は作り直さず、パースの結果（見出し・文字数）だけをストアへ入れる。
  *
- * 実行中に再度呼ばれた場合は、実行中の処理が終わってから 1 回だけやり直す。
- * パースは非同期であるため、並行して実行すると古い結果が後から届いて本文が巻き戻る。
+ * 実行中に再度呼ばれた場合は、実行中の処理が終わってから 1 回だけやり直し、そのやり直しまで含めて待つ。
+ * パースは非同期であるため、並行して実行すると古い結果が後から届いて本文が前の状態に戻る。
  */
-export async function renderNow(): Promise<void> {
-  if (running) {
+export function renderNow(): Promise<void> {
+  if (inflight) {
     again = true;
-    return;
+    return inflight;
   }
+  inflight = renderUntilSettled();
+  return inflight;
+}
 
+/** 1 回描画し、その間に要求があればやり直す。やり直しを待ってから解決するため、実行中に受け取った側もやり直しまで待つことになる。 */
+async function renderUntilSettled(): Promise<void> {
+  try {
+    await renderOnce();
+  } finally {
+    inflight = null;
+  }
+  if (again) {
+    again = false;
+    await renderNow();
+  }
+}
+
+async function renderOnce(): Promise<void> {
   const parser = getParser();
   const container = document.querySelector<HTMLElement>(PREVIEW_SELECTOR);
   const meta = documentStore.meta;
   if (!parser || !container || !meta) return;
 
-  running = true;
   debug.started++;
   // 開始時点の値を保持する。
   // 描画中も打鍵は続き、`scheduledAt` はそのたびに更新される。
   // 保持しないと、入力を終えてから画面が変わるまでの時間が次の打鍵からの差になり、値が小さくなる（`huge.md` では負の値にもなる）。
   const scheduledFor = scheduledAt;
   const startedAt = observer ? performance.now() : 0;
+  // 本文を読む前に false にする。パースの途中で打鍵があれば `scheduleLiveRender` が再び true にする。
+  outlineStale = false;
   try {
     const parsed = await parser.parse(getDocumentText(), getParseOptions());
     const parsedAt = observer ? performance.now() : 0;
@@ -168,10 +211,18 @@ export async function renderNow(): Promise<void> {
     const visible = viewStore.mode !== 'edit';
 
     if (visible) {
-      // `paint` は中身を差し替えるため、スクロール位置を保持してから設定し直す。
-      const scrollTop = container.scrollTop;
-      paint(container, parsed.chunks, parsed.frontMatter);
-      container.scrollTop = scrollTop;
+      // 差し替えた要素の高さが変わると、ブラウザのスクロールアンカーがプレビューの位置を補正して `scroll` が発火する。
+      // 利用者の操作ではないため、主導権をエディター側に置いてエディターが打っている行から離れないようにする。
+      takeEditorLead();
+      if (parsed.marp) {
+        // NOTE: スライドは差分更新せず全体を入れ直す。同じタスク内で入れ直すため、通常はスクロール位置が保たれる。
+        const scrollTop = container.scrollTop;
+        const { notice } = await paintMarp(container, parsed.marp, dirOf(meta.path ?? ''));
+        if (container.scrollTop !== scrollTop) container.scrollTop = scrollTop;
+        if (notice) documentStore.notice = { level: 'warning', message: notice };
+      } else {
+        patch(container, parsed.blocks, parsed.frontMatter);
+      }
     }
 
     documentStore.frontMatter = parsed.frontMatter;
@@ -197,23 +248,18 @@ export async function renderNow(): Promise<void> {
   } catch (e) {
     // 例外を通知に出す。
     // ここは `void renderNow()` で呼ばれるため、投げた例外はどこにも捕捉されない。
-    // 本文は前の内容のまま残るが、入力しても右側が更新されない状態になり、原因を特定できない（M2 Phase 6 で実際に発生した）。
+    // 本文は前の内容のまま残るが、入力しても右側が更新されない状態になり、原因を特定できない。
     debug.lastError = toMessage(e);
-    documentStore.notice = { level: 'error', message: `${ja.error.renderFailed}: ${toMessage(e)}` };
-  } finally {
-    running = false;
-  }
-
-  if (again) {
-    again = false;
-    await renderNow();
+    outlineStale = true;
+    documentStore.notice = { level: 'error', message: ja.error.renderFailed };
   }
 }
 
 /** テスト用。予約と実行状態を初期化する。 */
 export function resetLiveRender(): void {
   cancelLiveRender();
-  running = false;
+  inflight = null;
   again = false;
+  outlineStale = false;
   observer = null;
 }

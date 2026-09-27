@@ -31,6 +31,7 @@ function fakeParser(): MarkdownParser {
       Promise.resolve({
         id: 1,
         chunks: [`<p>${text.length}</p>`],
+        blocks: [`<p>${text.length}</p>`],
         outline: [],
         frontMatter: null,
         parseMs: 0.5,
@@ -41,7 +42,7 @@ function fakeParser(): MarkdownParser {
 }
 
 interface Harness {
-  /** Rust 側が投げてくる外部変更イベントの代わり。 */
+  /** Rust 側が送る外部変更イベントの代わり。 */
   emit: (change: FileChange) => void;
   readDocument: ReturnType<typeof vi.fn>;
   watchPath: ReturnType<typeof vi.fn>;
@@ -82,6 +83,7 @@ beforeEach(() => {
   document.body.innerHTML = '<div id="mx-preview"></div>';
   documentStore.meta = null;
   documentStore.notice = null;
+  documentStore.statusMessage = null;
   documentStore.isDirty = false;
   recentStore.entries = [];
 
@@ -89,23 +91,18 @@ beforeEach(() => {
   configureOpener({ parser: fakeParser(), softBreak: () => false, syntax: () => [], ...workspaceOpenerHooks() });
 });
 
-/** F-EDIT-16 / 03.ux-spec/07-status-and-notifications.md §2 の 1 行目。 */
+/** F-EDIT-16。 */
 describe('外部変更の自動反映', () => {
-  it('開いているファイルを読み直し、情報通知で伝える', async () => {
+  it('開いているファイルを読み直し、ステータスバーで伝える', async () => {
     const h = install();
     await openPath('C:/work/a.md');
     h.readDocument.mockClear();
 
     h.emit(changed('C:/work/a.md'));
-    await vi.waitFor(() =>
-      expect(documentStore.notice).toMatchObject({
-        level: 'info',
-        message: ja.open.reloadedExternal,
-        // ダーティでなければ失われるものが無い。尋ねずに読み込んで自動で消す
-        autoDismissMs: 3000,
-      }),
-    );
+    // ダーティでなければ失われるものが無い。尋ねずに読み込み、本文を隠さないステータスバーに出す
+    await vi.waitFor(() => expect(documentStore.statusMessage).toBe(ja.open.reloadedExternal));
 
+    expect(documentStore.notice).toBeNull();
     expect(h.readDocument).toHaveBeenCalledWith('C:/work/a.md', undefined);
   });
 
@@ -126,12 +123,14 @@ describe('外部変更の自動反映', () => {
     await openPath('C:/work/a.md');
     h.readDocument.mockClear();
     documentStore.notice = null;
+    documentStore.statusMessage = null;
 
     h.emit(changed('C:/work/a.md', 'removed'));
     await Promise.resolve();
 
     expect(h.readDocument).not.toHaveBeenCalled();
     expect(documentStore.notice).toBeNull();
+    expect(documentStore.statusMessage).toBeNull();
     expect(documentStore.meta?.path).toBe('C:/work/a.md');
   });
 
@@ -155,7 +154,7 @@ describe('外部変更の自動反映', () => {
     expect(h.readDocument, '重ねて読まない').toHaveBeenCalledTimes(1);
 
     release();
-    // 落とすと画面が古いまま止まるので、終わってからもう一度読む
+    // 破棄すると画面が古いまま止まるので、終わってからもう一度読む
     await vi.waitFor(() => expect(h.readDocument).toHaveBeenCalledTimes(2));
   });
 });
@@ -174,10 +173,10 @@ describe('監視の付け替え', () => {
 });
 
 /**
- * 編集中の外部変更（N-REL-02 / 02.architecture/08-state-management.md §3）。
+ * 編集中の外部変更（N-REL-02）。
  *
- * **ここが「ユーザーの入力を絶対に失わない」の実装そのもの。**
- * 自動で読み直すと、打った内容が黙って消える。
+ * ここが「ユーザーの入力を絶対に失わない」の実装そのもの。
+ * 自動で読み直すと、打った内容が通知なく消える。
  */
 describe('編集中に外部変更が来たとき', () => {
   it('読み直さず、消えない警告で選ばせる', async () => {
@@ -193,9 +192,8 @@ describe('編集中に外部変更が来たとき', () => {
 
     const notice = documentStore.notice;
     expect(h.readDocument).not.toHaveBeenCalled();
+    // 自動で消えると、気づかないまま古い内容を保存することになる。通知バーには消える仕組みを持たせていない
     expect(notice).toMatchObject({ level: 'warning', message: ja.open.changedExternally });
-    // 自動で消えると、気づかないまま古い内容を保存することになる
-    expect(notice?.autoDismissMs).toBeUndefined();
   });
 
   it('「再読み込み」を選ぶと読み直す', async () => {

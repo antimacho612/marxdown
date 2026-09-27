@@ -1,8 +1,8 @@
 <!--
-  ステータスバーから上に開く小さなメニュー（03.ux-spec/07-status-and-notifications.md §3）。
+  ステータスバーから上に開く小さなメニュー。
   遅延チャンクで、ステータスバーの項目が押されるまでロードされない（ハンバーガーメニューと同じ分け方）。
 
-  ステータスバーは画面最下段にあり `overflow: hidden` なので、`position: fixed` で上に開く（`absolute` では切り落とされる）。
+  ステータスバーは画面最下段にあり `overflow: hidden` なので、`position: fixed` で上に開く（`absolute` では切り取られる）。
   座標は押した瞬間にボタンが測って渡す（`app/StatusMenuButton.svelte`）。
   キーボード操作（`Esc` / `↑↓` / `Home` `End` / `Tab` 循環）は AppMenu と同じ規則にしてある。
 -->
@@ -18,8 +18,7 @@
    * 並べる項目（`items.ts` / 同じチャンク）。
    *
    * 開いている間に項目が増減することはない。
-   * それでも `$derived` にしているのは、`statusMenuItems` がストア（`documentStore.meta` / `viewStore.mode`）を参照するためであり、
-   * 定数にすると初期値しか反映されなくなる。
+   * それでも `$derived` にしているのは、`statusMenuItems` がストア（`documentStore.meta` / `viewStore.mode`）を参照するためであり、定数にすると初期値しか反映されなくなる。
    */
   const items: StatusMenuItem[] = $derived(statusMenuItems(kind));
 
@@ -56,8 +55,7 @@
   });
 
   function activate(item: StatusMenuItem): void {
-    // 先に閉じる。読み直しのように非同期に終わるものでも、
-    // 押した瞬間に消えるほうが「効いた」ことが伝わる（AppMenu と同じ判断）。
+    // 先に閉じる。読み直しのように非同期に終わるものでも、押した瞬間に消えるほうが操作を受け付けたことが伝わる（AppMenu と同じ判断）。
     onclose(false);
     item.run();
   }
@@ -65,7 +63,7 @@
   function onKeydown(event: KeyboardEvent): void {
     switch (event.key) {
       case 'Escape': {
-        // グローバルに Escape を握っている機能（検索パネル）へ渡さない。
+        // グローバルに Escape を処理している機能（検索パネル）へ渡さない。
         event.stopPropagation();
         onclose();
         break;
@@ -117,7 +115,7 @@
   class="mx-statusmenu"
   role="menu"
   tabindex="-1"
-  style="left: {anchor.left}px; bottom: {anchor.bottom}px"
+  style="{anchor.side}: {anchor.inset}px; bottom: {anchor.bottom}px"
   bind:this={panel}
   onkeydown={onKeydown}
 >
@@ -142,7 +140,7 @@
    * ステータスバーの項目から上方向に開く（下に領域が無いため）。
    *
    * `fixed` にしているのは、ステータスバーが `overflow: hidden` であるためである（`styles/shell.css`）。
-   * `left` / `bottom` はボタン側が測定して渡す。
+   * 位置はボタン側が測定して渡す。左右どちらの端を基準にするかもそこで決まる（`features/status/props.ts`）。
    */
   .mx-statusmenu {
     position: fixed;

@@ -34,7 +34,7 @@ body {
   background: var(--mx-color-selection);
 }
 
-/* WebView 内でのトップレベルナビゲーションを誘発する操作を減らす。 */
+/* WebView 内でのトップレベルナビゲーションにつながる操作を減らす。 */
 a {
   color: var(--mx-color-accent);
   text-decoration-thickness: 1px;

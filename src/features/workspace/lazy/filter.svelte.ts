@@ -1,8 +1,8 @@
 /**
- * ファイルツリーの表示フィルター（F-NAV-03 / 03.ux-spec/06-panes.md §1）。
+ * ファイルツリーの表示フィルター（F-NAV-03）。
  *
  * 絞り込むのはファイルだけで、ディレクトリは常に残す。
- * 遅延展開なので中に一致するファイルがあるかは開くまで分からず、畳んだまま隠すと到達する手段ごと失われる。
+ * 遅延展開なので中に一致するファイルがあるかは開くまで分からず、閉じたまま隠すと到達する手段ごと失われる。
  *
  * 永続化しない（`features/view/store.svelte.ts` の `scrollSync` と同じ扱い）。
  * 次の起動時も絞り込まれたままだと、ファイルが一覧に無い理由を判断できない。
@@ -11,13 +11,13 @@
  * `features/workspace/index.ts` からは公開しない。公開すると `main` から参照できてしまう。
  */
 import { MARKDOWN_EXTENSIONS } from '@/lib/path';
-import type { DirEntry } from '@/platform';
+import type { DirEntry, TreeNode } from '@/platform';
 
 /**
  * 入力欄の文字列を拡張子の並びに直す。
  *
  * 区切りはカンマ・読点・空白のいずれでもよい。
- * 先頭の `.` と `*` は落とすので、`.md` や `*.md` と書いても `md` として扱う。
+ * 先頭の `.` と `*` は取り除くため、`.md` や `*.md` と書いても `md` として扱う。
  * 大文字は小文字に揃え、重複は取り除く。
  */
 export function parseExtensions(input: string): string[] {
@@ -81,10 +81,22 @@ export const filterStore = new FilterStore();
  * ディレクトリは絞り込みの対象にしない。
  * 絞り込んでいないときは受け取った配列をそのまま返す。
  */
-export function visibleEntries(entries: readonly DirEntry[]): readonly DirEntry[] {
+export function visibleEntries<T extends Pick<DirEntry, 'name' | 'dir'>>(entries: readonly T[]): readonly T[] {
   const allowed = filterStore.allowed;
   if (allowed === null) return entries;
   return entries.filter((entry) => entry.dir || allowed.includes(extensionOf(entry.name)));
+}
+
+/**
+ * 木の全体に `visibleEntries` を当てる（ディレクトリ構造のコピー）。
+ *
+ * コピーした木がツリーの表示と食い違わないようにするためである。
+ * 絞り込みの結果として空になったディレクトリも、ツリーと同じく残す。
+ */
+export function visibleTree(nodes: readonly TreeNode[]): TreeNode[] {
+  return visibleEntries(nodes).map((node) =>
+    node.children.length === 0 ? node : { ...node, children: visibleTree(node.children) },
+  );
 }
 
 /** テスト用。絞り込みを解除し、入力欄も閉じる。 */

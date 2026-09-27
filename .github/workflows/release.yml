@@ -1,0 +1,89 @@
+name: Release
+
+# `v*` のタグから配布物を作り、下書きの Release に載せる。
+# 公開は人が行う。
+# updater は `releases/latest` を見ており、下書きのあいだは利用者に届かない。
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Windows
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # タグは main のコミットにだけ打つ。develop で確かめてから main へ取り込む運用のため。
+      - name: タグが main にあるか
+        shell: bash
+        run: git merge-base --is-ancestor "$GITHUB_SHA" origin/main
+
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - run: pnpm install --frozen-lockfile
+
+      # タグと package.json / Cargo.toml / Cargo.lock / CHANGELOG / 公開鍵のずれは、ビルドする前に止める。
+      - name: 版の番号
+        shell: bash
+        run: node scripts/release.mjs check "$GITHUB_REF_NAME"
+
+      - name: テスト
+        run: pnpm exec vitest run
+
+      - name: テスト (Rust)
+        working-directory: src-tauri
+        run: cargo test
+
+      # updater 用の署名は `tauri.release.conf.json` を重ねたときだけ作る。
+      # `tauri.conf.json` に置くと、秘密鍵を持たない手元の `pnpm build` が失敗する。
+      - name: ビルド
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: pnpm tauri build --config src-tauri/tauri.release.conf.json
+
+      # 予算を超えた版は配らない。
+      - name: バンドル予算
+        run: pnpm exec size-limit
+
+      - name: Release の下書き
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          bundle=src-tauri/target/release/bundle/nsis
+          node scripts/release.mjs manifest "$version" "$bundle" latest.json
+          node scripts/release.mjs notes "$version" > notes.md
+
+          prerelease=()
+          if [[ "$version" == *-* ]]; then prerelease=(--prerelease); fi
+
+          gh release create "$GITHUB_REF_NAME" \
+            --draft "${prerelease[@]}" \
+            --title "Marxdown $version" \
+            --notes-file notes.md \
+            "$bundle/Marxdown_${version}_x64-setup.exe" \
+            "$bundle/Marxdown_${version}_x64-setup.exe.sig" \
+            latest.json

@@ -1,5 +1,5 @@
 /**
- * mode feature の公開面（02.architecture/03-layers.md §2 / 03.ux-spec/02-modes.md）。
+ * mode feature の公開面。
  *
  * モード間の移動だけを担当する。
  * モードの値そのものは `viewStore` が持つ（`features/panes` が `viewStore.panes` へ書くのと同じ形）。

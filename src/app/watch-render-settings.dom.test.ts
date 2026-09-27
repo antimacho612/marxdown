@@ -3,7 +3,7 @@
  * パースをやり直す条件（`watch-render-settings.svelte.ts`）。
  *
  * 見たいのは「描き直すべきときだけ描き直すこと」である。
- * `renderNow()` はプレビューの DOM を作り直すため、無関係な設定や同じ値での差し替えで走ると本文がその回数だけ再描画される。
+ * `renderNow()` はプレビューの DOM を作り直すため、無関係な設定や同じ値での差し替えで実行されると本文がその回数だけ再描画される。
  */
 import { flushSync } from 'svelte';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -64,5 +64,34 @@ describe('installSoftBreakRerender', () => {
   it('追加記法が変わったら 1 回だけ描き直す', () => {
     change({ 'markdown.subscript': true });
     expect(renderNow).toHaveBeenCalledTimes(1);
+  });
+
+  it('Marp のテーマは入力が止まってから 1 回だけ描き直す', () => {
+    vi.useFakeTimers();
+    try {
+      change({ 'marp.themes': ['C:/t'] });
+      change({ 'marp.themes': ['C:/th'] });
+      change({ 'marp.themes': ['C:/themes'] });
+      expect(renderNow).not.toHaveBeenCalled();
+
+      vi.advanceTimersByTime(500);
+      expect(renderNow).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('Marp のテーマを待っている間に他の設定が変わったら、待たずに 1 回だけ描き直す', () => {
+    vi.useFakeTimers();
+    try {
+      change({ 'marp.themes': ['C:/other'] });
+      change({ 'preview.softBreak': false });
+      expect(renderNow).toHaveBeenCalledTimes(1);
+
+      vi.advanceTimersByTime(500);
+      expect(renderNow).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

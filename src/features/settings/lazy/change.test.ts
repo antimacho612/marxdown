@@ -30,7 +30,7 @@ afterEach(async () => {
 });
 
 describe('設定の変更 (F-CONF-05)', () => {
-  /** 設定を試行錯誤しながら使えること自体が目的なので、当てるのは即座・保存は遅らせる。 */
+  /** 設定を試行錯誤しながら使えること自体が目的なので、適用は即座に行い、保存は遅らせる。 */
   it('見た目は書き戻しを待たずに変わる', () => {
     stubWrite(async () => DEFAULT_SETTINGS);
 
@@ -54,7 +54,7 @@ describe('設定の変更 (F-CONF-05)', () => {
   });
 
   /**
-   * 02.architecture/04-rust-responsibilities.md §5。既定値を**書き込む**のではなく、キーごと消す。
+   * 既定値を書き込むのではなく、キーごと消す。
    * こうしておくと、既定値が変わったときに設定ファイルが追従する。
    */
   it('既定に戻すと、キーを消す patch を送る', async () => {
@@ -89,8 +89,8 @@ describe('設定の変更 (F-CONF-05)', () => {
   });
 
   /**
-   * 02.architecture/04-rust-responsibilities.md §5 の 3 番目。UI は壊れているときに呼ばない前提だが、
-   * すり抜けたときに**黙って失敗しない**ことをここで担保する。
+   * 壊れている間は書き戻さない。
+   * UI は壊れているときに呼ばない前提だが、呼ばれてしまった場合に通知なしで失敗しないことをここで担保する。
    */
   it('書き込みに失敗したら通知バーに出す', async () => {
     stubWrite(() => Promise.reject({ kind: 'settings-broken', message: 'broken' }));
@@ -99,6 +99,6 @@ describe('設定の変更 (F-CONF-05)', () => {
     await flushSettingWrites();
 
     expect(documentStore.notice?.level).toBe('error');
-    expect(documentStore.notice?.message).toBe('settings.json を読めないため、設定を保存できません');
+    expect(documentStore.notice?.message).toBe('settings.json を読み込めないため、設定を保存できません');
   });
 });

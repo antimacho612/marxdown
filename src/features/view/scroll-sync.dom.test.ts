@@ -1,12 +1,12 @@
 // @vitest-environment jsdom
 /**
- * スクロール同期の配線と双方向ジャンプ（F-MODE-05 / 03.ux-spec/03-split-mode.md §2, §3）。
+ * スクロール同期の配線と双方向ジャンプ（F-MODE-05）。
  *
- * 補間の算数は `scroll-sync.test.ts` が見ている。
- * ここが見るのは配線のほうで、「どちらが主導するか」「ダブルクリックがどの行になるか」「抜けたときに外れるか」を並べる。
+ * 補間の計算は `scroll-sync.test.ts` が検証している。
+ * ここでは配線を検証し、「どちらが主導するか」「ダブルクリックがどの行になるか」「抜けたときに外れるか」を確認する。
  *
- * 受け取るのが `EditorScrollPort`（行番号だけの窓口）なので、Monaco を載せずに配線を全部見られる。
- * ポートの Monaco 側の実装は `features/editor/lazy/scroll-port.dom.test.ts` が本物のエディターで見ている。
+ * 受け取るのが `EditorScrollPort`（行番号だけを扱うインタフェース）であるため、Monaco をマウントせずに配線をすべて検証できる。
+ * ポートの Monaco 側の実装は `features/editor/lazy/scroll-port.dom.test.ts` が実際のエディターで検証している。
  *
  * `getBoundingClientRect()` が jsdom では全部 0 を返すため、`data-line` のアンカーは位置を持てない。
  * そこは差し替える（`stubRects`）。
@@ -21,6 +21,7 @@ import {
   jumpToPreviewLine,
   startScrollSync,
   stopScrollSync,
+  takeEditorLead,
   type EditorScrollPort,
 } from './scroll-sync';
 import { viewStore } from './store.svelte';
@@ -51,8 +52,8 @@ function stubRects(): HTMLElement {
 
   preview.innerHTML = ['0', '9', '19'].map((line) => `<p data-line="${line}">段落 ${line}</p>`).join('');
 
-  // **スクロールで動くことまで真似る。** 実際の矩形はビューポート基準で、
-  // `anchorsOf` はそこから `scrollTop` を引いて中身基準へ戻している。
+  // スクロールで動くことまで真似る。
+  // 実際の矩形はビューポート基準で、`anchorsOf` はそこから `scrollTop` を引いて中身基準へ戻している。
   // 固定値を返すと、スクロールしたとたん対応がずれる。
   preview.getBoundingClientRect = () => ({ top: 0, bottom: 0, height: 0 }) as DOMRect;
   for (const [index, element] of [...preview.children].entries()) {
@@ -73,8 +74,8 @@ beforeEach(() => {
   topLine = 1;
 
   stopScrollSync();
-  // **エディターが載っている状態から始める。** 窓口はスクロール同期とは別で、
-  // Split でなくても在る（`attachEditorScrollPort`）。
+  // エディターがマウントされている状態から始める。
+  // インタフェースはスクロール同期とは別で、Split でなくても存在する（`attachEditorScrollPort`）。
   attachEditorScrollPort(port);
   document.body.innerHTML = '<div id="mx-preview"></div>';
   viewStore.scrollSync = true;
@@ -107,7 +108,7 @@ describe('開始と終了', () => {
   });
 });
 
-describe('主導権 (§2)', () => {
+describe('主導権', () => {
   it('エディターが動くとプレビューが追随する', () => {
     const preview = stubRects();
     startScrollSync();
@@ -130,9 +131,21 @@ describe('主導権 (§2)', () => {
     const preview = stubRects();
     startScrollSync();
 
-    // エディターが主導 → その結果として飛ぶプレビューの scroll は無視される。
+    // エディターが主導 → その結果として発火するプレビューの scroll は無視される。
     topLine = 10;
     notifyEditorScroll?.();
+    preview.dispatchEvent(new Event('scroll'));
+
+    expect(scrollToLine).not.toHaveBeenCalled();
+  });
+
+  it('主導権をエディターへ移すと、その直後のプレビューの scroll では追随しない', () => {
+    const preview = stubRects();
+    startScrollSync();
+
+    // 再描画でプレビューを機械的に動かす側（`document/live.ts`）が呼ぶ。
+    takeEditorLead();
+    preview.scrollTop = 400;
     preview.dispatchEvent(new Event('scroll'));
 
     expect(scrollToLine).not.toHaveBeenCalled();
@@ -152,7 +165,7 @@ describe('主導権 (§2)', () => {
   });
 });
 
-describe('双方向ジャンプ (§3)', () => {
+describe('双方向ジャンプ', () => {
   it('プレビューのダブルクリックで、その行へ飛ぶ', () => {
     const preview = stubRects();
     startScrollSync();
@@ -180,7 +193,7 @@ describe('双方向ジャンプ (§3)', () => {
     expect(revealLine).not.toHaveBeenCalled();
   });
 
-  it('同期が OFF でもジャンプは効く（§2 の但し書き）', () => {
+  it('同期が OFF でもジャンプは効く', () => {
     const preview = stubRects();
     startScrollSync();
     viewStore.scrollSync = false;
@@ -205,7 +218,7 @@ describe('双方向ジャンプ (§3)', () => {
     expect(preview.scrollTop).toBe(400);
   });
 
-  it('Split でなくてもエディターへは飛べる（Edit のアウトライン / #59）', () => {
+  it('Split でなくてもエディターへは飛べる（Edit のアウトライン）', () => {
     stubRects();
 
     jumpToEditorLine(10, { focus: false });

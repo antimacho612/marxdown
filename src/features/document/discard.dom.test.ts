@@ -56,7 +56,7 @@ describe('confirmDiscard', () => {
     expect(save).toHaveBeenCalledOnce();
   });
 
-  /** N-REL-01。失敗を握り潰して進むと、確認した意味が無くなる。 */
+  /** N-REL-01。失敗を無視して進むと、確認した意味が無くなる。 */
   it('「保存する」を選んで保存に失敗したら、進まない', async () => {
     registerSaver(() => Promise.resolve(false));
     documentStore.isDirty = true;
@@ -65,7 +65,7 @@ describe('confirmDiscard', () => {
     expect(await confirmDiscard()).toBe(false);
   });
 
-  /** 保存する手段が登録されていない状態でも、進まない側に倒す。 */
+  /** 保存する手段が登録されていない状態でも、進まない。 */
   it('保存の実体が登録されていなければ、進まない', async () => {
     documentStore.isDirty = true;
     choice = 'save';

@@ -1,9 +1,9 @@
 /**
- * エンコーディングの再解釈（03.ux-spec/07-status-and-notifications.md §3「クリックでエンコーディング再解釈」）。
+ * エンコーディングの再解釈。
  *
- * EOL の変換（`document/eol.ts`）は書き戻すときに効くので押しても読み直さないが、エンコーディングは読むときに効くので読み直すしかない。
+ * EOL の変換（`document/eol.ts`）は書き戻すときに反映されるので押しても読み直さないが、エンコーディングは読むときに反映されるので読み直す必要がある。
  * 読み直しは `reloadCurrent()` を通し、`F5` と同じ経路にエンコーディング指定だけを 1 つ渡す。
- * 未保存の確認は `openPath` の入口（`document/discard.ts`）がそのまま効くのでここには足さない。
+ * 未保存の確認は `openPath` の入口（`document/discard.ts`）がそのまま行うのでここには足さない。
  */
 import { ja } from '@/i18n/ja';
 import type { Encoding } from '@/platform';
@@ -28,5 +28,5 @@ export async function reinterpret(encoding: Encoding): Promise<void> {
   const meta = documentStore.meta;
   if (meta === null || meta.encoding === encoding) return;
 
-  await reloadCurrent({ encoding, notice: ja.status.reinterpreted(ja.status.encoding[encoding]) });
+  await reloadCurrent({ encoding, status: ja.status.reinterpreted(ja.status.encoding[encoding]) });
 }

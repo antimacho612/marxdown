@@ -1,5 +1,5 @@
 /**
- * 本文のテキストの置き場所（ADR-0005 / 02.architecture/08-state-management.md §1）。
+ * 本文のテキストの置き場所（ADR-0005）。
  *
  * 本文はストアに置かないという不変条件のため、`$state` を使わないモジュール変数で保持する。
  * 保持するのはエディターが未マウントの間だけで、マウント後は Monaco の `ITextModel` が保持する（`attachEditor` の時点でこちら側の保持分を破棄し、二重に持たない）。
@@ -17,27 +17,34 @@ export interface EditorTextPort {
    */
   sync: () => void;
   /**
-   * 文書を切り替える（M3 Phase 2b）。
+   * 文書を切り替える。
    *
    * `key` はタブ、`documentId` は文書の同一性（パス）を表す。
    * この 2 つが同じなら同じ編集の続きであり、Undo 履歴もカーソルも引き継ぐ。
    * どちらかが変われば別の文書であり、履歴を引き継いではいけない。
    *
-   * **引き継ぐと、Undo で別のファイルの本文が編集面へ入る。**
+   * 引き継ぐと、Undo で別のファイルの本文が編集面へ入る。
    * そのまま保存すれば、触っていない箇所どころかファイル全体が別物になる（N-CMP-03）。
    */
   switchTo: (key: number, documentId: string, text: string) => void;
   /**
-   * 1 行だけ差し替える（F-VIEW-01 / OQ-05）。
+   * 1 行だけ差し替える（F-VIEW-01）。
    *
    * 全体を差し替える `replace` と分けてある。
-   * `huge.md` でチェックボックスを 1 つ押すたびに全文を置き換えると、その 1 回に再トークナイズが丸ごと乗る。
+   * `huge.md` でチェックボックスを 1 つ押すたびに全文を置き換えると、その 1 回ごとに再トークナイズが丸ごと発生する。
    *
    * @param line 0 始まりの行番号。
    */
   replaceLine: (line: number, text: string) => void;
-  /** そのタブが抱えているものを捨てる（タブを閉じたとき / N-PERF-06）。 */
+  /** そのタブが保持しているものを解放する（タブを閉じたとき / N-PERF-06）。 */
   dispose: (key: number) => void;
+  /**
+   * そのタブの文書の同一性だけを付け替える（ファイルツリーでのリネーム・移動 / ADR-0020）。
+   *
+   * 中身は同じ文書のままなので、Undo 履歴とカーソルを引き継ぐ。
+   * 付け替えないと、次に `switchTo` へ来たときに別の文書と見なされてモデルが作り直される。
+   */
+  relabel: (key: number, documentId: string) => void;
 }
 
 /** エディターがマウントされていない間の保持先。マウントされたら `null` に戻す。 */
@@ -49,7 +56,7 @@ let port: EditorTextPort | null = null;
  * いま開いている文書の識別（`DocumentIdentity`）。
  *
  * 覚えておくのは、エディターは後からマウントされるためである。
- * 既定の表示モードは Preview であり（02.architecture/05-startup-sequence.md §1）、`Ctrl+Shift+V` を押した時点で「どのタブのどの文書か」を伝え直す必要がある。
+ * 既定の表示モードは Preview であり、`Ctrl+Shift+V` を押した時点で「どのタブのどの文書か」を伝え直す必要がある。
  */
 let current: DocumentIdentity | null = null;
 
@@ -59,10 +66,10 @@ const NO_DOCUMENT: DocumentIdentity = { key: 0, documentId: '<none>' };
 /**
  * 読み込んだ本文を渡す。`open.ts` が開くたびに呼ぶ。
  *
- * エディターが載っていれば、そちらの内容も差し替える。
+ * エディターがマウントされていれば、そちらの内容も差し替える。
  *
  * 未保存の変更の確認はここでは行わない。
- * 確認は呼び出し側（`openPath` / `newDocument`）の `confirmDiscard()` が担当する（02.architecture/08-state-management.md §3）。
+ * 確認は呼び出し側（`openPath` / `newDocument`）の `confirmDiscard()` が担当する。
  */
 export function setDocumentText(text: string, document: DocumentIdentity | null = null): void {
   if (document !== null) current = document;
@@ -84,7 +91,17 @@ export interface DocumentIdentity {
   documentId: string;
 }
 
-/** そのタブが抱えているものを捨てる。タブを閉じたときに呼ぶ（N-PERF-06）。 */
+/**
+ * そのタブの文書のパスが変わったことを伝える（ファイルツリーでのリネーム・移動 / ADR-0020）。
+ *
+ * 同じ文書の続きとして扱い、Undo 履歴を引き継ぐ（`EditorTextPort.relabel`）。
+ */
+export function relabelDocumentText(key: number, documentId: string): void {
+  if (current?.key === key) current = { key, documentId };
+  port?.relabel(key, documentId);
+}
+
+/** そのタブが保持しているものを解放する。タブを閉じたときに呼ぶ（N-PERF-06）。 */
 export function disposeDocumentText(key: number): void {
   port?.dispose(key);
 }
@@ -92,11 +109,11 @@ export function disposeDocumentText(key: number): void {
 /**
  * 1 行だけ差し替える（`features/document/task.ts`）。
  *
- * エディターが載っていればそちらへ渡し、Undo の 1 手として積む。
- * 載っていなければこちらの保持分を書き換える。
+ * エディターがマウントされていればそちらへ渡し、Undo の 1 手として加える。
+ * マウントされていなければこちらの保持分を書き換える。
  *
  * ダーティ化はここでは行わない。
- * エディター経由なら `onDidChangeContent` から立つため、ここでも立てると経路によって二重になる。
+ * エディター経由なら `onDidChangeContent` からダーティになるため、ここでも行うと経路によって二重になる。
  *
  * @returns 差し替えたら `true`。行が存在しなければ `false`。
  */
@@ -138,7 +155,7 @@ export function syncDocumentText(): void {
 export function attachEditor(next: EditorTextPort): void {
   port = next;
 
-  // マウント時点で開いている文書を載せる。
+  // マウント時点で開いている文書を渡す。
   // エディターは自分がどのタブのものかを知らないため、ここで伝える（`current`）。
   const identity = current ?? NO_DOCUMENT;
   next.switchTo(identity.key, identity.documentId, held ?? '');
@@ -148,9 +165,9 @@ export function attachEditor(next: EditorTextPort): void {
 /**
  * 登録を解除する。解除する前の内容をこちら側の保持先へ戻す。
  *
- * 呼ぶのはエディターを破棄するときだけである（タブを閉じる / M3）。
+ * 呼ぶのはエディターを破棄するときだけである。
  * モードを Preview へ切り替えただけでは解除しない。
- * 解除すると Undo 履歴が失われ、03.ux-spec/02-view-modes.md §4 の「モードを切り替えても保持する」を満たせなくなる。
+ * 解除すると Undo 履歴が失われ、「モードを切り替えても保持する」を満たせなくなる。
  */
 export function detachEditor(): void {
   if (!port) return;

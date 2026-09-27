@@ -1,8 +1,8 @@
 /**
  * 本文テキストの持ち主が状況で変わることの検証（ADR-0005 / `text.ts`）。
  *
- * ここが壊れると、エディターを載せた瞬間に本文が空になったり、
- * `huge.md` の 2MB を二重に握り続けたりする。**どちらも画面には出ない。**
+ * ここが壊れると、エディターをマウントした時点で本文が空になったり、`huge.md` の 2MB を二重に保持し続けたりする。
+ * どちらも画面には出ない。
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -15,7 +15,7 @@ import {
   type EditorTextPort,
 } from './text';
 
-/** テキストを 1 つ持つだけの偽エディター。CodeMirror は要らない。 */
+/** テキストを 1 つ持つだけの偽エディター。Monaco は要らない。 */
 function fakePort(initial: string): EditorTextPort & {
   text: string;
   replace: ReturnType<typeof vi.fn>;
@@ -28,19 +28,20 @@ function fakePort(initial: string): EditorTextPort & {
       port.text = next;
     }),
     sync: vi.fn(),
-    /** 1 行だけの差し替え（F-VIEW-01 / OQ-05）。 */
+    /** 1 行だけの差し替え（F-VIEW-01）。 */
     replaceLine: vi.fn((line: number, next: string) => {
       const lines = port.text.split('\n');
       lines[line] = next;
       port.text = lines.join('\n');
     }),
-    /** 文書の切り替え（M3 Phase 2b）。どのタブのどの文書で呼ばれたかを覚える。 */
+    /** 文書の切り替え。どのタブのどの文書で呼ばれたかを覚える。 */
     switchTo: vi.fn((key: number, documentId: string, next: string) => {
       port.text = next;
       port.switched.push({ key, documentId });
     }),
     switched: [] as { key: number; documentId: string }[],
     dispose: vi.fn(),
+    relabel: vi.fn(),
   };
   return port;
 }
@@ -87,12 +88,12 @@ describe('エディターが載っているあいだ', () => {
   });
 
   it('二重に持たない', () => {
-    // `huge.md`（2MB）で 2MB 余計に握り続けることになる。常駐アプリでは積算する。
+    // `huge.md`（2MB）で 2MB 余計に保持し続けることになる。常駐アプリでは蓄積する。
     setDocumentText('控えとして持っている内容');
     const port = fakePort('マウント前の内容');
     attachEditor(port);
 
-    // 載せた時点で控えは渡してある。ここから先の真実はエディター側だけにある。
+    // マウントした時点で控えは渡してある。ここから先の真実はエディター側だけにある。
     port.text = 'その後の編集';
     detachEditor();
     expect(getDocumentText()).toBe('その後の編集');

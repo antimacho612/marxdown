@@ -22,7 +22,7 @@ class ViewStore {
   zoom = $state(1);
 
   /**
-   * Split の分割比（エディター側の取り分 / 03.ux-spec/03-split-mode.md §1）。
+   * Split の分割比（エディター側の取り分）。
    *
    * 列幅そのものは CSS 変数が持つ（`split.ts`）。
    * ここに置いてあるのは分割線の `aria-valuenow` と永続化のためで、UI はこの値を参照して描画しない。
@@ -31,7 +31,7 @@ class ViewStore {
   split = $state(SPLIT_DEFAULT);
 
   /**
-   * Split のスクロール同期（03.ux-spec/03-split-mode.md §2）。既定は有効。
+   * Split のスクロール同期。既定は有効。
    *
    * ステータスバーの `⇄` が切り替える。永続化はしない。
    * 一時的に無効化するための設定であり、次回の起動時も無効のままだと同期しない理由が分からなくなる。
@@ -39,21 +39,18 @@ class ViewStore {
   scrollSync = $state(true);
 
   /**
-   * ペインの開閉と幅（F-NAV-04 / 03.ux-spec/06-panes.md §3）。
+   * ペインの開閉と幅（F-NAV-04）。
    *
    * `state.json` に載る形（`Panes`）をそのまま持つ。
    * 4 つのフィールドに分けると、永続化のたびに組み立て直す処理が必要になる。
    *
    * 初期値は `panes.ts` が bootstrap から同期的に設定する。
-   * 既定値のまま 1 フレーム描画されることはない（`zoom` と同じ理由 / 02.architecture/04-rust-responsibilities.md §5）。
-   *
-   * `left`（Explorer）は M3 で導入する。
-   * それまで書き換えられないが、構造を用意しておかないと、どちらの幅か判別できない値を先に永続化することになる。
+   * 既定値のまま 1 フレーム描画されることはない（`zoom` と同じ理由）。
    */
   panes = $state<Panes>({ left: { ...DEFAULT_PANES.left }, right: { ...DEFAULT_PANES.right } });
 
   /**
-   * ウィンドウが最大化されているか（03.ux-spec/01-screen-layout.md §1）。
+   * ウィンドウが最大化されているか。
    *
    * タイトルバーを自前で描いているため、`□` と `❐` の描き分けはフロント側が担当する。
    * この値は OS の状態の複製であり、唯一の情報源ではない。

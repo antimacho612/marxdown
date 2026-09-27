@@ -2,17 +2,19 @@
 //!
 //! `tauri-plugin-cli` は使わない。
 //! その `matches()` は `App` の構築後（`setup()` の中）でしか呼べない。
-//! 一方、02.architecture/05-startup-sequence.md §1 の起動シーケンスは、ウィンドウ生成より前にパスを確定させ、ファイル読み込みを WebView 初期化と並行させることを要求する。
+//! 一方、起動シーケンスは、ウィンドウ生成より前にパスを確定させ、ファイル読み込みを WebView 初期化と並行させることを要求する。
 //! そのため、プラグイン経由ではこの並行化ができない。
-//! また、05.performance-budget/05-operations.md §2 の T1（CLI 引数解析完了）を T0 の直後に置けることが、内訳の計測そのものに必要である。
+//! また、起動計測の T1（CLI 引数解析完了）を T0 の直後に置けることが、内訳の計測そのものに必要である。
 //!
 //! よって argv は `std::env::args_os()` から直接読む。
-//! 引数体系は 03.ux-spec/README.md に閉じており、clap を要する複雑さはない（04.tech-stack/06-rust.md §3）。
+//! 引数体系は小さく閉じており、clap を要する複雑さはない。
 
 use std::path::{Path, PathBuf};
 
 /// 起動時の表示モード（F-MODE-01〜03）。
-#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
+///
+/// `Deserialize` も持つのは、フロントからサテライトを開くとき（`commands::open_satellite`）に引数として渡されるためである。
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum ViewMode {
     Preview,
@@ -20,13 +22,22 @@ pub enum ViewMode {
     Split,
 }
 
+/// インストーラが呼ぶ PATH の操作（`path_env.rs` / F-OS-02）。
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PathOp {
+    /// `--add-to-path`
+    Add,
+    /// `--remove-from-path`
+    Remove,
+}
+
 /// 解析済みの起動引数。
-/// 不正な引数でも解析は失敗させず、`unknown` に積んで通知バーで知らせる。
+/// 不正な引数でも解析は失敗させず、`unknown` に加えて通知バーで知らせる。
+/// `unknown` の各要素は画面にそのまま並ぶため、利用者が入力した引数の形（値の欠けた `--mode`、不正な値の `--mode foo`）で持つ。
 #[derive(Debug, Clone, Default)]
 pub struct CliArgs {
     /// 絶対パスに解決済み。存在確認はまだ行っていない。
     pub paths: Vec<PathBuf>,
-    pub new_window: bool,
     pub mode: Option<ViewMode>,
     /// `--trace-startup <path>`。`nul` / `/dev/null` は「計測はするが書き出さない」。
     pub trace_startup: Option<PathBuf>,
@@ -35,14 +46,33 @@ pub struct CliArgs {
     /// `--bench-input <OUT>`。入力レスポンスを計測し、JSON を書き出して終了する。
     ///
     /// 計測専用（`scripts/bench-input.mjs` 用）。
-    /// M2 の完了条件「キー入力 → 反映が p95 で 16ms 以内」と [OQ-15](../../docs/07.open-questions/oq-15-markdown-worker.md) の判定は、どちらもこの経路でしか測定できない。
+    /// 入力レスポンスはこの経路でしか測定できない。
     pub bench_input: Option<PathBuf>,
-    /// `--gc-probe`。WebView2 に `--js-flags=--expose-gc` を渡す（OQ-18）。
+    /// `--gc-probe`。WebView2 に `--js-flags=--expose-gc` を渡す。
     ///
     /// 計測専用。
-    /// メモリが解放されない原因が到達可能な参照によるものか、Blink / V8 が未回収なだけかを切り分けるために必要である。
-    /// これが無いと DevTools から `gc()` を呼べず、候補 1 を検証できない。
+    /// 閉じた文書のメモリが、到達可能な参照によって残っているのか、GC が未実行なだけなのかを切り分けるために使う。
+    /// これが無いと DevTools から `gc()` を呼べない。
     pub gc_probe: bool,
+    /// `--add-to-path` / `--remove-from-path`。ウィンドウを作らずに PATH を更新して終了する。
+    ///
+    /// インストーラ専用（`windows/installer-hooks.nsh`）。
+    /// single-instance プラグインより前に処理するため、アプリが常駐していても argv は転送されない。
+    pub path_op: Option<PathOp>,
+    /// `-`。標準入力を読み、一時ファイルへ書き出してから起動し直す（F-OPEN-10 / `stdin.rs`）。
+    ///
+    /// `--` より後の `-` はファイル名として扱い、ここには入らない。
+    pub stdin: bool,
+    /// `--stdin-file <PATH>`。`-` を受けたプロセスが起動し直すときに付ける。
+    ///
+    /// 利用者が指定するものではない。
+    /// 読んだ後に消すため、一時ディレクトリ直下のファイル以外は `stdin::take` が拒否する。
+    pub stdin_file: Option<PathBuf>,
+    /// `--background`。ウィンドウを表示せずにトレイへ格納した状態で起動する（ADR-0022）。
+    ///
+    /// ログイン時の自動起動（`autostart.rs`）が `Run` に書く値に付ける。
+    /// 常駐中のプロセスへ転送されたときは何もしない。
+    pub background: bool,
     pub show_help: bool,
     pub show_version: bool,
     /// 解析できなかった引数。警告として通知バーに出す。
@@ -50,24 +80,24 @@ pub struct CliArgs {
 }
 
 /// `--help` の出力。オプションを足したらここも直す。
+///
+/// 載せるのは利用者が使うオプションだけである。
+/// 計測用（`--trace-startup` / `--exit-after-trace` / `--gc-probe` / `--bench-input`）とインストーラ用（`--add-to-path` / `--remove-from-path`）は解析するが、ここには載せない。
 pub const HELP: &str = "\
-marxdown — Markdown を見る・書くなら、これ一択。
+marxdown — Markdown ビューアー＆エディター
 
-USAGE:
-    marxdown [OPTIONS] [FILE|DIR]...
+使い方:
+    marxdown [オプション] [ファイル|フォルダー]...
+    <コマンド> | marxdown [オプション] -
 
-OPTIONS:
-    -n, --new-window           既存プロセスを使いつつ、新しいウィンドウで開く
-    -m, --mode <MODE>          起動時の表示モード: preview | edit | split
-        --trace-startup <OUT>  起動計測を有効にし、JSON を OUT へ書き出す
-                               OUT に nul を指定すると計測のみ行い書き出さない
-        --exit-after-trace     計測の書き出し後にプロセスを終了する（ベンチ用）
-    -h, --help                 このヘルプを表示する
-    -V, --version              バージョンを表示する
+引数:
+    -                      標準入力の内容を無題の文書として開く
 
-MEASUREMENT OPTIONS (計測用。開発ビルドでのみ意味を持つ):
-        --gc-probe                              DevTools から gc() を呼べるようにする (OQ-18)
-        --bench-input <OUT>                     入力レスポンスを計測し JSON を OUT へ書き出して終了する
+オプション:
+    -m, --mode <モード>    表示モードを指定して開く: preview | edit | split
+        --background       ウィンドウを表示せず、タスクトレイで起動する
+    -h, --help             このヘルプを表示する
+    -V, --version          バージョンを表示する
 ";
 
 /// `argv`（実行ファイル名を含まない）と `cwd` から引数を解析する。
@@ -105,7 +135,7 @@ pub fn parse(argv: &[String], cwd: &Path) -> CliArgs {
                     i += 1;
                     Some(v)
                 } else {
-                    args.unknown.push(concat!($name, " に値がない").to_string());
+                    args.unknown.push($name.to_string());
                     None
                 }
             }};
@@ -113,18 +143,21 @@ pub fn parse(argv: &[String], cwd: &Path) -> CliArgs {
 
         match key {
             "--" => only_paths = true,
+            "-" => args.stdin = true,
             "-h" | "--help" => args.show_help = true,
             "-V" | "--version" => args.show_version = true,
-            "-n" | "--new-window" => args.new_window = true,
             "--exit-after-trace" => args.exit_after_trace = true,
             "--gc-probe" => args.gc_probe = true,
+            "--background" => args.background = true,
+            "--add-to-path" => args.path_op = Some(PathOp::Add),
+            "--remove-from-path" => args.path_op = Some(PathOp::Remove),
             "-m" | "--mode" => {
                 if let Some(v) = take_value!("--mode") {
                     match v.as_str() {
                         "preview" => args.mode = Some(ViewMode::Preview),
                         "edit" => args.mode = Some(ViewMode::Edit),
                         "split" => args.mode = Some(ViewMode::Split),
-                        other => args.unknown.push(format!("--mode の値が不正: {other}")),
+                        other => args.unknown.push(format!("--mode {other}")),
                     }
                 }
             }
@@ -133,12 +166,17 @@ pub fn parse(argv: &[String], cwd: &Path) -> CliArgs {
                     args.trace_startup = Some(resolve(cwd, &v));
                 }
             }
+            "--stdin-file" => {
+                if let Some(v) = take_value!("--stdin-file") {
+                    args.stdin_file = Some(resolve(cwd, &v));
+                }
+            }
             "--bench-input" => {
                 if let Some(v) = take_value!("--bench-input") {
                     args.bench_input = Some(resolve(cwd, &v));
                 }
             }
-            // WebView2 / Tauri 自身が受け取るフラグは黙って無視する
+            // WebView2 / Tauri 自身が受け取るフラグは通知せずに無視する
             other if other.starts_with("--webview") || other.starts_with("--wv2") => {}
             other if other.starts_with('-') && other.len() > 1 => {
                 args.unknown.push(other.to_string());
@@ -188,12 +226,33 @@ mod tests {
         parse(&v, &cwd())
     }
 
-    /// OQ-18 の切り分け用。**既定では渡らない**ことが要件の半分なので、
-    /// 付けたときだけ true になることを固定する。
+    /// メモリ計測用。既定では渡らないことが要件の半分なので、付けたときだけ true になることを固定する。
     #[test]
     fn the_gc_probe_is_opt_in() {
         assert!(!args(&["a.md"]).gc_probe, "既定では expose-gc を渡さない");
         assert!(args(&["--gc-probe", "a.md"]).gc_probe);
+    }
+
+    #[test]
+    fn a_lone_dash_reads_stdin() {
+        let a = args(&["-m", "edit", "-"]);
+        assert!(a.stdin);
+        assert!(a.paths.is_empty(), "`-` はパスとして扱わない");
+        assert!(a.unknown.is_empty());
+    }
+
+    #[test]
+    fn a_dash_after_double_dash_is_a_file_name() {
+        let a = args(&["--", "-"]);
+        assert!(!a.stdin);
+        assert_eq!(a.paths, vec![cwd().join("-")]);
+    }
+
+    #[test]
+    fn parses_stdin_file() {
+        let a = args(&["--stdin-file", "x.md"]);
+        assert_eq!(a.stdin_file, Some(cwd().join("x.md")));
+        assert!(a.paths.is_empty());
     }
 
     #[test]
@@ -233,10 +292,15 @@ mod tests {
         assert_eq!(a.unknown.len(), 1);
     }
 
+    /// 廃止した `-n` / `--new-window` は、黙って無視せず未知の引数として知らせる（ADR-0019）。
     #[test]
-    fn parses_new_window_flag() {
-        assert!(args(&["-n", "a.md"]).new_window);
-        assert!(args(&["--new-window"]).new_window);
+    fn retired_new_window_flag_is_unknown() {
+        let a = args(&["-n", "--new-window", "a.md"]);
+        assert_eq!(
+            a.unknown,
+            vec!["-n".to_string(), "--new-window".to_string()]
+        );
+        assert_eq!(a.paths, vec![cwd().join("a.md")]);
     }
 
     #[test]
@@ -247,7 +311,7 @@ mod tests {
     }
 
     /// `--trace-startup` と同じく、出力先は cwd 基準で解決する。
-    /// **既定では立たない**ことが要件の半分（計測経路が普段の起動に混ざらない）。
+    /// 既定では有効にならないことが要件の半分（計測経路が普段の起動に混ざらない）。
     #[test]
     fn the_input_bench_is_opt_in_and_resolves_its_output() {
         assert!(args(&["a.md"]).bench_input.is_none());
@@ -258,8 +322,8 @@ mod tests {
         assert!(a.unknown.is_empty());
     }
 
-    /// 過去に存在し、結論が出たので撤去したフラグ。
-    /// 消したことを**テストで固定する**。うっかり復活させると落ちる。
+    /// 実装の比較にだけ使うフラグ（`--spike-*`）は受け付けない。
+    /// 比較のためだけの経路を製品に残さない。
     #[test]
     fn retired_spike_flags_are_no_longer_recognized() {
         let a = args(&[
@@ -272,12 +336,25 @@ mod tests {
         assert!(a.paths.is_empty());
     }
 
+    /// インストーラ専用のフラグは、付けたときだけ有効になり、パスとしては扱わない。
+    #[test]
+    fn parses_path_operations_for_the_installer() {
+        assert_eq!(args(&["a.md"]).path_op, None);
+
+        let a = args(&["--add-to-path"]);
+        assert_eq!(a.path_op, Some(PathOp::Add));
+        assert!(a.paths.is_empty());
+        assert!(a.unknown.is_empty());
+
+        assert_eq!(args(&["--remove-from-path"]).path_op, Some(PathOp::Remove));
+    }
+
     #[test]
     fn double_dash_makes_everything_a_path() {
         let a = args(&["--", "--mode", "-n"]);
         assert_eq!(a.paths.len(), 2);
         assert_eq!(a.mode, None);
-        assert!(!a.new_window);
+        assert!(a.unknown.is_empty());
     }
 
     #[test]

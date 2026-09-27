@@ -1,9 +1,9 @@
 // @vitest-environment jsdom
 /**
- * `Ctrl+F` / `Ctrl+H` の振り分け（F-VIEW-10 / F-EDIT-05 / 03.ux-spec/04-keybindings.md §4）。
+ * `Ctrl+F` / `Ctrl+H` の振り分け（F-VIEW-10 / F-EDIT-05）。
  *
- * **見ているのは「どちらが開くか」だけ。** 検索そのもの（プレビューの `Range` 探索 /
- * Monaco の find ウィジェット）は実体を載せず、開く / 閉じるの呼び出しをモックで数える。
+ * 検証するのは「どちらが開くか」だけである。
+ * 検索そのもの（プレビューの `Range` 探索 / Monaco の find ウィジェット）の実体は読み込まず、開く / 閉じるの呼び出し回数をモックで数える。
  * Split の判定はフォーカスに依るので、`#mx-editor` を本物の DOM として置く。
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -107,8 +107,8 @@ describe('2 つの検索を同時に開かない', () => {
   });
 
   it('エディター検索を一度も開いていなければ、閉じにいかない', async () => {
-    // **`editor` チャンクを落とさないための番人。** Preview だけで読んでいる起動の
-    // 初回 `Ctrl+F` でここを通ると、動的 import が走ってエディターが落ちてくる。
+    // `editor` チャンクを読み込ませないための確認。
+    // Preview だけで表示している起動の初回 `Ctrl+F` でここを通ると、動的 import が実行されてエディターが読み込まれる。
     await openFind();
     expect(closeEditorSearchLazily).not.toHaveBeenCalled();
   });
@@ -120,7 +120,7 @@ describe('Preview を離れるとき', () => {
     closePreviewFind();
     expect(closePreview).toHaveBeenCalledTimes(1);
 
-    // 2 回目は相手が居ない。
+    // 2 回目は閉じる対象が無い。
     closePreviewFind();
     expect(closePreview).toHaveBeenCalledTimes(1);
   });

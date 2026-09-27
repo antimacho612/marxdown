@@ -1,10 +1,10 @@
 /**
  * 未保存のまま別の文書へ移る前の確認（F-EDIT-03 / N-REL-01）。
  *
- * 単一文書のアプリでは「別のファイルを開く」も「閉じる」に当たるため、`open.ts` の 5 つの入口（argv 転送・ダイアログ・D&D・相対リンク・再読み込み）すべてで確認する。
+ * 表示中の文書を置き換えて開く操作は「閉じる」と同じ結果になるため、`open.ts` の 5 つの入口（argv 転送・ダイアログ・D&D・相対リンク・再読み込み）すべてで確認する。
  *
  * 「保存してから移る」の実体（`saveCurrent`）を直接 import すると、`save.ts` は既に `open.ts` を import しているため循環する。
- * `dirty.ts` / `refresh.ts` と同じ形で、`save.ts` 側から登録口へ登録させている。
+ * `dirty.ts` / `refresh.ts` と同じ形で、`save.ts` 側から登録させている。
  */
 import { getPlatform } from '@/platform';
 

@@ -4,12 +4,12 @@
 
 遅延チャンクにあり、`Ctrl+,` かメニューの「設定」が押されるまでロードされない。
 
-項目が 6 個から 28 個に増え 1 列に収まらなくなったため、モーダルダイアログ（カテゴリを持てる形）へ移した。
+項目が多く 1 列に収まらないため、モーダルダイアログ（カテゴリを持てる形）にしている。
 背後が見えなくなる代わりに、フォントまわりだけ見本を内蔵する（本文幅・折り返し・タブ幅は見本に出せないため出していない）。
 フォーカストラップ・inert 化・`::backdrop` はブラウザの `<dialog>` に任せる。
 
 並べる中身は `layout.ts` にあり、このファイルが持つのは「どの部品で描くか」だけである。
-項目を足すときにここを触る必要はない。
+項目を追加するときにここを触る必要はない。
 
 「既定に戻す」ボタンは既定でないときだけ出す（押しても無意味なボタンを並べない）。
 settings.json が壊れている間は保存を試みない。
@@ -22,7 +22,7 @@ Rust 側も拒否するが、UI が「保存できたように見せる」のを
    *
    * 直前に表示していた位置は設定ファイルに残すほどの情報ではなく、同じセッションで開き直したときに復元できれば足りる。
    */
-  let lastCategory: CategoryId = 'appearance';
+  let lastCategory: CategoryId = 'application';
 </script>
 
 <script lang="ts">
@@ -35,8 +35,18 @@ Rust 側も拒否するが、UI が「保存できたように見せる」のを
 
   import { settingsStore } from '../store.svelte';
   import { changeSetting } from './change';
-  import { Navigation, NumberField, RadioGroup, Section, SelectField, TextField, ToggleField } from './components';
+  import {
+    ListField,
+    Navigation,
+    NumberField,
+    RadioGroup,
+    Section,
+    SelectField,
+    TextField,
+    ToggleField,
+  } from './components';
   import { LAYOUT, type CategoryId, type FieldEntry } from './layout';
+  import { createRulerMemory, rulerColumn } from './rulers';
   import type SampleComponent from './samples/Sample.svelte';
 
   const { onclose }: { onclose: () => void } = $props();
@@ -148,7 +158,10 @@ Rust 側も拒否するが、UI が「保存できたように見せる」のを
    */
   function resetOf(key: SettingKey): (() => void) | undefined {
     if (!customized(key)) return undefined;
-    return () => changeSetting(key, null);
+    return () => {
+      if (key === 'editor.rulers') rulerMemory.forget();
+      changeSetting(key, null);
+    };
   }
 
   /** 表示条件を持たない項目は常に表示する。 */
@@ -157,45 +170,23 @@ Rust 側も拒否するが、UI が「保存できたように見せる」のを
   }
 
   /**
-   * 縦罫線だけは入力欄の文字列とストアの値が 1 対 1 で対応しない（`80, 100` と `[80, 100]`）。
+   * 見本の部品。読み込むまでは `null` で、その間は見本の場所に何も描かない。
    *
-   * 値をそのまま `value` に渡すと、`80,` まで入力した時点で `80` に書き戻されてカンマが消える。
-   * 入力途中の文字列はこのコンポーネント側で保持し、値として解釈できたときだけストアへ反映する。
-   */
-  // 初期値だけが要る。追従は下の `$effect` が担当する。
-  // svelte-ignore state_referenced_locally
-  let rulersText = $state(values['editor.rulers'].join(', '));
-  /** このコンポーネントが反映した値。これと異なる値が届いた場合は外部で変更されたことを表す。 */
-  // 同上。
-  // svelte-ignore state_referenced_locally
-  let pushedRulers = $state(values['editor.rulers'].join(', '));
-
-  $effect(() => {
-    const next = values['editor.rulers'].join(', ');
-    if (next === pushedRulers) return;
-    // 外部エディターでの編集か「既定に戻す」。入力欄を追いつかせる。
-    rulersText = next;
-    pushedRulers = next;
-  });
-
-  /**
-   * 見本の部品（OQ-38）。読み込むまでは `null` で、その間は見本の場所に何も描かない。
-   *
-   * 見本を持つのは「プレビュー」「エディター」のカテゴリだけなので、設定を開いただけでは `sample` チャンクを取りに行かない。
+   * 見本を持つのは「プレビュー」「エディター」のカテゴリだけなので、設定を開いただけでは `sample` チャンクを読み込まない。
    * `{#await}` は使わない。
-   * Svelte の await ブロックの実行時コードが遅延チャンクと `main` の共有チャンクへ切り出され、クリティカルパスが 0.35KB 太る。
+   * Svelte の await ブロックの実行時コードが遅延チャンクと `main` の共有チャンクへ切り出され、クリティカルパスが 0.35KB 増える。
    */
   let Sample = $state<typeof SampleComponent | null>(null);
 
   /**
    * 配色の選択（ADR-0014）。見本と同じ理由で遅延させる。
    *
-   * こちらは選択肢を作るのに 50 枚ぶんの色を引くため、`settings` の予算ではなく `theme` の予算に載る。
+   * こちらは選択肢を作るのに 50 枚ぶんの色を読み込むため、`settings` の予算ではなく `theme` の予算に含まれる。
    * 静的に import すると、設定を開いただけで配色の実体まで読み込まれる。
    */
   let ThemeField = $state<typeof ThemeFieldComponent | null>(null);
 
-  // 2 つを 1 つの効果でまとめて見る。どちらも「今のカテゴリに出番があれば読む」でしかない。
+  // 2 つを 1 つの effect でまとめて扱う。どちらも「今のカテゴリで使うなら読み込む」だけである。
   $effect(() => {
     if (Sample === null && entries.some((entry) => entry.kind === 'sample')) {
       void import('./samples/Sample.svelte').then((module) => (Sample = module.default));
@@ -205,19 +196,41 @@ Rust 側も拒否するが、UI が「保存できたように見せる」のを
     }
   });
 
-  function onRulersInput(raw: string): void {
-    rulersText = raw;
+  /** 並びの項目のキー。`layout.ts` で `list` を指定したものだけがここに入る。 */
+  type ListKey = Extract<FieldEntry, { widget: 'list' }>['key'];
 
+  /** 縦罫線の色は画面に出さないため、桁を打ち直したときに引き継ぐ（`rulers.ts`）。 */
+  const rulerMemory = createRulerMemory();
+
+  /** 並びを入力欄の 1 行にする。縦罫線は桁だけを出す。 */
+  function listText(key: ListKey): string {
+    if (key === 'explorer.exclude' || key === 'editor.wordSegmenterLocales' || key === 'marp.themes')
+      return values[key].join(', ');
+    return values[key].map(rulerColumn).join(', ');
+  }
+
+  /**
+   * カンマ区切りの 1 行を並びとして解釈し、ストアへ反映する（`ListField.svelte`）。
+   *
+   * 反映した 1 行を返す。解釈できない場合は `null` を返し、入力欄の文字列だけが残る。
+   * 空の要素を除くため、`dist, ` の末尾のカンマは値には現れない。
+   */
+  function onListInput(key: ListKey, raw: string): string | null {
     const parts = raw
       .split(',')
       .map((part) => part.trim())
       .filter((part) => part.length > 0);
-    // 打っている途中（`80, ` の空欄や `8o` の打ち間違い）では当てない。
-    if (parts.some((part) => !/^\d+$/u.test(part))) return;
 
-    const next = parts.map(Number);
-    pushedRulers = next.join(', ');
-    changeSetting('editor.rulers', next);
+    if (key === 'explorer.exclude' || key === 'editor.wordSegmenterLocales' || key === 'marp.themes') {
+      changeSetting(key, parts);
+      return parts.join(', ');
+    }
+
+    // 縦罫線は数値の並びである。打っている途中（`80, ` の空欄や `8o` の打ち間違い）では適用しない。
+    if (parts.some((part) => !/^\d+$/u.test(part))) return null;
+    const columns = parts.map(Number);
+    changeSetting(key, rulerMemory.restore(columns, values[key]));
+    return columns.join(', ');
   }
 </script>
 
@@ -228,8 +241,7 @@ Rust 側も拒否するが、UI が「保存できたように見せる」のを
   onkeydown={onKeydown}
   onclick={onBackdropClick}
   oncancel={(e) => {
-    // `Escape` は `onKeydown` で処理済み。ここへ来るのは他の閉じ要求
-    // （OS 側のジェスチャなど）なので、同じ出口へ寄せる。
+    // `Escape` は `onKeydown` で処理済み。ここへ来るのは他の閉じ要求（OS 側のジェスチャなど）なので、同じ処理を通す。
     e.preventDefault();
     close();
   }}
@@ -314,7 +326,7 @@ Rust 側も拒否するが、UI が「保存できたように見せる」のを
     <ToggleField
       settingKey={entry.key}
       label={entry.label}
-      description={`${description}（既定値: ${String(DEFAULT_SETTINGS[entry.key])}）`}
+      description={`${description}（${ja.settings.defaultValue(DEFAULT_SETTINGS[entry.key])}）`}
       checked={values[entry.key]}
       onChange={(checked) => changeSetting(entry.key, checked)}
     />
@@ -327,16 +339,15 @@ Rust 側も拒否するが、UI が「保存できたように見せる」のを
       value={values[entry.key]}
       onChange={(value) => changeSetting(entry.key, value)}
     />
-  {:else}
-    <!-- 縦罫線だけは入力途中の文字列を渡す（上の `rulersText` を参照）。 -->
-    <TextField
+  {:else if entry.widget === 'list'}
+    <ListField
       settingKey={entry.key}
       label={entry.label}
       {description}
-      value={rulersText}
-      placeholder={ja.settings.editor.rulers.placeholder}
-      inputmode="numeric"
-      onInput={onRulersInput}
+      value={listText(entry.key)}
+      placeholder={entry.placeholder}
+      inputmode={entry.key === 'editor.rulers' ? 'numeric' : 'text'}
+      onInput={(raw) => onListInput(entry.key, raw)}
       onReset={resetOf(entry.key)}
     />
   {/if}
@@ -344,7 +355,7 @@ Rust 側も拒否するが、UI が「保存できたように見せる」のを
 
 <style>
   /*
-   * トップレイヤに乗るので、シェルの grid にも `z-index` にも関わらない。
+   * トップレイヤに表示されるため、シェルの grid にも `z-index` にも関わらない。
    * 位置決め（中央）も `::backdrop` もブラウザ側が持っている。
    */
   .mx-settings {
@@ -370,8 +381,8 @@ Rust 側も拒否するが、UI が「保存できたように見せる」のを
     }
 
     /*
-   * 03.ux-spec/09-motion.md「パレットの出現 100ms ease-out」に揃える。
-   * 本文の上に重なるものであり、本文のレイアウトには触らない（§1 の基準）。
+   * モーションの規則の「パレットの出現 100ms ease-out」に揃える。
+   * 本文の上に重なるものであり、本文のレイアウトには触らない。
    */
     &[open],
     &[open]::backdrop {
@@ -452,11 +463,11 @@ Rust 側も拒否するが、UI が「保存できたように見せる」のを
   }
 
   /*
-   * 28 項目を 1 列に積むため、行どうしの間隔がそのまま圧迫感になる。
+   * 多数の項目を 1 列に並べるため、行どうしの間隔がそのまま圧迫感になる。
    *
    * 項目の中（ラベルと説明）が 8px、項目どうしが 20px、節どうしが 40px。
    * 隣り合う段の差を 2 倍以上に保つと、読む側は数えずに「まとまり」を見分けられる。
-   * 12px で一律に積んでいた頃は、どこまでが 1 つの節なのかが罫線でしか分からなかった。
+   * 一律の間隔では、どこまでが 1 つの節なのかが罫線でしか分からない。
    */
   .mx-settings__pane {
     min-width: 0;
@@ -472,7 +483,7 @@ Rust 側も拒否するが、UI が「保存できたように見せる」のを
 
   /*
    * 中身は `{@render}` 越しに入るため、Svelte の静的解析からは子要素が見えない。
-   * `:global` を外すとこの規則ごと未使用と判定されて落ち、項目が縦に潰れる。
+   * `:global` を外すとこの規則ごと未使用と判定されて除去され、項目の配置が崩れる。
    */
   .mx-settings__pane > :global(*) {
     flex: none;

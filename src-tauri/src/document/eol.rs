@@ -1,11 +1,11 @@
 //! 改行コードの検出と復元。
 //!
-//! 02.architecture/04-rust-responsibilities.md §2 の「メモリ上は常に LF、ディスク上は元の EOL」を実装する。
+//! 「メモリ上は常に LF、ディスク上は元の EOL」を実装する。
 //! これは N-CMP-03（触っていない箇所のバイト列を変えない）の中核。
 
 use serde::{Deserialize, Serialize};
 
-/// 改行コード。CR 単独は扱わず、読み込み時に LF へ寄せる（[`normalize`]）。
+/// 改行コード。CR 単独は扱わず、読み込み時に LF へ変換する（[`normalize`]）。
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum Eol {
@@ -143,8 +143,7 @@ mod tests {
 
     #[test]
     fn trailing_newline_is_preserved() {
-        // 末尾改行の有無はテキストそのものが持つ情報であり、
-        // 正規化と復元のどちらでも足したり削ったりしない。
+        // 末尾改行の有無はテキストそのものが持つ情報であり、正規化と復元のどちらでも足したり削ったりしない。
         assert_eq!(normalize("a\r\n"), "a\n");
         assert_eq!(normalize("a"), "a");
         assert_eq!(restore("a\n", Eol::Crlf), "a\r\n");

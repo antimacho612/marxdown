@@ -1,5 +1,5 @@
 /**
- * プレビュー内の全文検索（F-VIEW-10 / 03.ux-spec/04-keybindings.md §3）。
+ * プレビュー内の全文検索（F-VIEW-10）。
  * 遅延チャンクで `Ctrl+F` を押すまでロードされない。
  *
  * 一致箇所を `<mark>` で包む実装にはしない（段階的描画で増える DOM と混ざる／`huge.md` で本文の DOM が作り直され続ける／`data-line` の行マッピングが壊れる）。
@@ -13,8 +13,7 @@ import { bindKeys } from '@/lib/shortcuts';
  * 一度に登録する一致の上限。
  *
  * `huge.md`（2MB）で `e` を検索すると数十万件になる。
- * Range をその数だけ生成すると応答が停止するため、上限で打ち切り、打ち切ったことを件数表示に明示する
- * （表示しないと、すべての一致を検出したものと受け取られる）。
+ * Range をその数だけ生成すると応答が停止するため、上限で打ち切り、打ち切ったことを件数表示に明示する（表示しないと、すべての一致を検出したものと受け取られる）。
  */
 const MAX_MATCHES = 2000;
 
@@ -105,7 +104,7 @@ function mount(container: HTMLElement): SearchState {
   panel.append(input, counter, prev, next, close);
   document.body.append(panel);
 
-  // 開いている間だけ有効なキー（03.ux-spec/04-keybindings.md §3「F3 / Shift+F3 で次 / 前」）。
+  // 開いている間だけ有効なキー。
   // 閉じたら解除する。使用していない機能のキーをグローバルに残さない。
   const unbind = bindKeys([
     { key: 'F3', run: () => step(1) },

@@ -1,10 +1,10 @@
 // @vitest-environment jsdom
 /**
- * 表示モードの決定と切り替え（F-MODE-06, 07 / 03.ux-spec/02-view-modes.md）。
+ * 表示モードの決定と切り替え（F-MODE-06, 07）。
  *
- * **エディターの実体はモックする。** ここで見たいのはモードの筋道であって
- * CodeMirror ではない。実体まで載せると `editor` チャンク（178KB）の評価が
- * テストの度に走り、落ちたときにどちらの問題か切り分けられなくなる。
+ * エディターの実体はモックする。
+ * 検証するのはモードの切り替え手順であり、エディターの実体ではない。
+ * 実体までマウントすると `editor` チャンクの評価がテストのたびに実行され、失敗したときにどちらの問題か切り分けられなくなる。
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -60,8 +60,7 @@ describe('起動時のモード (F-MODE-07)', () => {
   });
 
   it('--mode は読み取り専用より優先する', () => {
-    // 明示された指定を、属性で黙って覆さない。読めないファイルではなく、
-    // 書き込めないファイルを開いているだけである。
+    // 明示された指定を、属性で黙って覆さない。読めないファイルではなく、書き込めないファイルを開いているだけである。
     expect(decideInitialMode(bootstrap({ mode: 'edit' }), meta({ readonly: true }))).toBe('edit');
   });
 
@@ -91,9 +90,8 @@ describe('モードの適用', () => {
   });
 
   /**
-   * **Monaco は `display: none` のあいだ寸法を失う**（ADR-0009 の受け入れコスト 3）。
-   * 面が出るモードに入ったら測り直させる。**Preview へ抜けるときは呼ばない**
-   * （見えない面のために仕事をしない / N-PERF-05）。
+   * Monaco は `display: none` のあいだ寸法を失う（ADR-0009 の受け入れコスト 3）。
+   * 面が表示されるモードに入ったら測り直させる。Preview へ移るときは呼ばない（表示されない面のために処理しない / N-PERF-05）。
    */
   it('エディターが見えるモードに入ったら器を測り直させる', async () => {
     await setMode('edit');
@@ -117,7 +115,7 @@ describe('Preview とのトグル (Ctrl+Shift+V)', () => {
   });
 
   it('直前の編集モードを覚えている', async () => {
-    // **「直前の編集モード」であって「Edit」ではない。**
+    // 「直前の編集モード」であって「Edit」ではない。
     await setMode('split');
     await setMode('preview');
     await togglePreview();
@@ -125,13 +123,13 @@ describe('Preview とのトグル (Ctrl+Shift+V)', () => {
   });
 });
 
-describe('スクロール位置の保持 (03.ux-spec/02-view-modes.md §4)', () => {
+describe('スクロール位置の保持', () => {
   it('Preview へ戻ると位置が復元される', async () => {
     const preview = document.querySelector<HTMLElement>('#mx-preview');
     if (!preview) throw new Error('受け皿が無い');
 
     // jsdom はレイアウトを持たないので scrollTop を素直に受ける。
-    // ここで見たいのは「離れる前に控えて、戻すときに当てる」筋道そのもの。
+    // 検証するのは「離れる前に保存し、戻すときに再設定する」手順そのものである。
     preview.scrollTop = 320;
 
     await setMode('edit');
@@ -142,7 +140,7 @@ describe('スクロール位置の保持 (03.ux-spec/02-view-modes.md §4)', () 
   });
 });
 
-describe('Split (F-MODE-03 / 03.ux-spec/03-split-mode.md)', () => {
+describe('Split (F-MODE-03)', () => {
   /** Preview へ戻すと「分割を解いた」ではなく「読む側へ移った」ことになる。 */
   it('Ctrl+\\ は Edit との間で切り替える', async () => {
     await setMode('edit');
@@ -182,8 +180,8 @@ describe('Split (F-MODE-03 / 03.ux-spec/03-split-mode.md)', () => {
   });
 
   /**
-   * **Split でもプレビューは見えている。**
-   * 「Preview モードか」で判定すると、Split へ移るたびに位置が控えられてしまう。
+   * Split でもプレビューは見えている。
+   * 「Preview モードか」で判定すると、Split へ移るたびに位置が保存されてしまう。
    */
   it('Preview → Split ではスクロール位置を控えない', async () => {
     const preview = document.querySelector<HTMLElement>('#mx-preview');
@@ -191,14 +189,14 @@ describe('Split (F-MODE-03 / 03.ux-spec/03-split-mode.md)', () => {
 
     preview.scrollTop = 200;
     await setMode('split');
-    // 控えていないので、戻す処理も走らない（実機では位置がそのまま残る）
+    // 保存していないため、戻す処理も実行されない（実機では位置がそのまま残る）
     expect(preview.scrollTop).toBe(200);
 
     preview.scrollTop = 640;
     await setMode('edit');
     preview.scrollTop = 0;
 
-    // Edit で初めて隠れる。そこで控えた 640 が Split へ戻ったときに当たる。
+    // Edit で初めて非表示になる。そこで保存した 640 が Split へ戻ったときに再設定される。
     await setMode('split');
     expect(preview.scrollTop).toBe(640);
   });

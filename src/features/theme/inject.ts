@@ -4,12 +4,12 @@
  * 面ごとに `<style>` を 1 枚だけ持ち、選ばれている 1 枚だけを流し込む。
  * 組み込みの 50 枚を持っているのは遅延チャンク（`lazy/catalog.ts`）で、ここにあるのは注入と封じ込めの判定だけである。
  *
- * ここが `main` に残るのは、`themes/` に置かれた配色をプレビューへ当てる経路がカタログを経由しないためである。
- * 選ばれている 1 枚の宣言は bootstrap に同梱されて届き（`Bootstrap.previewTheme`）、本文を描くより前に当てる必要がある。
+ * ここが `main` に残るのは、`themes/` に置かれた配色をプレビューへ適用する経路がカタログを経由しないためである。
+ * 選ばれている 1 枚の宣言は bootstrap に同梱されて届き（`Bootstrap.previewTheme`）、本文を描画するより前に適用する必要がある。
  * チャンクの取得を待つと、暗い配色を選んでいる人の初回フレームが既定の配色で描かれる。
  *
- * 封じ込めは廃止した `custom-css.ts` と同じ考え方で行う。
- * 波かっこを自前で数えず、セレクタに包んでブラウザの CSS パーサへ渡し、生成された規則が想定した 1 つだけかで判定する。
+ * 封じ込めの判定では波かっこを自前で数えない。
+ * セレクタで包んでブラウザの CSS パーサへ渡し、生成された規則が想定した 1 つだけかで判定する。
  * ユーザーが置いたファイルの中身は検証しない（ADR-0006）。保証するのは適用範囲だけである。
  */
 
@@ -20,7 +20,7 @@ export type Surface = 'preview' | 'editor';
  * 面を選ぶ属性。カタログが同じでも属性は分ける（ADR-0014 §3.3）。
  *
  * 同じ属性名にすると、エディター用に注入した `github` の規則が `#mx-preview` にも一致する。
- * 面ごとに別の配色を選べる以上、両方に効いてはいけない。
+ * 面ごとに別の配色を選べる以上、両方に適用されてはいけない。
  */
 const ATTRIBUTES: Record<Surface, string> = {
   preview: 'data-mx-theme',
@@ -49,12 +49,12 @@ export function injectTheme(surface: Surface, id: string, declarations: string):
   if (contained(style.sheet, selector)) return 'applied';
 
   // 適用範囲を保証できなかったものは残さない。
-  // 部分的に効いた状態にすると、どこまでが効いているのかを画面から読み取れない。
+  // 部分的に適用された状態にすると、どこまでが適用されているのかを画面から読み取れない。
   style.textContent = '';
   return 'rejected';
 }
 
-/** 面に当てているものを外す。`default` と、カタログに無い id のどちらもここを通る。 */
+/** 面に適用しているものを外す。`default` と、カタログに無い id のどちらもここを通る。 */
 export function clearTheme(surface: Surface): void {
   styleElement(surface).textContent = '';
 }

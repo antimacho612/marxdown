@@ -59,7 +59,7 @@
 <style>
   /*
    * 寸法は Windows 11 の ToggleSwitch（40x20）に合わせてある。
-   * 44x24 に 18px の玉と影を載せていた時期は、Windows のアプリの中でここだけ他のプラットフォームの部品に見えた。
+   * 寸法が異なると、Windows のアプリの中でここだけ他のプラットフォームの部品に見える。
    */
   .mx-settings__toggle {
     flex: none;
@@ -77,7 +77,7 @@
     touch-action: manipulation;
     -webkit-tap-highlight-color: transparent;
     vertical-align: middle;
-    /* 高頻度の操作なので 150ms を上限にする（03.ux-spec/09-motion.md §1 の基準: 本文のレイアウトに触らない）。 */
+    /* 高頻度の操作なので 150ms を上限にする（本文のレイアウトには触らない）。 */
     transition:
       background-color 150ms ease-out,
       border-color 150ms ease-out;
@@ -137,9 +137,7 @@
   }
 
   /*
-   * リポジトリの中で、ここだけがこの指定を持たない状態だった。
-   * 通知バー・パレット・設定ダイアログ・プレビュー・見出しジャンプはいずれも尊重している
-   * （03.ux-spec/10-accessibility.md「`prefers-reduced-motion` の尊重」）。
+   * 動きを伴う他の部品（通知バー・パレット・設定ダイアログ・プレビュー・見出しジャンプ）と同じく、`prefers-reduced-motion` を尊重する。
    */
   @media (prefers-reduced-motion: reduce) {
     .mx-settings__toggle,

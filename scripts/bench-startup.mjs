@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 /**
- * 起動計測ハーネス（05.performance-budget/05-operations.md §2）。
+ * 起動計測ハーネス。
  *
  * `--trace-startup` を付けた実行ファイルを繰り返し起動し、T0〜T9 の中央値を出す。
- * 初回はファイルキャッシュの影響が大きいため、**別枠で記録する**（§2）。
+ * 初回はファイルキャッシュの影響が大きいため、別枠で記録する。
  *
  * ```bash
- * pnpm build:app                       # release ビルドが必要
+ * pnpm build                           # release ビルドが必要
  * node scripts/bench-startup.mjs                       # 既定（cold, readme.md）
  * node scripts/bench-startup.mjs --runs 10 --file spec.md
  * node scripts/bench-startup.mjs --warm --runs 10      # ウォーム起動
@@ -29,7 +29,7 @@ const EXE_CANDIDATES = [
   join(ROOT, 'src-tauri', 'target', 'debug', 'marxdown'),
 ];
 
-/** T0 起点のマーカーの意味（05.performance-budget/05-operations.md §2）。 */
+/** T0 起点のマーカーの意味。 */
 const MARK_LABELS = {
   T0: 'プロセス起動',
   T1: 'CLI 引数解析完了',
@@ -45,10 +45,6 @@ const MARK_LABELS = {
   'T8-all': '全チャンクの描画完了',
   T9: 'window.show() 呼び出し',
 };
-
-/* ------------------------------------------------------------------ */
-/* 引数                                                                */
-/* ------------------------------------------------------------------ */
 
 function parseArgs(argv) {
   const out = {
@@ -92,10 +88,6 @@ function parseArgs(argv) {
   return out;
 }
 
-/* ------------------------------------------------------------------ */
-/* 実行                                                                */
-/* ------------------------------------------------------------------ */
-
 function findExe() {
   const exe = EXE_CANDIDATES.find((p) => existsSync(p));
   if (!exe) {
@@ -105,7 +97,7 @@ function findExe() {
     process.exit(1);
   }
   if (exe.includes('debug')) {
-    console.warn('⚠ debug ビルドを計測している。05.performance-budget/02-environment.md は release を要求する。');
+    console.warn('⚠ debug ビルドを計測している。計測は release ビルドで行う。');
   }
   return exe;
 }
@@ -150,10 +142,6 @@ function runOnce(exe, file, tracePath, spike, timeoutMs) {
   });
 }
 
-/* ------------------------------------------------------------------ */
-/* 集計                                                                */
-/* ------------------------------------------------------------------ */
-
 function median(values) {
   if (values.length === 0) return Number.NaN;
   const sorted = values.toSorted((a, b) => a - b);
@@ -170,9 +158,8 @@ function summarize(results) {
       byMark.set(m.id, list);
     }
   }
-  // T2b / T2c は T2→T3 の内訳。ここが伸びたときに
-  // 「WebView2 が重いのか、自分たちが足したものが重いのか」を切り分ける。
-  // 計測点を足したときに並びを気にしなくて済むよう、ここは集合として持つ。
+  // T2b / T2c は T2→T3 の内訳。ここが伸びたときに「WebView2 が重いのか、アプリ側で追加したものが重いのか」を切り分ける。
+  // 計測点を追加したときに並びを気にしなくて済むよう、ここは集合として持つ。
   // 表示順は下で中央値順に直す。
   const order = ['T0', 'T1', 'T2', 'T2b', 'T2c', 'T3', 'T4', 'T5', 'T6', 'T7', 'T8', 'T8-all', 'T9'];
   const marks = [];
@@ -188,14 +175,14 @@ function summarize(results) {
       n: values.length,
     });
   }
-  // **中央値の昇順に並べ替える。** printSummary の「内訳」は 1 つ前との差なので、
-  // 並びが時系列でないと内訳が負になって読めなくなる。計測点を足したときの保険。
+  // 中央値の昇順に並べ替える。
+  // printSummary の「内訳」は 1 つ前との差なので、並びが時系列でないと内訳が負になって読めなくなる。計測点を追加したときの保険。
   marks.sort((a, b) => a.medianMs - b.medianMs);
 
   return {
     marks,
     wallMedianMs: median(results.map((r) => r.wallMs)),
-    /** 「読める」瞬間 = T8。これが Cold Start の定義（05.performance-budget/04-targets.md §1）。 */
+    /** 「読める」瞬間 = T8。これが Cold Start の定義。 */
     readableMs: median(byMark.get('T8') ?? []),
   };
 }
@@ -218,9 +205,8 @@ function printSummary(title, summary, firstRun) {
   console.log(`\n  Cold Start (T8, 中央値): ${summary.readableMs.toFixed(1)}ms`);
   console.log(`  プロセス全体の実時間     : ${summary.wallMedianMs.toFixed(1)}ms`);
   if (firstRun !== undefined) {
-    console.log(`  初回（キャッシュ未温）   : ${firstRun.toFixed(1)}ms  ※ §2 により別枠`);
+    console.log(`  初回（キャッシュ未温）   : ${firstRun.toFixed(1)}ms  ※ 別枠`);
   }
-  // 05.performance-budget/04-targets.md §1
   const verdict =
     summary.readableMs <= 600
       ? '✓ 目標 600ms 以内'
@@ -229,10 +215,6 @@ function printSummary(title, summary, firstRun) {
         : '✗ 許容上限 900ms 超過';
   console.log(`  判定                     : ${verdict}`);
 }
-
-/* ------------------------------------------------------------------ */
-/* ウォーム起動                                                        */
-/* ------------------------------------------------------------------ */
 
 async function benchWarm(exe, files, opts) {
   const tracePath = join(TMP, 'warm.json');
@@ -320,10 +302,6 @@ async function waitFor(predicate, timeoutMs) {
   return false;
 }
 
-/* ------------------------------------------------------------------ */
-/* main                                                                */
-/* ------------------------------------------------------------------ */
-
 const opts = parseArgs(process.argv.slice(2));
 mkdirSync(TMP, { recursive: true });
 
@@ -342,13 +320,13 @@ if (opts.warm) {
   report.results.warm = warm.summary;
   report.results.warmRecords = warm.records;
 } else {
-  // **A/B の比較経路は全部畳んだ**（OQ-15 / ADR-0010）。残っているのは既定の 1 本だけ。
+  // 計測する構成は既定の 1 つだけである。
   const configs = [{ name: `既定（${opts.file}）`, spike: opts.spike }];
 
   for (const config of configs) {
     const results = [];
     let firstRun;
-    // §2: 初回はファイルキャッシュの影響が大きいため別枠で扱う
+    // 初回はファイルキャッシュの影響が大きいため別枠で扱う
     const warmup = await runOnce(exe, file, join(TMP, 'warmup.json'), config.spike, opts.timeoutMs);
     if (warmup.ok) {
       firstRun = warmup.trace.marks?.find((m) => m.id === 'T8')?.atMs;

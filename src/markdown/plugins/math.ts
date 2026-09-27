@@ -1,12 +1,12 @@
 /**
- * 数式記法をプレースホルダにする markdown-it プラグイン（F-VIEW-13 / 06.roadmap/m4-markdown.md §2）。
+ * 数式記法をプレースホルダにする markdown-it プラグイン（F-VIEW-13）。
  *
  * ここは記法の範囲を決めるだけで、KaTeX を呼ばない。
  * 描画は `features/preview/lazy/math.ts` が遅延チャンクで行う。
- * critical path の残余が 23.64KB しかないため、パーサ側のプラグイン（`markdown-it-katex` 相当）を pipeline に載せる選択肢が無い。
+ * パーサ側のプラグイン（`markdown-it-katex` 相当）を pipeline に載せるほどの残余が critical path に無い。
  *
  * 出力するプレースホルダは元の TeX をテキストとして持つ。
- * 描画が走る前や失敗したときは、その TeX がそのまま読める状態で残る。
+ * 描画される前や失敗したときは、その TeX がそのまま読める状態で残る。
  *
  * `lineMapPlugin` より前に `use` すること（`math_block` の `data-line` はあちらが付ける）。
  */
@@ -18,7 +18,7 @@ const NEWLINE = 0x0a;
 const ZERO = 0x30;
 const NINE = 0x39;
 
-/** 空白か改行か。開始記号の直後と終了記号の直前を弾くために使う。 */
+/** 空白か改行か。開始記号の直後と終了記号の直前を除外するために使う。 */
 function isSpace(code: number): boolean {
   return code === 0x20 || code === 0x09 || code === NEWLINE;
 }
@@ -26,12 +26,12 @@ function isSpace(code: number): boolean {
 /**
  * インラインの数式（`$...$` と `$$...$$`）。
  *
- * 通貨の表記を数式にしないため、次の 3 つを満たすものだけを拾う。
+ * 通貨の表記を数式にしないため、次の 3 つを満たすものだけを対象にする。
  * 開始記号の直後が空白でないこと、終了記号の直前が空白でないこと、終了記号の直後が数字でないこと。
  * `$5 と $10` は 3 つ目に該当するため数式にならない。
  *
  * 行をまたぐ書き方は認めない。
- * 認めると、閉じ忘れた `$` が段落の末尾まで数式として飲み込む。
+ * 認めると、閉じ忘れた `$` から段落の末尾までが数式になる。
  */
 function mathInline(state: StateInline, silent: boolean): boolean {
   const start = state.pos;
@@ -83,7 +83,7 @@ function lineStart(state: StateBlock, line: number): number {
  * ブロックの数式（`$$` で始まる行）。
  *
  * 閉じていないものは数式にしない（`false` を返して段落として扱わせる）。
- * 末尾まで飲み込む実装にすると、`$$` を 1 つ書き損なっただけで以降の本文が全部消える。
+ * 末尾まで取り込む実装にすると、`$$` を 1 つ書き損なっただけで以降の本文が全部消える。
  */
 function mathBlock(state: StateBlock, startLine: number, endLine: number, silent: boolean): boolean {
   const start = lineStart(state, startLine);
@@ -122,7 +122,7 @@ function mathBlock(state: StateBlock, startLine: number, endLine: number, silent
     content = parts.join('\n');
   }
 
-  // 前後の空白は落とす。行ごとの字下げは `lineStart` の時点で既に外れている（TeX では意味を持たない）。
+  // 前後の空白は除く。行ごとの字下げは `lineStart` の時点で既に除かれている（TeX では意味を持たない）。
   content = content.trim();
   if (content === '') return false;
   if (silent) return true;

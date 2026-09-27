@@ -1,41 +1,43 @@
 <!--
-  Explorer のツールバー（F-NAV-03 / 03.ux-spec/06-panes.md §1.1）。
+  Explorer のツールバー（F-NAV-03）。
 
   遅延チャンク側にある。ペインを開くまで読み込まない（`ExplorerBody.svelte`）。
 
-  いまはフィルターの 2 つだけだが、表示の更新などツリーへの操作もここに並べる。
-  ボタンの見た目は `mx-etoolbar__button` に集約してあり、増やすときは要素を足すだけでよい。
+  並びは「作る」「絞る」「表示を整える」の 3 群で、群の間に区切りを置く。
+  ボタンの見た目は `mx-etoolbar__button` に集約してあり、増やすときは要素を追加するだけでよい。
 
   文字ラベルは置かない。ペインは 180px まで狭くなるため、操作が増えた分だけ折り返しで縦に伸びる。
   代わりに、現在の状態をツールチップへ添える（`app/StatusBar.svelte` の `⇄` と同じ理由）。
 -->
 <script lang="ts">
   import { ja } from '@/i18n/ja';
+  import { jaExplorer } from '@/i18n/ja-explorer';
   import Icon from '@/lib/Icon.svelte';
 
-  import { treeStore } from '../tree.svelte';
+  import { collapseAll, reloadTree, treeStore } from '../tree.svelte';
+  import { startCreate } from './actions';
   import { filterStore } from './filter.svelte';
 
-  /** 拡張子フィルターが効いている間、Markdown フィルターは表示を変えない（`filter.svelte.ts`）。 */
+  /** 拡張子フィルターが有効な間、Markdown フィルターは表示を変えない（`filter.svelte.ts`）。 */
   const overridden = $derived(filterStore.extensions.length > 0);
 
   let row: HTMLElement | null = $state(null);
   let input: HTMLInputElement | null = $state(null);
   let extensionsButton: HTMLButtonElement | null = $state(null);
 
-  /** Tab の順路に載せるボタンの位置（roving tabindex）。 */
+  /** Tab の順路に置くボタンの位置（roving tabindex）。 */
   let stop = $state(0);
 
-  /** 開いた直後に入力欄へフォーカスする。開いてから自分で掴み直す操作を挟ませない。 */
+  /** 開いた直後に入力欄へフォーカスする。開いた後にもう一度クリックする操作を必要としない。 */
   $effect(() => {
     if (filterStore.extensionsOpen) input?.focus();
   });
 
   /**
-   * 順路に載せるボタンを 1 つに絞る（WAI-ARIA の toolbar）。
+   * 順路に置くボタンを 1 つに絞る（WAI-ARIA の toolbar）。
    *
    * 木も同じ規則で動いており（`FileTree.svelte`）、ペインの中で移動の仕方を変えない。
-   * 属性ではなく DOM 側で配るのは、ボタンを足すたびに添字を書き足さずに済ませるためである。
+   * 属性ではなく DOM 側で割り当てるのは、ボタンを追加するたびに添字を書き足さずに済ませるためである。
    */
   $effect(() => {
     for (const [index, item] of buttons().entries()) item.tabIndex = index === stop ? 0 : -1;
@@ -45,7 +47,7 @@
     return [...(row?.querySelectorAll<HTMLButtonElement>('.mx-etoolbar__button') ?? [])];
   }
 
-  /** 左右キーで移動する。`aria-disabled` のボタンも飛ばさない。効かない理由を読み取る手段が無くなる。 */
+  /** 左右キーで移動する。`aria-disabled` のボタンもスキップしない。スキップすると、機能しない理由を読み取る手段が無くなる。 */
   function onKeyDown(event: KeyboardEvent): void {
     const items = buttons();
     const from = items.indexOf(document.activeElement as HTMLButtonElement);
@@ -126,9 +128,40 @@
     bind:this={row}
     onkeydown={onKeyDown}
   >
+    <button
+      type="button"
+      class="mx-etoolbar__button"
+      aria-label={jaExplorer.newFile}
+      title={jaExplorer.newFile}
+      onclick={() => void startCreate(false)}
+    >
+      <Icon name="document-plus" />
+    </button>
+
+    <button
+      type="button"
+      class="mx-etoolbar__button"
+      aria-label={jaExplorer.newFolder}
+      title={jaExplorer.newFolder}
+      onclick={() => void startCreate(true)}
+    >
+      <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" focusable="false">
+        <path
+          d="M2.4 4.2h4l1.3 1.5h5.9v6.9H2.4Z M8 7.6v3.4 M6.3 9.3h3.4"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.5"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        />
+      </svg>
+    </button>
+
+    <span class="mx-etoolbar__separator" aria-hidden="true"></span>
+
     <!--
       押せなくするのではなく `aria-disabled` にしてある。
-      `disabled` はフォーカスを受けられなくなるため、キーボードだけでは効かない理由を読み取る手段が無くなる。
+      `disabled` はフォーカスを受けられなくなるため、キーボードだけでは機能しない理由を読み取る手段が無くなる。
     -->
     <button
       type="button"
@@ -171,6 +204,50 @@
         />
       </svg>
     </button>
+
+    <span class="mx-etoolbar__separator" aria-hidden="true"></span>
+
+    <!-- 監視が届かない場所（ネットワークドライブなど）のために置く（ADR-0021）。 -->
+    <button
+      type="button"
+      class="mx-etoolbar__button"
+      aria-label={jaExplorer.refresh}
+      title={jaExplorer.refresh}
+      onclick={() => void reloadTree()}
+    >
+      <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" focusable="false">
+        <path
+          d="M12.9 7.2A5 5 0 1 0 11.6 11.5 M13.2 3.4v3.9H9.3"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.5"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        />
+      </svg>
+    </button>
+
+    <button
+      type="button"
+      class="mx-etoolbar__button"
+      aria-label={jaExplorer.collapseAll}
+      title={jaExplorer.collapseAll}
+      onclick={() => {
+        collapseAll();
+        resetTreeFocus();
+      }}
+    >
+      <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" focusable="false">
+        <path
+          d="M3.4 2.6h9.2v10.8H3.4Z M5.8 8h4.4"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.5"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        />
+      </svg>
+    </button>
   </div>
 
   {#if filterStore.extensionsOpen}
@@ -204,6 +281,14 @@
     display: flex;
     flex-wrap: wrap;
     gap: var(--mx-space-1);
+  }
+
+  .mx-etoolbar__separator {
+    align-self: center;
+    width: 1px;
+    height: 14px;
+    margin-inline: 2px;
+    background: var(--mx-color-border-subtle);
   }
 
   .mx-etoolbar__button {

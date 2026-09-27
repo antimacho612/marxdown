@@ -1,12 +1,13 @@
 /**
- * 設定 UI からの変更（F-CONF-05 / 02.architecture/04-rust-responsibilities.md §5）。
+ * 設定 UI からの変更（F-CONF-05）。
  * 遅延チャンク側にあり、`main` には見た目適用（`appearance.ts`）とストアだけが残る。
  *
- * 見た目は即座に当て、保存はデバウンスする（`zoom.ts` と同じ）。
+ * 見た目は即座に適用し、保存はデバウンスする（`zoom.ts` と同じ）。
  * 1 文字ごとに `settings.json` を書かないためである。
- * 書き戻しの結果を待たずに楽観的にストアへ入れるのは、Rust 側も同じ範囲（`SETTINGS_SCHEMA`）で潰すため返り値が一致するからである。
+ * 書き戻しの結果を待たずに楽観的にストアへ入れるのは、Rust 側も同じ範囲（`SETTINGS_SCHEMA`）で丸めるため返り値が一致するからである。
  */
 import { describeOpenError, documentStore } from '@/features/document';
+import { reloadTree } from '@/features/workspace';
 import {
   clampSetting,
   DEFAULT_SETTINGS,
@@ -29,7 +30,7 @@ let timer: ReturnType<typeof setTimeout> | null = null;
  *
  * キー単位で蓄積するため、同じ項目を連続で変更しても書き込みは 1 回で済む。
  * `null` はキーの削除を意味し（既定値に戻す）、Rust 側の `patched` がその行ごと削除する。
- * 既定値を書き込む形にしないのは、既定値が変わったときに追従させるためである（02.architecture/04-rust-responsibilities.md §5）。
+ * 既定値を書き込む形にしないのは、既定値が変わったときに追従させるためである。
  */
 let pending: SettingsPatch = {};
 
@@ -52,7 +53,7 @@ export function changeSetting<K extends keyof Settings>(key: K, value: Settings[
   schedulePersist();
 }
 
-/** 見た目に当てる値を決める。`null`（既定に戻す）は既定値そのもの。 */
+/** 見た目に適用する値を決める。`null`（既定に戻す）は既定値そのもの。 */
 function resolve<K extends keyof Settings>(key: K, value: Settings[K] | null): Settings[K] {
   if (value === null) return DEFAULT_SETTINGS[key];
   if (isNumericKey(key) && typeof value === 'number') {
@@ -63,7 +64,7 @@ function resolve<K extends keyof Settings>(key: K, value: Settings[K] | null): S
 
 function schedulePersist(): void {
   if (timer !== null) clearTimeout(timer);
-  // 1 回だけの `setTimeout` であり、ポーリングではない（05.performance-budget/04-targets.md §5）。
+  // 1 回だけの `setTimeout` であり、ポーリングではない。
   timer = setTimeout(() => {
     timer = null;
     void persist();
@@ -90,6 +91,11 @@ async function persist(): Promise<void> {
 
   settingsStore.values = saved;
   applyAppearance(saved);
+
+  // 除外の glob が変わったらファイルツリーを読み直す。
+  // `changeSetting` ではなくここで行うのは、打鍵のたびに木を読み直さないためである。
+  // 保存はデバウンスされており、入力が止まってから 1 回だけ通る。
+  if ('explorer.exclude' in patch) void reloadTree();
 }
 
 /** テスト用。デバウンス中の書き込みを今すぐ流す。 */

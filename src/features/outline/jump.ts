@@ -1,5 +1,5 @@
 /**
- * アウトラインから本文の見出しへ飛ぶ（F-VIEW-02 / 03.ux-spec/06-panes.md §2）。
+ * アウトラインから本文の見出しへ移動する（F-VIEW-02）。
  *
  * `id`（`markdown-it-anchor`）は記号だけの見出しで空になりうるうえ重複連番が Markdown 側の都合で変わるため、行に 1 ブロックしか始まらず一意な `data-line`（`line-map.ts`）を優先し、`id` は保険として後ろに置く。
  */
@@ -12,11 +12,10 @@ const HEADINGS = 'h1, h2, h3, h4, h5, h6';
 /**
  * 見出しへスクロールする。見つからなければ何もしない。
  *
- * 段階的描画の途中では、まだ DOM に無い見出しがある。押しても動かないのは
- * 通知するほどのことではない（数百 ms 後には入っている）。
+ * 段階的描画の途中では、まだ DOM に無い見出しがある。押しても動かないのは通知するほどのことではない（数百 ms 後には入っている）。
  */
 export function jumpToHeading(item: OutlineItem): void {
-  // Split では両方の面が該当する見出しへ移動する（03.ux-spec/03-split-mode.md §3）。
+  // Split では両方の面が該当する見出しへ移動する。
   // エディターがマウントされていなければ何も起きない。
   //
   // フォーカスは移さない。移すと続けて次の見出しを選べなくなる。
@@ -27,8 +26,8 @@ export function jumpToHeading(item: OutlineItem): void {
   const target = findHeading(container, item);
   if (!target) return;
 
-  // 03.ux-spec/09-motion.md「スクロールジャンプ 200ms / `prefers-reduced-motion` で無効」。
-  // 位置の変化が大きいほど、飛んだ先が本文のどこなのか分からなくなる。
+  // モーションの規則「スクロールジャンプ 200ms / `prefers-reduced-motion` で無効」。
+  // 位置の変化が大きいほど、移動先が本文のどこなのか分からなくなる。
   target.scrollIntoView({ block: 'start', behavior: prefersReducedMotion() ? 'auto' : 'smooth' });
 }
 

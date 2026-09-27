@@ -1,10 +1,10 @@
 // @vitest-environment jsdom
 /**
- * スクロール同期の窓口の、Monaco 側の実装（F-MODE-05 / `scroll-port.ts`）。
+ * スクロール同期のインタフェースの、Monaco 側の実装（F-MODE-05 / `scroll-port.ts`）。
  *
- * 配線ではなく換算を見る。
- * 「どちらが主導するか」「ダブルクリックがどの行になるか」は `features/view/scroll-sync.dom.test.ts` が偽のポートで見ている。
- * ここが見るのは行番号とスクロール量の換算であり、エンジンを差し替えたときに真っ先に壊れるのはこちらである。
+ * 配線ではなく換算を検証する。
+ * 「どちらが主導するか」「ダブルクリックがどの行になるか」は `features/view/scroll-sync.dom.test.ts` が偽のポートで検証している。
+ * ここで検証するのは行番号とスクロール量の換算である。
  *
  * Monaco の `getTopForLineNumber` はレイアウトではなく設定の `lineHeight` から積み上げて計算するため（`viewLayout`）、描画されない jsdom でも正しい値になる。
  * 折り返しが起きないぶん「1 行 = `lineHeight`」で読めるので、期待値も書ける。
@@ -28,7 +28,7 @@ function harness(): monaco.editor.IStandaloneCodeEditor {
     value: '',
     language: 'markdown',
     automaticLayout: false,
-    // 概要ルーラは canvas を触る（`editor.ts` と同じ理由で切る）。
+    // 概要ルーラは canvas を使うため無効にする。
     overviewRulerLanes: 0,
     minimap: { enabled: false },
     lineHeight: LINE_HEIGHT,
@@ -56,8 +56,8 @@ describe('スクロール量 → 行番号', () => {
   });
 
   it('行の途中は端数で返る', () => {
-    // **整数に丸めない。** 丸めると、行あたりの高さが違う相手（プレビュー）で
-    // 1 行ぶんの跳ねになる。
+    // 整数に丸めない。
+    // 丸めると、行あたりの高さが違う相手（プレビュー）で 1 行ぶんのずれになる。
     const target = harness();
     target.setScrollTop(10 * LINE_HEIGHT + LINE_HEIGHT / 2);
     expect(createScrollPort(target).topLine()).toBeCloseTo(11.5, 5);
@@ -85,7 +85,7 @@ describe('行番号 → スクロール量', () => {
   });
 });
 
-describe('ジャンプ (§3)', () => {
+describe('ジャンプ', () => {
   it('カーソルをその行の先頭へ置く', () => {
     const target = harness();
     createScrollPort(target).revealLine(50, { focus: false });

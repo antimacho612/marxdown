@@ -1,8 +1,8 @@
 /**
- * ペインの開閉と幅（03.ux-spec/06-panes.md §3）。
+ * ペインの開閉と幅。
  *
- * §4 はキーの意味を「ペイン（開閉する）」と「ビュー（出してフォーカスする）」の 2 系統に分けることを求めており、このモジュールは前者だけを持ち中身が何かは知らない（ビュー側は `features/outline/show.ts`）。
- * 開閉は倍率と同じく `initPanes` で bootstrap から同期的に当てる（後から当てると本文が一度全幅で描かれた後に幅が縮小して見える）。
+ * UX 仕様はキーの意味を「ペイン（開閉する）」と「ビュー（出してフォーカスする）」の 2 系統に分けることを求めており、このモジュールは前者だけを持ち中身が何かは知らない（ビュー側は `features/outline/show.ts`）。
+ * 開閉は倍率と同じく `initPanes` で bootstrap から同期的に適用する（後から適用すると本文が一度全幅で描画された後に幅が縮小して見える）。
  *
  * ADR-0005 が禁じるのは本文をリアクティブな状態に置くことで、数値 1 つは対象外である。
  * ドラッグ中は rAF で間引き、永続化は 400ms デバウンスで受ける。
@@ -10,11 +10,11 @@
 import { viewStore } from '@/features/view';
 import { getPlatform, type Bootstrap, type Panes } from '@/platform';
 
-/** ペイン幅の既定値と下限。`src-tauri/src/store.rs` の `PANE_WIDTH_*` と一致させる（03.ux-spec/06-panes.md §3）。 */
+/** ペイン幅の既定値と下限。`src-tauri/src/store.rs` の `PANE_WIDTH_*` と一致させる。 */
 export const PANE_WIDTH_DEFAULT = 240;
 export const PANE_WIDTH_MIN = 180;
 /**
- * 上限は §3 には無い。
+ * 上限は UX 仕様には無い。
  * 本文の領域を確保するため（Principle 2）の制限であり、Rust 側にも同じ値があるため、手で書いた `state.json` はそちらで丸められる。
  */
 export const PANE_WIDTH_MAX = 640;
@@ -27,7 +27,7 @@ let persistTimer: ReturnType<typeof setTimeout> | null = null;
 /**
  * bootstrap から同期的に初期化する。シェルを描画するより前に呼ぶこと。
  *
- * 記録が無いときは閉じた状態にする（F-NAV-04 / §3 の引用ブロック）。
+ * 記録が無いときは閉じた状態にする（F-NAV-04）。
  * 既定値は Rust 側で埋められているため、ここに渡る `panes` は常にすべての値を持つ。
  */
 export function initPanes(bootstrap: Bootstrap | null): void {
@@ -40,7 +40,7 @@ export function initPanes(bootstrap: Bootstrap | null): void {
   };
 }
 
-/** レフトペインを開閉する（`Ctrl+Shift+B` / 03.ux-spec/06-panes.md §4）。中身が何であれ、開閉だけを行う。 */
+/** レフトペインを開閉する（`Ctrl+Shift+B`）。中身が何であれ、開閉だけを行う。 */
 export function toggleLeftPane(): void {
   setLeftPaneOpen(!viewStore.panes.left.open);
 }
@@ -60,7 +60,7 @@ export function setLeftPaneOpen(open: boolean): void {
 /**
  * レフトペインの幅を変える（ドラッグ / キーボード）。
  *
- * 左右で別々に記憶する（§3）。ライトペインと同じ丸めを通す。
+ * 左右で別々に記憶する。ライトペインと同じ丸めを通す。
  */
 export function setLeftPaneWidth(width: number, persist = true): number {
   const next = clampPaneWidth(width);
@@ -69,12 +69,12 @@ export function setLeftPaneWidth(width: number, persist = true): number {
   return next;
 }
 
-/** ライトペインを開閉する（`Ctrl+Alt+B` / 03.ux-spec/06-panes.md §4）。中身が何であれ、開閉だけを行う。 */
+/** ライトペインを開閉する（`Ctrl+Alt+B`）。中身が何であれ、開閉だけを行う。 */
 export function toggleRightPane(): void {
   setRightPaneOpen(!viewStore.panes.right.open);
 }
 
-/** ライトペインを開く。既に開いていれば何もしない（閉じる動作は持たない / §4）。 */
+/** ライトペインを開く。既に開いていれば何もしない（閉じる動作は持たない）。 */
 export function openRightPane(): void {
   setRightPaneOpen(true);
 }
@@ -107,10 +107,9 @@ export function clampPaneWidth(width: number): number {
 
 /**
  * 保存を遅らせる。
- * 1 回だけの `setTimeout` であり、ポーリングではない（05.performance-budget/04-targets.md §5）。
+ * 1 回だけの `setTimeout` であり、ポーリングではない。
  *
- * 左右をまとめて送るのは、`state.json` に載る形と呼び出しの単位を合わせるためである。
- * 左（M3）の値は書き換えられないため、送り返しても内容は変わらない。
+ * 左右をまとめて送るのは、`state.json` に保存する形と呼び出しの単位を合わせるためである。
  */
 function schedulePersist(): void {
   if (persistTimer !== null) clearTimeout(persistTimer);

@@ -1,11 +1,11 @@
 /**
- * 例外を 1 行の文字列に落とす。
+ * 例外を 1 行の文字列にする。
  *
  * Rust の `CoreError` は `{ kind, path, message }` のプレーンなオブジェクトで届く。
  * `Error` にはならないため、`e.message` を直接読めない経路がある。
  *
- * 種別ごとの日本語（「ファイルが見つかりません」など）への変換は `describeOpenError`（`features/document/open.ts`）が担当する。
- * ここはどの分岐にも該当しなかった場合の受け皿である。
+ * 開発者向けの記録（`debug.lastError` など）に使う。
+ * 画面に出す文言は `describeOpenError`（`features/document/open.ts`）が `kind` から作る。
  */
 export function toMessage(e: unknown): string {
   if (e instanceof Error) return e.message;

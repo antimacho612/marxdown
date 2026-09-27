@@ -1,11 +1,11 @@
 /**
  * 保存経路（F-EDIT-02, 14 / N-REL-01, 02 / N-CMP-03）。
  *
- * [OQ-29](../../docs/07.open-questions/oq-29-dx-investment.md) がこの土台を先に作れと言った理由がここにある。
- * 単体テストでは「エディターの内容 → `WriteRequest` → IPC → ディスクのバイト列」を通しで確かめられず、M2 の完了条件（06.roadmap/m2-editor.md §3）のうち、1 文字だけ編集して保存したときに git diff が 1 行だけになることと、保存の衝突を意図的に起こしてもデータが失われないことの 2 つが、ここでしか検証できない。
+ * 単体テストでは「エディターの内容 → `WriteRequest` → IPC → ディスクのバイト列」を通しで確かめられない。
+ * 1 文字だけ編集して保存したときに git diff が 1 行だけになることと、保存の衝突を意図的に起こしてもデータが失われないことは、ここでしか検証できない。
  *
  * 照合は必ず `Buffer` で行う。
- * 文字列で比べると、CRLF が LF に潰れたことも BOM が落ちたことも通ってしまう（`helpers/fixtures.ts`）。
+ * 文字列で比べると、CRLF が LF に変わったことも BOM が失われたことも通ってしまう（`helpers/fixtures.ts`）。
  */
 import { Key } from 'webdriverio';
 
@@ -23,19 +23,18 @@ import {
 } from '../helpers/app';
 import { readBytes, toBytes, WORK_DOC, writeFile, type FixtureShape } from '../helpers/fixtures';
 
-/** ディスクの内容を入れ替え、アプリが読み直すまで待つ。**Clean のときだけ自動で読まれる。** */
+/** ディスクの内容を入れ替え、アプリが読み直すまで待つ。Clean のときだけ自動で読まれる。 */
 async function replaceOnDiskAndWait(shape: FixtureShape, expected: string): Promise<void> {
   writeFile(WORK_DOC, shape);
   await waitForEditorText(expected);
 }
 
 /**
- * **開くのは 1 回だけ。**
+ * 開くのは 1 回だけ。
  *
  * spec ファイル 1 つにつきセッションは 1 つで、アプリも 1 つ。
- * describe ごとに開き直そうとすると、前の describe が書き換えた内容を
- * 探すことになって噛み合わない。**必要な出発点は、その場でディスクへ書いて
- * 読み直させる**（`replaceOnDiskAndWait`）。
+ * describe ごとに開き直そうとすると、前の describe が書き換えた内容を探すことになり整合しない。
+ * 必要な出発点は、その場でディスクへ書いて読み直させる（`replaceOnDiskAndWait`）。
  */
 before(async () => {
   await openViaForward(WORK_DOC, '本文です。');
@@ -58,8 +57,8 @@ describe('保存', () => {
   });
 
   it('2 回目の保存も衝突しない（mtime を更新し忘れていない）', async () => {
-    // **更新漏れは画面に出ない。** 1 回目は通り、2 回目で初めて
-    // 「別のプロセスが変更しています」として現れる（`features/document/save.ts`）。
+    // 更新漏れは画面に出ない。
+    // 1 回目は通り、2 回目で初めて「別のプロセスが変更しています」として現れる（`features/document/save.ts`）。
     await typeAtEnd('Y');
     await saveAndWaitClean();
 
@@ -71,13 +70,13 @@ describe('保存', () => {
 
 describe('CRLF と BOM を保つ (F-EDIT-14 / N-CMP-03)', () => {
   before(async () => {
-    // ダーティでないので、外部変更は黙って読み直される。
+    // ダーティでないので、外部変更は確認なしで読み直される。
     await replaceOnDiskAndWait({ content: '# CRLF\n\n本文\n', eol: 'crlf', bom: true }, 'CRLF');
   });
 
   it('CRLF + BOM のファイルを編集して保存しても、その姿のまま', async () => {
-    // **これが N-CMP-03 の中核。** 改行コードを勝手に正規化すると、
-    // 1 文字直しただけで git diff が全行変更になる。
+    // これが N-CMP-03 の中核。
+    // 改行コードを勝手に正規化すると、1 文字直しただけで git diff が全行変更になる。
     await typeAtEnd('Z');
     await saveAndWaitClean();
 
@@ -85,7 +84,7 @@ describe('CRLF と BOM を保つ (F-EDIT-14 / N-CMP-03)', () => {
     const actual = readBytes(WORK_DOC);
 
     expect(actual.equals(toBytes(expected))).toBe(true);
-    // 念のため、姿そのものも見る（比較が偶然通っていないこと）
+    // 念のため、バイト列そのものも確認する（比較が偶然通っていないこと）
     expect(actual.subarray(0, 3).equals(Buffer.from([0xef, 0xbb, 0xbf]))).toBe(true);
     expect(actual.includes(Buffer.from('\r\n'))).toBe(true);
   });
@@ -104,7 +103,7 @@ describe('保存の衝突 (N-REL-01, N-REL-02)', () => {
 
     await waitForNotice('外部で変更されました');
 
-    // **打った内容がまだ画面にある**ことが要件そのもの（N-REL-02）。
+    // 打った内容がまだ画面にあることが要件そのもの（N-REL-02）。
     expect(await editorText()).toContain('編集中');
   });
 
@@ -114,10 +113,9 @@ describe('保存の衝突 (N-REL-01, N-REL-02)', () => {
     await browser.keys([Key.Control, 's']);
     await waitForNotice('別のプロセス');
 
-    // 弾かれた以上、ディスクは 1 バイトも変わっていないこと（N-REL-01）。
+    // 拒否された以上、ディスクは 1 バイトも変わっていないこと（N-REL-01）。
     expect(readBytes(WORK_DOC).equals(before)).toBe(true);
-    // 未保存のままであること。ここが false になると、保存できていないのに
-    // 保存できたように見える。
+    // 未保存のままであること。ここが false になると、保存できていないのに保存できたように見える。
     expect(await isDirtyShown()).toBe(true);
   });
 

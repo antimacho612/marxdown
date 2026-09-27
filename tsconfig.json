@@ -2,19 +2,14 @@
   "compilerOptions": {
     "target": "ES2023",
     "useDefineForClassFields": true,
-    // WebView2 Evergreen / WKWebView のみが対象なので、downlevel の必要がない。
     "lib": ["ES2023", "DOM", "DOM.Iterable", "WebWorker"],
     "module": "ESNext",
     "skipLibCheck": true,
-
-    /* Bundler mode */
     "moduleResolution": "bundler",
     "allowImportingTsExtensions": true,
     "resolveJsonModule": true,
     "isolatedModules": true,
     "noEmit": true,
-
-    /* 04.tech-stack.md §8 */
     "strict": true,
     "noUncheckedIndexedAccess": true,
     "exactOptionalPropertyTypes": true,
@@ -28,13 +23,10 @@
       "@/*": ["./src/*"]
     },
 
-    // `svelte` はランタイムの型ではなく、`$state` などの**ルーンの ambient 宣言**のために要る。
-    // これが無いと `.svelte.ts` のストアが tsc から未定義の関数呼び出しに見える。
+    // `svelte`: `$state` などのルーンの ambient 宣言のために必要
     "types": ["vite/client", "svelte"]
   },
   "include": ["src", "tests"]
-  // `references` は置かない。**あると import の解決器が `paths` を読まなくなる**
-  // （solution-style の tsconfig と見なされ、参照先の tsconfig.node.json に委譲される）。
-  // 結果として ESLint から `@/*` が全滅する。tsconfig.node.json は
-  // `tsc -p` で個別に指すものとして残してある（04.tech-stack.md §8）。
+
+  // import の解決器が `paths` を読まなくなるため `references` は置かない。
 }

@@ -1,7 +1,7 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "メインウィンドウの権限。02.architecture.md §9.1 Layer 4 に対応する。start-dragging はカスタムタイトルバー（OQ-02 = B）の data-tauri-drag-region が使う。最小化・最大化・閉じるは JS へ開放せず、自作コマンド（commands.rs）で包んである。",
+  "description": "メインウィンドウの権限。多層防御の Layer 4 に対応する。start-dragging はカスタムタイトルバーの data-tauri-drag-region が使う。最小化・最大化・閉じるは JS へ開放せず、自作コマンド（commands.rs）で包んである。",
   "windows": ["main", "main-*"],
   "permissions": [
     "core:default",

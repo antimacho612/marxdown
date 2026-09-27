@@ -1,12 +1,10 @@
 <!--
-  見出しへジャンプ（`Ctrl+Shift+O` / 03.ux-spec/04-keybindings.md §3「移動」）。
+  見出しへジャンプ（`Ctrl+Shift+O`）。
 
-  器は `features/palette/lazy/Palette.svelte` と共有する（M3 Phase 4）。
+  パレットの外枠は `features/palette/lazy/Palette.svelte` と共有する。
   ここが持つのは「見出しをどう並べるか」だけである。
-  以前はこのファイルが器も兼ねており、コマンドパレットが入った時点で統合した。
 
-  アウトラインを見るのと見出しへ飛ぶのは別の意図なので、ペインは開かない
-  （開くと飛んだ後に本文の幅が縮小したままになる）。
+  アウトラインを見るのと見出しへ移動するのは別の意図なので、ペインは開かない（開くと移動した後も本文の幅が縮小したままになる）。
 -->
 <script lang="ts">
   import { documentStore } from '@/features/document';

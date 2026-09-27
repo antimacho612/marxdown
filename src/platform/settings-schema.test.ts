@@ -1,8 +1,8 @@
 /**
- * スキーマの見張り（`settings-schema.ts`）。
+ * スキーマの検証（`settings-schema.ts`）。
  *
- * 型で縛れない性質を扱う。
- * 既定値が許容範囲の中にあること、そして **Rust 側の `Settings::default()` と一致していること**の 2 つである。
+ * 型で表せない性質を扱う。
+ * 既定値が許容範囲の中にあること、そして Rust 側の `Settings::default()` と一致していることの 2 つである。
  * 後者は `src-tauri/tests/settings-default.json` を挟んで両側から突き合わせており、Rust 側の同名のテストが同じファイルを見ている。
  */
 import { readFileSync } from 'node:fs';
@@ -17,7 +17,7 @@ function rustDefaults(): Record<string, unknown> {
   return JSON.parse(readFileSync(path, 'utf8')) as Record<string, unknown>;
 }
 
-describe('設定スキーマ (02.architecture/04-rust-responsibilities.md §5)', () => {
+describe('設定スキーマ', () => {
   /**
    * 既定値は 3 か所で一致させる必要がある（`src-tauri/src/settings/schema.rs` の冒頭）。
    * TypeScript・Rust・`src/styles/tokens.css` の 3 つを、ここで機械的に固定する。
@@ -47,7 +47,7 @@ describe('設定スキーマ (02.architecture/04-rust-responsibilities.md §5)',
     expect(Object.keys(SETTINGS_SCHEMA).toSorted()).toEqual(Object.keys(rustDefaults()).toSorted());
   });
 
-  /** 範囲外の既定値は、設定 UI を開いた瞬間に潰されて別の値になる。 */
+  /** 範囲外の既定値は、設定 UI を開いた時点で範囲内に丸められて別の値になる。 */
   it('数値の既定値が許容範囲の中にある', () => {
     for (const [key, entry] of Object.entries(SETTINGS_SCHEMA)) {
       if (entry.kind !== 'number') continue;
@@ -69,7 +69,7 @@ describe('設定スキーマ (02.architecture/04-rust-responsibilities.md §5)',
     expect(settingChoices('editor.fontSize')).toEqual([]);
   });
 
-  /** 潰しようがない値は既定値に落とす。`NaN` がそのまま CSS に流れると宣言ごと無効になる。 */
+  /** 丸めようがない値は既定値に戻す。`NaN` がそのまま CSS に渡ると宣言ごと無効になる。 */
   it('有限でない数値は既定値になる', () => {
     expect(clampSetting('preview.fontSize', Number.NaN)).toBe(DEFAULT_SETTINGS['preview.fontSize']);
     expect(clampSetting('preview.maxWidth', Number.POSITIVE_INFINITY)).toBe(DEFAULT_SETTINGS['preview.maxWidth']);
@@ -82,7 +82,7 @@ describe('設定スキーマ (02.architecture/04-rust-responsibilities.md §5)',
 
   /**
    * 配列の既定値をスキーマと共有すると、片方への書き込みがもう片方に見える。
-   * `editor.rulers` は設定 UI から丸ごと置き換わるので今は表に出ないが、共有していること自体を許さない。
+   * `editor.rulers` は設定 UI から丸ごと置き換わるので症状は出ないが、共有していること自体を許さない。
    */
   it('配列の既定値はスキーマと別の実体である', () => {
     expect(DEFAULT_SETTINGS['editor.rulers']).not.toBe(SETTINGS_SCHEMA['editor.rulers'].default);

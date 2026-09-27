@@ -15,7 +15,7 @@ import { startup } from './bootstrap';
 /**
  * エディターのアイドルプリロードを止める（`installInitialEditor`）。
  *
- * `preloadEditor()` は Monaco（792KB）の動的 import であり、`requestIdle` 越しに `startup()` の解決より後で走る。
+ * `preloadEditor()` は Monaco（約 790KB）の動的 import であり、`requestIdle` 越しに `startup()` の解決より後で実行される。
  * テストが終わった後に読み込みが始まると、環境が破棄された後のモジュール解決になって失敗する。
  * ここで見たいのは起動の順序であって、エディターのチャンクが実際に取得できることではない。
  *
@@ -26,13 +26,14 @@ vi.mock('@/features/editor', async (importOriginal) => ({
   preloadEditor: () => Promise.resolve(),
 }));
 
-/** Worker を立てない。パイプラインの中身はこのテストの関心ではない。 */
+/** パイプラインを読み込まない。パイプラインの中身はこのテストの関心ではない。 */
 vi.mock('@/markdown/parser', () => ({
   createParser: () => ({
     parse: (text: string) =>
       Promise.resolve({
         id: 1,
         chunks: [`<p>${String(text.length)}</p>`],
+        blocks: [`<p>${String(text.length)}</p>`],
         outline: [],
         frontMatter: null,
         parseMs: 0.1,
@@ -49,6 +50,8 @@ const BROKEN = { path: 'C:\\conf\\settings.json', message: 'expected `,`' };
 function bootstrapWith(patch: Partial<Bootstrap>): Bootstrap {
   return {
     version: 1,
+    role: 'main',
+    transfer: null,
     document: null,
     documentError: null,
     mode: null,
@@ -80,6 +83,7 @@ beforeEach(() => {
   preview.id = 'mx-preview';
   document.body.append(preview);
   documentStore.notice = null;
+  documentStore.statusMessage = null;
   resetTabs();
   settingsStore.values = DEFAULT_SETTINGS;
   document.documentElement.removeAttribute('style');
@@ -108,7 +112,7 @@ function documentAt(path: string): NonNullable<Bootstrap['document']> {
 }
 
 /**
- * 2 枚目以降のタブ（M3 Phase 7）。
+ * 2 枚目以降のタブ。
  *
  * `pendingPaths`（`marxdown a.md b.md`）と `session`（前回のタブ）の 2 経路がある。
  * どちらを使うかは Rust 側で決まり、同時には来ない。
@@ -151,10 +155,13 @@ describe('2 枚目以降のタブ', () => {
 
     await startup(() => {});
 
+    // 並び順とアクティブなタブを同じ待機の中で見る。
+    // 並びは最後のタブ（c.md）を挿入した時点で揃うが、その時点ではまだ c.md がアクティブであり、b.md へ戻るのは c.md を開き終えた後である。
+    // 並び順だけを待ってから検査すると、c.md の読み込みが遅れた場合に中間の状態を検査してしまう。
     await vi.waitFor(() => {
       expect(tabsStore.tabs.map((tab) => tab.meta.path)).toEqual(['C:/notes/a.md', 'C:/notes/b.md', 'C:/notes/c.md']);
+      expect(tabsStore.active?.meta.path).toBe('C:/notes/b.md');
     });
-    expect(tabsStore.active?.meta.path).toBe('C:/notes/b.md');
   });
 });
 
@@ -189,7 +196,7 @@ describe('startup', () => {
       }),
     );
 
-    // シェルの描画は本文より前に走る。その時点で既に当たっていることを見る。
+    // シェルの描画は本文より前に実行される。その時点で既に適用されていることを見る。
     await startup(() => {
       seen.push(document.documentElement.dataset['theme']);
       seen.push(document.documentElement.style.getPropertyValue('--mx-content-width'));

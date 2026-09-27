@@ -1,7 +1,7 @@
 /**
  * ブラウザ用のモック実装（`pnpm dev:web`）。
  *
- * 04.tech-stack/07-dev-tools.md §1: UI の反復を Tauri のビルドサイクルから切り離す。
+ * UI の反復を Tauri のビルドサイクルから切り離す。
  * Platform 層があることで、UI の 8 割はブラウザだけで開発できる。
  *
  * ファイルは `localStorage` 上の仮想 FS に置く。
@@ -15,17 +15,26 @@ import {
   DEFAULT_PANES,
   SPLIT_DEFAULT,
   type Bootstrap,
+  type CoreError,
   type DiscardChoice,
   type DocumentPayload,
+  type MarpThemes,
   type OpenRequest,
   type Panes,
   type Platform,
   type RecentEntry,
   type SaveResult,
   type SettingsProblem,
+  type UpdateInfo,
   type UserTheme,
+  type WindowRole,
   type WriteRequest,
 } from './types';
+
+/** `dev:web` では扱えない操作のエラー。形は Rust の `CoreError` に揃える。 */
+function unsupported(): { kind: 'io'; message: string } {
+  return { kind: 'io', message: 'dev:web の仮想 FS では扱えない' };
+}
 
 const STORE_KEY = 'marxdown:web-fs';
 const STATE_KEY = 'marxdown:web-state';
@@ -55,17 +64,17 @@ function saveFs(fs: Record<string, VirtualFile>): void {
  * `src-tauri/src/store.rs` の `StoreData` と `settings/schema.rs` の `Settings` に対応するモック。
  *
  * 実装では 2 ファイルに分かれている（`state.json` / `settings.json`）が、ここで再現するのは値の往復だけであるため 1 つのキーにまとめる。
- * 壊れていたら上書きしないという 02.architecture/04-rust-responsibilities.md §5 の要点は Rust 側が担当しており、ブラウザ側では再現しない。
+ * 壊れていたら上書きしないという要点は Rust 側が担当しており、ブラウザ側では再現しない。
  */
 interface WebState {
   recent: RecentEntry[];
   zoom: number;
-  /** ペインの開閉と幅（03.ux-spec/06-panes.md §3）。実装では `state.json` の `panes`。 */
+  /** ペインの開閉と幅。実装では `state.json` の `panes`。 */
   panes: Panes;
-  /** Split の分割比（03.ux-spec/03-split-mode.md §1）。 */
+  /** Split の分割比。 */
   split: number;
   settings: Settings;
-  /** `themes/` に置いた配色（ADR-0014）。実装ではディレクトリ 1 つ、ここでは配列 1 本。 */
+  /** `themes/` に置いた配色。実装ではディレクトリ 1 つ、ここでは配列 1 本。 */
   userThemes: UserTheme[];
 }
 
@@ -75,7 +84,7 @@ function loadState(): WebState {
     return {
       recent: raw.recent ?? [],
       zoom: raw.zoom ?? 1,
-      // 実装（Rust）と同じく、欠けていれば「閉じている」。03.ux-spec/06-panes.md §3 の引用ブロック
+      // 実装（Rust）と同じく、欠けていれば「閉じている」。
       panes: { ...DEFAULT_PANES, ...raw.panes },
       split: raw.split ?? SPLIT_DEFAULT,
       // 欠けたキーは既定値。実装（Rust）と同じく、読んだ時点で埋める
@@ -98,12 +107,12 @@ function saveState(state: WebState): void {
   try {
     localStorage.setItem(STATE_KEY, JSON.stringify(state));
   } catch {
-    // 容量超過。dev 専用なので黙って諦める
+    // 容量超過。dev 専用なので何もしない
   }
 }
 
 /*
- * TeX の `\begin{aligned}` が `${aligned}` の書き損じに見えるため、この定数の間だけ落とす。
+ * TeX の `\begin{aligned}` が `${aligned}` の書き損じに見えるため、この定数の間だけ無効にする。
  * 中身は Markdown の本文であって、テンプレートリテラルの補間を意図した箇所は無い。
  */
 /* eslint-disable unicorn/no-incorrect-template-string-interpolation */
@@ -130,7 +139,7 @@ const platform: Platform = import.meta.env.DEV ? webPlatform : tauriPlatform
 
 > Platform 層があることで、この 2 つは同じ Domain 層から使える。
 
-## 前倒した記法（OQ-27）
+## GitHub 由来の拡張記法
 
 > [!NOTE]
 > GitHub Alerts は 5 種類ある。
@@ -207,7 +216,7 @@ flowchart LR
 /**
  * 実ファイルを仮想 FS に取り込み、仮想パスを返す。
  *
- * ブラウザは選ばれた / 落とされたファイルの絶対パスを渡さない。
+ * ブラウザは選ばれた / ドロップされたファイルの絶対パスを渡さない。
  * dev:web ではそれで構わないので、`/virtual/<名前>` を割り当てて中身だけ取り込む。
  */
 async function adoptFile(file: File): Promise<string | null> {
@@ -231,12 +240,17 @@ function initialBootstrap(): Bootstrap {
   const content = existing?.content ?? SAMPLE;
   const state = loadState();
 
-  // `?welcome` で「引数なし起動」を再現する。Welcome 画面（03.ux-spec/08-empty-states.md §1）を
-  // ブラウザだけで作り込めるようにするため。
+  // `?welcome` で「引数なし起動」を再現する。Welcome 画面をブラウザだけで作り込めるようにするため。
   const empty = params.has('welcome');
+
+  // `?satellite` でサテライトのシェルを再現する（F-OPEN-06）。
+  // 実機ではタブを別ウィンドウへ移さないと現れない面であり、ブラウザだけで作り込めるようにしておく。
+  const role: WindowRole = params.has('satellite') ? 'satellite' : 'main';
 
   return {
     version: 1,
+    role,
+    transfer: null,
     document: empty
       ? null
       : {
@@ -252,7 +266,7 @@ function initialBootstrap(): Bootstrap {
     documentError: null,
     mode: (params.get('mode') as Bootstrap['mode']) ?? null,
     // `?benchInput` で計測経路をブラウザからも起動できるようにしておく。
-    // 計測値は参考にならない（dev サーバはモジュールを 1 つずつ配信し、Monaco の読み込みだけで数十秒かかる / 06.roadmap/m2-editor.md §5）。
+    // 計測値は参考にならない（dev サーバはモジュールを 1 つずつ配信し、Monaco の読み込みだけで数十秒かかる）。
     // この経路があるのは、処理が動作することを Tauri のビルドなしで確認するためである。
     benchInput: params.has('benchInput'),
     trace: { enabled: params.has('trace'), t0EpochMs: Date.now() },
@@ -269,17 +283,16 @@ function initialBootstrap(): Bootstrap {
     split: state.split,
     settings: state.settings,
     // `?brokenSettings` で「settings.json が壊れている」起動を再現する。
-    // 通知バー（03.ux-spec/07-status-and-notifications.md §2）と設定 UI の読み取り専用状態を
-    // ブラウザだけで確認できるようにするため。
+    // 通知バーと設定 UI の読み取り専用状態をブラウザだけで確認できるようにするため。
     settingsError: brokenSettings(),
-    // 実装と同じく bootstrap に同梱して届く（ADR-0014）。
+    // 実装と同じく bootstrap に同梱して届く。
     // 後から適用する形にすると、dev:web でだけ既定の配色で 1 フレーム描かれる経路が再現しなくなる。
     previewTheme: previewThemeNow(state),
   };
 }
 
 /**
- * bootstrap に載せるプレビューの配色（ADR-0014）。
+ * bootstrap に載せるプレビューの配色。
  *
  * 実装（Rust）と同じく、選択中の id に一致する `themes/` のファイルがあるときだけ載せる。
  * 組み込みの配色を選んでいる場合は `null` で、フロントが `theme` チャンクの取得を待つ経路に入る。
@@ -294,7 +307,7 @@ function previewThemeNow(state: WebState): UserTheme | null {
 }
 
 /**
- * dev:web の `themes/`（ADR-0014）。
+ * dev:web の `themes/`。
  *
  * ブラウザに `%APPDATA%` は無いため、中身は `localStorage` に置く。
  * `?userTheme` を付けると、組み込みと同じ id の配色が 1 枚置かれた状態を再現する。
@@ -307,11 +320,18 @@ function userThemesNow(): UserTheme[] {
   return loadState().userThemes;
 }
 
+/** `?update` のときだけ返す、架空の新しい版。 */
+function fakeUpdate(): UpdateInfo | null {
+  const params = new URLSearchParams(globalThis.location?.search ?? '');
+  if (!params.has('update')) return null;
+  return { version: '9.9.9', notesUrl: 'https://github.com/antimacho612/marxdown/releases' };
+}
+
 /**
- * ユーザーが追加した配色の見本（ADR-0014）。
+ * ユーザーが追加した配色の見本。
  *
- * 組み込みと同じ id にして、置き換えが効くことをブラウザだけで確認できるようにしてある。
- * 宣言だけでなくセレクタを含めてあるのは、包まれた後に CSS のネスト規則として効くことを見せるためである。
+ * 組み込みと同じ id にして、置き換えが機能することをブラウザだけで確認できるようにしてある。
+ * 宣言だけでなくセレクタを含めてあるのは、包まれた後に CSS のネスト規則として適用されることを見せるためである。
  */
 const SAMPLE_USER_THEME: UserTheme = {
   id: 'dracula',
@@ -367,7 +387,7 @@ export const webPlatform: Platform = {
       eol: 'lf',
       bom: false,
       // モックのファイルは常に UTF-8 である。
-      // 指定された値をそのまま返すため、再解釈の UI（03.ux-spec/07-status-and-notifications.md §3）は `dev:web` でも動作する。
+      // 指定された値をそのまま返すため、再解釈の UIは `dev:web` でも動作する。
       encoding: encoding ?? 'utf8',
       mtimeMs: file.mtimeMs,
       size: new TextEncoder().encode(file.content).length,
@@ -394,12 +414,17 @@ export const webPlatform: Platform = {
   /**
    * `dev:web` にはディスクが無い。
    *
-   * 保存したふりをして相対パスだけ返す。挿入される Markdown の形と、無題の文書を断る経路は確認できる。
+   * 保存したふりをして相対パスだけ返す。挿入される Markdown の形と、無題の文書を拒否する経路は確認できる。
    * 実際に書けているかどうかは Rust 側のテスト（`src-tauri/src/asset.rs`）が見る。
    */
   async writeAsset(documentPath, extension) {
     const name = documentPath.split('/').pop() ?? 'untitled.md';
     return `${name}.assets/paste-${String(Date.now())}.${extension}`;
+  },
+
+  /** 仮想 FS にはスコープが無い。許可するものも無いので、そのまま返す。 */
+  async allowImageDir(href) {
+    return href;
   },
 
   /**
@@ -408,11 +433,6 @@ export const webPlatform: Platform = {
    * 実体を返さないのは、ここで木構造を模しても確かめられるのが並べ方だけだからである。
    * ファイルツリーの見た目は Storybook で見る（`FileTree.stories.svelte`）。
    */
-  /** 仮想 FS にはスコープが無い。許可するものも無いので、そのまま返す。 */
-  async allowImageDir(href) {
-    return href;
-  },
-
   async listDir() {
     return [];
   },
@@ -422,9 +442,60 @@ export const webPlatform: Platform = {
     return { files: [], truncated: false };
   },
 
-  /** 同じ理由でツリーも空になる。コピーしても中身の無い 1 行が得られるだけである。 */
+  /** 同じ理由でツリーも空になる。コピーしても基点の 1 行だけになる。 */
   async listTree() {
     return { name: '', nodes: [], truncated: false };
+  },
+
+  /** 仮想 FS はこのタブの中にしかなく、外から書き換わることがない。 */
+  async watchTree() {},
+
+  onDirChanged() {
+    return () => {};
+  },
+
+  /*
+   * ファイル操作（ADR-0020）。仮想 FS にはディレクトリが無く、ツリーも空であるため操作の対象が存在しない。
+   * 操作の流れは Storybook と Rust のユニットテストで確かめる。
+   */
+  async createEntry() {
+    throw unsupported();
+  },
+
+  async renameEntry() {
+    throw unsupported();
+  },
+
+  async moveEntries() {
+    throw unsupported();
+  },
+
+  async copyEntries() {
+    throw unsupported();
+  },
+
+  async trashEntries() {
+    throw unsupported();
+  },
+
+  async importDropped() {
+    throw unsupported();
+  },
+
+  async openDroppedFolder() {
+    throw unsupported();
+  },
+
+  onEntriesMoved() {
+    return () => {};
+  },
+
+  onEntriesRemoved() {
+    return () => {};
+  },
+
+  async confirmAction(message) {
+    return globalThis.confirm(message);
   },
 
   /** `dev:web` では復元しない。起動のたびに同じ状態から始まるほうが確かめやすい。 */
@@ -465,7 +536,7 @@ export const webPlatform: Platform = {
   /**
    * `?brokenSettings` の間は「壊れている」と答え続ける。
    *
-   * 実装では壊れているという事実が保存を止める（02.architecture/04-rust-responsibilities.md §5）。
+   * 実装では壊れているという事実が保存を止める。
    * ブラウザ側では壊れた状態を作れないため、設定 UI の読み取り専用状態を dev:web で確認する手段はここだけである。
    */
   async readSettings() {
@@ -474,7 +545,7 @@ export const webPlatform: Platform = {
 
   async writeSettings(patch) {
     // 壊れているときは Rust 側（`AppState::patch_settings`）が拒否する。
-    // UI が「保存できたように見せる」ことのほうが害が大きいので、口も合わせておく。
+    // UI が「保存できたように見せる」ことのほうが害が大きいので、拒否する挙動も合わせておく。
     const broken = brokenSettings();
     if (broken) throw { kind: 'settings-broken', message: broken.message };
 
@@ -499,9 +570,18 @@ export const webPlatform: Platform = {
     return userThemesNow();
   },
 
+  /** 仮想 FS（`?file=` と同じ `localStorage`）に置いたファイルをテーマとして返す。検証は実装（Rust）だけが行う。 */
+  async readMarpThemes(paths): Promise<MarpThemes> {
+    const fs = loadFs();
+    return {
+      themes: paths.flatMap((path) => (fs[path] ? [{ path, css: fs[path].content }] : [])),
+      problems: paths.flatMap((path) => (fs[path] ? [] : [{ path, kind: 'missing' as const }])),
+    };
+  },
+
   async openThemesDir() {
-    // 実装では「無ければ作って雛形を置いてから開く」。ブラウザには開く先が無いので、
-    // 見本を仮想の `themes/` に置いて、次の読み直しから効くようにする。
+    // 実装では「無ければ作って雛形を置いてから開く」。
+    // ブラウザには開く先が無いので、見本を仮想の `themes/` に置いて、次の読み直しから適用されるようにする。
     const state = loadState();
     if (state.userThemes.length === 0) {
       state.userThemes = [SAMPLE_USER_THEME];
@@ -528,7 +608,7 @@ export const webPlatform: Platform = {
         }
         void adoptFile(file).then(resolve);
       });
-      // 取り消しは change が飛ばない。dev 用なので待ちっぱなしを許容する
+      // 取り消しでは change が発火しない。dev 用なので待ったままになることを許容する
       input.click();
     });
   },
@@ -537,8 +617,7 @@ export const webPlatform: Platform = {
    * フォルダ選択（F-NAV-03）。
    *
    * ブラウザにはネイティブのフォルダ選択ダイアログが無く、`listDir` も空を返す。
-   * ここで確かめられるのは「基点が決まる前と後で Explorer の表示が入れ替わること」だけであるため、
-   * 名前を入力させて仮想 FS 上のパスにする。取り消しは `null` を返す。
+   * ここで確かめられるのは「基点が決まる前と後で Explorer の表示が入れ替わること」だけであるため、名前を入力させて仮想 FS 上のパスにする。取り消しは `null` を返す。
    */
   async pickFolder() {
     const name = globalThis.prompt('開くフォルダ名（dev:web の仮想 FS）', 'virtual');
@@ -554,6 +633,27 @@ export const webPlatform: Platform = {
     const base = suggested === null ? 'untitled.md' : splitPath(suggested).name || 'untitled.md';
     const name = globalThis.prompt('保存先のファイル名（dev:web の仮想 FS）', base);
     return name === null || name.trim() === '' ? null : `/virtual/${name.trim()}`;
+  },
+
+  /** ブラウザのダウンロードとして書き出す。保存先は選べない。 */
+  async exportHtml(html, suggested) {
+    const name = `${(suggested === null ? 'untitled' : splitPath(suggested).name).replace(/\.[^.]*$/, '')}.html`;
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(new Blob([html], { type: 'text/html' }));
+    link.download = name;
+    link.click();
+    URL.revokeObjectURL(link.href);
+    return name;
+  },
+
+  /** ブラウザには PDF を直接書き出す手段が無い。呼び出し側が `window.print()` で代用する。 */
+  async exportPdf() {
+    throw { kind: 'invalid-argument', message: 'dev:web では PDF を直接書き出せない' } satisfies CoreError;
+  },
+
+  /** dev:web の画像は元から data URI か外部の URL である。 */
+  async inlineImage(src) {
+    return src;
   },
 
   /**
@@ -578,6 +678,11 @@ export const webPlatform: Platform = {
     return () => {};
   },
 
+  onSaveAndClose() {
+    // ウィンドウを閉じる確認も同じ経路である（`close.rs`）。
+    return () => {};
+  },
+
   async watchPath() {
     // 仮想 FS はこのタブの中にしかなく、外部から書き換わることがない。
     // 監視の有無で Domain 層に分岐が増えないよう、インタフェースだけ揃えておく
@@ -597,18 +702,18 @@ export const webPlatform: Platform = {
 
   onDragDrop(handler) {
     // ブラウザには OS のドラッグ＆ドロップイベントが無いので HTML5 で代用する。
-    // 実装では絶対パスが取れないため、落ちてきた中身を仮想 FS に取り込んでから
-    // その仮想パスを渡す。Domain 層から見た形は Tauri 実装と同じになる。
+    // 絶対パスが取れないため、ドロップされた中身を仮想 FS に取り込んでからその仮想パスを渡す。
+    // Domain 層から見た形は Tauri 実装と同じになる。
     const onOver = (e: DragEvent) => {
       e.preventDefault();
-      handler({ type: 'over' });
+      handler({ type: 'over', x: e.clientX, y: e.clientY });
     };
     const onLeave = () => handler({ type: 'leave' });
     const onDrop = (e: DragEvent) => {
       e.preventDefault();
       const files = [...(e.dataTransfer?.files ?? [])];
       void Promise.all(files.map(adoptFile)).then((paths) => {
-        handler({ type: 'drop', paths: paths.filter((p): p is string => p !== null) });
+        handler({ type: 'drop', paths: paths.filter((p): p is string => p !== null), x: e.clientX, y: e.clientY });
         return paths;
       });
     };
@@ -634,6 +739,46 @@ export const webPlatform: Platform = {
   async toggleMaximizeWindow() {},
 
   async closeWindow() {},
+
+  // ブラウザのタブを勝手に増やさない。
+  // `window.open` は多くの環境でポップアップとして遮断され、遮断されなかった場合は別の仮想 FS を持つ独立したアプリが立ち上がる。
+  // どちらも `dev:web` で確かめたい内容ではない。
+  async openSatellite() {
+    console.info('[marxdown] openSatellite（ブラウザでは何も起きない）');
+  },
+
+  // 受け渡し箱はプロセス内の状態であり、ブラウザには移す先のウィンドウが無い。
+  // 預けたものが誰にも引き取られないだけなので、インタフェースだけ揃えておく。
+  async stashTransfer() {
+    return 0;
+  },
+
+  async takeTransfer() {
+    return null;
+  },
+
+  // ブラウザには渡す先のウィンドウが無い。
+  // 失敗させるのは、成功扱いにすると呼び出し側が元のタブを閉じてしまうためである。
+  async sendTabToWindow(target) {
+    throw { kind: 'not-found', message: target };
+  },
+
+  onTabArrive() {
+    return () => {};
+  },
+
+  // 窓の外にはブラウザのページを描けない。落とした先も常に「他のウィンドウではない」になる。
+  async beginTabDrag() {},
+
+  async moveTabDrag() {},
+
+  async endTabDrag() {
+    return null;
+  },
+
+  onTabDragOver() {
+    return () => {};
+  },
 
   // ブラウザにはトレイもプロセスも無い。
   // 無視せずログへ出力するのは、`dev:web` で「終了」を押したときに何も起きない理由が分かるようにするためである。
@@ -685,6 +830,23 @@ export const webPlatform: Platform = {
 
   async openExternal(url) {
     globalThis.open(url, '_blank', 'noopener,noreferrer');
+  },
+
+  // `?update` で新しい版がある状態を再現する。通知バーの表示をブラウザだけで確かめられるようにするため。
+  async checkUpdate() {
+    return fakeUpdate();
+  },
+
+  async installUpdate() {
+    console.info('[marxdown] installUpdate（ブラウザでは何も起きない）');
+    return 'up-to-date';
+  },
+
+  onUpdateAvailable(handler) {
+    const info = fakeUpdate();
+    // 実機では通信を挟むため、起動直後の文書のオープン（通知をクリアする）より後に届く。
+    if (info) setTimeout(() => handler(info), 1000);
+    return () => {};
   },
 
   async openLocalFile(path) {

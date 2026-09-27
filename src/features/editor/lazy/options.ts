@@ -2,13 +2,13 @@
  * 設定を Monaco のオプションに写す（`editor` チャンク / F-CONF-04 / ADR-0012）。
  *
  * 値の検証は Rust 側（`settings/schema.rs`）と `platform/settings-schema.ts` の許容範囲が済ませており、ここで再検証しない。
- * `editor.create()` に直接書いたオプション（`editor.ts`）は設定にしないと決めたもの（N-CMP-03 に触れる／IDE 寄りの機能／禁則との衝突）で、迷ったらそちら側に置く。
+ * `editor.create()` に直接書いたオプション（`editor.ts`）は設定にしないと決めたもの（N-CMP-03 に触れる／IDE 寄りの機能／禁則との衝突／テキスト以外を持ち出す）で、迷ったらそちら側に置く。
  * トークンから引くのは表示倍率と `editor.fontFamily` の空欄時フォールバックの 2 つだけである（`theme.ts` 経由）。
  *
  * 設定変化の購読（`watchEditorSettings`）はルーンを使うため `watch-settings.svelte.ts` に分けてあり、このファイルは素の `.ts` のまま Svelte も Monaco も通さずテストできる。
  */
 import { formatFontFamily, settingsStore } from '@/features/settings';
-import type { Settings } from '@/platform';
+import type { Ruler, Settings } from '@/platform';
 
 import type { monaco } from './monaco';
 import { readNumber, readValue } from './theme';
@@ -25,7 +25,7 @@ type EditorOptions = monaco.editor.IEditorOptions & monaco.editor.IGlobalEditorO
 const SCROLLBAR_SIZE = 10;
 
 /**
- * 設定 1 枚から、当てるオプション 1 枚を作る。
+ * 設定から、適用する Monaco のオプションを作る。
  *
  * 副作用を持たない。テストは `settingsStore` を用意せずに写像だけを検証できる。
  */
@@ -48,25 +48,34 @@ export function editorOptions(values: Settings): EditorOptions {
     guides: { indentation: values['editor.guides.indentation'] },
     bracketPairColorization: { enabled: values['editor.bracketPairColorization.enabled'] },
     minimap: { enabled: values['editor.minimap.enabled'] },
-    rulers: values['editor.rulers'],
+    rulers: values['editor.rulers'].map(toMonacoRuler),
     padding: { top: values['editor.padding.top'] },
 
     wordWrap,
     wordWrapColumn: values['editor.wordWrapColumn'],
     tabSize: values['editor.tabSize'],
     insertSpaces: values['editor.insertSpaces'],
+    wordSeparators: values['editor.wordSeparators'],
+    wordSegmenterLocales: values['editor.wordSegmenterLocales'],
     cursorStyle: values['editor.cursorStyle'],
     cursorBlinking: values['editor.cursorBlinking'],
     cursorSurroundingLines: values['editor.cursorSurroundingLines'],
     scrollBeyondLastLine: values['editor.scrollBeyondLastLine'],
+
+    // 固定する行は見出しの折りたたみ範囲から決める（`folding.ts`）。
+    // Monaco の既定（`outlineModel`）は DocumentSymbolProvider を先に探し、見つからなければ折りたたみ範囲へ進む。
+    // 登録していない provider を毎回探させないため、最初から折りたたみ範囲を指定する。
+    stickyScroll: {
+      enabled: values['editor.stickyScroll.enabled'],
+      defaultModel: 'foldingProviderModel',
+    },
 
     // 横スクロールバーの表示は折り返しの設定から決まる。
     // 折り返さない設定にしたまま隠すと、右にはみ出した行へ到達する手段が無くなる。
     // 設定項目を 1 つ増やすより、折り返しの設定から導出するほうが説明が少なくて済む。
     //
     // 太さと影は設定にしないと決めたものだが、`editor.ts` ではなくここに置く。
-    // `updateOptions` は `scrollbar` をオブジェクトごと差し替えるため、
-    // 分けて書くと設定変更のたびに既定値へ戻る。
+    // `updateOptions` は `scrollbar` をオブジェクトごと差し替えるため、分けて書くと設定変更のたびに既定値へ戻る。
     scrollbar: {
       horizontal: wordWrap === 'off' ? 'auto' : 'hidden',
       verticalScrollbarSize: SCROLLBAR_SIZE,
@@ -80,7 +89,7 @@ export function editorOptions(values: Settings): EditorOptions {
 /**
  * フォント名。空欄のときはトークン層のコードフォントを使う。
  *
- * `--mx-font-code` は `preview.codeFontFamily` を先頭に追加した後の値であるため、エディター側を指定していない場合は M2 までと同じフォントになる。
+ * `--mx-font-code` は `preview.codeFontFamily` を先頭に追加した後の値であるため、エディター側を指定していない場合はプレビューのコードブロックと同じフォントになる。
  *
  * 指定があるときに既定のスタックを後ろへ追加するのは `applyAppearance` と同じ理由で、そのフォントに含まれない文字（日本語 / 記号）のフォールバック先を残すためである（F-CONF-04）。
  */
@@ -88,6 +97,11 @@ function fontFamily(values: Settings): string {
   const family = formatFontFamily(values['editor.fontFamily']);
   if (family === null) return readValue('--mx-font-code');
   return `${family}, ${readValue('--mx-font-code-stack')}`;
+}
+
+/** Monaco の `IRulerOption` は `color` を省略できず、テーマの色を使うときは `null` を渡す。 */
+function toMonacoRuler(ruler: Ruler): number | monaco.editor.IRulerOption {
+  return typeof ruler === 'number' ? ruler : { column: ruler.column, color: ruler.color ?? null };
 }
 
 /** 現在の設定をエディターへ適用する。 */

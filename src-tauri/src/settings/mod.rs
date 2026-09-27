@@ -1,9 +1,9 @@
-//! ユーザー設定の永続化（02.architecture/04-rust-responsibilities.md §5 / F-CONF-03）。
+//! ユーザー設定の永続化（F-CONF-03）。
 //!
 //! `state.json`（`store.rs`）と分けているのは「誰が書くか」が違うためである。
 //! `state.json` はアプリが自動的に書き続けるキャッシュであり、読めなければ破棄して既定値に戻してよい。
 //! 一方 `settings.json` はユーザーが手で書いたものなので、同じ扱いをしてはいけない。
-//! パースに失敗したときは 02.architecture/04-rust-responsibilities.md §5 の通り、既定値で起動し（起動は止めない）、通知バーに知らせ（`broken` を bootstrap に載せてフロントが出す）、書き戻しを拒否する（`AppState::patch_settings`）。
+//! パースに失敗したときは既定値で起動し（起動は止めない）、通知バーに知らせ（`broken` を bootstrap に載せてフロントが出す）、書き戻しを拒否する（`AppState::patch_settings`）。
 //! 書き戻しの拒否を忘れると、ユーザーが直そうとしている最中に設定 UI がファイルの内容を丸ごと消してしまう。
 //!
 //! このファイルにあるのは I/O とポリシーだけである。
@@ -12,7 +12,7 @@
 //! キーの形は VS Code と同じフラットなドット区切りである（F-CONF-06）。
 //! 素の JSON で、`version` は持たない。
 //! 破棄できないファイルに版管理は成立しないため、互換性はキー単位で保つ。
-//! 欠けているキーは既定値を使い、未知のキーは保持して書き戻す（旧バージョンで開いて保存したときに新しいキーが消えないようにする。手書きの実験的なキーも消さない）。
+//! 欠けているキーは既定値を使い、未知のキーは保持して書き戻す（古いバージョンで開いて保存したときに新しいキーが消えないようにする。手書きの実験的なキーも消さない）。
 
 mod schema;
 
@@ -27,7 +27,7 @@ pub use schema::*;
 
 const FILE_NAME: &str = "settings.json";
 
-/// 読み込みの結果。「壊れている」という事実を値と一緒に運ぶ（02.architecture/04-rust-responsibilities.md §5）。
+/// 読み込みの結果。「壊れている」という事実を値と一緒に運ぶ。
 ///
 /// 呼び出し側が `broken` を無視すると、壊れたファイルを既定値で上書きしてしまう。
 /// 単に `Settings` を返す形にしないのはそのため。
@@ -39,7 +39,7 @@ pub struct SettingsLoad {
     pub broken: Option<SettingsProblem>,
 }
 
-/// 通知バーに出す内容（03.ux-spec/07-status-and-notifications.md §2）。
+/// 通知バーに出す内容。
 ///
 /// パスを `String` にしているのは、`PathBuf` の Serialize が非 UTF-8 で失敗するためである。
 /// bootstrap のシリアライズが失敗すると初期ペイロードごと失われるため、表示用の文字列で保持する。
@@ -55,7 +55,7 @@ pub fn settings_path(identifier: &str) -> Option<PathBuf> {
     Some(crate::store::config_dir(identifier)?.join(FILE_NAME))
 }
 
-/// 設定を読む。壊れていても既定値を返し、起動は止めない（02.architecture/04-rust-responsibilities.md §5）。
+/// 設定を読む。壊れていても既定値を返し、起動は止めない。
 ///
 /// ファイルが無い状態は壊れているとみなさない。
 /// 初回起動がこれにあたり、ここで書き戻しを拒否すると設定 UI が永久に保存できなくなる。
@@ -68,7 +68,7 @@ pub fn load(path: Option<&Path>) -> SettingsLoad {
         Ok(text) => text,
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => return SettingsLoad::default(),
         // 読めない理由が「無い」以外なら、書けもしない可能性が高い。
-        // 既定値で動かしつつ、上書きは避ける側に倒す。
+        // 既定値で動かしつつ、上書きは避ける。
         Err(e) => return broken(path, e.to_string()),
     };
 
@@ -135,7 +135,7 @@ mod tests {
         std::fs::remove_dir_all(&d).ok();
     }
 
-    /// 02.architecture/04-rust-responsibilities.md §5 の中心。壊れたファイルは**読まないだけで、触らない**。
+    /// 壊れたファイルは読まないだけで、触らない。
     #[test]
     fn a_corrupt_file_falls_back_to_defaults_without_touching_the_file() {
         let d = temp_dir("corrupt");
@@ -162,8 +162,8 @@ mod tests {
         std::fs::remove_dir_all(&d).ok();
     }
 
-    /// 02.architecture/04-rust-responsibilities.md §5「未知のキーは保持して書き戻す」。
-    /// 旧バージョンで開いて保存したときに、新しいキーが消えないようにする。
+    /// 未知のキーは保持して書き戻す。
+    /// 古いバージョンで開いて保存したときに、新しいキーが消えないようにする。
     #[test]
     fn unknown_keys_survive_a_write() {
         let d = temp_dir("unknown");
@@ -203,10 +203,7 @@ mod tests {
         let text = std::fs::read_to_string(&p).unwrap();
         assert!(text.contains("\"preview.fontSize\""), "{text}");
         assert!(text.contains("\"editor.guides.indentation\""), "{text}");
-        assert!(
-            !text.contains("\"version\""),
-            "版管理は持たない（02.architecture/04-rust-responsibilities.md §5）"
-        );
+        assert!(!text.contains("\"version\""), "版管理は持たない");
         assert!(text.ends_with('\n'));
         std::fs::remove_dir_all(&d).ok();
     }
@@ -219,12 +216,19 @@ mod tests {
             theme: Theme::Dark,
             editor_font_family: "Cascadia Code".into(),
             editor_line_height: 1.4,
-            editor_rulers: vec![80.0, 100.0],
+            editor_rulers: vec![
+                Ruler::Column(80.0),
+                Ruler::Styled {
+                    column: 100.0,
+                    color: Some("#ff000080".into()),
+                },
+            ],
             editor_word_wrap: WordWrap::Bounded,
             preview_code_font_family: "BIZ UD Gothic".into(),
             preview_font_family: "Noto Sans JP".into(),
             preview_line_height: 1.9,
-            window_close_behavior: CloseBehavior::Exit,
+            window_close_to_tray: false,
+            window_launch_at_login: true,
             ..Settings::default()
         };
         save(&p, &settings).unwrap();

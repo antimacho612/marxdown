@@ -8,12 +8,12 @@ import { treeStore } from './tree.svelte';
  * ディレクトリ構造をアスキーアートにしてクリップボードへコピーする（`explorer.copyTree`）。
  *
  * 対象を省略すると基点を使う。基点が決まっていなければ何もしない。
- * 対象を渡すのは Explorer の右クリックで、そのディレクトリから下だけを描く。
+ * 右クリックメニューは `lazy/actions.ts` の `copyTree` を直接呼ぶため、ここを通るのはコマンドパレットからの実行だけである。
  */
 export async function copyTreeLazily(path?: string): Promise<void> {
   const target = path ?? treeStore.root;
   if (target === null) return;
 
-  const { copyTree } = await import('./lazy/copy-tree');
+  const { copyTree } = await import('./lazy/actions');
   await copyTree(target);
 }

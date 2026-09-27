@@ -1,19 +1,18 @@
 #!/usr/bin/env node
 /**
- * 入力レスポンス計測ハーネス（06.roadmap/m2-editor.md §3 / OQ-15）。
+ * 入力レスポンス計測ハーネス。
  *
- * `--bench-input` を付けた実行ファイルを繰り返し起動し、Split で打鍵を合成して
- * 「打鍵 → 反映」と「打ち終わり → プレビュー反映」の分布を出す。
+ * `--bench-input` を付けた実行ファイルを繰り返し起動し、Split で打鍵を合成して「打鍵 → 反映」と「打ち終わり → プレビュー反映」の分布を出す。
  *
  * ```bash
- * pnpm build:app                                  # release ビルドが必要
- * node scripts/bench-input.mjs                    # 既定（worker/main × spec.md/huge.md × 3 回）
+ * pnpm build                                      # release ビルドが必要
+ * node scripts/bench-input.mjs                    # 既定（spec.md/huge.md × 3 回）
  * node scripts/bench-input.mjs --files spec.md --runs 5
  * node scripts/bench-input.mjs --json out.json
  * ```
  *
  * 比べるのは同じファイル・同じ run 数の値だけである。
- * Cold Start と同じく（measurements/03-cold-start.md §2）、絶対値は環境で振れる。
+ * Cold Start と同じく、絶対値は環境で振れる。
  * 意味を持つのは実装を変えた前後の差である（打鍵列はシード固定で毎回同じ）。
  */
 import { spawn } from 'node:child_process';
@@ -32,12 +31,8 @@ const EXE_CANDIDATES = [
   join(ROOT, 'src-tauri', 'target', 'debug', 'marxdown'),
 ];
 
-/** 05.performance-budget/04-targets.md の入力レスポンス。 */
+/** 入力レスポンスの目標値。 */
 const INPUT_BUDGET_MS = 16;
-
-/* ------------------------------------------------------------------ */
-/* 引数                                                                */
-/* ------------------------------------------------------------------ */
 
 function parseArgs(argv) {
   const out = {
@@ -70,10 +65,6 @@ function parseArgs(argv) {
   return out;
 }
 
-/* ------------------------------------------------------------------ */
-/* 実行                                                                */
-/* ------------------------------------------------------------------ */
-
 function findExe() {
   const exe = EXE_CANDIDATES.find((p) => existsSync(p));
   if (!exe) {
@@ -81,7 +72,7 @@ function findExe() {
     process.exit(1);
   }
   if (exe.includes('debug')) {
-    console.warn('⚠ debug ビルドを計測している。05.performance-budget/02-environment.md は release を要求する。');
+    console.warn('⚠ debug ビルドを計測している。計測は release ビルドで行う。');
   }
   return exe;
 }
@@ -89,24 +80,19 @@ function findExe() {
 /**
  * 1 回起動して、書き出された JSON を読む。
  *
- * **単一インスタンスに注意**（ADR-0004）。普段使いの Marxdown が起動していると、
- * ここで立てたプロセスは argv を転送して即座に終わり、JSON が出ない。
- * E2E と同じ事故なので、出なかったときはその可能性を出す。
+ * 単一インスタンスに注意（ADR-0004）。普段使いの Marxdown が起動していると、ここで起動したプロセスは argv を転送して即座に終わり、JSON が出ない。
+ * E2E と同じ問題であるため、出なかったときはその可能性を表示する。
  */
 function runOnce(exe, file, outPath, timeoutMs) {
   return new Promise((resolve) => {
     rmSync(outPath, { force: true });
     /*
-     * **未知のフラグを渡さないこと。**
+     * 未知のフラグを渡さないこと。
      *
-     * `cli.rs` は解釈できなかった `--foo` を警告に積むだけで止まらず、
-     * **その値をファイルパスとして扱う。** OQ-15 の決着で `--spike-parse` を
-     * 撤去した後もここが `--spike-parse main` を渡し続けており、
-     * `main` という存在しないファイルを開こうとして
-     * **`spec.md` が 1 度も開かれないまま計測が回っていた**（M2 Phase 6）。
+     * `cli.rs` は解釈できなかった `--foo` を警告に加えるだけで止まらず、その値をファイルパスとして扱う。
+     * 存在しないファイルを開こうとして本来のファイルが開かれないまま計測が進む。
      *
-     * 症状は「打鍵は測れるのにプレビューの描き直しが 0 件」で、
-     * **製品の回帰と見分けが付かない。**
+     * 症状は「打鍵は測れるのにプレビューの再描画が 0 件」で、製品の回帰と見分けが付かない。
      */
     const args = ['--mode', 'split', '--bench-input', outPath, file];
 
@@ -137,12 +123,8 @@ function runOnce(exe, file, outPath, timeoutMs) {
   });
 }
 
-/* ------------------------------------------------------------------ */
-/* 集計                                                                */
-/* ------------------------------------------------------------------ */
-
 /**
- * run をまたいで**生のサンプルから**取り直す。
+ * run をまたいで生のサンプルから取り直す。
  *
  * run ごとの p95 を平均してはいけない。分位数は平均できない。
  */
@@ -201,10 +183,6 @@ function fmt(v) {
   return Number.isNaN(v) ? '      -' : v.toFixed(1).padStart(8);
 }
 
-/* ------------------------------------------------------------------ */
-/* main                                                                */
-/* ------------------------------------------------------------------ */
-
 const opts = parseArgs(process.argv.slice(2));
 mkdirSync(TMP, { recursive: true });
 
@@ -233,10 +211,9 @@ for (const fileName of opts.files) {
     if (r.report.error) console.warn(`    計測側のエラー: ${r.report.error}`);
 
     /*
-     * **予約されたのに 1 度も始まっていないなら、その run は計測になっていない。**
-     * ファイルが開けていないとこの形で出る（`documentStore.meta` が無いと
-     * `renderNow` はガードで抜ける）。黙って「プレビューの行だけ空の表」を出すと、
-     * **製品の回帰と見分けが付かない**（M2 Phase 6 で実際に踏んだ）。
+     * 予約されたのに 1 度も始まっていないなら、その run は計測になっていない。
+     * ファイルが開けていないとこの形で出る（`documentStore.meta` が無いと `renderNow` はガードで抜ける）。
+     * 警告なしに「プレビューの行だけ空の表」を出すと、製品の回帰と見分けが付かない。
      */
     const live = r.report.diagnostics?.live;
     if (live && live.scheduled > 0 && live.started === 0) {

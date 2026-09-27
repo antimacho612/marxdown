@@ -1,41 +1,56 @@
 <!--
-  タブストリップ（F-NAV-01, 02 / 03.ux-spec/01-screen-layout.md §2）。
-  タイトルバーの中央領域（`TitleBar.svelte` の `center`）に差し込まれる。
+@component
+タブストリップ。
 
-  **2 枚以上のときしか描かれない。** 出し分けは差し込む側（`app/App.svelte`）が行う。
-  1 枚のときはタイトルバーが既定のファイル名表示のままであり、この経路を通らない（§1「タブも 1 枚のうちは出さない」）。
+タブを窓の外へドロップすると、そのタブはサテライトウィンドウへ切り離される（`release`）。
+他の Marxdown のウィンドウの上でドロップした場合は、そのウィンドウのタブ列の末尾へ移る（OQ-43）。
 
-  タブそのものはボタンで構成する。
-  タイトルバーは `data-tauri-drag-region="deep"` でネイティブドラッグを掴む領域だが、`<button>` は自動的に除外されるため、タブを押しても窓が動かない。
-  逆にタブが並んでいない余白は掴めるままになる。
-
-  並べ替えはポインタイベントで行う（F-NAV-02）。
-  HTML5 の drag イベントは使えない。ドロップされたファイルの絶対パスを受け取るために `disable_drag_drop_handler()` を呼べず（`04.tech-stack/06-rust.md` §6）、ネイティブのハンドラが有効な状態では WebView2 がページ内のドラッグも受け取るためである。
+@warning
+HTML5 の drag イベントは使えない。
+ドロップされたファイルの絶対パスを受け取るために `disable_drag_drop_handler()` を呼べず、ネイティブのハンドラが有効な状態では WebView2 がページ内のドラッグも受け取るため。
 -->
+
 <script lang="ts">
   import { ja } from '@/i18n/ja';
   import CloseIcon from '@/lib/CloseIcon.svelte';
   import { splitPath } from '@/lib/path';
 
+  import { loadHandoff } from './join-window';
+  import { moveTabToSatellite } from './new-window';
   import { activateTab, closeTab, isTabDirty, moveTab, tabMeta, tabsStore, type Tab } from './tabs.svelte';
 
   /** 並べ替えと判断するまでの移動量（px）。押し込みの手ぶれで並びが変わらないようにする。 */
   const DRAG_THRESHOLD = 6;
 
+  /**
+   * 切り離した窓を、ドロップした位置からずらす量（CSS px）。
+   *
+   * ドロップした点を窓の左上にすると、ドラッグしていたタブが窓の外に出た位置に現れる。
+   * タイトルバーの中にカーソルが乗るぶんだけ戻すと、ドラッグしたものがそこに置かれたように見える。
+   */
+  const DETACH_OFFSET_X = 48;
+  const DETACH_OFFSET_Y = 12;
+
   let strip: HTMLElement | undefined = $state();
 
-  /** 掴んでいるタブ。掴んでいなければ `null`。 */
+  /** ドラッグ中のタブ。ドラッグしていなければ `null`。 */
   let dragging = $state<number | null>(null);
   let startX = 0;
   /**
    * しきい値を超えたか。超えていなければ、離した時点でクリックとして扱う。
-   *
-   * ルーンにしてあるのは、掴んでいる表示（`mx-tab--dragging`）がこの値を見るためである。
+   * ルーンにしてあるのは、ドラッグ中の表示（`mx-tab--dragging`）がこの値を参照するためである。
    */
   let moved = $state(false);
 
   /**
-   * 掴む。**左ボタンだけ。**
+   * ポインタが窓の外にあるか。`true` の間はカーソルに追従する表示が出ている（`lazy/handoff.ts`）。
+   *
+   * 窓の外での処理は遅延チャンクにあり、最初に窓の外へ出たときに読み込む（`loadHandoff`）。
+   */
+  let away = false;
+
+  /**
+   * ドラッグを開始する。左ボタンだけを扱う。
    *
    * ポインタを捕捉するのは、タブが並べ替えでポインタの下から動くためである。
    * 捕捉しないと、動いた瞬間に別の要素へイベントが移り、そこで並べ替えが止まる。
@@ -48,23 +63,91 @@
     if (event.currentTarget instanceof HTMLElement) event.currentTarget.setPointerCapture(event.pointerId);
   }
 
-  /** 並べ替える。1 ピクセルごとに呼ばれるが、位置が変わらなければ `moveTab` が何もしない。 */
+  /**
+   * 並べ替える。1 ピクセルごとに呼ばれるが、位置が変わらなければ `moveTab` が何もしない。
+   *
+   * 窓の外へ出ている間は並べ替えず、カーソルに追従する表示を動かす（OQ-43）。
+   * 出た先にはタブ列が無く、戻ってきたときに並びが変わっているほうが分かりにくい。
+   */
   function drag(event: PointerEvent): void {
     if (dragging === null) return;
     if (!moved && Math.abs(event.clientX - startX) < DRAG_THRESHOLD) return;
     moved = true;
+
+    if (outside(event)) {
+      away = true;
+      const tab = tabsStore.tabs.find((t) => t.id === dragging);
+      if (tab === undefined) return;
+      const shown = { name: nameOf(tab), dirty: isTabDirty(tab) };
+      void loadHandoff().then((module) => module.trackOutside(shown));
+      return;
+    }
+
+    comeBack();
     moveTab(dragging, indexAt(event.clientX));
+  }
+
+  /** 窓の外から戻った。表示を消す。 */
+  function comeBack(): void {
+    if (!away) return;
+    away = false;
+    void loadHandoff().then((module) => module.returnToWindow());
+  }
+
+  /**
+   * ポインタがこのウィンドウの外か（F-OPEN-06 / タブのドラッグアウト）。
+   *
+   * 比べるのはスクリーン座標である。
+   * `screenX` / `screenY` は本文の描画領域（ビューポート）の左上を基準にした座標系と同じ単位で、表示倍率（`--mx-zoom`）は CSS 変数であってページのズームではないため影響しない。
+   */
+  function outside(event: PointerEvent): boolean {
+    return (
+      event.screenX < globalThis.screenX ||
+      event.screenY < globalThis.screenY ||
+      event.screenX > globalThis.screenX + globalThis.innerWidth ||
+      event.screenY > globalThis.screenY + globalThis.innerHeight
+    );
   }
 
   /**
    * 離す。表示の切り替えはここで行わない。
    *
-   * 切り替えは `click` に任せる。ポインタで処理してしまうと、`<button>` を
-   * キーボード（Enter / Space）で押したときに何も起きなくなる。
-   * `moved` は残す。直後に来る `click` を握り潰す判断に使う。
+   * 切り替えは `click` に任せる。
+   * ポインタで処理してしまうと、`<button>` をキーボード（Enter / Space）で押したときに何も起きなくなる。
+   * `moved` は残す。直後に来る `click` を無視するかの判断に使う。
+   *
+   * 窓の外で離した場合は、そのタブを切り離す（F-OPEN-06 / OQ-43）。
+   * ポインタを捕捉してあるため、窓の外へ出た後もこのイベントは届く。
    */
   function release(event: PointerEvent): void {
     if (dragging === null) return;
+
+    const id = dragging;
+    // ドラッグしていない押下は対象にしない。
+    const detach = moved && outside(event);
+    stopDragging(event);
+
+    if (!detach) {
+      comeBack();
+      return;
+    }
+    away = false;
+    void detachTab(id, { x: event.screenX - DETACH_OFFSET_X, y: event.screenY - DETACH_OFFSET_Y });
+  }
+
+  /**
+   * ドラッグが打ち切られた（`pointercancel`）。切り離さずに終える。
+   *
+   * 窓の外で打ち切られても切り離さない。
+   * 離す操作をしていないのにタブが移ると、何が起きたのか分からない。
+   */
+  function cancel(event: PointerEvent): void {
+    if (dragging === null) return;
+    stopDragging(event);
+    comeBack();
+  }
+
+  function stopDragging(event: PointerEvent): void {
     if (event.currentTarget instanceof HTMLElement && event.currentTarget.hasPointerCapture(event.pointerId)) {
       event.currentTarget.releasePointerCapture(event.pointerId);
     }
@@ -72,11 +155,24 @@
   }
 
   /**
+   * 窓の外で離したタブを、落とした先へ移す。
+   *
+   * 他の Marxdown のウィンドウの上ならそのウィンドウのタブ列の末尾へ（OQ-43）、それ以外なら落とした位置にサテライトを作る（F-OPEN-06）。
+   * 落とした先の判定は Rust がカーソルの位置で行う。
+   */
+  async function detachTab(id: number, position: { x: number; y: number }): Promise<void> {
+    const module = await loadHandoff();
+    const target = await module.dropOutside();
+    if (target === null) await moveTabToSatellite(id, position);
+    else await module.moveTabToWindow(id, target);
+  }
+
+  /**
    * そのタブを表示する。
    *
    * 並べ替えた直後の `click` では切り替えない。
-   * 掴んで動かした結果として押されたことになるだけで、押す意図があったわけではない。
-   * `moved` は次に掴んだ時点で戻る（`grab`）。
+   * ドラッグした結果として押されたことになるだけで、押す意図があったわけではない。
+   * `moved` は次にドラッグを開始した時点で戻る（`grab`）。
    */
   function activate(tab: Tab): void {
     if (moved) {
@@ -89,8 +185,7 @@
   /**
    * その X 座標に来るべき位置（0 始まり）。
    *
-   * 各タブの中心と比べる。掴んでいるタブ自身も並びの中にあるため、
-   * 半分を越えた時点で入れ替わり、そのまま押し続ければ隣へ移り続ける。
+   * 各タブの中心と比べる。ドラッグ中のタブ自身も並びの中にあるため、半分を越えた時点で入れ替わり、そのまま動かし続ければ隣へ移り続ける。
    */
   function indexAt(x: number): number {
     const items = [...(strip?.querySelectorAll('.mx-tab') ?? [])];
@@ -122,7 +217,7 @@
   /**
    * 幅が変わったときの再判定。
    *
-   * `scroll` はテンプレート側で拾う。ポーリングはしない（アイドル時 CPU ≒ 0）。
+   * `scroll` はテンプレート側で受け取る。ポーリングはしない（アイドル時 CPU ≒ 0）。
    */
   $effect(() => {
     if (!strip) return;
@@ -135,14 +230,12 @@
    * タブが増減したときと、表示するタブが変わったときの追従。
    *
    * `Ctrl+Tab` や `Ctrl+N` で溢れた先へ移ると、強調されたタブが画面外に残る。
-   * 実測では 21 枚のとき `scrollWidth 1205` に対して表示幅 604 で、アクティブなタブは x=1200 にあった。
-   * どれを編集しているのかが分からなくなるため、見える位置へ寄せる。
    */
   $effect(() => {
     const count = tabsStore.tabs.length;
     const active = tabsStore.activeId;
     if (count === 0 || active === null) return;
-    // `block: 'nearest'` を外さないこと。縦に動かす余地は無く、外すと本文側がスクロールする。
+    // WARNING: `block: 'nearest'` を外さないこと。縦に動かす余地は無く、外すと本文側がスクロールする。
     strip?.querySelector('.mx-tab--active')?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
     measureOverflow();
   });
@@ -151,11 +244,46 @@
    * 表示する名前。無題の文書（`Ctrl+N`）にはパスが無い。
    *
    * ディレクトリは出さない。
-   * 同名のファイルを見分ける手段は `title`（ツールチップ）に寄せ、横幅は枚数のために使う。
+   * 同名のファイルを見分ける手段は `title`（ツールチップ）とステータスバーのフルパスに任せ、横幅は枚数のために使う。
    */
   function nameOf(tab: Tab): string {
     const path = tabMeta(tab).path;
     return path === null ? ja.titlebar.untitled : splitPath(path).name;
+  }
+
+  /** 右クリックメニューを開いているか。閉じているあいだはチャンクも取得しない。 */
+  let menuOpen = $state(false);
+
+  /**
+   * メニューの対象。閉じるときに `null` へ戻さない。
+   *
+   * 戻すと、`{#if}` が解体されるより先に props が読み直され、`target.tabId` が `null` に対する参照になって落ちる。
+   * 開いているかどうかは `menuOpen` だけが表しており、閉じた後に残る値は次に開いたときに上書きされる。
+   *
+   * 押した位置を覚えるのは、メニューをそこへ出すためである。
+   * キーボード（`Shift+F10` / メニューキー）で開いた場合はブラウザがタブの矩形を座標として渡す。
+   */
+  let menuTarget = $state<{ tabId: number; name: string; x: number; y: number } | null>(null);
+
+  /** メニューを閉じたときにフォーカスを戻す先。 */
+  let menuOpener: HTMLElement | null = null;
+
+  function openMenu(event: MouseEvent, tab: Tab): void {
+    event.preventDefault();
+    menuOpener = event.currentTarget instanceof HTMLElement ? event.currentTarget : null;
+    menuTarget = { tabId: tab.id, name: nameOf(tab), x: event.clientX, y: event.clientY };
+    menuOpen = true;
+  }
+
+  /**
+   * 閉じる。既定ではタブへフォーカスを戻す。
+   *
+   * 戻さないと、`Esc` で閉じた時点でフォーカスが `<body>` へ移り、キーボード操作での現在位置が分からなくなる（`app/MenuButton.svelte` と同じ判断）。
+   */
+  function closeMenu(refocus = true): void {
+    menuOpen = false;
+    if (refocus) menuOpener?.focus();
+    menuOpener = null;
   }
 </script>
 
@@ -170,7 +298,12 @@
   {#each tabsStore.tabs as tab (tab.id)}
     {@const name = nameOf(tab)}
     {@const active = tab.id === tabsStore.activeId}
-    <div class="mx-tab" class:mx-tab--active={active} class:mx-tab--dragging={dragging === tab.id && moved}>
+    <div
+      class="mx-tab"
+      class:mx-tab--active={active}
+      class:mx-tab--temporary={tab.temporary}
+      class:mx-tab--dragging={dragging === tab.id && moved}
+    >
       <button
         type="button"
         class="mx-tab__label"
@@ -178,10 +311,12 @@
         aria-selected={active}
         title={tabMeta(tab).path ?? name}
         onclick={() => activate(tab)}
+        ondblclick={() => (tab.temporary = false)}
+        oncontextmenu={(event) => openMenu(event, tab)}
         onpointerdown={(event) => grab(event, tab)}
         onpointermove={drag}
         onpointerup={release}
-        onpointercancel={release}
+        onpointercancel={cancel}
       >
         <span class="mx-tab__name">{name}</span>
         {#if isTabDirty(tab)}
@@ -201,37 +336,40 @@
   {/each}
 </div>
 
+<!--
+  中身は右クリックされるまでロードしない（`Explorer.svelte` のファイルツリーと同じ形）。
+  取得が終わるまでは何も描かない。待っている 1 フレームに枠だけが出るほうが、位置がずれて見える。
+-->
+{#if menuOpen && menuTarget}
+  {@const target = menuTarget}
+  {#await import('./lazy/TabMenu.svelte') then { default: TabMenu }}
+    <TabMenu tabId={target.tabId} name={target.name} x={target.x} y={target.y} onclose={closeMenu} />
+  {/await}
+{/if}
+
 <style>
-  /*
-   * 枚数が増えたら横へスクロールさせる。
-   * 幅を等分すると、2 枚のときと 10 枚のときで同じタブの位置が変わり、位置で覚えられなくなる。
-   */
   .mx-tabs {
     display: flex;
     align-items: stretch;
     min-width: 0;
     overflow-x: auto;
     scrollbar-width: none;
-  }
 
-  .mx-tabs::-webkit-scrollbar {
-    display: none;
-  }
+    &::-webkit-scrollbar {
+      display: none;
+    }
 
-  /*
-   * 溢れの手がかり。隠れている側の端をぼかす。
-   * スクロールバーを出さない以上、手がかりが無ければ溢れたタブは存在しないのと同じになる。
-   */
-  .mx-tabs[data-mx-overflow='end'] {
-    mask-image: linear-gradient(to right, #000 calc(100% - 24px), transparent);
-  }
+    &[data-mx-overflow='end'] {
+      mask-image: linear-gradient(to right, #000 calc(100% - 24px), transparent);
+    }
 
-  .mx-tabs[data-mx-overflow='start'] {
-    mask-image: linear-gradient(to left, #000 calc(100% - 24px), transparent);
-  }
+    &[data-mx-overflow='start'] {
+      mask-image: linear-gradient(to left, #000 calc(100% - 24px), transparent);
+    }
 
-  .mx-tabs[data-mx-overflow='both'] {
-    mask-image: linear-gradient(to right, transparent, #000 24px, #000 calc(100% - 24px), transparent);
+    &[data-mx-overflow='both'] {
+      mask-image: linear-gradient(to right, transparent, #000 24px, #000 calc(100% - 24px), transparent);
+    }
   }
 
   .mx-tab {
@@ -240,21 +378,13 @@
     max-width: 14rem;
     border-right: 1px solid var(--mx-color-border-subtle);
     color: var(--mx-color-fg-muted);
+
+    &:hover {
+      background: var(--mx-color-bg-hover);
+      color: var(--mx-color-fg);
+    }
   }
 
-  .mx-tab:hover {
-    background: var(--mx-color-bg-hover);
-    color: var(--mx-color-fg);
-  }
-
-  /*
-   * 選択中のタブは本文と地続きに見せる。
-   *
-   * 背景だけでは足りない。`bg` と `bg-subtle` の差は 1.07:1 しかなく、
-   * 21 枚並べるとどれが開いているのか判別できなかった。
-   * 一覧の現在位置と同じ印（`--mx-current-marker-block`）を上端に足す。
-   * 下端ではなく上端なのは、タイトルバーの下端が本文との境界線として既に使われているため。
-   */
   .mx-tab--active,
   .mx-tab--active:hover {
     background: var(--mx-color-bg);
@@ -264,7 +394,7 @@
 
   .mx-tab__label {
     display: flex;
-    /* 掴んで横へ動かす操作を、タッチのスクロールに取られないようにする（並べ替え）。 */
+    /* 横へドラッグする操作が、タッチのスクロールとして扱われないようにする（並べ替え）。 */
     touch-action: none;
     align-items: center;
     gap: var(--mx-space-1);
@@ -284,15 +414,24 @@
     text-overflow: ellipsis;
   }
 
+  /* 仮タブ（ADR-0025）。VS Code と同じく斜体で表す。 */
+  .mx-tab--temporary .mx-tab__name {
+    font-style: italic;
+  }
+
   /*
-   * 掴んでいる最中。位置は並びそのものが変わることで表すため、要素は動かさない。
-   * 掴んでいることだけが分かればよい。
+   * ドラッグ中。
+   * 位置は並びそのものが変わることで表すため、要素は動かさない。
+   * ドラッグしていることだけが分かればよい。
    */
   .mx-tab--dragging {
     opacity: 0.6;
   }
 
-  /* 未保存の印。タイトルバーの `●` と同じ扱い（気づく程度の強さがあればよい）。 */
+  /*
+   * 未保存の印。
+   * 常時表示されるものではないため、表示されたときに気づく程度の強さがあればよい。
+   */
   .mx-tab__dirty {
     color: var(--mx-color-fg-muted);
     font-size: var(--mx-font-size-ui-xs);
@@ -304,9 +443,9 @@
    * ホバーしたときだけ現れる形にすると、押せる位置が事前に分からず、タブの幅も変わる。
    */
   .mx-tab__close {
+    margin-bottom: 2px;
     display: flex;
     align-items: center;
-    /* タイトルバーの高さいっぱいを取る。押せる高さを字面ぶんに狭めない。 */
     align-self: stretch;
     padding-inline: var(--mx-space-1);
     border: 0;
@@ -315,21 +454,17 @@
     color: var(--mx-color-fg-subtle);
     font: inherit;
     cursor: pointer;
+
+    &:hover {
+      background: var(--mx-color-bg-hover);
+      color: var(--mx-color-fg);
+    }
+
+    &:active {
+      background: var(--mx-color-bg-inset);
+    }
   }
 
-  .mx-tab__close:hover {
-    background: var(--mx-color-bg-hover);
-    color: var(--mx-color-fg);
-  }
-
-  .mx-tab__close:active {
-    background: var(--mx-color-bg-inset);
-  }
-
-  /*
-   * フォーカスリングを明示する。
-   * 既定のリングのままだと、ここだけ他の部品（2px の実線・内側寄せ）と違う描かれ方になる。
-   */
   .mx-tab__label:focus-visible,
   .mx-tab__close:focus-visible {
     outline: 2px solid var(--mx-color-accent);

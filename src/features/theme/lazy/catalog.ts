@@ -8,7 +8,7 @@
  * どちらも `--mx-color-*` の上書きでしかなく、面を分けているのは属性だけである（`../inject.ts`）。
  *
  * このチャンクを読み込むのは、既定以外の配色が選ばれているか、エディターか設定ダイアログを開いたときだけである。
- * プレビューで `themes/` の 1 枚を選んでいる場合は bootstrap に宣言が載って届くため、ここを待たずに当たる（`../index.ts`）。
+ * プレビューで `themes/` の 1 枚を選んでいる場合は bootstrap に宣言が含まれるため、ここを待たずに適用される（`../index.ts`）。
  */
 import { getPlatform, type UserTheme } from '@/platform';
 
@@ -71,7 +71,7 @@ export function listThemes(): ThemeSummary[] {
 /**
  * 1 件ぶんの要約。
  *
- * 明暗を持たない配色では `scheme` のキーごと落とす。
+ * 明暗を持たない配色では `scheme` のキーごと省く。
  * `exactOptionalPropertyTypes` の下では `scheme: undefined` を書くこと自体が型エラーになる。
  */
 function summary(id: string, label: string, scheme: 'light' | 'dark' | undefined, user: boolean): ThemeSummary {
@@ -79,13 +79,13 @@ function summary(id: string, label: string, scheme: 'light' | 'dark' | undefined
 }
 
 /**
- * 選ばれている配色を面に効かせる。同期的に完了する。
+ * 選ばれている配色を面に適用する。同期的に完了する。
  *
- * 属性そのものを付けるのは `features/settings/appearance.ts` で、ここは属性に意味を与える規則を用意するだけである。
+ * 属性そのものを付けるのは `features/settings/appearance.ts` で、ここは属性に対応する規則を用意するだけである。
  * 分かれているのは、属性が起動直後（`main`）に付き、規則はこのチャンクが読み込まれるまで存在しないためである。
  *
- * 知らない id は既定へ落とさず、何も注入せずに `unknown` を返す。
- * 落としてしまうと、テーマファイルの名前を打ち間違えたのか、そもそも適用されていないのかをユーザーが区別できない。
+ * 知らない id は既定に置き換えず、何も注入せずに `unknown` を返す。
+ * 置き換えると、テーマファイルの名前を打ち間違えたのか、そもそも適用されていないのかをユーザーが区別できない。
  */
 export function applyTheme(surface: Surface, id: string): ApplyResult {
   if (id === DEFAULT_ID) {
@@ -103,13 +103,13 @@ export function applyTheme(surface: Surface, id: string): ApplyResult {
 }
 
 /**
- * `themes/` の外部変更に追従する。購読は 1 つだけ張る。
+ * `themes/` の外部変更に追従する。購読は 1 つだけ登録する。
  *
  * 面ごとに呼ばれるが、読み直しはカタログに 1 つしかない。
  * 面ごとに購読すると、1 回の保存で `list_user_themes` が面の数だけ往復する。
  *
  * どの 1 枚が変わったかは届かない。
- * 選択中の配色が変わったかどうかは読み直した結果と突き合わせないと判断できず、突き合わせるより当て直すほうが短い。
+ * 選択中の配色が変わったかどうかは読み直した結果と突き合わせないと判断できず、突き合わせるより再適用するほうが単純である。
  */
 const reappliers = new Set<() => void>();
 let watching = false;
@@ -140,7 +140,7 @@ function bodyOf(id: string): string | null {
  * 明暗の別。一覧の並べ替えにだけ使う。
  *
  * 実際の挙動を決めるのは注入された CSS そのものであり、この判定ではない。
- * そのため、宣言の文字列を見るだけの雑な判定で足りる。
+ * そのため、宣言の文字列を見るだけの簡易な判定で足りる。
  */
 function schemeOf(text: string): 'light' | 'dark' | undefined {
   const found = /color-scheme\s*:\s*(light|dark)\b/iu.exec(text);

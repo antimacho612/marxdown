@@ -1,0 +1,17 @@
+:
+# Marxdown の CLI シム（Git Bash / MSYS2 用。OQ-32）。
+# NOTE: 先頭行の `:` を消さない。shebang の代わりである。
+#   shebang があると bash は sh を新しいプロセスとして起動し、MSYS2 ではそれだけで約 100ms かかる。
+#   shebang が無いと bash は自身のサブシェルでこのファイルを実行するが、MSYS2 は先頭が `#!` でも `:` でもないファイルを実行可能とみなさず、PATH から見つけられない。
+# NOTE: MSYS2 の bash は GUI サブシステムの exe でも終了を待つため、バックグラウンドで起動して即座に戻る。
+# NOTE: 標準入出力を端末から外す。つないだままだと、子プロセスが端末を握ってプロンプトの復帰を妨げることがある。
+# NOTE: --help / --version はバックグラウンドにしない。出力がプロンプトの後に届く。
+# NOTE: `-`（標準入力）もバックグラウンドにしない。パイプを exe へ渡すためである。exe は stdin を一時ファイルへ書き出し、自分自身を切り離して起動し直してすぐ終了する（src/stdin.rs）。
+exe="${0%/*}/../marxdown.exe"
+case "$1" in
+  -h | --help | -V | --version) exec "$exe" "$@" ;;
+esac
+for a in "$@"; do
+  [ "$a" = - ] && exec "$exe" "$@"
+done
+"$exe" "$@" </dev/null >/dev/null 2>&1 &

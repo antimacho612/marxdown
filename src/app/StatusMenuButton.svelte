@@ -1,9 +1,10 @@
 <!--
-  ステータスバーの「押すと選択肢が出る」項目（03.ux-spec/07-status-and-notifications.md §3）。
-  モードとエンコーディングが同じ形であるため、コンポーネントを 1 つにまとめてある。
+  ステータスバーの「押すと選択肢が出る」項目。
+  モード・エンコーディング・表示倍率が同じ形であるため、コンポーネントを 1 つにまとめてある。
   選択肢も見た目も押されるまでロードしない（動的 import / `app/MenuButton.svelte` と同じ形）。
   ステータスバーは `overflow: hidden` であるため、パネルを `position: absolute` で置くと切り落とされる。
   そのため `position: fixed` にし、位置は押した瞬間にボタンが自分の位置を測定して渡す（開いてから測定すると、1 フレームだけ誤った位置に表示された後に正しい位置へ切り替わる）。
+  水平位置はビューポートの近いほうの端に揃える。右端にある倍率を左端基準で置くと、パネルが画面の外へはみ出す。
 -->
 <script lang="ts">
   import type { StatusMenu, StatusMenuAnchor, StatusMenuKind } from '@/features/status';
@@ -31,8 +32,15 @@
   async function show(): Promise<void> {
     if (!button) return;
     const rect = button.getBoundingClientRect();
-    // 下端をボタンの上端に合わせる（ステータスバーの上に開く）。
-    anchor = { left: rect.left, bottom: globalThis.innerHeight - rect.top };
+    // ビューポートの右半分にあるボタンは、パネルの右端をボタンの右端に合わせる。
+    // 左端で揃えると、パネルの幅だけ右へ伸びて画面の外へ出る（`features/status/props.ts`）。
+    const alignRight = rect.left + rect.width / 2 > globalThis.innerWidth / 2;
+    anchor = {
+      side: alignRight ? 'right' : 'left',
+      inset: alignRight ? globalThis.innerWidth - rect.right : rect.left,
+      // 下端をボタンの上端に合わせる（ステータスバーの上に開く）。
+      bottom: globalThis.innerHeight - rect.top,
+    };
 
     if (!menu) {
       const loaded = await import('@/features/status/lazy/StatusMenu.svelte');

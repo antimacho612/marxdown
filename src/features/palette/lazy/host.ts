@@ -24,7 +24,7 @@ let current: string | null = null;
 /**
  * パレットを開く。既に同じものが開いていれば、入力欄を選び直す（`openSearch` と同じ / Familiar）。
  *
- * `props` に `onclose` は含めない。閉じる手はここが渡す。
+ * `props` に `onclose` は含めない。閉じる処理はここが渡す。
  */
 export function openPalette<P extends Record<string, unknown>>(
   id: string,
@@ -64,7 +64,7 @@ export function closePalette(): void {
   host = null;
   current = null;
 
-  // フォーカスを戻さないと `<body>` へ落ちる（`panel.ts` と同じ理由）。
+  // フォーカスを戻さないと `<body>` へ移る（`panel.ts` と同じ理由）。
   if (opener?.isConnected) opener.focus();
   opener = null;
 }

@@ -15,7 +15,7 @@ beforeEach(() => {
   vi.stubGlobal('requestIdleCallback', undefined);
 });
 
-describe('段階的描画 (02.architecture/06-markdown-rendering-pipeline.md §4)', () => {
+describe('段階的描画', () => {
   it('最初のチャンクは同期的に入る', () => {
     const el = container();
     paint(el, ['<p>first</p>', '<p>second</p>']);
@@ -38,12 +38,10 @@ describe('段階的描画 (02.architecture/06-markdown-rendering-pipeline.md §4
   });
 
   /**
-   * OQ-18。**ここが止まらないと、誰も見ていない DOM を裏で作り続ける。**
+   * ここが停止しないと、表示されない DOM を裏で作り続ける。
    *
-   * 段階的描画の途中で次のファイルを開くと、古いループの投入先は
-   * `replaceChildren()` によって既に切り離されている。それでも追記を続けると、
-   * 未投入のチャンク文字列（`huge.md` では数 MB）と、作りかけの
-   * ツリーの両方が握られたままになる。
+   * 段階的描画の途中で次のファイルを開くと、古いループの投入先は `replaceChildren()` によって既に切り離されている。
+   * それでも追記を続けると、未投入のチャンク文字列（`huge.md` では数 MB）と、作りかけのツリーの両方が保持されたままになる。
    */
   it('次の描画が始まったら、前の描画は続きを入れない', async () => {
     const el = container();
@@ -53,7 +51,7 @@ describe('段階的描画 (02.architecture/06-markdown-rendering-pipeline.md §4
     // 最初のチャンクだけが入った状態で、次のファイルを開く。
     paint(el, ['<p>new</p>']);
 
-    // 古いループが息をしていれば、ここで old-* が生えてくる。
+    // 古いループが動作し続けていれば、ここで old-* が追加される。
     await new Promise((r) => setTimeout(r, 20));
 
     expect(el.textContent).toBe('new');
@@ -70,12 +68,11 @@ describe('段階的描画 (02.architecture/06-markdown-rendering-pipeline.md §4
     paint(el, ['<p>next</p>']);
     await new Promise((r) => setTimeout(r, 20));
 
-    // 解決させると、呼び出し側が切り離されたコンテナに対して
-    // `enhance` とアンカー復元をやり直してしまう（`open.ts`）。
+    // 解決させると、呼び出し側が切り離されたコンテナに対して `enhance` とアンカー復元をやり直してしまう（`open.ts`）。
     expect(settled).toBe(false);
   });
 
-  /** タブを閉じる（M3 / N-PERF-06）ときのために、描き直さない打ち切りも要る。 */
+  /** タブを閉じるとき（N-PERF-06）のために、再描画を伴わない打ち切りも必要である。 */
   it('cancelPaint だけでも、続きが入らなくなる', async () => {
     const el = container();
     const many = Array.from({ length: 50 }, (_, i) => `<p>x-${String(i)}</p>`);

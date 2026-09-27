@@ -25,13 +25,14 @@ function payload(path: string, content = '# hello\n\ntext\n'): DocumentPayload {
   };
 }
 
-/** Worker を立てずに `MarkdownParser` の形だけ満たす。 */
+/** パイプラインを読み込まずに `MarkdownParser` の形だけ満たす。 */
 function fakeParser(): MarkdownParser {
   return {
     parse: (text) =>
       Promise.resolve({
         id: 1,
         chunks: [`<p>${text.length}</p>`],
+        blocks: [`<p>${text.length}</p>`],
         outline: [{ level: 1, text: 'hello', slug: 'hello', line: 0 }],
         frontMatter: null,
         parseMs: 0.5,
@@ -59,7 +60,7 @@ function install(overrides: Partial<Platform> = {}): Spies {
   return spies;
 }
 
-/** `openDocument` は次の rAF を待つ。jsdom には無いので即時に回す。 */
+/** `openDocument` は次の rAF を待つ。jsdom には無いので即時に実行する。 */
 beforeEach(() => {
   vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => {
     cb(0);
@@ -73,6 +74,7 @@ beforeEach(() => {
   documentStore.frontMatter = null;
   documentStore.stats = null;
   documentStore.notice = null;
+  documentStore.statusMessage = null;
   documentStore.isDirty = false;
   recentStore.entries = [];
 
@@ -203,12 +205,13 @@ describe('configureOpener', () => {
       betweenParseAndPaint: () => order.push('shell'),
     });
 
-    // ここまでで、パースは投げ終わっていてシェルも描かれている
+    // ここまでで、パースは開始済みでシェルも描かれている
     expect(order).toEqual(['parse-posted', 'shell']);
 
     resolveParse({
       id: 1,
       chunks: ['<p>x</p>'],
+      blocks: ['<p>x</p>'],
       outline: [],
       frontMatter: null,
       parseMs: 0.1,
@@ -267,11 +270,10 @@ describe('reloadCurrent', () => {
     const outcome = await reloadCurrent();
 
     expect(outcome).not.toBeNull();
-    // 第 2 引数はエンコーディングの**指定**。通常の経路では渡さず、
-    // Rust 側の推定に任せる（03.ux-spec/07-status-and-notifications.md §3 の再解釈だけが渡す）。
+    // 第 2 引数はエンコーディングの指定。通常の経路では渡さず、Rust 側の推定に任せる（ステータスバーの再解釈だけが渡す）。
     expect(spies.readDocument).toHaveBeenCalledWith('C:/work/b.md', undefined);
     expect(documentStore.meta?.path).toBe('C:/work/b.md');
-    // 既に一覧の先頭にあるファイル。順序は変わらないので積み直さない
+    // 既に一覧の先頭にあるファイル。順序は変わらないので加え直さない
     expect(spies.pushRecent).not.toHaveBeenCalled();
   });
 
@@ -290,16 +292,13 @@ describe('reloadCurrent', () => {
     expect(writes.at(-1)).toBe(400);
   });
 
-  it('再読み込みしたことを情報通知で伝える（内容が同じでも画面は動かないため）', async () => {
+  it('再読み込みしたことをステータスバーで伝える（内容が同じでも画面は動かないため）', async () => {
     install();
     await openPath('C:/work/b.md');
 
     await reloadCurrent();
 
-    expect(documentStore.notice).toMatchObject({
-      level: 'info',
-      message: ja.open.reloaded,
-    });
+    expect(documentStore.statusMessage).toBe(ja.open.reloaded);
   });
 
   it('何も開いていなければ何もしない', async () => {
@@ -313,10 +312,10 @@ describe('reloadCurrent', () => {
   });
 
   /**
-   * エンコーディングの再解釈（03.ux-spec/07-status-and-notifications.md §3 / `document/encoding.ts`）。
+   * エンコーディングの再解釈（`document/encoding.ts`）。
    *
-   * **読み直しの経路は増やさない。** スクロールを保つことも履歴に積まないことも
-   * `F5` と同じでよく、違うのは指定を 1 つ渡すことだけである。
+   * 読み直しの経路は増やさない。
+   * スクロールを保つことも履歴に加えないことも `F5` と同じでよく、違うのは指定を 1 つ渡すことだけである。
    */
   it('エンコーディングを指定して読み直せる', async () => {
     const spies = install();
@@ -346,8 +345,8 @@ describe('reloadCurrent', () => {
 /**
  * 未保存のまま別の文書へ移るときの確認（F-EDIT-03 / N-REL-01 / `discard.ts`）。
  *
- * **入口は 5 つあるが、確認は 1 か所にしか無い。** `openPath` を通らない
- * 「開く」を作らない限り、どの入口からでも同じ確認が挟まる。
+ * 入口は 5 つあるが、確認は 1 か所にしか無い。
+ * `openPath` を通らない「開く」を作らない限り、どの入口からでも同じ確認が挟まる。
  */
 describe('未保存の変更があるとき', () => {
   it('キャンセルされたら、読み込みにも行かない', async () => {
@@ -355,7 +354,8 @@ describe('未保存の変更があるとき', () => {
     documentStore.isDirty = true;
 
     expect(await openPath('C:/notes/a.md')).toBeNull();
-    // **尋ねるのは I/O より前。** 開くと決まっていないのにファイルを読まない。
+    // 尋ねるのは I/O より前。
+    // 開くと決まっていないのにファイルを読まない。
     expect(spies.readDocument).not.toHaveBeenCalled();
   });
 
@@ -378,7 +378,7 @@ describe('未保存の変更があるとき', () => {
     expect(confirmDiscard).not.toHaveBeenCalled();
   });
 
-  /** `F5` も同じ入口を通る。Phase 2 の時点では、ここが素通りだった。 */
+  /** `F5` も同じ入口を通る。 */
   it('再読み込み（F5）でも確認する', async () => {
     install({ confirmDiscard: () => Promise.resolve('cancel' as const) });
     await openPath('C:/notes/a.md');

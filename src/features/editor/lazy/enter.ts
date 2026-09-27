@@ -1,7 +1,7 @@
 /**
  * リストの継続入力と自動採番（F-EDIT-09 の `Enter` / F-EDIT-10 / `editor` チャンク）。
  *
- * CodeMirror では `@codemirror/lang-markdown` が既定で持っていたが Monaco には無いため自作した（ADR-0009 の受け入れコスト 1）。
+ * Monaco には無いため自作した（ADR-0009 の受け入れコスト 1）。
  * Monaco の `onEnterRules` は固定文字列しか足せず、番号付きリストの次の番号は計算が要るため使えない。
  * リストでも引用でもない行では `null` を返し、Monaco の既定の改行へ渡す（`keymap.ts`）。
  *
@@ -108,7 +108,7 @@ export const continueList: MarkdownEdit = (model, selections) => {
 };
 
 /**
- * `Backspace` で記法を畳む。
+ * `Backspace` で記法をまとめて削除する。
  *
  * カーソルが記法の直後にあるときだけ動作する。
  * その位置で 1 文字だけ削除すると `- ` が `-` になり、リストでも通常の行でもない状態が残る。

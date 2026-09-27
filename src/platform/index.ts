@@ -14,8 +14,7 @@ export * from './types';
 /**
  * Tauri の中で動いているか。
  *
- * `@tauri-apps/api` を import しただけでは判定できないため、
- * Tauri が WebView に必ず注入する内部関数の有無で見る。
+ * `@tauri-apps/api` を import しただけでは判定できないため、Tauri が WebView に必ず注入する内部関数の有無で見る。
  */
 function isTauri(): boolean {
   return (
