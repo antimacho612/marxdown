@@ -89,6 +89,9 @@ Marxdown は、**開いて・読んで・少し直す** ためのアプリです
 
 `.md` / `.markdown` ファイルに関連付けられるため、エクスプローラーからダブルクリックしても開けます。
 
+新しいバージョンが出ると、アプリ内に通知が表示されます。
+「更新して再起動」を押すと、そのまま新しいバージョンに入れ替わります（変更内容は [CHANGELOG](CHANGELOG.md)）。
+
 <details>
 <summary>「Windows によって PC が保護されました」と表示されたら</summary>
 
@@ -120,6 +123,18 @@ Windows 11 には標準で入っています。
 ```powershell
 .\Marxdown_0.1.0_x64-setup.exe /S /ADDTOPATH
 ```
+
+</details>
+
+<details>
+<summary>更新の確認について</summary>
+
+<br />
+
+起動時とウィンドウを前面に出したときに、1 日 1 回まで GitHub の Releases に新しいバージョンを問い合わせます。
+送られるのは通信そのもの（IP アドレスなど）だけで、開いているファイルの情報は含みません。
+設定の「新しいバージョンを自動で確認する」（`update.autoCheck`）で止められます。
+止めていても、コマンドパレット（`Ctrl+Shift+P`）の「更新を確認」から確認できます。
 
 </details>
 
@@ -168,11 +183,11 @@ Windows PowerShell 5.1 からパイプで渡すと、ASCII 以外の文字が `?
 | <kbd>Ctrl</kbd>+<kbd>,</kbd> | 設定 |
 | <kbd>Ctrl</kbd>+<kbd>Q</kbd> | 終了 |
 
-すべてのショートカットは [キーバインド一覧](docs/03.ux-spec/04-keybindings.md) を参照してください。
+すべてのショートカットは [キーボードショートカット](docs/keybindings.md) を参照してください。
 
 ## 🛠️ 開発に参加する
 
-ビルド手順・検査・計測・コードの構成は [CONTRIBUTING.md](CONTRIBUTING.md) に、設計の全体は [`docs/`](docs/README.md) にあります。
+ビルド手順・検査・計測・コードの構成は [CONTRIBUTING.md](CONTRIBUTING.md) にあります。
 
 ## 📄 ライセンス
 

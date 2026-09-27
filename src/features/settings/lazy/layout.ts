@@ -127,6 +127,13 @@ export const LAYOUT = [
         label: ja.settings.window.launchAtLogin.label,
         description: ja.settings.window.launchAtLogin.description,
       },
+      {
+        kind: 'field',
+        key: 'update.autoCheck',
+        widget: 'toggle',
+        label: ja.settings.update.autoCheck.label,
+        description: ja.settings.update.autoCheck.description,
+      },
     ],
   },
   {

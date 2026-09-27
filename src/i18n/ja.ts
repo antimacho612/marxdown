@@ -1,7 +1,7 @@
 /**
  * NOTE: 当面は日本語のみのため、i18n ライブラリは導入しない。
  * 将来的に必要になった時のために定数に集約しておく。
- * 表記の規則は `docs/conventions/02-ui-wording.md` にある。
+ * 表記の規則は `design/conventions/02-ui-wording.md` にある。
  */
 
 /** 対象（パスや名前）が分かっていれば `本文: 対象` の形にし、空なら本文だけを返す。 */
@@ -96,6 +96,8 @@ export const ja = {
     moveToMainWindow: 'メインウィンドウに戻す',
     save: '保存',
     saveAs: '名前を付けて保存',
+    /** 書き出し形式を並べるサブメニューの見出し（F-VIEW-18）。 */
+    export: '書き出す',
     exportHtml: 'HTML として書き出す',
     exportPdf: 'PDF として書き出す',
     toEdit: '編集する',
@@ -126,6 +128,7 @@ export const ja = {
     find: '検索',
     replace: '置換',
     quit: '終了',
+    checkUpdate: '更新を確認',
   },
 
   pane: {
@@ -446,6 +449,13 @@ export const ja = {
         label: '表示する見出しの階層',
         description:
           'アウトラインに表示する見出しの深さを、1〜6 で指定します。指定した階層より深い見出しは表示しません。',
+      },
+    },
+
+    update: {
+      autoCheck: {
+        label: '新しいバージョンを自動で確認する',
+        description: '起動時とウィンドウを前面に出したときに、1 日 1 回まで確認します。',
       },
     },
 

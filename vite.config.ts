@@ -310,6 +310,13 @@ export default defineConfig(({ mode }) => ({
           if (isStatusMenu) return 'assets/status-[hash].js';
 
           /*
+           * 更新の通知と操作（ADR-0024）。他と同じく名前付けだけ。
+           * `features/update/index.ts`（購読と入口）は `main` に残り、名前が付くのは `lazy/notice.ts` から始まるチャンクだけである。
+           */
+          const isUpdate = /[\\/]src[\\/]features[\\/]update[\\/]lazy[\\/]/.test(chunk.facadeModuleId ?? '');
+          if (isUpdate) return 'assets/update-[hash].js';
+
+          /*
            * エディター。menu / settings / outline と同じく名前付けだけ。
            *
            * `src/features/editor/open-editor.ts` は `main` から静的に import されているので `main` に残る（動的 import の一行だけを持つ入口）。

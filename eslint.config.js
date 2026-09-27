@@ -121,6 +121,7 @@ export default tseslint.config(
       'src-tauri/target/**',
       'bench/fixtures/**',
       '.claude/**',
+      'design/**',
     ],
   },
 

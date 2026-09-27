@@ -20,6 +20,7 @@ import type {
   EntriesRemoved,
   FileChange,
   FileList,
+  InstallRefusal,
   MarpThemes,
   Moved,
   OpenRequest,
@@ -29,6 +30,7 @@ import type {
   SettingsLoad,
   TabArrival,
   TraceMark,
+  UpdateInfo,
   UserTheme,
   WriteRequest,
 } from './types';
@@ -45,6 +47,7 @@ const EVENT_WINDOW_MAXIMIZED = 'marxdown://window-maximized';
 const EVENT_MAXIMIZE_HOVER = 'marxdown://maximize-hover';
 const EVENT_TAB_ARRIVE = 'marxdown://tab-arrive';
 const EVENT_TAB_DRAG_OVER = 'marxdown://tab-drag-over';
+const EVENT_UPDATE_AVAILABLE = 'marxdown://update-available';
 const EVENT_DIR_CHANGED = 'marxdown://dir-changed';
 const EVENT_ENTRIES_MOVED = 'marxdown://entries-moved';
 const EVENT_ENTRIES_REMOVED = 'marxdown://entries-removed';
@@ -407,6 +410,18 @@ export const tauriPlatform: Platform = {
 
   openExternal(url) {
     return invoke<void>('open_external', { url });
+  },
+
+  checkUpdate() {
+    return invoke<UpdateInfo | null>('check_update');
+  },
+
+  installUpdate() {
+    return invoke<InstallRefusal>('install_update');
+  },
+
+  onUpdateAvailable(handler) {
+    return subscribe(() => listenHere<UpdateInfo>(EVENT_UPDATE_AVAILABLE, (event) => handler(event.payload)));
   },
 
   openLocalFile(path) {

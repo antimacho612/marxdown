@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "Marxdown",
-  "version": "0.1.0",
-  "identifier": "Marxdown",
+  "version": "../package.json",
+  "identifier": "com.antimacho612.marxdown",
   "build": {
     "beforeDevCommand": "pnpm dev:web",
     "devUrl": "http://localhost:1420",
@@ -50,6 +50,15 @@
         "installMode": "currentUser",
         "languages": ["Japanese"],
         "installerHooks": "windows/installer-hooks.nsh"
+      }
+    }
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "",
+      "endpoints": ["https://github.com/antimacho612/marxdown/releases/latest/download/latest.json"],
+      "windows": {
+        "installMode": "passive"
       }
     }
   }

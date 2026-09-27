@@ -26,7 +26,7 @@ const DRIVER_PORT = 4444;
 export const FIXTURES = path.resolve(here, '..', '..', 'bench', 'fixtures');
 
 /** 計測結果の置き場所。[measurements](../../docs/measurements/README.md) の他の JSON と同じ。 */
-const REPORT_DIR = path.resolve(here, '..', '..', 'docs', 'measurements');
+const REPORT_DIR = path.resolve(here, '..', '..', 'design', 'measurements');
 
 /**
  * WebView2 に渡す追加スイッチ。`wdio.memory.conf.ts` が環境変数 `WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS` として置く。
