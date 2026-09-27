@@ -29,6 +29,7 @@ URL パラメータで挙動を切り替えられる。
 | --- | --- |
 | `?welcome` | 引数なし起動（Welcome 画面）を再現する |
 | `?file=<path>` | 仮想 FS 上のファイルを開く |
+| `?update` | 新しい版がある状態を再現する（更新の通知バー） |
 
 ## コンポーネントの状態を並べて見る
 
@@ -110,6 +111,58 @@ $bin = Resolve-Path .\src-tauri\target\release\bin
 
 2 回目以降の `marxdown foo.md` は新しいプロセスを立てず、常駐しているプロセスにパスを転送する（単一インスタンス / ADR-0004）。
 ここが速さの中心なので、ドッグフーディングではウィンドウを閉じずに置いておくのが本来の使い方。
+
+## 変更履歴
+
+利用者に見える変更は、PR の中で [`CHANGELOG.md`](CHANGELOG.md) の `## [Unreleased]` に書く。
+Release の本文と、アプリの更新通知から開く「変更内容」はここから作られる。
+
+- 見出しは `### 追加` / `### 変更` / `### 非推奨` / `### 削除` / `### 修正` / `### セキュリティ` を使う（[Keep a Changelog](https://keepachangelog.com/ja/1.1.0/)）
+- 書くのは利用者から見た変化だけで、コミットの一覧ではない。`docs` / `refactor` / `test` / `chore` だけの変更は書かない
+- 1 項目 1 行で、何ができるようになったか・何が直ったかを書く。設定のキーやショートカットは `` ` `` で囲む
+
+## リリース
+
+版の番号は `package.json` だけが持つ（`tauri.conf.json` はそれを参照し、`Cargo.toml` はスクリプトが合わせる）。
+設計は [ADR-0020](docs/adr/0020-auto-update.md) を参照。
+
+```bash
+pnpm release bump 0.2.0      # 版を上げ、CHANGELOG の Unreleased を 0.2.0 の節にする
+git diff                     # package.json / Cargo.toml / Cargo.lock / CHANGELOG.md を確かめる
+git commit -am "chore(release): v0.2.0"
+git tag v0.2.0
+git push origin HEAD v0.2.0
+```
+
+タグを push すると [`release.yml`](.github/workflows/release.yml) がビルドし、**下書きの Release** を作る。
+下書きのインストーラを手元で入れて確かめてから、GitHub で公開する。
+公開した時点で `releases/latest/download/latest.json` が新しい版を指し、インストール済みのアプリに更新の通知が出る。
+
+> [!WARNING]
+> 公開した Release を後から差し替えない。
+> 直すときは版を上げて出し直す。
+> 同じ版の中身が変わると、既に更新した利用者と、これから更新する利用者で中身が食い違う。
+
+### 署名鍵
+
+updater の署名鍵（Tauri 独自の minisign 鍵。コード署名ではない）は 1 組だけで、次の場所にだけ置く。
+
+| | 場所 |
+| --- | --- |
+| 公開鍵 | `src-tauri/tauri.conf.json` の `plugins.updater.pubkey` |
+| 秘密鍵とパスワード | GitHub の Secrets（`TAURI_SIGNING_PRIVATE_KEY` / `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`）と、リポジトリの外のバックアップ |
+
+**秘密鍵を失うと、既存の利用者に更新を届けられなくなる。**
+公開鍵を差し替えた版は、利用者に手動で入れ直してもらうしかない。
+
+手元のビルド（`pnpm build`）は updater の成果物を作らないため、秘密鍵は要らない。
+リリースの CI だけが `src-tauri/tauri.release.conf.json` を重ねて署名する。
+
+### 手元で更新を試す
+
+自動の確認は release ビルドでだけ動く（開発ビルドでは公開版を毎回見つけてしまうため）。
+コマンドパレットの「更新を確認」は開発ビルドでも動く。
+ブラウザだけで通知バーを見るときは `pnpm dev:web` の URL に `?update` を付ける。
 
 ## 構成
 
