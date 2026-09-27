@@ -53,7 +53,7 @@ pub const KEY_EDITOR_WORD_WRAP_COLUMN: &str = "editor.wordWrapColumn";
 
 /// エクスプローラーから常に除外するパスの glob（`src/glob.rs`）。
 pub const KEY_EXPLORER_EXCLUDE: &str = "explorer.exclude";
-/// ファイルツリーの単一クリックで仮タブとして開くか（ADR-0024）。
+/// ファイルツリーの単一クリックで仮タブとして開くか（ADR-0025）。
 pub const KEY_EXPLORER_TEMPORARY_TAB: &str = "explorer.temporaryTab";
 
 /// 追加記法（`src/markdown/plugins/syntax.ts` の `SYNTAX_NAMES` と 1:1）。どれも既定 OFF。
@@ -336,7 +336,7 @@ pub struct Settings {
     /// 空なら追加の除外はしない。隠しファイルと `node_modules` は設定に関わらず除外される（`dir.rs`）。
     #[serde(rename = "explorer.exclude")]
     pub explorer_exclude: Vec<String>,
-    /// ファイルツリーの単一クリックで仮タブとして開くか（ADR-0024）。
+    /// ファイルツリーの単一クリックで仮タブとして開くか（ADR-0025）。
     /// 仮タブは次の単一クリックで置き換わり、編集・ダブルクリック・「保持」で通常のタブになる。
     #[serde(rename = "explorer.temporaryTab")]
     pub explorer_temporary_tab: bool,
