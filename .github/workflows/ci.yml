@@ -4,9 +4,9 @@ name: CI
 # 起動時間とメモリは環境ノイズが大きく CI での自動判定に向かないため、手動計測とする（同 §5）。
 
 on:
-  # push:
-  #   branches: [main]
-  # pull_request:
+  push:
+    branches: [main]
+  pull_request:
   workflow_dispatch:
 
 concurrency:
