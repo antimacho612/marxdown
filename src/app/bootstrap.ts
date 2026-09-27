@@ -119,6 +119,7 @@ export async function startup(renderShell: () => void): Promise<void> {
     parser: createParser(),
     softBreak: () => settingsStore.values['preview.softBreak'],
     syntax: () => enabledSyntax(settingsStore.values),
+    marpThemes: () => settingsStore.values['marp.themes'],
     ...workspaceOpenerHooks(),
   });
 

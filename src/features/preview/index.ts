@@ -9,6 +9,7 @@ export { scrollToAnchor } from './anchor';
 export { enhance, releasePreviewResources } from './enhance';
 export { installLinkHandler, type LinkTargets } from './links';
 export { installTaskHandler, type TaskTargets } from './task';
+export { paintMarp } from './marp';
 export { openSearchLazily } from './open-search';
 export { paint, patch, type PaintResult } from './paint';
 export { applyZoom, formatZoom, ZOOM_STEPS, zoomIn, zoomOut, zoomReset } from './zoom';

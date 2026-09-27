@@ -22,6 +22,7 @@ pub mod error;
 mod export;
 pub mod fsops;
 pub mod glob;
+pub mod marp_themes;
 pub mod path_env;
 pub mod scope;
 pub mod settings;
@@ -484,6 +485,7 @@ pub fn run() {
             commands::open_settings_file,
             commands::list_user_themes,
             commands::open_themes_dir,
+            commands::read_marp_themes,
             commands::watch_path,
             commands::unwatch_path,
             commands::window_minimize,

@@ -90,8 +90,20 @@
     "gzip": true
   },
   {
-    "name": "total (no mermaid, no math, no editor) — 上限の根拠は 05.performance-budget/05-operations.md §1",
-    "path": ["dist/assets/*.js", "!dist/assets/mermaid-*.js", "!dist/assets/math-*.js", "!dist/assets/editor-*.js"],
+    "name": "marp (Marp のスライド。marp: true の文書を開くまでロードしない。予算の対象外 — ADR-0023)",
+    "path": ["dist/assets/marp-*.js"],
+    "limit": "200 KB",
+    "gzip": true
+  },
+  {
+    "name": "total (no mermaid, no math, no marp, no editor) — 上限の根拠は 05.performance-budget/05-operations.md §1",
+    "path": [
+      "dist/assets/*.js",
+      "!dist/assets/mermaid-*.js",
+      "!dist/assets/math-*.js",
+      "!dist/assets/marp-*.js",
+      "!dist/assets/editor-*.js"
+    ],
     "limit": "235 KB",
     "gzip": true
   }

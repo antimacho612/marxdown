@@ -18,6 +18,7 @@ import {
   type CoreError,
   type DiscardChoice,
   type DocumentPayload,
+  type MarpThemes,
   type OpenRequest,
   type Panes,
   type Platform,
@@ -554,6 +555,15 @@ export const webPlatform: Platform = {
 
   async listUserThemes() {
     return userThemesNow();
+  },
+
+  /** 仮想 FS（`?file=` と同じ `localStorage`）に置いたファイルをテーマとして返す。検証は実装（Rust）だけが行う。 */
+  async readMarpThemes(paths): Promise<MarpThemes> {
+    const fs = loadFs();
+    return {
+      themes: paths.flatMap((path) => (fs[path] ? [{ path, css: fs[path].content }] : [])),
+      problems: paths.flatMap((path) => (fs[path] ? [] : [{ path, kind: 'missing' as const }])),
+    };
   },
 
   async openThemesDir() {

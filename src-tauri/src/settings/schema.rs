@@ -63,6 +63,9 @@ pub const KEY_MARKDOWN_MULTILINE_TABLES: &str = "markdown.multilineTables";
 pub const KEY_MARKDOWN_SUBSCRIPT: &str = "markdown.subscript";
 pub const KEY_MARKDOWN_SUPERSCRIPT: &str = "markdown.superscript";
 
+/// Marp の自作テーマの参照先（`crate::marp_themes` / ADR-0023 §3.4）。
+pub const KEY_MARP_THEMES: &str = "marp.themes";
+
 pub const KEY_OUTLINE_MAX_DEPTH: &str = "outline.maxDepth";
 
 pub const KEY_PREVIEW_CODE_FONT_FAMILY: &str = "preview.codeFontFamily";
@@ -133,6 +136,11 @@ const LOCALE_TAG_MAX_LEN: usize = 35;
 /// 1 エントリごとに全パターンを試すため、本数がそのまま一覧の走査コストになる。
 /// `src/glob.rs` の `MAX_PATTERNS` と揃える。
 const EXCLUDE_MAX: usize = 64;
+
+/// Marp のテーマの参照先の本数と、1 本あたりの長さの上限。
+/// 長さは Windows の長いパス（32767 文字）ではなく、設定 UI の入力欄で扱える長さで切る。
+const MARP_THEMES_MAX: usize = 32;
+const MARP_THEME_PATH_MAX_LEN: usize = 1024;
 
 /// 明暗の指定（F-CONF-01）。配色そのものは `preview.theme` / `editor.theme` が持つ。
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
@@ -345,6 +353,10 @@ pub struct Settings {
     #[serde(rename = "markdown.superscript")]
     pub markdown_superscript: bool,
 
+    /// Marp の自作テーマ。CSS ファイルかディレクトリの絶対パス（ADR-0023 §3.4）。
+    #[serde(rename = "marp.themes")]
+    pub marp_themes: Vec<String>,
+
     /// アウトラインに表示する見出しの最大階層（`h1`〜`h6`）。それより深い見出しは一覧から外れる。
     #[serde(rename = "outline.maxDepth")]
     pub outline_max_depth: f64,
@@ -438,6 +450,8 @@ impl Default for Settings {
             markdown_multiline_tables: false,
             markdown_subscript: false,
             markdown_superscript: false,
+
+            marp_themes: Vec::new(),
 
             outline_max_depth: DEFAULT_OUTLINE_MAX_DEPTH,
 
@@ -550,6 +564,8 @@ impl Settings {
                 .unwrap_or(d.markdown_subscript),
             markdown_superscript: take(&mut map, KEY_MARKDOWN_SUPERSCRIPT)
                 .unwrap_or(d.markdown_superscript),
+
+            marp_themes: take_marp_themes(&mut map).unwrap_or(d.marp_themes),
 
             outline_max_depth: take_int(&mut map, KEY_OUTLINE_MAX_DEPTH, OUTLINE_MAX_DEPTH_RANGE)
                 .unwrap_or(d.outline_max_depth),
@@ -715,6 +731,23 @@ fn take_exclude(map: &mut Map<String, Value>) -> Option<Vec<String>> {
             .into_iter()
             .filter(|v| !v.trim().is_empty())
             .take(EXCLUDE_MAX)
+            .collect(),
+    )
+}
+
+/// Marp のテーマの参照先。空白だけのものと長すぎるものを除き、本数を上限で切る。
+///
+/// 型が違う要素が 1 つでもあれば、配列ごと既定（参照しない）に戻す（`take_exclude` と同じ判断）。
+/// 絶対パスかどうかと、存在するかどうかはここでは調べない。
+/// 読むときに `crate::marp_themes` が 1 本ずつ判定し、読めなかったものをフロントへ知らせる。
+fn take_marp_themes(map: &mut Map<String, Value>) -> Option<Vec<String>> {
+    let values: Vec<String> = take(map, KEY_MARP_THEMES)?;
+    Some(
+        values
+            .into_iter()
+            .map(|v| v.trim().to_owned())
+            .filter(|v| !v.is_empty() && v.chars().count() <= MARP_THEME_PATH_MAX_LEN)
+            .take(MARP_THEMES_MAX)
             .collect(),
     )
 }
@@ -997,6 +1030,21 @@ mod tests {
 
         assert_eq!(s.explorer_exclude.len(), EXCLUDE_MAX);
         assert_eq!(s.explorer_exclude[0], "d0", "空白だけの行は落ちる");
+    }
+
+    #[test]
+    fn marp_themes_drop_the_blank_ones_and_are_capped() {
+        let mut list: Vec<String> = (0..MARP_THEMES_MAX + 4)
+            .map(|i| format!("C:\\themes\\{i}.css"))
+            .collect();
+        list.insert(0, "  ".into());
+        list.insert(1, "a".repeat(MARP_THEME_PATH_MAX_LEN + 1));
+        let json = serde_json::json!({ KEY_MARP_THEMES: list });
+
+        let s = Settings::from_map(json.as_object().unwrap().clone());
+
+        assert_eq!(s.marp_themes.len(), MARP_THEMES_MAX);
+        assert_eq!(s.marp_themes[0], "C:\\themes\\0.css");
     }
 
     #[test]

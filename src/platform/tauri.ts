@@ -20,6 +20,7 @@ import type {
   EntriesRemoved,
   FileChange,
   FileList,
+  MarpThemes,
   Moved,
   OpenRequest,
   Platform,
@@ -253,6 +254,10 @@ export const tauriPlatform: Platform = {
 
   openThemesDir() {
     return invoke<void>('open_themes_dir');
+  },
+
+  readMarpThemes(paths) {
+    return invoke<MarpThemes>('read_marp_themes', { paths });
   },
 
   onUserThemesChanged(handler) {

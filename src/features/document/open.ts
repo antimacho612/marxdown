@@ -5,7 +5,7 @@
  * 描いた HTML も Markdown テキストもこの層は保持せず（ADR-0005）、ストアへ渡すのはメタ情報・アウトライン・計測値などの派生値だけである。
  */
 import { pushHistory } from '@/features/history';
-import { enhance, paint, scrollToAnchor } from '@/features/preview';
+import { enhance, paint, paintMarp, scrollToAnchor } from '@/features/preview';
 import { ja } from '@/i18n/ja';
 import { dirOf } from '@/lib/path';
 import { refreshOutline, refreshSearch } from '@/lib/refresh';
@@ -15,6 +15,7 @@ import { getPlatform, type DocumentPayload, type Encoding } from '@/platform';
 
 import { markClean } from './dirty';
 import { confirmDiscard } from './discard';
+import { loadMarpThemes } from './marp-themes';
 import {
   documentStore,
   notifyStatus,
@@ -54,6 +55,12 @@ export interface OpenerConfig {
    */
   syntax: () => readonly string[];
   /**
+   * Marp の自作テーマの参照先（`marp.themes` / ADR-0023 §3.4）。
+   *
+   * `softBreak` と同じ理由で、値ではなく読む関数として受ける。省略時は参照しない。
+   */
+  marpThemes?: () => readonly string[];
+  /**
    * 開く先のタブ（`features/workspace`）。無ければそちらで作る。
    *
    * エディターはこれをキーにモデルを分け（`document/text.ts` の `DocumentIdentity`）、履歴もこれで分かれる（F-NAV-07）。
@@ -86,7 +93,11 @@ export function getParser(): MarkdownParser | null {
 
 /** 現在の設定を反映したパース指定。`live.ts` の再描画がこれを使う。 */
 export function getParseOptions(): ParseOptions {
-  return { breaks: config?.softBreak() ?? false, syntax: config?.syntax() ?? [] };
+  return {
+    breaks: config?.softBreak() ?? false,
+    syntax: config?.syntax() ?? [],
+    marpThemes: () => loadMarpThemes(config?.marpThemes?.() ?? []),
+  };
 }
 
 /** `openDocument` / `openPath` の振る舞いの差を表す。5 つの入口の違いはすべてここに現れる。 */
@@ -184,7 +195,12 @@ export async function openDocument(payload: StoredPayload, options: OpenOptions 
   const startedAt = options.startedAt ?? performance.now();
   // パースを先に開始してから待つ（シェル描画と重ねるため）。
   traceMark(options, 'T6', `${payload.content.length} chars`);
-  const parsing = opener.parser.parse(payload.content, { breaks: opener.softBreak(), syntax: opener.syntax() });
+  const parsing = opener.parser.parse(payload.content, {
+    breaks: opener.softBreak(),
+    syntax: opener.syntax(),
+    // 開くたびにテーマのファイルを読み直す。外部で編集したテーマは開き直しと再読み込み（F5）で反映される。
+    marpThemes: () => loadMarpThemes(opener.marpThemes?.() ?? [], true),
+  });
 
   // 開く先のタブ。本文の載せ先（Monaco のモデル）と履歴の分かれ目がこれで決まる。
   const key = opener.targetKey();
@@ -217,13 +233,14 @@ export async function openDocument(payload: StoredPayload, options: OpenOptions 
     const container = document.querySelector<HTMLElement>(PREVIEW_SELECTOR);
     if (!container) throw new Error(`${PREVIEW_SELECTOR} が見つからない`);
 
-    const result = paint(container, parsed.chunks, parsed.frontMatter, parsed.blocks);
+    const marp = parsed.marp ? await paintMarp(container, parsed.marp, dirOf(payload.path ?? '')) : null;
+    const result = marp ?? paint(container, parsed.chunks, parsed.frontMatter, parsed.blocks);
     if (options.resetScroll === true) container.scrollTop = 0;
     else if (options.restoreScroll !== undefined) container.scrollTop = options.restoreScroll;
 
     documentStore.frontMatter = parsed.frontMatter;
     documentStore.textStats = parsed.textStats;
-    documentStore.notice = null;
+    documentStore.notice = marp?.notice ? { level: 'warning', message: marp.notice } : null;
 
     // 「読める」瞬間は DOM 挿入ではなく次のフレーム（05.performance-budget/05-operations.md §2）。
     await nextFrame();

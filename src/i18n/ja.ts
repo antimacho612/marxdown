@@ -418,6 +418,15 @@ export const ja = {
       },
     },
 
+    marp: {
+      themes: {
+        label: 'Marp のテーマ',
+        description:
+          'スライドの theme: で選べるテーマを、CSS ファイルかフォルダーの絶対パスで指定します。カンマで区切って複数指定できます。',
+        placeholder: '例: C:\\slides\\themes',
+      },
+    },
+
     explorer: {
       exclude: {
         label: '除外するパス',
@@ -467,6 +476,7 @@ export const ja = {
     done: (path: string) => `書き出しました: ${path}`,
     reveal: 'エクスプローラーで表示',
     failed: (reason: string) => `書き出せませんでした: ${reason}`,
+    marpUnsupported: 'Marp のスライドは書き出せません',
   },
 
   status: {

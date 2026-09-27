@@ -181,6 +181,15 @@ export interface SettingsLoad {
   broken: SettingsProblem | null;
 }
 
+/** Marp の自作テーマを読めなかった理由（`src-tauri/src/marp_themes.rs` の `ProblemKind`）。 */
+export type MarpThemeProblemKind = 'not-absolute' | 'missing' | 'not-css' | 'too-large' | 'too-many' | 'unreadable';
+
+/** 設定 `marp.themes` から読んだ Marp の自作テーマ（`src-tauri/src/marp_themes.rs` の `MarpThemes`）。 */
+export interface MarpThemes {
+  themes: { path: string; css: string }[];
+  problems: { path: string; kind: MarpThemeProblemKind }[];
+}
+
 /**
  * ユーザーが `themes/` に置いた配色（`src-tauri/src/themes.rs` の `UserTheme`）。
  *
@@ -615,6 +624,13 @@ export interface Platform {
    * どの 1 枚が変わったかも渡さない。選択中の配色が変わったかどうかは、読み直した結果と突き合わせないと判断できない。
    */
   onUserThemesChanged(handler: () => void): () => void;
+  /**
+   * Marp の自作テーマを読む（設定 `marp.themes` / ADR-0023 §3.4）。
+   *
+   * `paths` はファイルかフォルダーの絶対パスで、フォルダーは直下の `.css` を読む。
+   * 読めなかったものは例外にせず `problems` に入れて返す。
+   */
+  readMarpThemes(paths: readonly string[]): Promise<MarpThemes>;
   /**
    * 表示中のファイルの監視を始める（F-EDIT-16 / 02.architecture/04-rust-responsibilities.md §4）。
    *
