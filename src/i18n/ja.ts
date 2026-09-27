@@ -96,6 +96,8 @@ export const ja = {
     moveToMainWindow: 'メインウィンドウに戻す',
     save: '保存',
     saveAs: '名前を付けて保存',
+    /** 書き出し形式を並べるサブメニューの見出し（F-VIEW-18）。 */
+    export: '書き出す',
     exportHtml: 'HTML として書き出す',
     exportPdf: 'PDF として書き出す',
     toEdit: '編集する',
