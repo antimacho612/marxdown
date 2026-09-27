@@ -11,7 +11,7 @@
   import { documentStore, refreshOutlineOnOpen } from '@/features/document';
   import { settingsStore } from '@/features/settings';
   import { viewStore } from '@/features/view';
-  import { ja } from '@/i18n/ja';
+  import { t } from '@/i18n';
   import ChevronIcon from '@/lib/ChevronIcon.svelte';
   import { registerOutlineRefresher, setOutlineOnScreen } from '@/lib/refresh';
   import type { OutlineItem } from '@/markdown/plugins/line-map';
@@ -253,24 +253,24 @@
   }
 </script>
 
-<section class="mx-outline" bind:this={section} tabindex="-1" aria-label={ja.outline.title}>
+<section class="mx-outline" bind:this={section} tabindex="-1" aria-label={t.outline.title}>
   <!--
     見出し行。見出しが 1 つも無いときは操作可能にしない（折りたたむ対象が無いため）。
     Principle 3「押せないものを並べない」。
   -->
   <div class="mx-outline__head">
     {#if items.length === 0}
-      <span class="mx-outline__title">{ja.outline.title}</span>
+      <span class="mx-outline__title">{t.outline.title}</span>
     {:else}
       <button
         type="button"
         class="mx-outline__toggle"
         aria-expanded={expanded}
-        title={expanded ? ja.outline.collapse : ja.outline.expand}
+        title={expanded ? t.outline.collapse : t.outline.expand}
         onclick={() => (manualExpanded = !expanded)}
       >
         <ChevronIcon {expanded} />
-        <span class="mx-outline__title">{ja.outline.title}</span>
+        <span class="mx-outline__title">{t.outline.title}</span>
         <span class="mx-outline__count">{rows.length}</span>
       </button>
     {/if}
@@ -282,12 +282,12 @@
       空白のままにすると「壊れている / まだ読み込んでいる」と読めてしまう。
     -->
     <p class="mx-outline__empty">
-      {ja.outline.empty}
-      <span class="mx-outline__hint">{ja.outline.emptyHint}</span>
+      {t.outline.empty}
+      <span class="mx-outline__hint">{t.outline.emptyHint}</span>
     </p>
   {:else if expanded && rows.length === 0}
     <!-- 見出しはあるが、設定した深さより浅いものが 1 つも無い（例: 本文が h2 以下から始まる文書に「h1 まで」を指定した）。 -->
-    <p class="mx-outline__empty">{ja.outline.filtered}</p>
+    <p class="mx-outline__empty">{t.outline.filtered}</p>
   {:else if expanded}
     <!--
       `tabindex="-1"`: ツリー自身は Tab の順路に入らない。フォーカスが移るのは現在位置の項目（`registerOutlineFocus`）で、そこから上下キーで動く。

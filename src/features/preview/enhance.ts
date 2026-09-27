@@ -6,7 +6,7 @@
  * 段階的描画で `paint()` は最初のチャンクだけ同期で入れるため `enhance()` は 2 回呼ばれる。
  * 処理済み要素には印を付け、2 回目は新しく追加された分だけ処理する（MutationObserver は使わず、アイドル時の監視を増やさない）。
  */
-import { ja } from '@/i18n/ja';
+import { t } from '@/i18n';
 import { processInIdle } from '@/lib/idle';
 import { dirOf } from '@/lib/path';
 import { formatSrcset, parseSrcset } from '@/lib/srcset';
@@ -143,16 +143,16 @@ function addCopyButton(pre: HTMLElement, code: HTMLElement): void {
   const button = document.createElement('button');
   button.type = 'button';
   button.className = 'mx-copy';
-  button.textContent = ja.preview.copy;
-  button.setAttribute('aria-label', ja.preview.copyLabel);
+  button.textContent = t.preview.copy;
+  button.setAttribute('aria-label', t.preview.copyLabel);
 
   button.addEventListener('click', () => {
     void copy(code.textContent ?? '').then((ok) => {
-      button.textContent = ok ? ja.preview.copied : ja.preview.copyFailed;
+      button.textContent = ok ? t.preview.copied : t.preview.copyFailed;
       button.dataset['mxState'] = ok ? 'ok' : 'error';
       // 1 回だけのタイマー。押されたときにしか生成されない。
       setTimeout(() => {
-        button.textContent = ja.preview.copy;
+        button.textContent = t.preview.copy;
         delete button.dataset['mxState'];
       }, COPY_FEEDBACK_MS);
       return ok;
@@ -280,7 +280,7 @@ function blockedPlaceholder(
 
   const label = document.createElement('span');
   label.className = 'mx-image-blocked__reason';
-  label.textContent = outOfScope ? ja.preview.imageOutOfScope : ja.preview.imageMissing;
+  label.textContent = outOfScope ? t.preview.imageOutOfScope : t.preview.imageMissing;
 
   const path = document.createElement('code');
   path.className = 'mx-image-blocked__path';
@@ -308,8 +308,8 @@ function allowButton(
   const button = document.createElement('button');
   button.type = 'button';
   button.className = 'mx-image-blocked__allow';
-  button.textContent = ja.preview.imageAllow;
-  button.title = ja.preview.imageAllowHint(dirOf(real));
+  button.textContent = t.preview.imageAllow;
+  button.title = t.preview.imageAllowHint(dirOf(real));
 
   button.addEventListener('click', () => {
     void (async () => {
@@ -319,7 +319,7 @@ function allowButton(
         void retryBlocked();
       } catch {
         // 消えた / 権限が無い。通知バーには出さない。押したボタンの隣で伝わる。
-        label.textContent = ja.preview.imageAllowFailed;
+        label.textContent = t.preview.imageAllowFailed;
       }
     })();
   });

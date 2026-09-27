@@ -3,7 +3,7 @@
 -->
 
 <script lang="ts">
-  import { ja } from '@/i18n/ja';
+  import { tSettings } from '@/i18n/settings';
   import Icon, { type IconName } from '@/lib/Icon.svelte';
   import { getPlatform } from '@/platform';
 
@@ -38,7 +38,7 @@
 `tablist` を名乗ると矢印キーでの移動を自分で実装する義務が生まれる。
 素のボタンなら `Tab` だけで全部に届き、実装は 0 行で済む。
 -->
-<nav class="mx-settings__nav" aria-label={ja.settings.title}>
+<nav class="mx-settings__nav" aria-label={tSettings.title}>
   <!-- `<main>` にしない。文書に 1 つだけ置くランドマークであり、ナビゲーションの内側に来るものではない。 -->
   <div class="mx-settings__categories">
     {#each items as item (item.id)}
@@ -57,7 +57,7 @@
 
   <footer>
     <button type="button" class="mx-settings__openjson" onclick={() => void getPlatform().openSettingsFile()}>
-      {ja.settings.edit}↗
+      {tSettings.edit}↗
     </button>
   </footer>
 </nav>

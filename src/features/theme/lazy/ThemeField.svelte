@@ -20,7 +20,7 @@
 
 <script lang="ts">
   import Field from '@/features/settings/lazy/components/Field.svelte';
-  import { ja } from '@/i18n/ja';
+  import { tSettings } from '@/i18n/settings';
   import { getPlatform } from '@/platform';
 
   import type { Surface } from '../inject';
@@ -71,13 +71,13 @@
    */
   const groups = $derived(
     [
-      { label: ja.settings.paletteGroups.user, items: pick((theme) => theme.user) },
+      { label: tSettings.paletteGroups.user, items: pick((theme) => theme.user) },
       {
-        label: ja.settings.paletteGroups.both,
+        label: tSettings.paletteGroups.both,
         items: pick((theme) => !theme.user && theme.scheme === undefined),
       },
-      { label: ja.settings.paletteGroups.light, items: pick((theme) => !theme.user && theme.scheme === 'light') },
-      { label: ja.settings.paletteGroups.dark, items: pick((theme) => !theme.user && theme.scheme === 'dark') },
+      { label: tSettings.paletteGroups.light, items: pick((theme) => !theme.user && theme.scheme === 'light') },
+      { label: tSettings.paletteGroups.dark, items: pick((theme) => !theme.user && theme.scheme === 'dark') },
     ].filter((group) => group.items.length > 0),
   );
 
@@ -100,9 +100,9 @@
 
 <Field {label} labelFor={id} tooltip={`${surface}.theme`} {description} {onReset}>
   <select {id} class="mx-settings__select" {value} onchange={(e) => onChange(e.currentTarget.value)}>
-    <option value="default">{ja.settings.paletteDefault}</option>
+    <option value="default">{tSettings.paletteDefault}</option>
     {#if missing !== null}
-      <option value={missing}>{ja.settings.paletteMissing(missing)}</option>
+      <option value={missing}>{tSettings.paletteMissing(missing)}</option>
     {/if}
     {#each groups as group (group.label)}
       <optgroup label={group.label}>
@@ -120,7 +120,7 @@
 -->
 <div class="mx-settings__theme-actions">
   <button type="button" class="mx-settings__file" onclick={() => void getPlatform().openThemesDir()}>
-    {ja.settings.openThemes}
+    {tSettings.openThemes}
   </button>
 </div>
 

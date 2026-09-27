@@ -9,12 +9,19 @@
   キーボード操作はハンバーガーメニューに揃える。
   `Esc` で閉じてタブへ戻る / `↑↓` で移動 / `Home` `End` で端へ移動する。
 -->
+<script module lang="ts">
+  import { loadExplorerMessages } from '@/i18n/explorer';
+
+  /** 文言（`tExplorer`）の読み込み。`TabStrip.svelte` はこれを待ってから描く。 */
+  export const ready = loadExplorerMessages();
+</script>
+
 <script lang="ts">
   import { onMount, tick } from 'svelte';
 
   import { isSatellite } from '@/features/view';
-  import { ja } from '@/i18n/ja';
-  import { jaExplorer } from '@/i18n/ja-explorer';
+  import { t } from '@/i18n';
+  import { tExplorer } from '@/i18n/explorer';
   import { MAIN_WINDOW } from '@/platform';
 
   import { moveTabToSatellite } from '../new-window';
@@ -39,14 +46,14 @@
 
   const items = [
     ...(tabsStore.tabs.find((tab) => tab.id === tabId)?.temporary
-      ? [{ id: 'keep', label: jaExplorer.keepTab, run: () => keepTab(tabId) }]
+      ? [{ id: 'keep', label: tExplorer.keepTab, run: () => keepTab(tabId) }]
       : []),
     // サテライトからは主ウィンドウへ戻せる（OQ-43）。ドラッグで戻す操作の、キーボードからの入口でもある。
     ...(isSatellite()
-      ? [{ id: 'to-main', label: ja.menu.moveToMainWindow, run: () => void moveTabToWindow(tabId, MAIN_WINDOW) }]
+      ? [{ id: 'to-main', label: t.menu.moveToMainWindow, run: () => void moveTabToWindow(tabId, MAIN_WINDOW) }]
       : []),
-    { id: 'new-window', label: ja.menu.moveToNewWindow, run: () => void moveTabToSatellite(tabId) },
-    { id: 'close', label: ja.tab.closeCurrent, run: () => void closeTab(tabId) },
+    { id: 'new-window', label: t.menu.moveToNewWindow, run: () => void moveTabToSatellite(tabId) },
+    { id: 'close', label: t.tab.closeCurrent, run: () => void closeTab(tabId) },
   ];
 
   function buttons(): HTMLButtonElement[] {
@@ -133,7 +140,7 @@
 <div
   class="mx-tabmenu"
   role="menu"
-  aria-label={ja.tab.menu(name)}
+  aria-label={t.tab.menu(name)}
   tabindex="-1"
   data-tauri-drag-region="false"
   style:left="{placed?.left ?? x}px"

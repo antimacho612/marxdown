@@ -7,7 +7,7 @@
 <script module lang="ts">
   import { defineMeta } from '@storybook/addon-svelte-csf';
 
-  import { ja } from '@/i18n/ja';
+  import { t } from '@/i18n';
 
   import CaptionButton from './CaptionButton.svelte';
 
@@ -52,7 +52,7 @@
 
 {#snippet one()}
   <div style={BAR}>
-    <CaptionButton label={ja.titlebar.minimize} onClick={() => {}} children={minimize} />
+    <CaptionButton label={t.titlebar.minimize} onClick={() => {}} children={minimize} />
   </div>
 {/snippet}
 
@@ -61,7 +61,7 @@
 <!-- ホバーしたときだけ赤くなる。置いてあるだけの状態では他と同じ色。 -->
 {#snippet closing()}
   <div style={BAR}>
-    <CaptionButton close label={ja.titlebar.close} onClick={() => {}} children={closeIcon} />
+    <CaptionButton close label={t.titlebar.close} onClick={() => {}} children={closeIcon} />
   </div>
 {/snippet}
 
@@ -72,7 +72,7 @@
 -->
 {#snippet hovered()}
   <div style={BAR}>
-    <CaptionButton hovered label={ja.titlebar.maximize} onClick={() => {}} children={maximize} />
+    <CaptionButton hovered label={t.titlebar.maximize} onClick={() => {}} children={maximize} />
   </div>
 {/snippet}
 
@@ -80,9 +80,9 @@
 
 {#snippet trio()}
   <div style={BAR}>
-    <CaptionButton label={ja.titlebar.minimize} onClick={() => {}} children={minimize} />
-    <CaptionButton label={ja.titlebar.maximize} onClick={() => {}} children={maximize} />
-    <CaptionButton close label={ja.titlebar.close} onClick={() => {}} children={closeIcon} />
+    <CaptionButton label={t.titlebar.minimize} onClick={() => {}} children={minimize} />
+    <CaptionButton label={t.titlebar.maximize} onClick={() => {}} children={maximize} />
+    <CaptionButton close label={t.titlebar.close} onClick={() => {}} children={closeIcon} />
   </div>
 {/snippet}
 
@@ -91,9 +91,9 @@
 <!-- 最大化中。名前もアイコンも入れ替わる（片方だけだと読み上げと表示が一致しない）。 -->
 {#snippet maximizedTrio()}
   <div style={BAR}>
-    <CaptionButton label={ja.titlebar.minimize} onClick={() => {}} children={minimize} />
-    <CaptionButton label={ja.titlebar.restore} onClick={() => {}} children={restore} />
-    <CaptionButton close label={ja.titlebar.close} onClick={() => {}} children={closeIcon} />
+    <CaptionButton label={t.titlebar.minimize} onClick={() => {}} children={minimize} />
+    <CaptionButton label={t.titlebar.restore} onClick={() => {}} children={restore} />
+    <CaptionButton close label={t.titlebar.close} onClick={() => {}} children={closeIcon} />
   </div>
 {/snippet}
 

@@ -8,7 +8,9 @@ import { describe, expect, it } from 'vitest';
 
 import { SETTINGS_SCHEMA, type SettingKey } from '@/platform';
 
-import { LAYOUT } from './layout';
+import { buildLayout } from './layout';
+
+const LAYOUT = buildLayout();
 
 function placedKeys(): SettingKey[] {
   return LAYOUT.flatMap((category) =>

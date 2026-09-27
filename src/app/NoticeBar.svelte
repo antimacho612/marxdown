@@ -11,7 +11,7 @@
 
 <script lang="ts">
   import { documentStore, type Notice, type NoticeAction } from '@/features/document';
-  import { ja } from '@/i18n/ja';
+  import { t } from '@/i18n';
   import CloseIcon from '@/lib/CloseIcon.svelte';
 
   const { notice }: { notice: Notice } = $props();
@@ -58,7 +58,7 @@
     </button>
   {/each}
 
-  <button type="button" class="mx-notice__close" aria-label={ja.notice.dismiss} onclick={dismiss}>
+  <button type="button" class="mx-notice__close" aria-label={t.notice.dismiss} onclick={dismiss}>
     <CloseIcon />
   </button>
 </div>

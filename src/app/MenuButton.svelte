@@ -5,7 +5,7 @@
 -->
 <script lang="ts">
   import type { AppMenu } from '@/features/menu';
-  import { ja } from '@/i18n/ja';
+  import { t } from '@/i18n';
 
   /**
    * ロード済みのメニュー本体。`null` の間はチャンクを取得していない。
@@ -71,8 +71,8 @@
     type="button"
     class="mx-menubutton__button"
     bind:this={button}
-    aria-label={ja.titlebar.menu}
-    title={ja.titlebar.menu}
+    aria-label={t.titlebar.menu}
+    title={t.titlebar.menu}
     aria-haspopup="menu"
     aria-expanded={open}
     onclick={toggle}

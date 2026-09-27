@@ -48,7 +48,7 @@ import {
   workspaceOpenerHooks,
   type TabTransfer,
 } from '@/features/workspace';
-import { ja } from '@/i18n/ja';
+import { t } from '@/i18n';
 import { runCommand } from '@/lib/commands';
 import { requestIdle } from '@/lib/idle';
 import { adoptT4, drain, initTrace, isTracing, mark } from '@/lib/trace';
@@ -400,7 +400,7 @@ function reportStartupProblems(bootstrap: Bootstrap | null): void {
   if (bootstrap && bootstrap.unknownArgs.length > 0) {
     documentStore.notice = {
       level: 'warning',
-      message: ja.error.unknownArgs(bootstrap.unknownArgs),
+      message: t.error.unknownArgs(bootstrap.unknownArgs),
     };
   }
 }

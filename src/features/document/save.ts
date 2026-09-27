@@ -5,7 +5,7 @@
  * mtime の更新を忘れると、外部の変更が無くても 2 回目の保存が必ず衝突として拒否される。
  * ダーティ状態は `dirty.ts` にある（依存の向きが違うため）。
  */
-import { ja } from '@/i18n/ja';
+import { t } from '@/i18n';
 import { getPlatform, type Eol, type SaveResult, type WriteRequest } from '@/platform';
 
 import { markClean } from './dirty';
@@ -88,7 +88,7 @@ async function writeTo(path: string, expected: number | null): Promise<boolean> 
   try {
     result = await getPlatform().writeDocument(request);
   } catch (e) {
-    documentStore.notice = { level: 'error', message: `${ja.save.failed}: ${describeOpenError(e, path)}` };
+    documentStore.notice = { level: 'error', message: `${t.save.failed}: ${describeOpenError(e, path)}` };
     return false;
   }
 
@@ -125,16 +125,16 @@ function applySaved(path: string, mtimeMs: number, size: number, eol: Eol): void
 function offerConflictChoice(path: string, diskMtimeMs: number): void {
   documentStore.notice = {
     level: 'warning',
-    message: ja.save.conflict,
+    message: t.save.conflict,
     actions: [
       {
-        label: ja.save.overwrite,
+        label: t.save.overwrite,
         // ディスク上の mtime を `expected` に設定し直して書き込む。
         // この選択が上書きの承諾にあたる。
         run: () => void writeTo(path, diskMtimeMs),
       },
       {
-        label: ja.save.reloadInstead,
+        label: t.save.reloadInstead,
         // 編集内容は失われる。
         // それを了解したうえで選ぶための選択肢であり、選ばなければ何も起きない（通知は消えない）。
         run: () => void discardAndReload(path),
@@ -146,7 +146,7 @@ function offerConflictChoice(path: string, diskMtimeMs: number): void {
 async function discardAndReload(path: string): Promise<void> {
   markClean();
   const outcome = await openPath(path, { resetScroll: false, remember: false, history: false });
-  if (outcome) notifyStatus(ja.open.reloadedExternal);
+  if (outcome) notifyStatus(t.open.reloadedExternal);
 }
 
 /**
@@ -180,7 +180,7 @@ export async function saveSafely(): Promise<void> {
   try {
     await saveCurrent();
   } catch (e) {
-    documentStore.notice = { level: 'error', message: `${ja.save.failed}: ${describeOpenError(e, '')}` };
+    documentStore.notice = { level: 'error', message: `${t.save.failed}: ${describeOpenError(e, '')}` };
   }
 }
 
@@ -189,6 +189,6 @@ export async function saveAsSafely(): Promise<void> {
   try {
     await saveAs();
   } catch (e) {
-    documentStore.notice = { level: 'error', message: `${ja.save.failed}: ${describeOpenError(e, '')}` };
+    documentStore.notice = { level: 'error', message: `${t.save.failed}: ${describeOpenError(e, '')}` };
   }
 }

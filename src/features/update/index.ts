@@ -11,7 +11,7 @@ import { getPlatform } from '@/platform';
 export function installUpdateNotice(): void {
   getPlatform().onUpdateAvailable(async (info) => {
     const { notifyAvailable } = await import('./lazy/notice');
-    notifyAvailable(info);
+    await notifyAvailable(info);
   });
 }
 
