@@ -21,7 +21,7 @@ const FIRST = `# 変更履歴
 
 - 自動更新
 
-[Unreleased]: ${REPO}/commits/main
+[Unreleased]: ${REPO}/commits/develop
 `;
 
 describe('finalizeChangelog', () => {

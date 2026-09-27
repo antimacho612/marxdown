@@ -22,6 +22,16 @@ Marxdown をソースからビルド・開発するための手順。
 
 PR を出す前に、[テンプレート](.github/pull_request_template.md) の確認項目を満たしておく。
 
+## ブランチ
+
+| ブランチ | 役割 |
+| --- | --- |
+| `develop` | 開発の統合先（既定のブランチ）。**PR はすべてここに向ける** |
+| `main` | リリース用。`develop` で確かめたものだけを取り込み、リリースのタグはここに打つ |
+
+作業用のブランチは `develop` から切る。
+`develop` から `main` へは PR を作り、マージコミットで取り込む（squash にすると、2 つのブランチの履歴がずれ続ける）。
+
 ## 必要なもの
 
 - Node 24
@@ -146,14 +156,21 @@ Release の本文と、アプリの更新通知から開く「変更内容」は
 版の番号は `package.json` だけが持つ（`tauri.conf.json` はそれを参照し、`Cargo.toml` はスクリプトが合わせる）。
 設計は ADR-0024 にある。
 
+版上げは `develop` で行い、`main` に取り込んでからタグを打つ。
+
 ```bash
+git switch -c release/v0.2.0 develop
 pnpm release bump 0.2.0      # 版を上げ、CHANGELOG の Unreleased を 0.2.0 の節にする
 git diff                     # package.json / Cargo.toml / Cargo.lock / CHANGELOG.md を確かめる
 git commit -am "chore(release): v0.2.0"
+git push -u origin release/v0.2.0
+# release/v0.2.0 → develop の PR をマージし、続けて develop → main の PR をマージする
+git switch main && git pull
 git tag v0.2.0
-git push origin HEAD v0.2.0
+git push origin v0.2.0
 ```
 
+`main` に無いコミットにタグを打つと、`release.yml` の最初の検査で止まる。
 タグを push すると [`release.yml`](.github/workflows/release.yml) がビルドし、**下書きの Release** を作る。
 下書きのインストーラを手元で入れて確かめてから、GitHub で公開する。
 公開した時点で `releases/latest/download/latest.json` が新しい版を指し、インストール済みのアプリに更新の通知が出る。
