@@ -1,9 +1,9 @@
 // @vitest-environment jsdom
 /**
- * Mermaid の描画まわり（F-VIEW-12 / 04.tech-stack/04-markdown.md §4）。
+ * Mermaid の描画まわり（F-VIEW-12）。
  *
  * Mermaid 本体はモックに差し替える。jsdom には `getBBox` が無く、実際の Mermaid は図を描画できない。
- * 検証するのは §4 が課す 4 つ（遅延ロード / 監視と解放 / キャッシュ / 失敗時のフォールバック）であり、どれも Mermaid が何を返すかには依存しない。
+ * 検証するのは次の 4 つ（遅延ロード / 監視と解放 / キャッシュ / 失敗時のフォールバック）であり、どれも Mermaid が何を返すかには依存しない。
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 

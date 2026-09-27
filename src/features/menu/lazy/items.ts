@@ -1,5 +1,5 @@
 /**
- * ハンバーガーメニューに並べるもの（03.ux-spec/01-screen-layout.md §3）。
+ * ハンバーガーメニューに並べるもの。
  * 遅延チャンクでメニューが開かれるまでロードされない。
  *
  * 並べるのは `CommandId` とラベルの対応だけで、実行内容は知らない（実体の表は `app/commands.ts`）。
@@ -113,7 +113,7 @@ type MenuEntry = CommandEntry | SubmenuEntry | RecentEntry | ZoomEntry;
 /**
  * 並べる順。この配列がメニューの項目の全体を表す。
  *
- * グループの意味は 03.ux-spec/01-screen-layout.md §3。
+ * グループの意味は UX 仕様の画面構成にある。
  * - `file` … ファイルを開く・書き出す操作。一覧を伴うもの（履歴・書き出し形式）はサブメニューに収める
  * - `view` … 見え方を変える操作。文書の中身は変わらない
  * - `document` … いま開いている文書に対する操作。再読み込みと検索は同じ対象を指すので隣に置く
@@ -127,7 +127,7 @@ const MENU: { id: string; entries: MenuEntry[] }[] = [
       // フォルダを開く（F-NAV-03）。ファイルツリーの基点はここか `marxdown <dir>` でしか決まらない。
       { id: 'open-folder', command: 'folder.open' },
       // 新規ファイル（`Ctrl+N`）。ファイルを開いていなくても実行できる。
-      // 並び順は Welcome 画面に揃える（03.ux-spec/08-empty-states.md §1 は「開く」の次に「新規」）。
+      // 並び順は Welcome 画面に揃える（「開く」の次に「新規」）。
       // 同じ 2 つが場所によって異なる順で並ぶと、位置で覚えられなくなる。
       { id: 'new', command: 'document.new' },
       // 最近開いたファイル（F-OPEN-09）。開く手段の並びに置く。
@@ -163,7 +163,7 @@ const MENU: { id: string; entries: MenuEntry[] }[] = [
       { id: 'mode', command: 'view.togglePreview' },
       // Split（F-MODE-03）。ラベルは行き先を言う（モードのトグルと同じ）。
       { id: 'split', command: 'view.toggleSplit' },
-      // ペインの開閉（03.ux-spec/06-panes.md §4 の「ペイン」系）。
+      // ペインの開閉（「ペイン」系）。
       // ラベルが状態で変わるのは、押した結果を先に言うため。
       { id: 'outline', command: 'pane.toggleRight' },
       { id: 'jump', command: 'outline.jump' },
@@ -184,7 +184,7 @@ const MENU: { id: string; entries: MenuEntry[] }[] = [
   {
     id: 'app',
     entries: [
-      // コマンドパレット（F-NAV-06）。ここが初学者の逃げ道である（03.ux-spec/01-screen-layout.md §3）。
+      // コマンドパレット（F-NAV-06）。ここが初学者の逃げ道である。
       // キーを知らない人がすべての機能へ辿り着ける経路は、メニューからパレットへ入る 2 手だけである。
       { id: 'palette', command: 'palette.open' },
       { id: 'settings', command: 'settings.open' },
@@ -192,7 +192,7 @@ const MENU: { id: string; entries: MenuEntry[] }[] = [
       //
       // `✕` はトレイ格納の意味であるため、この項目が必要である。
       // ウィンドウの中から確実に終了できる場所が無いと、閉じても終了していないことに気づいた場合の操作先がトレイアイコンだけになる。
-      // ハンバーガーメニューは §3 が示す「初学者の逃げ道」にあたり、この項目はその役割を担う。
+      // ハンバーガーメニューは「初学者の逃げ道」にあたり、この項目はその役割を担う。
       { id: 'quit', command: 'app.quit' },
     ],
   },

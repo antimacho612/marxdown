@@ -1,6 +1,6 @@
 <!--
   @component
-  ファイルツリーの右クリックメニュー（F-NAV-11 / 03.ux-spec/06-panes.md §1.4）。
+  ファイルツリーの右クリックメニュー（F-NAV-11）。
 
   対象は「右クリックした項目が選択に含まれていれば選択全体、含まれていなければその 1 件」である（`targetsFor`）。
   余白で開いたときは基点に対するメニューになる。
@@ -47,7 +47,7 @@
   interface Item {
     id: string;
     label: string;
-    /** 右端に添えるキー。ツリー内のキー（03.ux-spec/04-keybindings.md §3）と同じものを出す。 */
+    /** 右端に添えるキー。ツリー内のキーと同じものを出す。 */
     keys?: string;
     disabled?: boolean;
     run: () => void;

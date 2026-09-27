@@ -1,13 +1,13 @@
 //! ウィンドウ生成と、位置・サイズの復元（F-CONF-10）。
 //!
-//! ウィンドウを `tauri.conf.json` の宣言ではなくコードで生成するのは、`initialization_script` に CLI 引数から作った bootstrap を載せる必要があるためである（02.architecture/05-startup-sequence.md §1）。
+//! ウィンドウを `tauri.conf.json` の宣言ではなくコードで生成するのは、`initialization_script` に CLI 引数から作った bootstrap を載せる必要があるためである。
 //! 宣言的なウィンドウでは注入するタイミングがない。
 //!
 //! この構造は復元にも有効である。
 //! 位置とサイズを `WebviewWindowBuilder` に直接渡せるため、既定位置に表示してから復元先へ移動する際のちらつきが発生しない。
-//! `visible: false` から本文ごと表示する設計（04.tech-stack/09-tauri-config.md §1）とも整合する。
+//! `visible: false` から本文ごと表示する設計とも整合する。
 //!
-//! タイトルバーは自前で描く（03.ux-spec/01-screen-layout.md §1）。
+//! タイトルバーは自前で描く。
 //! `decorations(false)` にして、`─ □ ✕` もファイル名も Svelte 側が描く。
 //! OS 標準のタイトルバーとタブが二段になることを避け、縦 30px を本文に割り当てるためである。
 //!
@@ -28,7 +28,7 @@ use crate::store::WindowState;
 /// メインウィンドウのラベル。イベントの宛先指定とウィンドウの取得に使う。
 pub const MAIN_LABEL: &str = "main";
 
-/// ウィンドウが見えないままになる上限（04.tech-stack/09-tauri-config.md §1）。
+/// ウィンドウが見えないままになる上限。
 /// これを超えたら本文が未完成でも表示する。「起動失敗に見える」ほうが害が大きい。
 pub const SHOW_FALLBACK_MS: u64 = 400;
 
@@ -209,7 +209,7 @@ pub fn capture<R: tauri::Runtime>(window: &WebviewWindow<R>) -> Option<WindowSta
 
 /// 一定時間経っても `ready` が来なければ、こちらから表示する。
 ///
-/// ポーリングではなく 1 回だけのタイマーであることが重要（05.performance-budget/04-targets.md §5「アイドル時のタイマーを増やさない」）。
+/// ポーリングではなく 1 回だけのタイマーであることが重要。
 fn spawn_show_fallback(app: tauri::AppHandle, label: String) {
     std::thread::spawn(move || {
         std::thread::sleep(std::time::Duration::from_millis(SHOW_FALLBACK_MS));

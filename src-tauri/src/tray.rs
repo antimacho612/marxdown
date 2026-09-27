@@ -1,4 +1,4 @@
-//! タスクトレイ常駐（F-OS-08 / [ADR-0007]）。
+//! タスクトレイ常駐（F-OS-08 / ADR-0007）。
 //!
 //! Cold Start の大半は WebView2 の初期化であり、アプリ側では削減できない。
 //! 中心ユースケース（LLM が生成した Markdown を開いて読む）の反復を速くする唯一の方法は、その初期化コストを 1 日 1 回だけに抑えることである（ADR-0004）。
@@ -11,10 +11,8 @@
 //! 初回の `✕` だけ確認ダイアログを出す（`close.rs`）。
 //! 終了導線を 3 つ用意する（トレイメニュー / ハンバーガーメニュー / `Ctrl+Q`）。
 //!
-//! メニューは 03.ux-spec/07-status-and-notifications.md §4 が定める 3 項目だけに保ち、「設定」「新規ウィンドウ」は置かない。
+//! メニューは UX 仕様が定める 3 項目だけに保ち、「設定」「新規ウィンドウ」は置かない。
 //! ウィンドウを開けば到達できるものをトレイに複製すると、複製したほうの内容だけが更新されず古くなる。
-//!
-//! [ADR-0007]: ../../docs/adr/0007-tray-residency.md
 
 use tauri::menu::{Menu, MenuEvent, MenuItem, PredefinedMenuItem, Submenu};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
@@ -31,7 +29,7 @@ const ID_QUIT: &str = "tray:quit";
 /// 最近開いたファイルは `tray:recent:<path>` の形。パスをそのまま後ろに付ける。
 const PREFIX_RECENT: &str = "tray:recent:";
 
-/// トレイメニューに並べる「最近開いたファイル」の件数（03.ux-spec/07-status-and-notifications.md §4 は 5 件）。
+/// トレイメニューに並べる「最近開いたファイル」の件数。
 ///
 /// Welcome とハンバーガーメニューは 6 件だが、トレイは 5 件のままにする。
 /// マウスで開く小さなメニューであり、縦に伸びると OS のメニューが画面端で折り返して読みにくくなる。
@@ -39,7 +37,7 @@ const TRAY_RECENT_SHOWN: usize = 5;
 
 /// トレイアイコンを作る。
 ///
-/// `ready()` の後に呼ぶ（02.architecture/05-startup-sequence.md §2）。
+/// `ready()` の後に呼ぶ。
 /// OS 側の UI であり、本文表示には関与しない。
 /// ここでアイコンを構築するぶんだけ T3→T8 が伸びるが、それによる利点はない。
 pub fn install<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {

@@ -61,7 +61,7 @@ export function installTaskHandler(container: HTMLElement, next: TaskTargets): (
 /**
  * 1 つ反転する。
  *
- * 行番号は祖先のリスト項目が持つ `data-line` から取る（02.architecture/06-markdown-rendering-pipeline.md §3）。
+ * 行番号は祖先のリスト項目が持つ `data-line` から取る。
  * 生 HTML で `<span class="mx-task">` と書かれていた場合、その行はタスクリストの形をしていないため `document` 側が `null` を返し、何も起きない。
  */
 function toggle(box: HTMLElement): void {

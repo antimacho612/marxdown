@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 /**
- * Markdown 書式コマンドの回帰テスト（F-EDIT-08 / 03.ux-spec/04-keybindings.md §5）。
+ * Markdown 書式コマンドの回帰テスト（F-EDIT-08）。
  *
  * 書式コマンドは純粋なテキスト操作で、DOM も IPC も要らない。
  * 境界条件はすべてここで検証する。
@@ -27,7 +27,7 @@ import {
   toggleTaskCheck,
 } from './format';
 
-describe('囲みのトグル (§5)', () => {
+describe('囲みのトグル', () => {
   it('選択が無ければ記号だけ入れて、あいだにカーソルを置く', () => {
     expect(run(toggleBold, 'a|b')).toBe('a**|**b');
     expect(run(toggleItalic, 'a|b')).toBe('a*|*b');

@@ -2,7 +2,7 @@
  * 描画済みの本文に対する後処理（F-VIEW-03, 04, 08）。
  *
  * `paint()` で本文が読める（T8）後、アイドル時間で画像解決・コピーボタン・シンタックスハイライトを行う。
- * どれも読み始めるのに不要で、T8 の手前に置くとその分だけ読めるまでの時間が延びるためである（05.performance-budget/04-targets.md §1）。
+ * どれも読み始めるのに不要で、T8 の手前に置くとその分だけ読めるまでの時間が延びるためである。
  * 段階的描画で `paint()` は最初のチャンクだけ同期で入れるため `enhance()` は 2 回呼ばれる。
  * 処理済み要素には印を付け、2 回目は新しく追加された分だけ処理する（MutationObserver は使わず、アイドル時の監視を増やさない）。
  */
@@ -84,7 +84,7 @@ async function enhanceMermaid(container: HTMLElement): Promise<void> {
  * 数式の描画（F-VIEW-13）。
  *
  * KaTeX は遅延チャンクに置いてある。
- * 数式が 1 つも無い文書ではここに到達しないため、`math` チャンクは読み込まれない（02.architecture/05-startup-sequence.md §3 の分割境界）。
+ * 数式が 1 つも無い文書ではここに到達しないため、`math` チャンクは読み込まれない。
  */
 async function enhanceMath(container: HTMLElement): Promise<void> {
   const targets = [...container.querySelectorAll<HTMLElement>('.mx-math')].filter((el) => !(DONE in el.dataset));
@@ -116,7 +116,7 @@ async function enhanceCodeBlocks(container: HTMLElement): Promise<void> {
   }
 
   // ハイライトは遅延チャンクに置いてある。
-  // コードブロックが 1 つも無いドキュメントではここに到達しないため、`highlight` チャンクは読み込まれない（02.architecture/05-startup-sequence.md §3 の分割境界）。
+  // コードブロックが 1 つも無いドキュメントではここに到達しないため、`highlight` チャンクは読み込まれない。
   const { highlightElement, languageOf } = await import('./lazy/highlight');
   const targets = blocks.filter((code) => languageOf(code) !== null);
 
@@ -137,7 +137,7 @@ async function enhanceCodeBlocks(container: HTMLElement): Promise<void> {
  * コードブロックのコピーボタン（F-VIEW-04）。
  *
  * `pre` の中に配置するため、本文の流れに要素が挟まらない。
- * 表示するのはホバー時とフォーカス時だけである（03.ux-spec/01-screen-layout.md §1 の「静けさ」）。
+ * 表示するのはホバー時とフォーカス時だけである。
  */
 function addCopyButton(pre: HTMLElement, code: HTMLElement): void {
   const button = document.createElement('button');
@@ -257,7 +257,7 @@ function coreError(e: unknown): CoreError | null {
 /**
  * 拒まれた画像のプレースホルダ。
  *
- * スコープ外のときは許可ボタンを添える（02.architecture/09-security.md §3）。
+ * スコープ外のときは許可ボタンを添える。
  * 出すのは解決後のパスである（`CoreError.path`）。
  * ドキュメントに書かれた `../../../.ssh/id_rsa` ではなく、symlink まで解決した実際の行き先を見せないと、何を許可しようとしているのかを判断できない。
  */
@@ -296,7 +296,7 @@ function blockedPlaceholder(
  * 「このフォルダの画像を許可」。
  *
  * 許可されるのはその画像があるディレクトリ 1 つだけで、配下へは広がらない。
- * 許可はアプリを終了すると失われる（02.architecture/09-security.md §3）。
+ * 許可はアプリを終了すると失われる。
  */
 function allowButton(
   box: HTMLElement,

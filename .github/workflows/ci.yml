@@ -1,7 +1,7 @@
 name: CI
 
-# 05.performance-budget/05-operations.md §5 の「全 PR / コミット」で実行するものだけをここに置く。
-# 起動時間とメモリは環境ノイズが大きく CI での自動判定に向かないため、手動計測とする（同 §5）。
+# 性能予算のうち、全 PR とコミットで検証するものだけをここに置く。
+# 起動時間とメモリは環境ノイズが大きく CI での自動判定に向かないため、手動計測とする。
 
 on:
   push:
@@ -47,14 +47,14 @@ jobs:
       - name: ビルド
         run: pnpm exec vite build
 
-      # 依存を増やしたのに一覧を作り直していないと落ちる（docs/06.roadmap/m6-ship.md Phase 4.5）。
+      # 依存を増やしたのに一覧を作り直していないと落ちる。
       # クレートのライセンス文を読むため、先にソースを取得しておく。
       - name: 第三者ライセンスの一覧
         run: |
           cargo fetch --locked --manifest-path src-tauri/Cargo.toml
           node scripts/gen-third-party-notices.mjs --check
 
-      # 予算超過はビルドを失敗させる（05.performance-budget/05-operations.md §1）。
+      # 予算超過はビルドを失敗させる。
       # 超えたときに上限を引き上げてはいけない。
       # 何かを遅延チャンクに追い出すか、依存を減らすか、機能を諦める。
       - name: バンドル予算
@@ -86,7 +86,7 @@ jobs:
         working-directory: src-tauri
         run: cargo test
 
-  # macOS / Linux はビルドできる状態を保つだけで、配布はしない（F-OS-07 / N-CMP-04 / 06.roadmap/m6-ship.md）。
+  # macOS / Linux はビルドできる状態を保つだけで、配布はしない（F-OS-07 / N-CMP-04）。
   # Windows 専用のコードが他のプラットフォームのビルドを壊していないかを、コンパイルとテストで確かめる。
   rust-other-platforms:
     name: Rust Core (${{ matrix.os }})

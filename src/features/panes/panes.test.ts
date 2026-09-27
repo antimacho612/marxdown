@@ -65,9 +65,9 @@ afterEach(() => {
   setPlatform(original);
 });
 
-describe('ペインの開閉と幅 (03.ux-spec/06-panes.md §3)', () => {
+describe('ペインの開閉と幅', () => {
   /**
-   * 03.ux-spec/06-panes.md §3 の引用ブロック。F-NAV-04 の「既定は非表示」は初回起動の話であり、一度開いた人がそれを維持できることと両立する。
+   * F-NAV-04 の「既定は非表示」は初回起動の話であり、一度開いた人がそれを維持できることと両立する。
    */
   it('記録が無ければ閉じた状態で出る', () => {
     initPanes(null);
@@ -118,7 +118,7 @@ describe('ライトペインのトグル (Ctrl+Alt+B)', () => {
     });
   });
 
-  it('保存はデバウンスされ、タイマーは 1 本しか走らない (05.performance-budget/04-targets.md §5)', () => {
+  it('保存はデバウンスされ、タイマーは 1 本しか走らない', () => {
     setRightPaneWidth(300);
     setRightPaneWidth(320);
     setRightPaneWidth(340);
@@ -146,7 +146,7 @@ describe('ライトペインのトグル (Ctrl+Alt+B)', () => {
   });
 });
 
-describe('レフトペイン (F-NAV-04 / 03.ux-spec/06-panes.md §3)', () => {
+describe('レフトペイン (F-NAV-04)', () => {
   it('開閉できる。幅は左右で別々に記憶する', () => {
     toggleLeftPane();
     expect(viewStore.panes.left.open).toBe(true);

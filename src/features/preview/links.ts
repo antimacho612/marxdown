@@ -1,5 +1,5 @@
 /**
- * 本文中のリンククリックの分岐（F-VIEW-05, 06, 07 / N-SEC-04 / 02.architecture/09-security.md §2）。
+ * 本文中のリンククリックの分岐（F-VIEW-05, 06, 07 / N-SEC-04）。
  * `#anchor` はページ内スクロール、`./x.md` はアプリ内で開く、他のローカルパスは確認の上で既定アプリ、`http(s)`/`mailto` は既定ブラウザ・メーラー、未知のスキームは何もしない。
  * 許可リスト方式であり、中心ユースケースが信頼できない Markdown を開くことのため、「危険なものを除外する」方式だと未知のスキームで安全性の欠陥が生じる（ADR-0006）。
  *
@@ -122,7 +122,7 @@ function handle(href: string, container: HTMLElement, newWindow = false): void {
  *
  * 確認してから開く。
  * OS の既定アプリに渡す操作は取り消せないため、本文に書かれているだけのパスを確認なしに起動しない。
- * モーダルにしないのは、データ消失の可能性が無いためである（03.ux-spec/07-status-and-notifications.md §2）。
+ * モーダルにしないのは、データ消失の可能性が無いためである。
  */
 function confirmOpenExternally(path: string): void {
   targets?.notify({

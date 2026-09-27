@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-  Marxdown のメモリ使用量を測る（05.performance-budget/05-operations.md §3）。
+  Marxdown のメモリ使用量を測る。
 
 .DESCRIPTION
   Tauri アプリは複数プロセス（メイン + WebView2 のブローカ/レンダラ）に分かれるため、プロセスツリー全体の合計で測る必要がある。
@@ -12,7 +12,7 @@
   pwsh scripts/measure-memory.ps1
 
 .EXAMPLE
-  # リーク検出の手順（measurements/06-memory.md §2）に沿って前後を比較する
+  # リーク検出の手順に沿って前後を比較する
   pwsh scripts/measure-memory.ps1 -Label before
   # ... タブを開閉する操作 ...
   pwsh scripts/measure-memory.ps1 -Label after
@@ -42,7 +42,7 @@ function Get-MarxdownMemory {
       ForEach-Object { $_.ProcessId }
   )
 
-  # 05.performance-budget/04-targets.md §4 が指定するのは Private Working Set である。
+  # 目標値が指定するのは Private Working Set である。
   # WorkingSet64 は WebView2 の共有 DLL を各プロセスで重複計上するため、実際の 3 倍近い値になり判定に使えない。
   $ids = @($main.Id) + $webviewIds
   $mainMB = 0.0
@@ -105,9 +105,9 @@ if ($Json) {
 
 $measurement | Format-List
 
-# 05.performance-budget/04-targets.md §4 の目標値
+# 目標値
 Write-Host ''
-Write-Host '目標（05.performance-budget/04-targets.md §4）:'
+Write-Host '目標:'
 Write-Host '  起動直後 / readme.md 1 タブ            <= 120MB（許容上限 180MB）'
 Write-Host '  タブ 10 枚を開いて全部閉じた後          <= 150MB（許容上限 200MB）'
 Write-Host '  8 時間アイドル後                        起動直後 +10MB 以内'

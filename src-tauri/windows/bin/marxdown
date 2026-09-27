@@ -1,5 +1,5 @@
 :
-# Marxdown の CLI シム（Git Bash / MSYS2 用。docs/06.roadmap/m6-ship.md §4 / OQ-32）。
+# Marxdown の CLI シム（Git Bash / MSYS2 用。OQ-32）。
 # NOTE: 先頭行の `:` を消さない。shebang の代わりである。
 #   shebang があると bash は sh を新しいプロセスとして起動し、MSYS2 ではそれだけで約 100ms かかる。
 #   shebang が無いと bash は自身のサブシェルでこのファイルを実行するが、MSYS2 は先頭が `#!` でも `:` でもないファイルを実行可能とみなさず、PATH から見つけられない。

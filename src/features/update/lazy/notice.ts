@@ -17,7 +17,7 @@ export function notifyAvailable(info: UpdateInfo): void {
  * 手動の確認（コマンドパレットの「更新を確認」）。
  *
  * 利用者が求めた確認であるため、結果は必ず伝える。
- * 新しい版が無いことは済んだことの報告としてステータスバーへ、失敗は通知バーへ出す（03.ux-spec/07-status-and-notifications.md §2.1）。
+ * 新しい版が無いことは済んだことの報告としてステータスバーへ、失敗は通知バーへ出す。
  */
 export async function checkForUpdates(): Promise<void> {
   try {
@@ -28,7 +28,7 @@ export async function checkForUpdates(): Promise<void> {
       documentStore.statusMessage = jaUpdate.upToDate;
     }
   } catch (error) {
-    // 詳細（reqwest のエラー文）は利用者に見せない（docs/conventions/02-ui-wording.md §1）。
+    // 詳細（reqwest のエラー文）は利用者に見せない。
     console.warn('[marxdown] 更新の確認に失敗した', error);
     documentStore.notice = { level: 'error', message: jaUpdate.checkFailed };
   }

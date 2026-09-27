@@ -70,7 +70,7 @@ describe('applyAppearance', () => {
     expect(root().dataset['theme']).toBeUndefined();
   });
 
-  it('本文幅の単位は ch（02.architecture/10-theming.md §2）', () => {
+  it('本文幅の単位は ch', () => {
     // 既定（72）以外を渡す。既定と同じ値は書かずに消す仕様であり、単位を確かめられない。
     applyAppearance(withSettings({ 'preview.maxWidth': 90 }));
 

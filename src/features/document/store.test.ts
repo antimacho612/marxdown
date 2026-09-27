@@ -77,7 +77,7 @@ describe('documentStore', () => {
   });
 });
 
-/** 自動で消える情報はステータスバーに出す（03.ux-spec/07-status-and-notifications.md §2.1）。 */
+/** 自動で消える情報はステータスバーに出す。 */
 describe('notifyStatus', () => {
   beforeEach(() => {
     vi.useFakeTimers();

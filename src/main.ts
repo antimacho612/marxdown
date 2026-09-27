@@ -1,4 +1,4 @@
-// WARNING: ここに import を足すとそのままクリティカルパスに載るため、追加の前に 05.performance-budget/06-decision-flow.md の判定手順を通すこと。
+// WARNING: ここに import を足すとそのままクリティカルパスに載るため、追加の前に性能予算の判定手順を通すこと。
 
 import '@/styles/tokens.css';
 import '@/styles/reset.css';

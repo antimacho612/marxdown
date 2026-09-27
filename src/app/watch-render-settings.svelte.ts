@@ -1,9 +1,9 @@
 /**
  * パースの結果そのものを変える設定を購読し、変更されたら本文を再描画する。
  *
- * 対象は `preview.softBreak` と追加記法（`markdown.*` / 04.tech-stack/04-markdown.md §3）と、Marp の自作テーマ（`marp.themes`）である。
+ * 対象は `preview.softBreak` と追加記法（`markdown.*`）と、Marp の自作テーマ（`marp.themes`）である。
  * どちらも HTML の生成に関わるため、CSS だけで反映できるテーマやフォントとは違い、反映するには再パースが要る。
- * `document` と `settings` はどちらも相手の feature を直接参照できないため（02.architecture/03-layers.md §3）、両方を知っている `app/` 層でこの購読をつなぐ。
+ * `document` と `settings` はどちらも相手の feature を直接参照できないため、両方を知っている `app/` 層でこの購読をつなぐ。
  */
 import { renderNow } from '@/features/document';
 import { enabledSyntax, settingsStore } from '@/features/settings';
@@ -54,7 +54,7 @@ export function installSoftBreakRerender(): void {
         void renderNow();
         return;
       }
-      // 1 回だけの `setTimeout` であり、ポーリングではない（05.performance-budget/04-targets.md §5）。
+      // 1 回だけの `setTimeout` であり、ポーリングではない。
       timer = setTimeout(() => {
         timer = null;
         void renderNow();

@@ -4,7 +4,7 @@
  * Rust は操作の結果を全ウィンドウへ流す（`src-tauri/src/commands.rs` の `announce_moves`）。
  * ファイルツリーを持たないサテライトにも同じファイルのタブがありうるため、ここは遅延チャンクではなく起動時に購読する。
  *
- * ゴミ箱へ移したファイルのタブは閉じない（03.ux-spec/06-panes.md §1.4）。
+ * ゴミ箱へ移したファイルのタブは閉じない。
  * 外部で削除された場合と同じく本文は画面に残り、次にそのタブへ切り替えたときに読めなければ外れる（`tabs.svelte.ts` の `dropUnopenable`）。
  */
 import { relocateHistory } from '@/features/history';

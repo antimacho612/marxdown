@@ -91,7 +91,7 @@ beforeEach(() => {
   configureOpener({ parser: fakeParser(), softBreak: () => false, syntax: () => [], ...workspaceOpenerHooks() });
 });
 
-/** F-EDIT-16 / 03.ux-spec/07-status-and-notifications.md §2。 */
+/** F-EDIT-16。 */
 describe('外部変更の自動反映', () => {
   it('開いているファイルを読み直し、ステータスバーで伝える', async () => {
     const h = install();
@@ -99,7 +99,7 @@ describe('外部変更の自動反映', () => {
     h.readDocument.mockClear();
 
     h.emit(changed('C:/work/a.md'));
-    // ダーティでなければ失われるものが無い。尋ねずに読み込み、本文を隠さないステータスバーに出す（03.ux-spec/07-status-and-notifications.md §2.1）
+    // ダーティでなければ失われるものが無い。尋ねずに読み込み、本文を隠さないステータスバーに出す
     await vi.waitFor(() => expect(documentStore.statusMessage).toBe(ja.open.reloadedExternal));
 
     expect(documentStore.notice).toBeNull();
@@ -173,7 +173,7 @@ describe('監視の付け替え', () => {
 });
 
 /**
- * 編集中の外部変更（N-REL-02 / 02.architecture/08-state-management.md §3）。
+ * 編集中の外部変更（N-REL-02）。
  *
  * ここが「ユーザーの入力を絶対に失わない」の実装そのもの。
  * 自動で読み直すと、打った内容が通知なく消える。

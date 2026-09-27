@@ -1,6 +1,6 @@
 name: Release
 
-# `v*` のタグから配布物を作り、下書きの Release に載せる（docs/adr/0024-auto-update.md §3.7）。
+# `v*` のタグから配布物を作り、下書きの Release に載せる。
 # 公開は人が行う。
 # updater は `releases/latest` を見ており、下書きのあいだは利用者に届かない。
 
@@ -56,7 +56,7 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: pnpm tauri build --config src-tauri/tauri.release.conf.json
 
-      # 予算を超えた版は配らない（05.performance-budget/05-operations.md §1）。
+      # 予算を超えた版は配らない。
       - name: バンドル予算
         run: pnpm exec size-limit
 

@@ -44,7 +44,7 @@ let outlineStale = false;
 /**
  * 再描画 1 回ぶんの時刻（`features/bench/input.ts` が読む / 計測専用）。
  *
- * 「編集 → プレビュー更新」は入力を終えてから画面が変わるまでであり、そこには debounce・パース・paint が含まれる（05.performance-budget/04-targets.md §3）。
+ * 「編集 → プレビュー更新」は入力を終えてから画面が変わるまでであり、そこには debounce・パース・paint が含まれる。
  * 内訳が無いと、差が出たときにパースと paint のどちらが原因か判別できない。
  */
 export interface LiveRenderTiming {

@@ -1,9 +1,9 @@
 /**
  * Monaco の生成と保持（F-EDIT-01 / `editor` チャンク / ADR-0009）。
  *
- * Edit / Split / WYSIWYG は単一のエディター・単一のモデルを共有し、置き場所だけが違う（02.architecture/07-editor-wysiwyg.md §1）。
+ * Edit / Split / WYSIWYG は単一のエディター・単一のモデルを共有し、置き場所だけが違う。
  * これにより Undo 履歴・カーソル・IME の挙動がモード間で揃う。
- * Preview へ切り替えても `dispose()` しない（Undo 履歴を保持するため / §4）。
+ * Preview へ切り替えても `dispose()` しない（Undo 履歴を保持するため）。
  * ただし Monaco は非表示のあいだ寸法を失うので、表示を戻したら `relayoutEditor()` を呼ぶこと。
  * タブを閉じたときに破棄するのはそのタブのモデルだけで、エディター本体は破棄しない（N-PERF-06）。
  *
@@ -147,7 +147,7 @@ export function mountEditor(host: HTMLElement): monaco.editor.IStandaloneCodeEdi
     overviewRulerLanes: 0,
     overviewRulerBorder: false,
     hideCursorInOverviewRuler: true,
-    // 03.ux-spec/09-motion.md の禁則。スクロールにアニメーションを追加しない。
+    // モーションの禁則。スクロールにアニメーションを追加しない。
     // 設定項目にしないのは、設定から禁則を無効化できる形にしないためである。
     smoothScrolling: false,
 
@@ -205,7 +205,7 @@ export function mountEditor(host: HTMLElement): monaco.editor.IStandaloneCodeEdi
   // 選択範囲への URL 貼り付け（F-EDIT-12）と画像の貼り付け（F-EDIT-13）。
   // 渡すのは `host` である（`editor.getDomNode()` はこの時点でまだ `null` / `paste.ts`）。
   installPaste(editor, host);
-  // カーソル位置をステータスバーへ通知する（03.ux-spec/07-status-and-notifications.md §3）。更新は rAF で間引く（`cursor.ts`）。
+  // カーソル位置をステータスバーへ通知する。更新は rAF で間引く（`cursor.ts`）。
   installCursorReport(editor);
   // 見出し単位の折りたたみと、見出しの上端への固定表示（`folding.ts`）。
   installHeadingFolding(editor);

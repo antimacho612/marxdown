@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 /**
- * 起動計測ハーネス（05.performance-budget/05-operations.md §2）。
+ * 起動計測ハーネス。
  *
  * `--trace-startup` を付けた実行ファイルを繰り返し起動し、T0〜T9 の中央値を出す。
- * 初回はファイルキャッシュの影響が大きいため、別枠で記録する（§2）。
+ * 初回はファイルキャッシュの影響が大きいため、別枠で記録する。
  *
  * ```bash
  * pnpm build                           # release ビルドが必要
@@ -29,7 +29,7 @@ const EXE_CANDIDATES = [
   join(ROOT, 'src-tauri', 'target', 'debug', 'marxdown'),
 ];
 
-/** T0 起点のマーカーの意味（05.performance-budget/05-operations.md §2）。 */
+/** T0 起点のマーカーの意味。 */
 const MARK_LABELS = {
   T0: 'プロセス起動',
   T1: 'CLI 引数解析完了',
@@ -97,7 +97,7 @@ function findExe() {
     process.exit(1);
   }
   if (exe.includes('debug')) {
-    console.warn('⚠ debug ビルドを計測している。05.performance-budget/02-environment.md は release を要求する。');
+    console.warn('⚠ debug ビルドを計測している。計測は release ビルドで行う。');
   }
   return exe;
 }
@@ -182,7 +182,7 @@ function summarize(results) {
   return {
     marks,
     wallMedianMs: median(results.map((r) => r.wallMs)),
-    /** 「読める」瞬間 = T8。これが Cold Start の定義（05.performance-budget/04-targets.md §1）。 */
+    /** 「読める」瞬間 = T8。これが Cold Start の定義。 */
     readableMs: median(byMark.get('T8') ?? []),
   };
 }
@@ -205,9 +205,8 @@ function printSummary(title, summary, firstRun) {
   console.log(`\n  Cold Start (T8, 中央値): ${summary.readableMs.toFixed(1)}ms`);
   console.log(`  プロセス全体の実時間     : ${summary.wallMedianMs.toFixed(1)}ms`);
   if (firstRun !== undefined) {
-    console.log(`  初回（キャッシュ未温）   : ${firstRun.toFixed(1)}ms  ※ §2 により別枠`);
+    console.log(`  初回（キャッシュ未温）   : ${firstRun.toFixed(1)}ms  ※ 別枠`);
   }
-  // 05.performance-budget/04-targets.md §1
   const verdict =
     summary.readableMs <= 600
       ? '✓ 目標 600ms 以内'
@@ -327,7 +326,7 @@ if (opts.warm) {
   for (const config of configs) {
     const results = [];
     let firstRun;
-    // §2: 初回はファイルキャッシュの影響が大きいため別枠で扱う
+    // 初回はファイルキャッシュの影響が大きいため別枠で扱う
     const warmup = await runOnce(exe, file, join(TMP, 'warmup.json'), config.spike, opts.timeoutMs);
     if (warmup.ok) {
       firstRun = warmup.trace.marks?.find((m) => m.id === 'T8')?.atMs;

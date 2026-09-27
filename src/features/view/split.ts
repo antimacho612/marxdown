@@ -1,5 +1,5 @@
 /**
- * Split の分割比（F-MODE-03 / 03.ux-spec/03-split-mode.md §1）。
+ * Split の分割比（F-MODE-03）。
  *
  * ピクセルではなく比で持つ（ウィンドウ幅やペイン開閉で左右比が変わらないように）。
  * 20%〜80% に制限するのは、片方を極端に狭めると Split の意味が無くなり、戻すための分割線も操作しにくくなるためである。
@@ -27,7 +27,7 @@ let persistTimer: ReturnType<typeof setTimeout> | null = null;
 /**
  * bootstrap から同期的に適用する。シェルを描画するより前に呼ぶこと。
  *
- * 倍率やペインと同じ理由による（02.architecture/05-startup-sequence.md §1）。
+ * 倍率やペインと同じ理由による。
  * 後から適用すると、`--mode split` で開いたときに 50:50 の状態が一度描画された後に分割比が変化して見える。
  */
 export function initSplit(bootstrap: Bootstrap | null): void {
@@ -47,7 +47,7 @@ export function setSplit(split: number, persist = true): number {
   return next;
 }
 
-/** 50:50 に戻す（分割線のダブルクリック / §1）。 */
+/** 50:50 に戻す（分割線のダブルクリック）。 */
 export function resetSplit(): void {
   setSplit(SPLIT_DEFAULT);
 }

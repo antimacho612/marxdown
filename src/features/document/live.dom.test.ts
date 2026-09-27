@@ -2,7 +2,7 @@
 /**
  * Split の再描画でプレビューを動かさないこと（F-MODE-03 / #148 / #159）。
  *
- * 作り直す方式では、段階的描画（02.architecture/06-markdown-rendering-pipeline.md §4）の途中で scrollHeight が足りず、スクロール位置が切り詰められていた。
+ * 作り直す方式では、段階的描画の途中で scrollHeight が足りず、スクロール位置が切り詰められていた。
  * 長い文書ほど差が大きく、打鍵のたびにプレビューが先頭付近へ戻っていた。
  *
  * jsdom はレイアウトを持たないため、切り詰めは自前で再現する（`installScrollClamp`）。

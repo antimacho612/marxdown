@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 /**
- * 表示モードの決定と切り替え（F-MODE-06, 07 / 03.ux-spec/02-view-modes.md）。
+ * 表示モードの決定と切り替え（F-MODE-06, 07）。
  *
  * エディターの実体はモックする。
  * 検証するのはモードの切り替え手順であり、エディターの実体ではない。
@@ -123,7 +123,7 @@ describe('Preview とのトグル (Ctrl+Shift+V)', () => {
   });
 });
 
-describe('スクロール位置の保持 (03.ux-spec/02-view-modes.md §4)', () => {
+describe('スクロール位置の保持', () => {
   it('Preview へ戻ると位置が復元される', async () => {
     const preview = document.querySelector<HTMLElement>('#mx-preview');
     if (!preview) throw new Error('受け皿が無い');
@@ -140,7 +140,7 @@ describe('スクロール位置の保持 (03.ux-spec/02-view-modes.md §4)', () 
   });
 });
 
-describe('Split (F-MODE-03 / 03.ux-spec/03-split-mode.md)', () => {
+describe('Split (F-MODE-03)', () => {
   /** Preview へ戻すと「分割を解いた」ではなく「読む側へ移った」ことになる。 */
   it('Ctrl+\\ は Edit との間で切り替える', async () => {
     await setMode('edit');

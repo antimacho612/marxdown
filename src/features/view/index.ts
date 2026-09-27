@@ -1,5 +1,5 @@
 /**
- * view feature の公開面（02.architecture/03-layers.md §2）。
+ * view feature の公開面。
  *
  * ここが持つのはビューの状態だけである。
  * モードの切り替えそのもの（エディターのマウント、ライブ描画の停止、検索を開く処理）は組み立ての担当であり `features/mode/` にある。

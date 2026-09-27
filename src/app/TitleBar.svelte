@@ -1,5 +1,5 @@
 <!--
-  カスタムタイトルバー（03.ux-spec/01-screen-layout.md §1）。
+  カスタムタイトルバー。
   `decorations: false`（`src-tauri/src/window.rs`）により、この 1 行が OS タイトルバーの代わりになる。
   中央領域は `center` スニペットとして外部に公開してあり、タブストリップはここへ差し込む（`shell.css` の grid は変更不要）。
   `data-tauri-drag-region="deep"` により、掴めばネイティブドラッグ、ダブルクリックで最大化になる（`<button>` は自動的に除外される）。

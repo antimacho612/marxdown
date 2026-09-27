@@ -1,5 +1,5 @@
 <!--
-  ファイルツリー（F-NAV-03 / 03.ux-spec/06-panes.md §1）。レフトペインの中身。
+  ファイルツリー（F-NAV-03）。レフトペインの中身。
 
   遅延チャンク側にある。
   ペインを開くまで読み込まない（クリティカルパスの外 / 05.performance-budget）。
@@ -14,7 +14,7 @@
   単一クリックで開く。
   `explorer.temporaryTab` が ON なら仮タブで開き、ダブルクリックで通常のタブにする（ADR-0025）。
 
-  フォーカス（`treeStore.focusPath`）と選択（`selection.svelte.ts`）を分けて持つ（§1.4）。
+  フォーカス（`treeStore.focusPath`）と選択（`selection.svelte.ts`）を分けて持つ。
   表示中の文書は `aria-current` で表し、選択とは兼ねない。
 
   キーボード操作と `role` の割り当て方は `features/outline/Outline.svelte` と揃えてある。
@@ -197,7 +197,7 @@
    * 開く。`Shift+Click` はサテライトウィンドウで開く（F-OPEN-06）。
    *
    * ブラウザの慣習に合わせてある（`Shift+Click` が新しいウィンドウ）。
-   * ただし 2 件以上を選んでいる間の `Shift+Click` と、フォルダへの `Shift+Click` は範囲選択になる（03.ux-spec/04-keybindings.md §3）。
+   * ただし 2 件以上を選んでいる間の `Shift+Click` と、フォルダへの `Shift+Click` は範囲選択になる。
    * `Ctrl+Click` は選択に加える / 外す操作で、開かない。
    *
    * ディレクトリは開閉する。ファイルツリーの基点はウィンドウごとに 1 つであり、枝の開閉は別ウィンドウと関係がない。

@@ -1,7 +1,7 @@
 /**
  * 既定テーマのコントラスト比を機械的に検証する。
  *
- * 03.ux-spec/10-accessibility.md が「コントラスト比 4.5:1 以上（既定テーマ）」と定めているが、色を目視で足すと必ずどこかが下回る。
+ * アクセシビリティの仕様が「コントラスト比 4.5:1 以上（既定テーマ）」と定めているが、色を目視で足すと必ずどこかが下回る。
  *
  * `tokens.css` を読んで実際の値を突き合わせる。JS 側に値を書き写すと二重管理になる（Storybook が `tokens.css` をそのまま読んでいるのと同じ理由）。
  */
@@ -98,7 +98,7 @@ function contrast(a: string, b: string): number {
 describe.each([
   ['ライト', LIGHT],
   ['ダーク', DARK],
-])('%s テーマのコントラスト (03.ux-spec/10-accessibility.md)', (_name, theme) => {
+])('%s テーマのコントラスト', (_name, theme) => {
   it.each(TEXT_PAIRS)('%s on %s が 4.5:1 以上', (fg, bg) => {
     const foreground = theme.get(fg);
     const background = theme.get(bg);

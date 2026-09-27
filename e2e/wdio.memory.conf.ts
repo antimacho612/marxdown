@@ -1,5 +1,5 @@
 /**
- * メモリ計測だけを実行する設定（[measurements > memory](../docs/measurements/06-memory.md)）。
+ * メモリ計測だけを実行する設定。
  *
  * `wdio.conf.ts` を継承し、対象の spec と WebView2 のスイッチだけを差し替える。
  * 分けているのは 2 つの理由による。

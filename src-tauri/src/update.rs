@@ -1,12 +1,10 @@
-//! 自動更新（F-OS-06 / [ADR-0024]）。
+//! 自動更新（F-OS-06 / ADR-0024）。
 //!
 //! 確認の契機は起動（主ウィンドウの `ready` の後）・ウィンドウのフォーカス・コマンドパレットの 3 つで、タイマーは使わない（ADR-0024 §3.4）。
 //! 自動の確認は前回から 24 時間以上たっているときだけ行い、失敗しても何も知らせない。
 //!
 //! 確認も適用も Rust 側で完結させる。
 //! フロントが持つのは、通知バーの表示と 2 つのコマンドの呼び出しだけである。
-//!
-//! [ADR-0024]: ../../docs/adr/0024-auto-update.md
 
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;
@@ -91,7 +89,7 @@ fn now_secs() -> u64 {
         .unwrap_or(0)
 }
 
-/// 起動時の確認。主ウィンドウの `ready` の後に 1 回だけ呼ぶ（02.architecture/05-startup-sequence.md §2）。
+/// 起動時の確認。主ウィンドウの `ready` の後に 1 回だけ呼ぶ。
 pub fn on_startup<R: Runtime>(app: &AppHandle<R>) {
     let Some(updates) = app.try_state::<Updates>() else {
         return;

@@ -1,5 +1,5 @@
 /**
- * settings feature の公開面（02.architecture/03-layers.md §2）。
+ * settings feature の公開面。
  *
  * feature の外から参照してよいのはこのファイルが挙げたものだけで、残りは feature 内の都合である。
  * `eslint.config.js` の `FEATURE_BARREL_ENFORCED` が `@/features/settings/*` の直接参照を禁止して機械的に守る。

@@ -1,5 +1,5 @@
 /**
- * ユーザー設定のスキーマ（02.architecture/04-rust-responsibilities.md §5 / F-CONF-03）。
+ * ユーザー設定のスキーマ（F-CONF-03）。
  *
  * `src-tauri/src/settings/schema.rs` と 1:1 で対応する唯一の対応表であり、Rust 側を変えたらここも必ず変える。
  * キー・既定値・列挙の綴り・数値の許容範囲がここ 1 か所に集まっているため、`Settings` 型と `DEFAULT_SETTINGS` と範囲の表は全部ここから導出される。
@@ -143,7 +143,7 @@ export const SETTINGS_SCHEMA = defineSettingsSchema({
   /** 見出しを編集面の上端に固定する。固定する範囲は見出しの折りたたみと同じ（`features/editor/lazy/folding.ts`）。 */
   'editor.stickyScroll.enabled': { kind: 'boolean', default: true },
   /**
-   * エディターの配色（02.architecture/10-theming.md §3）。列挙ではなく文字列である。
+   * エディターの配色。列挙ではなく文字列である。
    *
    * 選択肢は組み込みの 50 枚（`features/theme/lazy/presets.ts`）と `themes/` に置かれたファイルの合成であり、ここで数え上げられない。
    * 数え上げようとすると 50 個の綴りがクリティカルパスに載り、配色を遅延チャンクに置いた意味が失われる。
@@ -183,7 +183,7 @@ export const SETTINGS_SCHEMA = defineSettingsSchema({
   'explorer.temporaryTab': { kind: 'boolean', default: true },
 
   /*
-   * 追加記法（04.tech-stack/04-markdown.md §3）。どれも既定 OFF である。
+   * 追加記法。どれも既定 OFF である。
    *
    * 標準的でない記法が意図せず発火して本文が壊れるほうが、ユーザーの認知負荷が高い（Principle 3）。
    * ON にしたものだけが動的 import される（`markdown/plugins/syntax.ts`）。既定では 1 バイトも読み込まない。
@@ -212,7 +212,7 @@ export const SETTINGS_SCHEMA = defineSettingsSchema({
   'preview.fontSize': { kind: 'number', default: 16, min: 8, max: 72 },
   'preview.lineHeight': { kind: 'number', default: 1.75, min: 1, max: 3 },
   /**
-   * 本文幅。単位は `ch`（02.architecture/10-theming.md §2）。
+   * 本文幅。単位は `ch`。
    *
    * 既定の 72ch は、1 行あたり欧文 78 字・全角 39 字にあたる（Segoe UI Variable Text 16px で 1ch = 8.63px）。
    * 長文の推奨測度は 60〜75 字で、100ch では欧文 108 字に達し、次の行頭を追いにくくなる。
@@ -229,7 +229,7 @@ export const SETTINGS_SCHEMA = defineSettingsSchema({
    */
   'preview.tableStyle': { kind: 'enum', values: ['lines', 'grid', 'zebra'], default: 'lines' },
   /**
-   * 本文の配色（02.architecture/10-theming.md §3）。`editor.theme` と同じくカタログを共有する文字列である。
+   * 本文の配色。`editor.theme` と同じくカタログを共有する文字列である。
    *
    * 選択肢と綴りの扱いは `editor.theme` と同じである。
    */

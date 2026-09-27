@@ -112,7 +112,7 @@ function isDark(background: string): boolean {
 }
 
 /**
- * 記法の色。プレビューのコードブロックと同じトークンを使う（`--mx-color-code-*` / 02.architecture/10-theming.md）。
+ * 記法の色。プレビューのコードブロックと同じトークンを使う（`--mx-color-code-*`）。
  *
  * トークン名は Monarch の Markdown 定義が出力するものである（`monaco-editor/languages/definitions/markdown`）。
  *

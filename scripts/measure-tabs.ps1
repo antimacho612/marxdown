@@ -1,14 +1,14 @@
 <#
 .SYNOPSIS
-  タブを開閉した後にメモリが戻るかを測る（N-PERF-06 / 05.performance-budget/05-operations.md §3）。
+  タブを開閉した後にメモリが戻るかを測る（N-PERF-06）。
 
 .DESCRIPTION
-  手順は 05-operations.md §3 のリーク検出そのものである。
+  手順はリーク検出の手順そのものである。
   readme.md を開いた状態を基準（M0）にし、spec.md 相当を 10 枚のタブで開閉する周回を 3 回行い、60 秒待ってから測り直す（M1）。
   判定は M1 - M0 <= 30MB。
 
   WebDriver は使わない。
-  E2E 経由の値は 1 往復あたり +20MB で線形に増え、手計測の横ばいと矛盾する（measurements/09-caveats.md §3）。
+  E2E 経由の値は 1 往復あたり +20MB で線形に増え、手計測の横ばいと矛盾する。
   判定に使えるのは人が操作したときと同じ条件の値だけである。
   そのため、開くのは argv 転送（単一インスタンス / ADR-0004）、閉じるのは SendKeys による実際の `Ctrl+W`、トレイへの格納は `WM_CLOSE` で行う。
   いずれもデバッガもドライバも介さない。
@@ -32,7 +32,7 @@ param(
   [string]$Scenario = 'tabs',
   [int]$Tabs = 10,
   [int]$Rounds = 3,
-  # GC の猶予（05-operations.md §3 の手順 4）。
+  # GC の猶予。
   [int]$SettleSeconds = 60
 )
 
@@ -147,5 +147,5 @@ Write-Host ("M1 - M0 = {0} MB" -f $delta)
 if ($Scenario -eq 'suspend') {
   Write-Host '判定: 減っていれば TrySuspend が効いている（ADR-0007）'
 } else {
-  Write-Host ("判定: {0}（目標 <= 30MB / 05.performance-budget/05-operations.md §3）" -f ($(if ($delta -le 30) { 'OK' } else { '未達' })))
+  Write-Host ("判定: {0}（目標 <= 30MB）" -f ($(if ($delta -le 30) { 'OK' } else { '未達' })))
 }

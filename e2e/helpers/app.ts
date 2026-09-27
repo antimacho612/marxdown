@@ -8,7 +8,7 @@
  * ドライバ側の制約であり、`cli.rs` を変えても解決しない。
  *
  * 代わりに argv 転送を使う。
- * Marxdown は単一インスタンス（[ADR-0004](../../docs/adr/0004-process-model-and-cli.md)）で、2 回目以降の `marxdown foo.md` は新規プロセスを立てずに既存プロセスへ argv を転送する。
+ * Marxdown は単一インスタンス（ADR-0004）で、2 回目以降の `marxdown foo.md` は新規プロセスを立てずに既存プロセスへ argv を転送する。
  * ドライバが起動した 1 つ目に対して、テストから 2 つ目を起動すればよい。
  * テスト専用の裏口を製品コードに開けずに済むうえ、中心価値そのもの（Warm Start の経路）を毎回通ることになる。
  */
@@ -24,7 +24,7 @@ const here = path.dirname(fileURLToPath(import.meta.url));
  * テスト対象の実行ファイル。
  *
  * `pnpm build` で作ったものを使う。
- * `cargo build --release` 単独だと `dist/` が古いまま埋め込まれ、起動が固まる（measurements/09-caveats.md）。
+ * `cargo build --release` 単独だと `dist/` が古いまま埋め込まれ、起動が固まる。
  */
 export const APP = path.resolve(here, '..', '..', 'src-tauri', 'target', 'release', 'marxdown.exe');
 
@@ -33,7 +33,7 @@ export const APP = path.resolve(here, '..', '..', 'src-tauri', 'target', 'releas
  * 普段は `openViaForward` を使う。
  *
  * 待たない。
- * 転送側のプロセスがシェルを保持したまま終わらない既知の問題があり（[OQ-32](../../docs/07.open-questions/oq-32-cli-holds-shell.md)）、終了を待つと E2E ごと止まる。
+ * 転送側のプロセスがシェルを保持したまま終わらない既知の問題があり（OQ-32）、終了を待つと E2E ごと止まる。
  * 開けたかどうかは画面側で確かめる。
  */
 export function forwardOpen(target: string): void {
@@ -97,7 +97,7 @@ export async function currentMode(): Promise<string> {
  * エディターが吐く DOM を指すセレクタ。エンジンの名前が書いてよいのはここだけ。
  *
  * spec 側に散らばると、エンジンを差し替えたときに複数のファイルを同時に修正することになる。
- * この表と、下の薄い関数群を書き換えれば済む状態にしてある（[ADR-0009](../../docs/adr/0009-editor-engine-monaco.md)）。
+ * この表と、下の薄い関数群を書き換えれば済む状態にしてある（ADR-0009）。
  *
  * すべて `#mx-editor` の内側に閉じる。
  * `.monaco-editor` はもう 1 つあり、はみ出すウィジェットの受け皿として `document.body` 直下にも同じクラスの要素を置いているため（`features/editor/lazy/editor.ts`）、素のクラス名で数えるとマウントされていないのに 1 つあることになる。
@@ -284,7 +284,7 @@ export async function typeAtEnd(text: string): Promise<void> {
   await browser.keys(text);
 }
 
-/** 未保存の印（`●` / 03.ux-spec/07-status-and-notifications.md §1）が出ているか。タブは 1 枚でも表示される。 */
+/** 未保存の印（`●`）が出ているか。タブは 1 枚でも表示される。 */
 export async function isDirtyShown(): Promise<boolean> {
   return browser.execute(() => document.querySelector('.mx-tab__dirty') !== null);
 }

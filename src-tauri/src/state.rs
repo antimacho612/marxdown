@@ -1,6 +1,6 @@
 //! アプリケーション全体で共有する状態。
 //!
-//! 02.architecture/01-principles.md 原則 C に従い、ここに置くのは Rust 側の処理に必要なものだけである。
+//! ここに置くのは Rust 側の処理に必要なものだけである。
 //! タブ・カーソル・設定などの UI 状態は TypeScript 側にある。
 
 use std::collections::HashMap;
@@ -16,7 +16,7 @@ use crate::settings::{Settings, SettingsLoad};
 use crate::store::{RecentEntry, StoreData};
 use crate::trace::Trace;
 
-/// アプリデータ領域（`%APPDATA%\com.antimacho612.marxdown\`）に置くものの場所（02.architecture/04-rust-responsibilities.md §5）。
+/// アプリデータ領域（`%APPDATA%\com.antimacho612.marxdown\`）に置くものの場所。
 ///
 /// `state.json` はアプリが自動的に書き、`settings.json` と `themes/` は人が書く。
 ///
@@ -40,13 +40,13 @@ pub struct AppState {
     store: Mutex<StoreData>,
     /// 設定ファイルたちの置き場所。
     paths: ConfigPaths,
-    /// ユーザー設定（02.architecture/04-rust-responsibilities.md §5）。
+    /// ユーザー設定。
     /// 「壊れている」という事実も一緒に保持し、書き戻しの可否をこれで決める。
     settings: Mutex<SettingsLoad>,
     /// アセット参照を許可するディレクトリ（N-SEC-05）。
     /// 開いたドキュメントの親ディレクトリを追加していく。
     asset_roots: Mutex<Vec<PathBuf>>,
-    /// 利用者が 1 件ずつ許可した画像のディレクトリ（02.architecture/09-security.md §3）。
+    /// 利用者が 1 件ずつ許可した画像のディレクトリ。
     ///
     /// `asset_roots` と分けてある。こちらは再帰しない（直下だけ）うえ、ファイルツリー（`list_dir` / `list_files`）からは辿れない。
     /// 画像 1 枚のために押したボタンで、フォルダが閲覧できるようになってはいけない。
@@ -64,7 +64,7 @@ pub struct AppState {
     /// 1 つの値で共有してはいけない（F-OPEN-06）。
     /// 別のウィンドウを最大化した時点で直前の値が書き換わり、こちらのウィンドウは次に変化しても「変化なし」と判定されてボタンの表示が取り残される。
     maximized: Mutex<HashMap<String, bool>>,
-    /// 未保存の変更があるか（F-EDIT-03 / 03.ux-spec/07-status-and-notifications.md §1）。ウィンドウごとに持つ。
+    /// 未保存の変更があるか（F-EDIT-03）。ウィンドウごとに持つ。
     ///
     /// 値の所有者はフロントである。
     /// ここに複製があるのは、終了の 3 経路（トレイメニュー / ハンバーガーメニュー / `Ctrl+Q`）が Rust 側で合流しており（`close.rs`）、トレイメニューからの終了がフロントを経由しないためである。
@@ -90,13 +90,13 @@ pub struct AppState {
     /// 移す側が本文をここへ預け、新しいウィンドウが起動直後に 1 回だけ引き取る。
     ///
     /// 中身は解釈しない。
-    /// フロントが組み立てた JSON 文字列をそのまま運ぶだけである（02.architecture/README.md 原則 C「Markdown の意味解釈は TypeScript 側」）。
+    /// フロントが組み立てた JSON 文字列をそのまま運ぶだけである（Markdown の意味解釈は TypeScript 側が担う）。
     ///
     /// 1 件しか持たない。
     /// 同時に 2 枚移す操作が無いため、新しい転送で上書きし、引き取りで空にすれば取りこぼしも漏れも起きない。
     transfer: Mutex<Option<(u64, String)>>,
     transfer_counter: AtomicU64,
-    /// OS のドロップイベントで直近に受け取ったパス。ウィンドウごとに 1 回分だけ持つ（02.architecture/09-security.md §5）。
+    /// OS のドロップイベントで直近に受け取ったパス。ウィンドウごとに 1 回分だけ持つ。
     ///
     /// 外部からのドロップをファイルツリーへ取り込むとき、コピー元はこの中にあるものに限る。
     /// フロントが渡すパスを信用すると、許可範囲の外のファイルを配下へ複製して読めるようになる。
@@ -208,7 +208,7 @@ impl AppState {
             .unwrap_or_default()
     }
 
-    /// 設定を読み直す（02.architecture/04-rust-responsibilities.md §5）。
+    /// 設定を読み直す。
     ///
     /// 読めない内容に変わったときは既定値に戻さない。
     /// 直前に読めていた値を保持し、壊れている事実だけを添えて返す。
@@ -227,9 +227,9 @@ impl AppState {
         current.clone()
     }
 
-    /// 変更したキーだけを反映して書き戻す（02.architecture/04-rust-responsibilities.md §1 `write_settings`）。
+    /// 変更したキーだけを反映して書き戻す。
     ///
-    /// 壊れている間は拒否する（02.architecture/04-rust-responsibilities.md §5 の 3 番目）。
+    /// 壊れている間は拒否する。
     /// これが無いと、ユーザーが修正している最中に設定 UI がファイルの内容を丸ごと消してしまう。
     pub fn patch_settings(
         &self,
@@ -326,7 +326,7 @@ impl AppState {
 
     /// argv 転送を受けた瞬間に呼ぶ。返した ID をフロントへ渡す。
     ///
-    /// これが 02.architecture/05-startup-sequence.md §3 のウォーム起動の起点（W0）。
+    /// これがウォーム起動の起点（W0）。
     pub fn begin_warm(&self) -> u64 {
         let id = self.warm_counter.fetch_add(1, Ordering::Relaxed);
         if let Ok(mut w) = self.warm.lock() {
@@ -566,7 +566,7 @@ mod tests {
         )
     }
 
-    /// 02.architecture/04-rust-responsibilities.md §5 の 3 番目。ユーザーが直している最中に設定 UI がファイルの内容を丸ごと消さない。
+    /// ユーザーが直している最中に設定 UI がファイルの内容を丸ごと消さない。
     #[test]
     fn writing_is_refused_while_the_settings_file_is_broken() {
         let d = temp_dir("refuse");
@@ -610,7 +610,7 @@ mod tests {
         std::fs::remove_dir_all(&d).ok();
     }
 
-    /// 02.architecture/04-rust-responsibilities.md §5「読めない内容に変わったときは既定値に戻さない」。
+    /// 読めない内容に変わったときは既定値に戻さない。
     /// 編集途中の中間状態でテーマが既定値に戻るのを防ぐ。
     #[test]
     fn a_reload_of_a_broken_file_keeps_the_last_readable_values() {

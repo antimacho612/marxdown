@@ -1,5 +1,5 @@
 /**
- * document feature の公開面（02.architecture/03-layers.md §2）。
+ * document feature の公開面。
  *
  * 最も多くの feature から参照されるため、公開する範囲を明示しておく。
  * 遅延チャンクは持たない。本文の読み書きは起動時の最初のフレームから必要になる。

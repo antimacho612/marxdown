@@ -1,4 +1,4 @@
-//! `✕` を押したときに何が起きるか（[ADR-0007] 論点 1・2・4・7・9・11）。
+//! `✕` を押したときに何が起きるか（ADR-0007 論点 1・2・4・7・9・11）。
 //!
 //! 「閉じる」には見た目が似ていて意味が違う 4 つがある。
 //! `close_one` はウィンドウを 1 枚だけ閉じる動作で、他のウィンドウが残っている場合はこれになる（F-OPEN-06）。
@@ -13,8 +13,6 @@
 //! ウィンドウ位置の保存（F-CONF-10）を `CloseRequested` だけに置くと、トレイメニューや `Ctrl+Q` からの終了では保存されない（論点 11）。
 //! これらの経路ではこのイベントが発火しないためである。
 //! 常駐アプリでは、最後に `✕` を押した時点の位置から更新されないままになる。
-//!
-//! [ADR-0007]: ../../docs/adr/0007-tray-residency.md
 
 use tauri::{AppHandle, Emitter, Manager, Runtime};
 
@@ -133,14 +131,14 @@ pub fn quit<R: Runtime>(app: &AppHandle<R>) {
     app.exit(0);
 }
 
-/// 終了してよいか確かめてから終える（F-EDIT-03 / 03.ux-spec/07-status-and-notifications.md §1）。
+/// 終了してよいか確かめてから終える（F-EDIT-03）。
 ///
 /// Rust 側で確認するのは、終了の導線が 3 つあり（論点 3）、トレイメニューからの終了はフロントを経由しないためである。
 /// 確認をフロントに置くと、その経路だけ未保存の内容を通知なく破棄することになる。
 /// 3 経路が合流しているのはここであるため、確認もここに置く。
 /// ダーティかどうかはフロントが `set_dirty` で知らせてくる（`state.rs`）。
 ///
-/// 03.ux-spec/07-status-and-notifications.md §2 は、モーダルはデータ消失の可能性がある場面だけに使うと定めている。
+/// UX 仕様は、モーダルはデータ消失の可能性がある場面だけに使うと定めている。
 /// ここはその筆頭であり、通知バーでは足りない（押さずに終了できてしまうため）。
 pub fn request_quit<R: Runtime>(app: &AppHandle<R>) {
     let dirty = app
@@ -156,7 +154,7 @@ pub fn request_quit<R: Runtime>(app: &AppHandle<R>) {
     ask_then_quit(app.clone());
 }
 
-/// 「保存して終了 / 保存せず終了 / キャンセル」の 3 択（§1）。
+/// 「保存して終了 / 保存せず終了 / キャンセル」の 3 択。
 ///
 /// 「保存して終了」はここでは保存しない。
 /// 本文は Monaco の `ITextModel` にあり（ADR-0005）、保存できるのはフロントだけであるため、保存を依頼して戻る。
@@ -231,7 +229,7 @@ pub fn on_close_requested<R: Runtime>(app: &AppHandle<R>, label: &str) -> bool {
     if label == MAIN_LABEL && stashes_on_close(app) {
         // 初回だけ、`✕` の意味が変わることを説明する（論点 4）。
         //
-        // 03.ux-spec/07-status-and-notifications.md §2 は「モーダルはデータ消失の可能性がある場面だけ」としており、これはその例外にあたる。
+        // UX 仕様は「モーダルはデータ消失の可能性がある場面だけ」としており、これはその例外にあたる。
         // 生涯 1 回であることが許容の条件そのものなので、フラグは `state.json` に永続化する。
         let first_time = app
             .try_state::<AppState>()
@@ -323,7 +321,7 @@ fn ask_then_close<R: Runtime>(app: AppHandle<R>, label: String) {
         });
 }
 
-/// 初回の確認ダイアログ（03.ux-spec/07-status-and-notifications.md §4 の文面）。
+/// 初回の確認ダイアログ。
 ///
 /// 非同期で表示する。
 /// `CloseRequested` のハンドラの中で同期的にダイアログを表示すると、イベントループを塞いだまま入力を待つことになる。

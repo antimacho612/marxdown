@@ -1,7 +1,7 @@
 /**
- * Explorer を出してフォーカスする（`Ctrl+Shift+E` / 03.ux-spec/06-panes.md §4）。
+ * Explorer を出してフォーカスする（`Ctrl+Shift+E`）。
  *
- * トグルにしないのは §4 の決定で、常に同じ結果を返すためである（閉じるのはペイン側の `Ctrl+Shift+B`）。
+ * トグルにしないのは、常に同じ結果を返すためである（閉じるのはペイン側の `Ctrl+Shift+B`）。
  * `features/outline/show.ts` と対になる。
  *
  * フォーカス先の DOM 要素は `FileTree.svelte` だけが知っているため、そちらから登録してもらう。

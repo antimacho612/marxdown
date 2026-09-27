@@ -1,17 +1,17 @@
 /**
- * E2E の設定（02.architecture/12-testing-strategy.md）。
+ * E2E の設定。
  *
  * 編集と保存があるため、壊れたときの被害は「表示が崩れる」では済まず「ユーザーのファイルが壊れる」になる（N-REL-01）。
  * 原子的書き込み・衝突検知・EOL/BOM の復元は、単体テストでは通しで検証できない。
  * Rust 側の `document::write` は `cargo test` が検証しているため（`read_then_save_untouched_keeps_bytes_identical`）、ここで検証するのはその上、「エディターの内容 → `WriteRequest` の組み立て → IPC → ディスクのバイト列」の経路である。
  *
  * CI では走らせない。
- * 05.performance-budget/05-operations.md §5 と同じ扱いで、実機（WebView2 ランタイム + 版の合った msedgedriver）が要り、環境ノイズも大きい。
+ * 起動時間やメモリの計測と同じ扱いで、実機（WebView2 ランタイム + 版の合った msedgedriver）が要り、環境ノイズも大きい。
  * `pnpm e2e` の手動実行と、マイルストーン完了時の実行にとどめる。
  * 前提の揃え方は `e2e/README.md`。
  *
  * 本数は絞る。
- * 02.architecture/12-testing-strategy.md の方針どおり E2E は遅くて壊れやすいため、ここに置くのは実機のプロセス・キー配送・IPC を通さないと確かめられないものだけで、それ以外は Vitest と `cargo test` で検証する。
+ * E2E は遅くて壊れやすいため、ここに置くのは実機のプロセス・キー配送・IPC を通さないと確かめられないものだけで、それ以外は Vitest と `cargo test` で検証する。
  */
 import { execFileSync, spawn, type ChildProcess } from 'node:child_process';
 import { existsSync } from 'node:fs';

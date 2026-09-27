@@ -1,12 +1,12 @@
 /**
- * 大きなドキュメントを開いて閉じるのを繰り返し、メモリが戻るか（[measurements > memory](../../docs/measurements/06-memory.md)）。
+ * 大きなドキュメントを開いて閉じるのを繰り返し、メモリが戻るか。
  *
  * `pnpm e2e` では実行されない。`pnpm e2e:memory` で `wdio.memory.conf.ts` から明示的に呼ぶ（`wdio.conf.ts` の `exclude`）。
  * 分けているのは、計測用のスイッチと数分かかる待ちを他の spec に混ぜないためである。
  *
  * 判定はしない。
  * この spec が固定するのは「同じ手順で測り直せること」だけである。
- * WebDriver 経由の値は増分が信用できないため、合否は手計測で判定する（[measurements > caveats §3](../../docs/measurements/09-caveats.md)）。
+ * WebDriver 経由の値は増分が信用できないため、合否は手計測で判定する。
  */
 import { existsSync } from 'node:fs';
 import path from 'node:path';

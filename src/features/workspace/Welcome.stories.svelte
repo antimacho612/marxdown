@@ -1,5 +1,5 @@
 <!--
-  Welcome 画面（F-OPEN-03 / F-OPEN-09 / 03.ux-spec/08-empty-states.md §1）。
+  Welcome 画面（F-OPEN-03 / F-OPEN-09）。
 
   履歴は Rust 側の永続化ストアから来るので、実アプリで「空の状態」を見るには `store.json` を消すしかない。ここでは `loaders` でストアに直接入れる。
 -->
@@ -36,7 +36,7 @@
 
 <Story name="履歴あり" loaders={[withRecent(SAMPLE)]} />
 
-<!-- 初回起動。ここに何を出すかが 03.ux-spec/08-empty-states.md §1 の中心的な論点。 -->
+<!-- 初回起動。ここに何を出すかが中心的な論点。 -->
 <Story name="履歴なし" loaders={[withRecent([])]} />
 
 <!--

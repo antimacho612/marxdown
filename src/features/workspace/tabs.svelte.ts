@@ -1,5 +1,5 @@
 /**
- * タブ（F-NAV-01, 02 / 02.architecture/08-state-management.md §1）。
+ * タブ（F-NAV-01, 02）。
  *
  * ここにあるのはモデルと、開く・切り替える・閉じるの操作である。
  * 表示は `TabStrip.svelte` が担当する。
@@ -10,7 +10,7 @@
  * この不変条件は `tabs.dom.test.ts` が機械的に検証する。
  *
  * Preview の DOM は保持しない。切り替えのたびに破棄して再描画する。
- * パースは十分に速く（measurements/04-markdown-pipeline.md）、タブの枚数に比例してメモリが増えない形を優先している。
+ * パースは十分に速く、タブの枚数に比例してメモリが増えない形を優先している。
  *
  * Undo 履歴はタブごとの `ITextModel` が持つ（`features/editor/lazy/editor.ts`）。
  */
@@ -442,7 +442,7 @@ export async function cycleTab(delta: 1 | -1): Promise<boolean> {
 /**
  * n 番目のタブ（`Ctrl+1`〜`Ctrl+9`）。`index` は 1 始まり。
  *
- * 9 番目より後ろには行けない。VS Code の `Ctrl+9`（最後のタブ）とは違うが、03.ux-spec/04-keybindings.md §3 が「n 番目のタブ」と定めている。
+ * 9 番目より後ろには行けない。VS Code の `Ctrl+9`（最後のタブ）とは違うが、UX 仕様が「n 番目のタブ」と定めている。
  */
 export async function selectTabAt(index: number): Promise<boolean> {
   const target = tabsStore.tabs[index - 1];

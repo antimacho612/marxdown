@@ -1,11 +1,11 @@
 /**
- * Split のスクロール同期と双方向ジャンプ（F-MODE-05 / 03.ux-spec/03-split-mode.md §2, §3）。
+ * Split のスクロール同期と双方向ジャンプ（F-MODE-05）。
  *
  * プレビューのブロック要素には `data-line` が付いており（`markdown/plugins/line-map.ts`）、エディターも行番号を持つため、両者を結ぶのは行番号だけでよい。
  * このモジュールは `main` チャンクにあるためエディターを直接 import せず、行番号だけを扱うインタフェース `EditorScrollPort` を受け取る（座標計算はエンジン固有の `features/editor/lazy/scroll-port.ts` に置く）。
- * 行あたりの高さが要素ごとに違うため、`data-line` を持つ要素の間を線形補間する（§3）。
+ * 行あたりの高さが要素ごとに違うため、`data-line` を持つ要素の間を線形補間する。
  *
- * 片方を動かすと相手の `scroll` が発火してまた動くという循環が起きるため、これを防ぐために主導権は最後に操作した側が持ち、動かされた側からの同期を短時間停止する（§2）。
+ * 片方を動かすと相手の `scroll` が発火してまた動くという循環が起きるため、これを防ぐために主導権は最後に操作した側が持ち、動かされた側からの同期を短時間停止する。
  */
 import { viewStore } from './store.svelte';
 
@@ -109,7 +109,7 @@ export function startScrollSync(): void {
     syncEditorToPreview(target, preview);
   };
 
-  // プレビューの要素をダブルクリック → エディターの該当行へ（§3）。
+  // プレビューの要素をダブルクリック → エディターの該当行へ。
   // Split のときだけ動作する。Preview だけで表示しているときは移動先が存在しない。
   const onPreviewDoubleClick = (event: MouseEvent): void => {
     const line = lineAtEvent(event);
@@ -144,7 +144,7 @@ export function stopScrollSync(): void {
  * 反対側が主導している間は false。
  * 動かされた側の `scroll` をそこで止めることで、循環を断つ。
  *
- * 同期が OFF（`viewStore.scrollSync`）なら常に false。§2 のとおり、OFF でもジャンプ（明示的な操作）は有効であり、ジャンプはこの関数を通らない。
+ * 同期が OFF（`viewStore.scrollSync`）なら常に false。OFF でもジャンプ（明示的な操作）は有効であり、ジャンプはこの関数を通らない。
  */
 function take(side: 'editor' | 'preview'): boolean {
   if (!viewStore.scrollSync) return false;
@@ -161,7 +161,7 @@ function take(side: 'editor' | 'preview'): boolean {
  * プレビューの `data-line` を、行番号の昇順に並べた表にする。
  *
  * 呼ばれるたびに組み立て直す。
- * 段階的描画（02.architecture/06-markdown-rendering-pipeline.md §4）では本文が後から追加されるため、事前に構築しておくと追加分を検出できない。
+ * 段階的描画では本文が後から追加されるため、事前に構築しておくと追加分を検出できない。
  * `readme.md` で数百件、`huge.md` で数千件の `querySelectorAll` であり、スクロール 1 回あたりのコストとして許容できる。
  */
 function anchorsOf(preview: HTMLElement): Anchor[] {
@@ -255,10 +255,10 @@ function lineAtEvent(event: MouseEvent): number | null {
 }
 
 /**
- * プレビューの位置からエディターの行へ移動する（プレビューのダブルクリック / §3）。
+ * プレビューの位置からエディターの行へ移動する（プレビューのダブルクリック）。
  *
  * 同期が無効でも、Split でなくても動作する。
- * §2 の但し書きのとおり、これは明示的な操作である。
+ * これは明示的な操作である。
  * アウトラインからのジャンプ（`features/outline/jump.ts`）は Edit でも同じ経路を通るため、条件はエディターがマウントされていることだけである。
  * 移動後はエディターが主導権を持つ（そのまま入力を続けられる）。
  */
@@ -273,7 +273,7 @@ export function jumpToEditorLine(line: number, options: { focus?: boolean } = {}
 }
 
 /**
- * エディターの行からプレビューの位置へ移動する（アウトラインからのジャンプ / §3）。
+ * エディターの行からプレビューの位置へ移動する（アウトラインからのジャンプ）。
  *
  * 同期が OFF でも有効な理由は上と同じ。
  */

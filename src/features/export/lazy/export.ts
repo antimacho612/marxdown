@@ -1,5 +1,5 @@
 /**
- * 表示中の文書を HTML / PDF に書き出す（F-VIEW-18 / docs/06.roadmap/m7-cli-os-export.md §4.4）。
+ * 表示中の文書を HTML / PDF に書き出す（F-VIEW-18）。
  */
 import { describeOpenError, documentStore } from '@/features/document';
 import { ja } from '@/i18n/ja';

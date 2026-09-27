@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 /**
- * `Ctrl+F` / `Ctrl+H` の振り分け（F-VIEW-10 / F-EDIT-05 / 03.ux-spec/04-keybindings.md §4）。
+ * `Ctrl+F` / `Ctrl+H` の振り分け（F-VIEW-10 / F-EDIT-05）。
  *
  * 検証するのは「どちらが開くか」だけである。
  * 検索そのもの（プレビューの `Range` 探索 / Monaco の find ウィジェット）の実体は読み込まず、開く / 閉じるの呼び出し回数をモックで数える。

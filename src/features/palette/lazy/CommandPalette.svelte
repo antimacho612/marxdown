@@ -1,5 +1,5 @@
 <!--
-  コマンドパレット（`Ctrl+Shift+P` / F-NAV-06 / 03.ux-spec/01-screen-layout.md §3）。
+  コマンドパレット（`Ctrl+Shift+P` / F-NAV-06）。
 
   メニューバーを置かない代わりの、すべての機能への到達手段である。
   並べるのは実行できるコマンドだけで、判定は `app/commands.ts` の `isListed` が唯一の根拠になる（メニューと結論がずれない / Principle 3）。

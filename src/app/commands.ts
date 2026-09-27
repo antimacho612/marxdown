@@ -81,7 +81,7 @@ function hasTabs(): boolean {
  * キーは一覧に出ていなくても動作する。
  */
 const COMMANDS: Command[] = [
-  // 新規ファイル（`Ctrl+N` / 03.ux-spec/04-keybindings.md §3）。何も開いていなくても実行できる。
+  // 新規ファイル（`Ctrl+N`）。何も開いていなくても実行できる。
   // 新しいタブで開く。いまの文書はタブとして残るため、破棄の確認は要らない。
   { id: 'document.new', run: () => void newUntitled() },
 
@@ -129,7 +129,7 @@ const COMMANDS: Command[] = [
   { id: 'document.exportHtml', run: () => void exportLazily('html'), isListed: hasDocument },
   { id: 'document.exportPdf', run: () => void exportLazily('pdf'), isListed: hasDocument },
 
-  // 改行コードの変換（F-EDIT-14 / 03.ux-spec/07-status-and-notifications.md §3）。
+  // 改行コードの変換（F-EDIT-14）。
   // 実体はステータスバーの `LF` / `CRLF` で、ここはコマンドとしての入口である。
   // キーは割り当てない。使用頻度が低く、覚えるキーを増やす利点がない。
   { id: 'document.toggleEol', run: () => toggleEol(), isListed: hasDocument },
@@ -143,7 +143,7 @@ const COMMANDS: Command[] = [
     isListed: () => canGoForward(tabsStore.activeId),
   },
 
-  // ペインとビュー（03.ux-spec/06-panes.md §4）。キーの意味が 2 系統に分かれている。
+  // ペインとビュー。キーの意味が 2 系統に分かれている。
   //   ペイン: `pane.toggleRight` はライトペインを開閉する。中身が何であるかは問わない。
   //   ビュー: `outline.show` は Outline を表示してフォーカスする。閉じる動作は持たない。
   //
@@ -160,11 +160,11 @@ const COMMANDS: Command[] = [
   { id: 'explorer.refresh', run: () => void reloadTree(), isListed: hasTree },
   { id: 'explorer.collapseAll', run: () => collapseAll(), isListed: hasTree },
 
-  // 見出しへジャンプ（03.ux-spec/04-keybindings.md §3「移動」）。実体は遅延チャンクにある。
+  // 見出しへジャンプ。実体は遅延チャンクにある。
   // コマンドパレット（`Ctrl+Shift+P`）ではなく、見出し専用である。
   { id: 'outline.jump', run: () => void openJumpLazily(), isListed: hasDocument },
 
-  // 表示モードの切り替え（F-MODE-03, 06 / 03.ux-spec/02-view-modes.md §2）。
+  // 表示モードの切り替え（F-MODE-03, 06）。
   //
   // `Ctrl+Shift+V` は Preview と直前の編集モードの往復、`Ctrl+\` は Split のトグル、`Ctrl+Shift+M` は順送りである。
   // 3 つとも意味が違うため、別のコマンドにしてある。
@@ -174,7 +174,7 @@ const COMMANDS: Command[] = [
   // キーを知っている人のためのものであり、メニューには行き先の分かるトグル 2 つが既に並んでいる。
   { id: 'view.cycleMode', run: () => void cycleMode() },
 
-  // スクロール同期（F-MODE-05 / 03.ux-spec/03-split-mode.md §2）。Split のときだけ意味を持つ。
+  // スクロール同期（F-MODE-05）。Split のときだけ意味を持つ。
   // 実体はステータスバーの `⇄` で、ここはコマンドとしての入口である。
   {
     id: 'view.toggleScrollSync',
@@ -203,7 +203,7 @@ const COMMANDS: Command[] = [
 
   { id: 'settings.open', run: () => void openSettingsLazily() },
 
-  // コマンドパレット（F-NAV-06 / 03.ux-spec/01-screen-layout.md §3）。
+  // コマンドパレット（F-NAV-06）。
   // メニューバーを置かない代わりの、すべての機能への到達手段である。
   // 一覧には出さない。開いている当人を並べても押せない。
   { id: 'palette.open', run: () => void openCommandPaletteLazily() },
@@ -225,7 +225,7 @@ const COMMANDS: Command[] = [
     isListed: () => hasDocument() && viewStore.mode !== 'preview',
   },
 
-  // タブ（F-NAV-01, 02 / 03.ux-spec/04-keybindings.md §3）。
+  // タブ（F-NAV-01, 02）。
   //
   // 閉じるのは表示中のタブである。対象を取らないのは、キーもメニューも「いま見ているもの」を指すためで、個別のタブを閉じるのは `✕`（`TabStrip.svelte`）が直接呼ぶ。
   { id: 'tab.close', run: () => void closeCurrentTab(), isListed: hasDocument },
@@ -245,7 +245,7 @@ const COMMANDS: Command[] = [
   // 終了（ADR-0007 論点 3）。
   // 確実に終了できる導線を 3 つ用意するという決定のうち、キーとハンバーガーメニューの 2 つがこのコマンドを共有する（残りはトレイメニュー）。
   //
-  // ダーティ状態の確認（03.ux-spec/07-status-and-notifications.md §1）もこの経路に入るため、確認を挟む場所は 1 か所で済む。
+  // ダーティ状態の確認もこの経路に入るため、確認を挟む場所は 1 か所で済む。
   { id: 'app.quit', run: () => void getPlatform().quitApp() },
   // 更新の確認（ADR-0024）。設定 `update.autoCheck` を切っていても、ここからは確認できる。
   { id: 'app.checkUpdate', run: () => void checkForUpdatesLazily() },
@@ -263,7 +263,7 @@ interface KeyBinding {
 }
 
 /**
- * アプリの再読み込みに置き換えるキー（03.ux-spec/04-keybindings.md §3）。
+ * アプリの再読み込みに置き換えるキー。
  *
  * WebView の再読み込みは 1 つのキーだけに割り当たっているわけではない。
  * `F5` / `Ctrl+R` が通常の再読み込み、`Ctrl+Shift+R` / `Ctrl+F5` / `Shift+F5` がキャッシュを無視した再読み込みで、Chromium 系ではいずれも動作する。
@@ -275,22 +275,22 @@ interface KeyBinding {
 const RELOAD_KEYS = ['F5', 'Ctrl+R', 'Ctrl+Shift+R', 'Ctrl+F5', 'Shift+F5'];
 
 /**
- * キーと id の対応（03.ux-spec/04-keybindings.md §3）。
+ * キーと id の対応。
  *
  * アプリ全体で効くものだけを並べる（プレビュー内検索の `F3`/`Escape` のように開いている間だけ効くキーは、その機能のモジュールが自分で `bindKeys` する）。
  * クリティカルパスに載ってよい唯一の形であり、キーバインドのカスタマイズ（F-CONF-09）はこの表を差し替える形で入る。
  *
  * ここに書いたキーはどこにフォーカスがあっても有効である。
- * 境界は「入力中かどうか」ではなく「どちらの表に書いてあるか」であり、モードごとの例外を持たない（03.ux-spec/04-keybindings.md §4）。
+ * 境界は「入力中かどうか」ではなく「どちらの表に書いてあるか」であり、モードごとの例外を持たない。
  * この表と `features/editor/lazy/keymap.ts`（本文編集用）は重ならないよう、`keymap.ts` 側が重複キーを外している。
  */
 export const KEY_BINDINGS: KeyBinding[] = [
-  // 新規ファイル（03.ux-spec/04-keybindings.md §3）。
+  // 新規ファイル。
   // そのまま通すと WebView 自身の「新しいウィンドウ」が動作するため、`Ctrl+O` や `Ctrl+S` と同じ理由で必ず既定動作を止める。
   { key: 'Ctrl+N', id: 'document.new' },
   { key: 'Ctrl+O', id: 'document.open' },
-  // フォルダを開く（03.ux-spec/04-keybindings.md §3）。
-  // VS Code の `Ctrl+K Ctrl+O` に対応するが、和音は採らないため単打の空きキーへ移してある（§2）。
+  // フォルダを開く。
+  // VS Code の `Ctrl+K Ctrl+O` に対応するが、和音は採らないため単打の空きキーへ移してある。
   { key: 'Ctrl+Alt+O', id: 'folder.open' },
 
   // 保存（F-EDIT-02）。
@@ -309,16 +309,16 @@ export const KEY_BINDINGS: KeyBinding[] = [
   // VS Code と同じ `Ctrl+,`（Familiar）。
   { key: 'Ctrl+,', id: 'settings.open' },
 
-  // Preview ⇄ 直前の編集モード（03.ux-spec/02-view-modes.md §2 の「最も使うトグル」）。
+  // Preview ⇄ 直前の編集モード。
   { key: 'Ctrl+Shift+V', id: 'view.togglePreview' },
 
-  // Split（F-MODE-03 / 03.ux-spec/02-view-modes.md §2）。
+  // Split（F-MODE-03）。
   // `Ctrl+\` は VS Code の「エディターを分割」に対応する（Familiar）。
   // `Ctrl+Shift+M` は表示モードの順送りである。
   { key: 'Ctrl+\\', id: 'view.toggleSplit' },
   { key: 'Ctrl+Shift+M', id: 'view.cycleMode' },
 
-  // レフトペイン（F-NAV-04 / 03.ux-spec/04-keybindings.md §3）。VS Code のサイドバーと同じキー。
+  // レフトペイン（F-NAV-04）。VS Code のサイドバーと同じキー。
   { key: 'Ctrl+Shift+B', id: 'pane.toggleLeft' },
   { key: 'Ctrl+Alt+B', id: 'pane.toggleRight' },
   { key: 'Ctrl+Shift+E', id: 'explorer.show' },
@@ -359,12 +359,12 @@ export const KEY_BINDINGS: KeyBinding[] = [
   { key: 'Ctrl+F', id: 'find.open' },
   { key: 'Ctrl+H', id: 'find.replace' },
 
-  // Marxdown を終了する（ADR-0007 論点 3 / 03.ux-spec/04-keybindings.md §3）。
+  // Marxdown を終了する（ADR-0007 論点 3）。
   //
   // トレイ常駐では `✕` が格納の意味になるため、明示的に終了するキーが別に必要になる。
   { key: 'Ctrl+Q', id: 'app.quit' },
 
-  // タブ（03.ux-spec/04-keybindings.md §3「移動」「ファイル」）。
+  // タブ。
   //
   // `Ctrl+Tab` は WebView 自身のフォーカス移動にも割り当たっているため、既定動作を止めること自体に意味がある。
   // `Ctrl+W` はブラウザではウィンドウを閉じるキーであり、こちらは必ず止める（トレイ常駐のため、閉じるべきはタブである / ADR-0007）。

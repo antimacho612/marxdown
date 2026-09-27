@@ -1,5 +1,5 @@
 /**
- * ウィンドウ操作（03.ux-spec/01-screen-layout.md §1）。
+ * ウィンドウ操作。
  *
  * `decorations: false` であるため、`─ □ ✕` は自分たちの `<button>` である。
  * ここはその押下を Platform 層へ渡すだけの薄い層である。
@@ -26,7 +26,7 @@ export function closeWindow(): void {
 }
 
 /**
- * 最大化状態の追従を開始する。`ready()` の後に呼ぶ（02.architecture/05-startup-sequence.md §2）。
+ * 最大化状態の追従を開始する。`ready()` の後に呼ぶ。
  *
  * IPC を伴う購読であり、本文が読める時点に間に合っている必要がない。
  * 遅れた場合の最悪の結果は、最大化して復元した直後の数十 ms だけボタンの表示が最大化前のままになることで、次の変化で解消する。
@@ -51,7 +51,7 @@ export function installWindowState(): void {
 /**
  * 測り直しを待つ時間。ウィンドウのリサイズ中に毎フレーム IPC を送信しないために設ける。
  *
- * 1 回だけの `setTimeout` であり、ポーリングではない（05.performance-budget/04-targets.md §5）。
+ * 1 回だけの `setTimeout` であり、ポーリングではない。
  * ドラッグ中に矩形が古いままでも影響はない。その間に最大化ボタンへホバーすることはできない。
  */
 const SNAP_REPORT_DEBOUNCE_MS = 120;
@@ -69,7 +69,7 @@ let target: HTMLElement | null = null;
  * `ResizeObserver` は位置の変化を検知できないため、`resize` イベントを監視する（Windows 以外は Rust 側で無視する）。
  *
  * ここでは矩形を測定しない。
- * マウント直後の `getBoundingClientRect()` は強制的な同期レイアウト計算を発生させ（32〜35ms / measurements/03-cold-start.md §5）、その間はシェル描画とパース評価を並行させる起動シーケンスの前提（02.architecture/05-startup-sequence.md §2）が成立しなくなる。
+ * マウント直後の `getBoundingClientRect()` は強制的な同期レイアウト計算を発生させ（32〜35ms）、その間はシェル描画とパース評価を並行させる起動シーケンスの前提が成立しなくなる。
  * ここでは対象の要素を保持して `resize` を監視するだけにとどめ、初回の通知は `reportSnapLayoutsTarget()` が `ready()` の後に行う。
  */
 export function trackSnapLayoutsTarget(element: HTMLElement): () => void {
@@ -94,7 +94,7 @@ export function trackSnapLayoutsTarget(element: HTMLElement): () => void {
 }
 
 /**
- * 最初の 1 回だけ矩形を報告する。`ready()` の後に呼ぶ（02.architecture/05-startup-sequence.md §2）。
+ * 最初の 1 回だけ矩形を報告する。`ready()` の後に呼ぶ。
  *
  * 最大化ボタンの位置を Windows へ応答する主体（`snap_layouts::install`）は `ready` コマンドの中で登録される（`src-tauri/src/commands.rs`）。
  * そのため、ここまで遅らせても報告は失われない。

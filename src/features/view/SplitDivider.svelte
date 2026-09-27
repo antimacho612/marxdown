@@ -1,5 +1,5 @@
 <!--
-  Split の分割線（03.ux-spec/03-split-mode.md §1）。
+  Split の分割線。
   ライトペインのドラッグ領域（`panes/RightPane.svelte` の `__resizer`）と、ドラッグ・rAF による間引き・離した時点で 1 回だけ保存する構造が同じで、違うのは単位だけである（あちらは px、こちらは比）。
   `role="slider"` にしているのは、Svelte の a11y 検査が `separator` を操作できない要素と判定するためである。
 -->

@@ -1,5 +1,5 @@
 /**
- * 型定義を同梱していない markdown-it プラグインの宣言（04.tech-stack/04-markdown.md §2）。
+ * 型定義を同梱していない markdown-it プラグインの宣言。
  *
  * `@types/markdown-it-footnote` は `@types/markdown-it` に依存するが、markdown-it 15 は自前の型を同梱している。
  * そのため入れると `markdown-it` モジュール宣言が二重になり、`pipeline.ts` が import する型と競合する。
@@ -15,7 +15,7 @@ declare module 'markdown-it-footnote' {
 }
 
 /*
- * 設定で有効化する追加記法（04.tech-stack/04-markdown.md §3 / `plugins/syntax.ts`）。
+ * 設定で有効化する追加記法（`plugins/syntax.ts`）。
  * どれも既定 OFF で、ON になったときだけ動的 import される。
  */
 

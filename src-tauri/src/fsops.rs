@@ -1,7 +1,7 @@
 //! ファイルツリーからのファイル操作（F-NAV-11〜13 / ADR-0020）。
 //!
 //! 作成・リネーム・移動・コピー・ゴミ箱への移動を扱う。
-//! 書き込み範囲の検証は 02.architecture/09-security.md §5 に従い、すべての入口でここを通す。
+//! 書き込み範囲の検証は、すべての入口でここを通す。
 //!
 //! Tauri に依存しない。
 //! 許可ディレクトリ（`asset_roots`）は呼び出し側から受け取り、検証の結果をユニットテストで確かめられるようにしてある。
@@ -35,7 +35,7 @@ const WINDOWS_RESERVED: [&str; 22] = [
 
 /// 1 要素の名前として使えるかを検証する。
 ///
-/// パスの区切りを含む名前を通すと、フロントが指定した任意の階層へ書き込めることになる（09-security.md §5）。
+/// パスの区切りを含む名前を通すと、フロントが指定した任意の階層へ書き込めることになる。
 /// 使えない理由はフロントでも入力中に示すが、判定の最終的な基準はここである。
 pub fn validate_name(name: &str) -> CoreResult<()> {
     let invalid = |reason: &str| Err(CoreError::InvalidArgument(format!("{reason}: {name}")));
@@ -82,7 +82,7 @@ fn is_root(roots: &[PathBuf], path: &Path) -> bool {
 /// 既存の 1 件を指すパスを検証して返す。
 ///
 /// 親ディレクトリだけを正規化し、スコープの内側であることを確かめる。
-/// 許可ディレクトリそのものは操作の対象にできない（09-security.md §5）。
+/// 許可ディレクトリそのものは操作の対象にできない。
 pub fn resolve_entry(roots: &[PathBuf], path: &Path) -> CoreResult<PathBuf> {
     let not_found = || CoreError::NotFound(path.display().to_string());
     let Some(Component::Normal(name)) = path.components().next_back() else {
@@ -316,7 +316,7 @@ fn unique_target(dest: &Path, name: &std::ffi::OsStr) -> PathBuf {
         .unwrap_or(first)
 }
 
-/// 再帰的に複製する。symlink は辿らず、複製もしない（09-security.md §5）。
+/// 再帰的に複製する。symlink は辿らず、複製もしない。
 ///
 /// 辿ると、配下に置かれた 1 本のリンクから許可範囲の外の木を丸ごと複製できる。
 fn copy_recursive(source: &Path, target: &Path) -> CoreResult<()> {
@@ -342,7 +342,7 @@ fn copy_recursive(source: &Path, target: &Path) -> CoreResult<()> {
 /// 項目を `dest` の中へ複製する。複製したパスを `done` に積む。
 ///
 /// `sources` はここでは検証しない。
-/// ツリーの中からのコピーは呼び出し側が [`resolve_entry`] を通し、外部からのドロップは Rust が受け取ったパスとの照合を通す（09-security.md §5）。
+/// ツリーの中からのコピーは呼び出し側が [`resolve_entry`] を通し、外部からのドロップは Rust が受け取ったパスとの照合を通す。
 /// 同じ名前があれば `名前 copy` として置き、上書きはしない。
 pub fn copy_into(
     roots: &[PathBuf],
@@ -450,7 +450,7 @@ fn move_to_trash(targets: &[PathBuf], owner: Option<isize>) -> CoreResult<()> {
 
 #[cfg(not(windows))]
 fn move_to_trash(_targets: &[PathBuf], _owner: Option<isize>) -> CoreResult<()> {
-    // TODO: macOS / Linux を配布するときに実装する（04.tech-stack/06-rust.md §12 / OQ-45）。
+    // TODO: macOS / Linux を配布するときに実装する（OQ-45）。
     Err(CoreError::Io("この OS ではゴミ箱へ移せない".into()))
 }
 

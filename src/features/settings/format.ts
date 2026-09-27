@@ -19,7 +19,7 @@ export function paletteAttr(palette: string): string | undefined {
 /**
  * フォント名を CSS の `font-family` に入れられる形にする。
  *
- * ウェブフォントは読み込めない（CSP の `font-src 'self'` / 02.architecture/10-theming.md §3）。
+ * ウェブフォントは読み込めない（CSP の `font-src 'self'`）。
  * ここに指定できるのは OS にインストールされているフォントのファミリ名だけで、見つからなければ後続のスタックにフォールバックする。
  *
  * すべて引用符で囲うのは、`Meiryo UI` のような空白を含む名前と `MS UI Gothic` のような数字で始まる名前を同じ扱いにするためである。

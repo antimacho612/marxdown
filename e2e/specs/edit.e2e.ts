@@ -1,5 +1,5 @@
 /**
- * VS Code 互換の編集と、キーの衝突（F-EDIT-04〜07 / 03.ux-spec/04-keybindings.md）。
+ * VS Code 互換の編集と、キーの衝突（F-EDIT-04〜07）。
  *
  * キーの表（`features/editor/lazy/keymap.ts`）は型で検証されるが、押したときに何が起きるかは単体テストでは確かめられない。
  * ここで検証するのは、実際の打鍵が Monaco のキーバインド経由でコマンド・本文に届く経路と、`globalThis` のリスナ経由でアプリのコマンドに届く経路である。
@@ -168,7 +168,7 @@ describe('アプリのキーとエディターのキーが取り合わない', (
 });
 
 /**
- * Markdown の書式（F-EDIT-08〜10 / 03.ux-spec/04-keybindings.md §3「Markdown 書式」）。
+ * Markdown の書式（F-EDIT-08〜10）。
  *
  * ここで検証するのは「キーが届くか」だけである。
  * どんな文字列になるかの境界条件は `src/features/editor/lazy/format.test.ts` と `list.test.ts` がすべて検証している。
@@ -195,7 +195,7 @@ describe('Markdown 書式 (F-EDIT-08)', () => {
     });
   });
 
-  it('もう一度押すと外れる (§5)', async () => {
+  it('もう一度押すと外れる', async () => {
     await browser.keys([Key.Control, 'a']);
     await browser.keys([Key.Control, 'b']);
 
@@ -205,7 +205,7 @@ describe('Markdown 書式 (F-EDIT-08)', () => {
     });
   });
 
-  /** `Ctrl+1`〜`9` はタブ切り替えに要るので、見出しは `Ctrl+Alt+n`（§3 の但し書き）。 */
+  /** `Ctrl+1`〜`9` はタブ切り替えに要るので、見出しは `Ctrl+Alt+n`。 */
   it('Ctrl+Alt+2 で見出しになる', async () => {
     await browser.keys([Key.Control, Key.Alt, '2']);
 

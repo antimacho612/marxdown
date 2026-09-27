@@ -1,5 +1,5 @@
 /**
- * 前回のタブの記録と復元（F-NAV-01 / 02.architecture/04-rust-responsibilities.md §5）。
+ * 前回のタブの記録と復元（F-NAV-01）。
  *
  * 引数なしで起動したときだけ復元する。
  * `marxdown foo.md` には「foo.md を見たい」という意図があり、そこへ前回の 8 枚を混ぜない。

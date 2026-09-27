@@ -1,4 +1,4 @@
-//! Marp の自作テーマを読む（`marp.themes` / [ADR-0023](../../docs/adr/0023-marp-preview.md) §3.4）。
+//! Marp の自作テーマを読む（`marp.themes` / ADR-0023 §3.4）。
 //!
 //! 設定に並べた CSS ファイルかディレクトリの絶対パスを読む。
 //! ディレクトリは直下の `*.css` だけを読み、再帰しない（Marp CLI の `--theme-set` と同じ）。

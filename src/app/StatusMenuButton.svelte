@@ -1,5 +1,5 @@
 <!--
-  ステータスバーの「押すと選択肢が出る」項目（03.ux-spec/07-status-and-notifications.md §3）。
+  ステータスバーの「押すと選択肢が出る」項目。
   モード・エンコーディング・表示倍率が同じ形であるため、コンポーネントを 1 つにまとめてある。
   選択肢も見た目も押されるまでロードしない（動的 import / `app/MenuButton.svelte` と同じ形）。
   ステータスバーは `overflow: hidden` であるため、パネルを `position: absolute` で置くと切り落とされる。

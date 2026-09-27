@@ -157,7 +157,7 @@ describe('プレビュー内検索 (F-VIEW-10)', () => {
     expect(counter()).toBe('3 / 3');
   });
 
-  it('F3 / Shift+F3 でも移動できる（03.ux-spec/04-keybindings.md §3）', () => {
+  it('F3 / Shift+F3 でも移動できる', () => {
     container.innerHTML = '<p>foo foo</p>';
     openSearch(container);
     type('foo');

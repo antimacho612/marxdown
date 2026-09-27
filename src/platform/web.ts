@@ -1,7 +1,7 @@
 /**
  * ブラウザ用のモック実装（`pnpm dev:web`）。
  *
- * 04.tech-stack/07-dev-tools.md §1: UI の反復を Tauri のビルドサイクルから切り離す。
+ * UI の反復を Tauri のビルドサイクルから切り離す。
  * Platform 層があることで、UI の 8 割はブラウザだけで開発できる。
  *
  * ファイルは `localStorage` 上の仮想 FS に置く。
@@ -64,14 +64,14 @@ function saveFs(fs: Record<string, VirtualFile>): void {
  * `src-tauri/src/store.rs` の `StoreData` と `settings/schema.rs` の `Settings` に対応するモック。
  *
  * 実装では 2 ファイルに分かれている（`state.json` / `settings.json`）が、ここで再現するのは値の往復だけであるため 1 つのキーにまとめる。
- * 壊れていたら上書きしないという 02.architecture/04-rust-responsibilities.md §5 の要点は Rust 側が担当しており、ブラウザ側では再現しない。
+ * 壊れていたら上書きしないという要点は Rust 側が担当しており、ブラウザ側では再現しない。
  */
 interface WebState {
   recent: RecentEntry[];
   zoom: number;
-  /** ペインの開閉と幅（03.ux-spec/06-panes.md §3）。実装では `state.json` の `panes`。 */
+  /** ペインの開閉と幅。実装では `state.json` の `panes`。 */
   panes: Panes;
-  /** Split の分割比（03.ux-spec/03-split-mode.md §1）。 */
+  /** Split の分割比。 */
   split: number;
   settings: Settings;
   /** `themes/` に置いた配色。実装ではディレクトリ 1 つ、ここでは配列 1 本。 */
@@ -84,7 +84,7 @@ function loadState(): WebState {
     return {
       recent: raw.recent ?? [],
       zoom: raw.zoom ?? 1,
-      // 実装（Rust）と同じく、欠けていれば「閉じている」。03.ux-spec/06-panes.md §3 の引用ブロック
+      // 実装（Rust）と同じく、欠けていれば「閉じている」。
       panes: { ...DEFAULT_PANES, ...raw.panes },
       split: raw.split ?? SPLIT_DEFAULT,
       // 欠けたキーは既定値。実装（Rust）と同じく、読んだ時点で埋める
@@ -240,7 +240,7 @@ function initialBootstrap(): Bootstrap {
   const content = existing?.content ?? SAMPLE;
   const state = loadState();
 
-  // `?welcome` で「引数なし起動」を再現する。Welcome 画面（03.ux-spec/08-empty-states.md §1）をブラウザだけで作り込めるようにするため。
+  // `?welcome` で「引数なし起動」を再現する。Welcome 画面をブラウザだけで作り込めるようにするため。
   const empty = params.has('welcome');
 
   // `?satellite` でサテライトのシェルを再現する（F-OPEN-06）。
@@ -283,16 +283,16 @@ function initialBootstrap(): Bootstrap {
     split: state.split,
     settings: state.settings,
     // `?brokenSettings` で「settings.json が壊れている」起動を再現する。
-    // 通知バー（03.ux-spec/07-status-and-notifications.md §2）と設定 UI の読み取り専用状態をブラウザだけで確認できるようにするため。
+    // 通知バーと設定 UI の読み取り専用状態をブラウザだけで確認できるようにするため。
     settingsError: brokenSettings(),
-    // 実装と同じく bootstrap に同梱して届く（02.architecture/10-theming.md §3.3）。
+    // 実装と同じく bootstrap に同梱して届く。
     // 後から適用する形にすると、dev:web でだけ既定の配色で 1 フレーム描かれる経路が再現しなくなる。
     previewTheme: previewThemeNow(state),
   };
 }
 
 /**
- * bootstrap に載せるプレビューの配色（02.architecture/10-theming.md §3.3）。
+ * bootstrap に載せるプレビューの配色。
  *
  * 実装（Rust）と同じく、選択中の id に一致する `themes/` のファイルがあるときだけ載せる。
  * 組み込みの配色を選んでいる場合は `null` で、フロントが `theme` チャンクの取得を待つ経路に入る。
@@ -387,7 +387,7 @@ export const webPlatform: Platform = {
       eol: 'lf',
       bom: false,
       // モックのファイルは常に UTF-8 である。
-      // 指定された値をそのまま返すため、再解釈の UI（03.ux-spec/07-status-and-notifications.md §3）は `dev:web` でも動作する。
+      // 指定された値をそのまま返すため、再解釈の UIは `dev:web` でも動作する。
       encoding: encoding ?? 'utf8',
       mtimeMs: file.mtimeMs,
       size: new TextEncoder().encode(file.content).length,
@@ -531,7 +531,7 @@ export const webPlatform: Platform = {
   /**
    * `?brokenSettings` の間は「壊れている」と答え続ける。
    *
-   * 実装では壊れているという事実が保存を止める（02.architecture/04-rust-responsibilities.md §5）。
+   * 実装では壊れているという事実が保存を止める。
    * ブラウザ側では壊れた状態を作れないため、設定 UI の読み取り専用状態を dev:web で確認する手段はここだけである。
    */
   async readSettings() {

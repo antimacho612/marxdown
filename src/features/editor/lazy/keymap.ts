@@ -5,7 +5,7 @@
  * 重複すると Monaco が先に処理し、続けて `globalThis` のリスナも処理するため、重複するキーは `REMOVED` で Monaco から外す。
  *
  * Monaco は VS Code のキーバインドを最初から持っているため、ここで行うのはアプリ側が処理するキーを外すことと、Markdown の書式を追加することだけである（ADR-0009 の受け入れコスト 6）。
- * マルチカーソル/矩形選択の修飾子も既定で 03.ux-spec/04-keybindings.md §3 と一致するため変更する必要はない。
+ * マルチカーソル/矩形選択の修飾子も既定でキーバインドの仕様と一致するため変更する必要はない。
  *
  * `REMOVED` は `KeyMod` / `KeyCode` の定数で照合するため、定数名が変わると型検査で検出できる。
  *
@@ -38,7 +38,6 @@ const KEYBOARD_SOURCE = 'keyboard';
 /**
  * Monaco から解除するキー。アプリ側で処理するものを列挙する。
  *
- * → [03.ux-spec > keybindings §4](../../../docs/03.ux-spec/04-keybindings.md)
  */
 const REMOVED: { keybinding: number; why: string }[] = [
   // 検索を開く処理はアプリ側が担当する。
@@ -51,20 +50,20 @@ const REMOVED: { keybinding: number; why: string }[] = [
   // アクションそのものはアプリ側から実行する（`editor.ts` の `gotoLine`）。
   { keybinding: KeyMod.CtrlCmd | KeyCode.KeyG, why: 'アプリの Ctrl+G が指定行へ移動を開く' },
 
-  // Markdown の書式に使う（§3）。割り当ては下の `MARKDOWN` が持つ。
+  // Markdown の書式に使う。割り当ては下の `MARKDOWN` が持つ。
   { keybinding: KeyMod.CtrlCmd | KeyMod.Shift | KeyCode.KeyL, why: 'Ctrl+Shift+L は箇条書きの切替' },
   { keybinding: KeyMod.CtrlCmd | KeyCode.Enter, why: 'Ctrl+Enter はタスクリストのチェック切替' },
 ];
 
 /**
- * Markdown の書式（F-EDIT-08 / §3「Markdown 書式」）。
+ * Markdown の書式（F-EDIT-08）。
  *
- * `Ctrl+B` が太字なのは §1 の決定（Markdown First > Familiar）。
+ * `Ctrl+B` が太字なのは Markdown First を Familiar より優先した決定による。
  * VS Code のサイドバー切替は `Ctrl+Shift+B` へ移してある。
  *
  * `Ctrl+K` は Monaco では和音の先頭でもある（`Ctrl+K Ctrl+C` は行コメントなど）。
  * `addCommand` で追加したキーはユーザーの割り当てとして既定より優先されるため、和音には入らずリンク挿入が実行される。
- * §2 で和音を採用しないと決めているため、この挙動でよい。
+ * 和音を採用しないと決めているため、この挙動でよい。
  */
 const MARKDOWN: { keybinding: number; edit: MarkdownEdit }[] = [
   { keybinding: KeyMod.CtrlCmd | KeyCode.KeyB, edit: toggleBold },
@@ -79,7 +78,7 @@ const MARKDOWN: { keybinding: number; edit: MarkdownEdit }[] = [
   { keybinding: KeyMod.CtrlCmd | KeyMod.Shift | KeyCode.KeyN, edit: toggleOrderedList },
   { keybinding: KeyMod.CtrlCmd | KeyCode.Enter, edit: toggleTaskCheck },
 
-  // 見出しは `Ctrl+1`〜`9` をタブ切り替えに使うため `Ctrl+Alt+n` に割り当てる（§3 の但し書き）。
+  // 見出しは `Ctrl+1`〜`9` をタブ切り替えに使うため `Ctrl+Alt+n` に割り当てる。
   // 1〜6 はレベルの設定であり、トグルではない（`format.ts`）。
   ...[1, 2, 3, 4, 5, 6].map((level) => ({
     keybinding: KeyMod.CtrlCmd | KeyMod.Alt | (KeyCode.Digit0 + level),

@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-  CLI シムが起動に足す時間を測る（measurements/08-distribution.md §2）。
+  CLI シムが起動に足す時間を測る。
 
 .DESCRIPTION
   起動元を呼んでから marxdown.exe のプロセスが生成されるまでの実時間を、起動経路ごとに測って中央値を出す。

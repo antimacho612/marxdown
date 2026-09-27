@@ -21,7 +21,7 @@
 </script>
 
 <!--
-  見出し行（03.ux-spec/01-screen-layout.md §2 のスケッチ）。
+  見出し行。
   ライトペイン（`features/outline/Outline.svelte`）が同じ形の行を持っており、こちらだけ無いと、左右のペインで情報の始まりが揃わない。
 -->
 <div class="mx-explorer__head">
@@ -32,7 +32,7 @@
 </div>
 
 <!--
-  中身を縦に並べるコンテナ（03.ux-spec/06-panes.md §1）。ペイン自身（`LeftPane.svelte`）は枠と幅だけを持つ。
+  中身を縦に並べるコンテナ。ペイン自身（`LeftPane.svelte`）は枠と幅だけを持つ。
 
   スクロールはここではなく中身の側が持つ。
   ツールバー（`lazy/ExplorerToolbar.svelte`）をスクロールさせないための分担であり、空状態とツリーがそれぞれ自分のスクロール領域を持つ。
@@ -40,7 +40,7 @@
 <div class="mx-explorer">
   {#if treeStore.root === null}
     <!--
-      基点が無いときの空状態（03.ux-spec/08-empty-states.md）。
+      基点が無いときの空状態。
       文言だけでは次に何をすればよいか分からないため、そこから実行できる操作を並べる。
     -->
     <div class="mx-explorer__empty">
@@ -131,7 +131,7 @@
     padding-bottom: 0;
   }
 
-  /* ペインが 180px まで狭くなるため、ボタンは幅いっぱいに置いて折り返しを許す（03.ux-spec/06-panes.md §3） */
+  /* ペインが 180px まで狭くなるため、ボタンは幅いっぱいに置いて折り返しを許す */
   .mx-explorer__action {
     margin-inline: var(--mx-space-3);
     padding: var(--mx-space-2);

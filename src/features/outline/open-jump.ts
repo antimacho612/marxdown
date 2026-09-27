@@ -1,5 +1,5 @@
 /**
- * 見出しジャンプを開く入口（`Ctrl+Shift+O` / 03.ux-spec/04-keybindings.md §3）。
+ * 見出しジャンプを開く入口（`Ctrl+Shift+O`）。
  *
  * 呼び出し元が 2 つある（キーバインドと、ハンバーガーメニューの項目）ため、動的 import の 1 行だけを持つモジュールとして切り出してある。
  * `open-search.ts` / `open-settings.ts` と同じ形であり、理由も同じである。

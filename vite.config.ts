@@ -93,7 +93,7 @@ const APP_MARKDOWN_IT = dirname(createRequire(import.meta.url).resolve('markdown
  * `alias` にしないのは、Marxdown 自身の highlight.js / KaTeX の読み込みまで差し替わるためである。
  *
  * NOTE: marp-core の更新でこれらを初期化時に呼ぶようになると、Marp の文書を開いたときに例外になる。
- * Vitest は `vitest.config.ts` を使い、この差し替えを通らない。差し替えた状態の確認は実ビルドで行う（docs/measurements/07-bundle.md §8）。
+ * Vitest は `vitest.config.ts` を使い、この差し替えを通らない。差し替えた状態の確認は実ビルドで行う。
  */
 function marpStubs(): Plugin {
   return {
@@ -124,7 +124,7 @@ function marpStubs(): Plugin {
 const BUNDLED_PACKAGES_FILE = fileURLToPath(new URL('./node_modules/.tmp/bundled-packages.json', import.meta.url));
 
 /**
- * バンドルに入った npm パッケージのディレクトリを記録する（第三者ライセンスの一覧 / docs/06.roadmap/m6-ship.md Phase 4.5）。
+ * バンドルに入った npm パッケージのディレクトリを記録する（第三者ライセンスの一覧）。
  *
  * package.json の `dependencies` からは求められない。
  * Svelte のランタイムは devDependencies にありながらバンドルに入る。
@@ -163,7 +163,7 @@ function packageDirOf(id: string): string | null {
 }
 
 /**
- * チャンク境界は 02.architecture/05-startup-sequence.md §4 の表がそのまま仕様になっている。
+ * チャンク境界は起動シーケンスの設計にある表がそのまま仕様になっている。
  * `main` + `shared` + `pipeline` + アプリの CSS がクリティカルパスであり、size-limit の検証対象である。
  */
 export default defineConfig(({ mode }) => ({
@@ -329,7 +329,7 @@ export default defineConfig(({ mode }) => ({
            *
            * `manualChunks` で 1 つのチャンクへまとめてはいけない。
            * まとめると、Vite が注入する動的 import のヘルパ（`__vitePreload`）がその巨大なチャンクに同居し、`main` がヘルパを静的に import することになる。
-           * その結果、Monaco の実体が `index.html` の `modulepreload` に出て、起動時の評価対象に入る（measurements/03-cold-start.md）。
+           * その結果、Monaco の実体が `index.html` の `modulepreload` に出て、起動時の評価対象に入る。
            *
            * 分割は Rollup に任せ、Monaco だけで構成されたチャンクに名前を付ける。
            * size-limit が 1 つの予算として指せる状態は保たれる。

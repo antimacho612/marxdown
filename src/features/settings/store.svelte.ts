@@ -1,5 +1,5 @@
 /**
- * ユーザー設定（F-CONF-03 / 02.architecture/04-rust-responsibilities.md §5）。
+ * ユーザー設定（F-CONF-03）。
  *
  * 真実は `settings.json` 側にあり、このストアはその写しである。
  * 初期値は bootstrap に同梱されて届くため IPC で取りに行く経路は作らない（往復を挟むと FOUC になる）。
@@ -38,9 +38,9 @@ export function initSettings(bootstrap: Bootstrap | null): void {
 }
 
 /**
- * 外部エディターでの編集を即反映する（02.architecture/04-rust-responsibilities.md §5）。起動時に 1 回だけ呼ぶ。
+ * 外部エディターでの編集を即反映する。起動時に 1 回だけ呼ぶ。
  *
- * IPC を伴う購読であるため、`ready()` の後に呼ぶこと（02.architecture/05-startup-sequence.md §1）。
+ * IPC を伴う購読であるため、`ready()` の後に呼ぶこと。
  * 監視の登録は Rust 側が起動時に済ませている（パスを知っているのは Rust 側だけである）。
  */
 export function installSettingsWatch(): void {
@@ -48,7 +48,7 @@ export function installSettingsWatch(): void {
 }
 
 /**
- * `settings.json` を読み直して全体を再適用する（§5）。
+ * `settings.json` を読み直して全体を再適用する。
  *
  * 差分適用にはしない。
  * 設定は 1KB 未満であり、部分更新の一貫性を保つより全体を読み直すほうがコストが低い。
@@ -70,7 +70,7 @@ export async function refreshSettings(): Promise<void> {
   const excludeChanged = !sameStrings(settingsStore.values['explorer.exclude'], loaded.values['explorer.exclude']);
 
   // 外部エディターでの編集も、設定 UI からの変更と同じ経路を通って表示に反映される。
-  // 設定を編集しながら結果を確認できるのはこの構造による（02.architecture/04-rust-responsibilities.md §5）。
+  // 設定を編集しながら結果を確認できるのはこの構造による。
   settingsStore.values = loaded.values;
   applyAppearance(loaded.values);
   if (excludeChanged) void reloadTree();
@@ -90,7 +90,7 @@ function sameStrings(a: readonly string[], b: readonly string[]): boolean {
 }
 
 /**
- * 壊れた `settings.json` を知らせる（03.ux-spec/07-status-and-notifications.md §2）。
+ * 壊れた `settings.json` を知らせる。
  *
  * 自動では消えないエラー通知にする。
  * 既定値で動作してしまうため、通知しないと設定が反映されない理由が分からない。

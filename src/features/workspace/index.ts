@@ -1,5 +1,5 @@
 /**
- * workspace feature の公開面（02.architecture/03-layers.md §2）。
+ * workspace feature の公開面。
  *
  * 遅延チャンクを持たない。Welcome 画面は引数なし起動の最初のフレームに要る。
  */

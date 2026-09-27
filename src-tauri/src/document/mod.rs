@@ -1,7 +1,6 @@
 //! ドキュメントの読み書き。
 //!
-//! 02.architecture/04-rust-responsibilities.md §2 / §3。
-//! `tauri-plugin-fs` を使わず自作しているのは、EOL / BOM / mtime / 原子性の制御が要件だからである（F-EDIT-14 / N-REL-01 / N-CMP-03 / 04.tech-stack/06-rust.md §4）。
+//! `tauri-plugin-fs` を使わず自作しているのは、EOL / BOM / mtime / 原子性の制御が要件だからである（F-EDIT-14 / N-REL-01 / N-CMP-03）。
 
 pub mod atomic;
 pub mod encoding;
@@ -18,15 +17,15 @@ use encoding::{Detected, Encoding};
 use eol::Eol;
 
 /// 開けるファイルの上限。
-/// 05.performance-budget/07-not-optimized.md は「10MB を超えるファイルの快適な編集」を対象外としているが、開くこと自体は許可してクラッシュしないことを保証する。
+/// 性能予算は「10MB を超えるファイルの快適な編集」を対象外としているが、開くこと自体は許可してクラッシュしないことを保証する。
 /// ここを超えるものはメタ情報だけ返し、本文は読まない。
 pub const MAX_READ_BYTES: u64 = 64 * 1024 * 1024;
 
-/// 初期化スクリプトへ本文ごと埋め込む上限（02.architecture/05-startup-sequence.md §1）。
+/// 初期化スクリプトへ本文ごと埋め込む上限。
 /// これを超える場合はメタ情報のみ注入し、本文は非同期で受け取る。
 pub const INLINE_CONTENT_LIMIT: u64 = 256 * 1024;
 
-/// 本文を除いたドキュメントの情報（02.architecture/04-rust-responsibilities.md §2）。
+/// 本文を除いたドキュメントの情報。
 /// 保存時に読み込み時と同じバイト列へ戻すために必要な値をすべて含む（N-CMP-03）。
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -85,14 +84,14 @@ pub enum SaveResult {
     /// 保存に成功した。新しい mtime を返す。
     Saved { mtime_ms: i64, size: u64 },
     /// ディスク上の mtime が `expected_mtime_ms` と一致しない。
-    /// UI が「上書き / 再読込 / 差分を見る」を提示する（02.architecture/04-rust-responsibilities.md §3）。
+    /// UI が「上書き / 再読込 / 差分を見る」を提示する。
     Conflict { disk_mtime_ms: i64 },
 }
 
 /// パスを正規化する。symlink も解決する。
 ///
 /// Windows の `std::fs::canonicalize` は `\\?\C:\...` を返し、表示にも比較にも使えない。
-/// `dunce` で通常形式に戻す（04.tech-stack/06-rust.md §7）。
+/// `dunce` で通常形式に戻す。
 ///
 /// 存在しないパスは canonicalize できないため、親ディレクトリだけ解決して結合する。
 pub fn canonicalize(path: &Path) -> CoreResult<PathBuf> {
@@ -122,10 +121,10 @@ pub fn mtime_ms(meta: &std::fs::Metadata) -> i64 {
 
 /// ファイルを読んで `DocumentPayload` を作る。
 ///
-/// この関数は起動シーケンスのクリティカルパス上で、WebView 初期化と並行して呼ばれる（02.architecture/05-startup-sequence.md §1）。
+/// この関数は起動シーケンスのクリティカルパス上で、WebView 初期化と並行して呼ばれる。
 /// 余計な処理を追加しない。
 ///
-/// `forced` はエンコーディングの指定（03.ux-spec/07-status-and-notifications.md §3 の「再解釈」）。
+/// `forced` はエンコーディングの指定。
 /// `None` が通常の経路であり、そのときだけ推定を実行する。
 pub fn read(path: &Path, forced: Option<Encoding>) -> CoreResult<DocumentPayload> {
     let path = canonicalize(path)?;
@@ -284,7 +283,7 @@ mod tests {
         std::fs::remove_dir_all(&dir).ok();
     }
 
-    /// エンコーディングの再解釈（03.ux-spec/07-status-and-notifications.md §3）。
+    /// エンコーディングの再解釈。
     ///
     /// 推定は使わない。指定したエンコーディングで読み、メタ情報もそのエンコーディングにする。
     /// メタ情報が変わらないと、次の保存が推定側のエンコーディングで書き戻してしまう。

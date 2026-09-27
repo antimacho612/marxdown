@@ -1,7 +1,7 @@
 /**
- * グローバルキーバインド（03.ux-spec/04-keybindings.md）。
+ * グローバルキーバインド。
  *
- * 和音（`Ctrl+K V` 等）は扱わない（§2）ので、1 イベント 1 判定で済む。
+ * 和音（`Ctrl+K V` 等）は扱わないので、1 イベント 1 判定で済む。
  * 「入力中かどうか」も見ない。
  * 境界は `app/commands.ts` の `KEY_BINDINGS`（アプリ操作、どこでも有効）と `features/editor/lazy/keymap.ts`（本文の編集、エディター内でのみ有効）のどちらに書いてあるかで決まり、両者は重ならない（`keymap.ts` が重複キーを外す）。
  *
@@ -85,7 +85,7 @@ export function comboOf(event: KeyboardEvent): string {
   const parts: string[] = [];
   if (event.ctrlKey || event.metaKey) parts.push('Ctrl');
   // `=` は Shift の有無で `+` になる。
-  // 倍率の拡大はどちらでも動作させるため、Shift を修飾子として数えない（03.ux-spec/04-keybindings.md §3 の `Ctrl+=`）。
+  // 倍率の拡大はどちらでも動作させるため、Shift を修飾子として数えない（`Ctrl+=`）。
   if (event.shiftKey && key !== '=') parts.push('Shift');
   if (event.altKey) parts.push('Alt');
   parts.push(key);

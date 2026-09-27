@@ -1,8 +1,8 @@
 /**
- * ファイルツリーの中のドラッグ＆ドロップ（F-NAV-12 / 03.ux-spec/06-panes.md §1.4）。
+ * ファイルツリーの中のドラッグ＆ドロップ（F-NAV-12）。
  *
  * HTML5 の DnD は使えない。
- * 外部からのドロップで絶対パスを受け取るため Tauri のドラッグ＆ドロップハンドラを有効にしており、その間 Windows の WebView では `dragover` / `drop` が発火しない（06.roadmap/m7-explorer.md §5）。
+ * 外部からのドロップで絶対パスを受け取るため Tauri のドラッグ＆ドロップハンドラを有効にしており、その間 Windows の WebView では `dragover` / `drop` が発火しない。
  * タブの並べ替え（`TabStrip.svelte`）と同じく Pointer Events で組む。
  *
  * 押しただけではドラッグにしない。一定の距離を動いてから始める。

@@ -1,5 +1,5 @@
 /**
- * クイックオープンのあいまい検索にかかる時間（F-NAV-05 / 04.tech-stack/05-frontend.md）。
+ * クイックオープンのあいまい検索にかかる時間（F-NAV-05）。
  *
  * 自作のあいまい検索で足りるか（1 打鍵 16ms 以内に収まるか）を判定するための数値を出す。
  *
@@ -29,7 +29,7 @@ function makePaths(count: number): { name: string }[] {
 const textOf = (item: { name: string }): string => item.name;
 
 const cases = [
-  [1000, '1000 件 — §1.1 の判定規模'],
+  [1000, '1000 件 — 判定に使う規模'],
   [5000, '5000 件 — 上限（`dir.rs` の MAX_FILES）'],
 ] as const;
 

@@ -1,6 +1,6 @@
 <!--
   アプリシェルのクローム部分。
-  本文はここに無い（ADR-0005 / 02.architecture/08-state-management.md §1）。
+  本文はここに無い（ADR-0005）。
   Svelte が描画するのはタイトルバー・ステータスバー・通知バー・Welcome だけで、`.mx-preview`（index.html 側にあり Svelte の管理外）の中身は `paint.ts` が直接 DOM へ挿入する。
   レイアウトは DOM 順ではなく `shell.css` の `grid-template-areas` が決める。
 -->
@@ -42,7 +42,7 @@
 {/if}
 
 <!--
-  Split の分割線（03.ux-spec/03-split-mode.md §1）。Split のときだけ存在する。
+  Split の分割線。Split のときだけ存在する。
 
   `divider` の列は Split の `grid-template-areas` にしか無いため、他のモードで配置すると割り当て先が無くなる。
   ペインと同じく、不要なときは要素自体を作らない。
@@ -52,7 +52,7 @@
 {/if}
 
 <!--
-  レフトペイン（03.ux-spec/06-panes.md §1 / F-NAV-04）。ライトペインと同じ扱いで、開いていなければ要素ごと無い。
+  レフトペイン（F-NAV-04）。ライトペインと同じ扱いで、開いていなければ要素ごと無い。
   中身はファイルツリー（F-NAV-03）。本体は遅延チャンクにあり、ペインを開くまで読み込まない（`Explorer.svelte`）。
 -->
 {#if viewStore.panes.left.open && !isSatellite()}
@@ -62,7 +62,7 @@
 {/if}
 
 <!--
-  ライトペイン（03.ux-spec/06-panes.md）。開いていなければ要素自体が存在しない。
+  ライトペイン。開いていなければ要素自体が存在しない。
   `rightpane` の列は `auto` であるため、配置しなければ幅 0 になる（`shell.css`）。
   フラグで幅を 0 にするのではなく要素ごと削除するため、閉じている間はアウトラインの `IntersectionObserver` も動作しない（N-PERF-05）。
 

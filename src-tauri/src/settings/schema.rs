@@ -1,4 +1,4 @@
-//! 設定の形（02.architecture/04-rust-responsibilities.md §5 / F-CONF-03）。
+//! 設定の形（F-CONF-03）。
 //!
 //! I/O は持たない。
 //! ファイルの読み書きと「壊れているときの振る舞い」は親モジュール（`settings/mod.rs`）の担当で、ここにあるのはキーの名前・型・既定値・許容範囲だけである。
@@ -262,7 +262,7 @@ pub enum Ruler {
 /// 設定の全体。既定値で埋めた後の状態であり、ファイルの中身そのものではない。
 ///
 /// `flatten` した `extra` に未知のキーが入る。
-/// シリアライズすると既知のキーと同じ階層に並ぶため、書き戻しても失われない（02.architecture/04-rust-responsibilities.md §5）。
+/// シリアライズすると既知のキーと同じ階層に並ぶため、書き戻しても失われない。
 ///
 /// フィールドの並びがそのまま書き出したときのキーの並びになる。
 /// `theme` を先頭に置き、以降はドット区切りのグループごとに辞書順で並べる。
@@ -314,7 +314,7 @@ pub struct Settings {
     /// 見出しを編集面の上端に固定する（折りたたみの範囲から決まる / `features/editor/lazy/folding.ts`）。
     #[serde(rename = "editor.stickyScroll.enabled")]
     pub editor_sticky_scroll_enabled: bool,
-    /// エディターの配色（02.architecture/10-theming.md §3）。
+    /// エディターの配色。
     ///
     /// 列挙ではなく文字列である。
     /// 選択肢は組み込みの 50 枚と `themes/` に置かれたファイルの合成であり、Rust 側で数え上げられない。
@@ -343,7 +343,7 @@ pub struct Settings {
     #[serde(rename = "explorer.temporaryTab")]
     pub explorer_temporary_tab: bool,
 
-    /// 設定で有効化する追加記法（04.tech-stack/04-markdown.md §3）。
+    /// 設定で有効化する追加記法。
     /// どれも既定 OFF である。
     /// 標準的でない記法が意図せず発火して本文が壊れるほうが、認知負荷が高い。
     #[serde(rename = "markdown.abbreviations")]
@@ -378,7 +378,7 @@ pub struct Settings {
     pub preview_font_size: f64,
     #[serde(rename = "preview.lineHeight")]
     pub preview_line_height: f64,
-    /// 本文幅。単位は `ch`（02.architecture/10-theming.md §2）。
+    /// 本文幅。単位は `ch`。
     /// px ではないのは、フォントサイズを変えても 1 行あたりの文字数が変わらないようにするためである。
     #[serde(rename = "preview.maxWidth")]
     pub preview_max_width: f64,
@@ -388,7 +388,7 @@ pub struct Settings {
     /// 表の罫線の引き方（F-VIEW-01）。
     #[serde(rename = "preview.tableStyle")]
     pub preview_table_style: TableStyle,
-    /// 本文の配色（02.architecture/10-theming.md §3）。
+    /// 本文の配色。
     ///
     /// `editor.theme` と同じくカタログを共有する文字列である。
     /// 選択肢は組み込みの 50 枚と `themes/` に置かれたファイルの合成であり、Rust 側で数え上げられない。
@@ -494,7 +494,7 @@ impl Settings {
     /// JSON オブジェクトから読む。既知のキーを取り除いた残りが `extra` になる。
     ///
     /// 値の型が違うキーは既定値に戻す。ファイル全体を壊れているとは見なさない。
-    /// `version` を持たない以上、互換性はキー単位で保つ（02.architecture/04-rust-responsibilities.md §5）。
+    /// `version` を持たない以上、互換性はキー単位で保つ。
     pub(super) fn from_map(mut map: Map<String, Value>) -> Self {
         let d = Self::default();
         Self {
@@ -624,7 +624,7 @@ impl Settings {
         }
     }
 
-    /// 変更したキーだけを反映する（02.architecture/04-rust-responsibilities.md §1 `write_settings`）。
+    /// 変更したキーだけを反映する。
     ///
     /// 値が `null` のキーは削除する。設定 UI の「既定に戻す」がこれにあたる。
     pub fn patched(&self, patch: Map<String, Value>) -> Self {
@@ -659,7 +659,7 @@ fn take_int(map: &mut Map<String, Value>, key: &str, range: (f64, f64)) -> Optio
 /// 配色の id（`preview.theme` / `editor.theme`）。
 ///
 /// 綴りが選択肢に存在するかは調べない。
-/// 組み込みの一覧はフロント側にあり、`themes/` の中身は読み込むまで分からない（[ADR-0014](../../docs/adr/0014-editor-theme-catalog.md)）。
+/// 組み込みの一覧はフロント側にあり、`themes/` の中身は読み込むまで分からない（ADR-0014）。
 /// ここで除外するのは、属性セレクタへ埋め込めない文字を含むものだけである（`themes::valid_id` と同じ判定）。
 ///
 /// 存在しない配色を選んだ状態は保持したまま UI へ渡す。

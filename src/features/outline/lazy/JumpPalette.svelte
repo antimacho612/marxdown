@@ -1,5 +1,5 @@
 <!--
-  見出しへジャンプ（`Ctrl+Shift+O` / 03.ux-spec/04-keybindings.md §3「移動」）。
+  見出しへジャンプ（`Ctrl+Shift+O`）。
 
   パレットの外枠は `features/palette/lazy/Palette.svelte` と共有する。
   ここが持つのは「見出しをどう並べるか」だけである。

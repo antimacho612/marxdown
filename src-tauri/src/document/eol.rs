@@ -1,6 +1,6 @@
 //! 改行コードの検出と復元。
 //!
-//! 02.architecture/04-rust-responsibilities.md §2 の「メモリ上は常に LF、ディスク上は元の EOL」を実装する。
+//! 「メモリ上は常に LF、ディスク上は元の EOL」を実装する。
 //! これは N-CMP-03（触っていない箇所のバイト列を変えない）の中核。
 
 use serde::{Deserialize, Serialize};

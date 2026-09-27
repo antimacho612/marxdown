@@ -1,4 +1,4 @@
-//! 標準入力からの読み込み（F-OPEN-10 / docs/06.roadmap/m7-cli-os-export.md §4.1）。
+//! 標準入力からの読み込み（F-OPEN-10）。
 //!
 //! `-` を受けたプロセスは stdin を一時ファイルへ書き出し、`--stdin-file` を付けて自分自身を起動し直してすぐ終了する。
 //! シムは stdin を渡すために exe をフォアグラウンドで実行するため、そのプロセスが常駐するとシェルが返らない（旧 OQ-32）。
@@ -120,7 +120,7 @@ fn spool(reader: impl Read) -> CoreResult<PathBuf> {
 /// 古い一時ファイルを消す。失敗しても続ける。
 ///
 /// 呼ぶのは標準入力を受け取ったときだけである。
-/// 常駐中に定期的に掃除することはしない（タイマーを持たない / 05.performance-budget/04-targets.md §5）。
+/// 常駐中に定期的に掃除することはしない（タイマーを持たない）。
 fn sweep(dir: &Path, now: SystemTime) {
     let Ok(entries) = std::fs::read_dir(dir) else {
         return;

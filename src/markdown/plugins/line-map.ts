@@ -1,5 +1,5 @@
 /**
- * すべてのブロックレベル要素に `data-line="開始行"` を付ける markdown-it プラグイン（02.architecture/06-markdown-rendering-pipeline.md §3 / VS Code の Markdown プレビューと同じ手法）。
+ * すべてのブロックレベル要素に `data-line="開始行"` を付ける markdown-it プラグイン（VS Code の Markdown プレビューと同じ手法）。
  * スクロール同期・クリックジャンプ・編集位置ハイライト・アウトラインジャンプの基盤である。
  *
  * 他のプラグインより後に `use` すること。

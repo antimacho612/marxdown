@@ -22,7 +22,7 @@ export interface ParseResult {
   frontMatter: string | null;
   /** パース所要時間（ms）。起動計測とベンチに使う。 */
   parseMs: number;
-  /** 文字数と読了時間（03.ux-spec/07-status-and-notifications.md §3）。本文を持っている側で数える。 */
+  /** 文字数と読了時間。本文を持っている側で数える。 */
   textStats: TextStats;
   /**
    * Marp の文書（Front Matter に `marp: true`）のときの描画結果（F-VIEW-17 / ADR-0023）。
