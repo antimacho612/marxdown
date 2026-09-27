@@ -12,6 +12,10 @@ const explorer = lazyMessages<ExplorerMessages>({
     const { jaExplorer } = await import('./ja/explorer');
     return jaExplorer;
   },
+  en: async () => {
+    const { enExplorer } = await import('./en/explorer');
+    return enExplorer;
+  },
 });
 
 /** 表示言語のファイル操作の文言。`loadExplorerMessages()` が完了するまで空である。 */

@@ -11,6 +11,10 @@ const marp = lazyMessages<MarpMessages>({
     const { jaMarp } = await import('./ja/marp');
     return jaMarp;
   },
+  en: async () => {
+    const { enMarp } = await import('./en/marp');
+    return enMarp;
+  },
 });
 
 /** 表示言語の Marp の文言。`loadMarpMessages()` が完了するまで空である。 */

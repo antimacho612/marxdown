@@ -79,6 +79,8 @@ pub const KEY_PREVIEW_SOFT_BREAK: &str = "preview.softBreak";
 pub const KEY_PREVIEW_TABLE_STYLE: &str = "preview.tableStyle";
 pub const KEY_PREVIEW_THEME: &str = "preview.theme";
 
+pub const KEY_UI_LANGUAGE: &str = "ui.language";
+
 pub const KEY_UPDATE_AUTO_CHECK: &str = "update.autoCheck";
 
 pub const KEY_WINDOW_CLOSE_TO_TRAY: &str = "window.closeToTray";
@@ -102,7 +104,8 @@ pub const DEFAULT_EDITOR_TAB_SIZE: f64 = 2.0;
 pub const DEFAULT_EDITOR_WORD_SEPARATORS: &str = r#"`~!@#$%^&*()-=+[{]}\|;:'",.<>/?"#;
 pub const DEFAULT_EDITOR_WORD_WRAP_COLUMN: f64 = 80.0;
 /// 単語の分割に使うロケール。
-/// VS Code の既定は空だが、Marxdown の UI は日本語のみであり（OQ-11）、空のままでは日本語の文が句読点か空白まで 1 語として扱われる。
+/// VS Code の既定は空だが、空のままでは日本語の文が句読点か空白まで 1 語として扱われる。
+/// 既定の `ja` は本文のためであり、UI の表示言語とは関係しない（ADR-0026）。
 pub const DEFAULT_EDITOR_WORD_SEGMENTER_LOCALE: &str = "ja";
 
 /// アウトラインの既定。6（`h6`）は見出しの最大階層であり、実質「制限なし」を意味する。
@@ -155,6 +158,18 @@ pub enum Theme {
     System,
     Light,
     Dark,
+}
+
+/// UI の表示言語（ADR-0026）。
+/// 文言はフロントエンドが持つ。Rust 側は値を保持して渡すだけである。
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum UiLanguage {
+    /// OS の表示言語に従う。
+    #[default]
+    Auto,
+    Ja,
+    En,
 }
 
 /// 表の罫線の引き方（F-VIEW-01）。
@@ -396,6 +411,10 @@ pub struct Settings {
     #[serde(rename = "preview.theme")]
     pub preview_theme: String,
 
+    /// UI の表示言語（ADR-0026）。起動時に 1 回だけ読まれ、変更は再起動後に反映される。
+    #[serde(rename = "ui.language")]
+    pub ui_language: UiLanguage,
+
     /// 新しい版を自動で確認するか（F-OS-06 / ADR-0024）。
     /// `false` でも、コマンドパレットの「更新を確認」は使える。
     #[serde(rename = "update.autoCheck")]
@@ -479,6 +498,8 @@ impl Default for Settings {
             preview_soft_break: false,
             preview_table_style: TableStyle::default(),
             preview_theme: DEFAULT_THEME_ID.to_owned(),
+
+            ui_language: UiLanguage::default(),
 
             update_auto_check: true,
 
@@ -603,6 +624,8 @@ impl Settings {
             preview_table_style: take(&mut map, KEY_PREVIEW_TABLE_STYLE)
                 .unwrap_or(d.preview_table_style),
             preview_theme: take_theme_id(&mut map, KEY_PREVIEW_THEME).unwrap_or(d.preview_theme),
+
+            ui_language: take(&mut map, KEY_UI_LANGUAGE).unwrap_or(d.ui_language),
 
             update_auto_check: take(&mut map, KEY_UPDATE_AUTO_CHECK).unwrap_or(d.update_auto_check),
 

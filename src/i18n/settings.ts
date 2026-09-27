@@ -12,6 +12,10 @@ const settings = lazyMessages<SettingsMessages>({
     const { jaSettings } = await import('./ja/settings');
     return jaSettings;
   },
+  en: async () => {
+    const { enSettings } = await import('./en/settings');
+    return enSettings;
+  },
 });
 
 /** 表示言語の設定画面の文言。`loadSettingsMessages()` が完了するまで空である。 */

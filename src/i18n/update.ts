@@ -12,6 +12,10 @@ const update = lazyMessages<UpdateMessages>({
     const { jaUpdate } = await import('./ja/update');
     return jaUpdate;
   },
+  en: async () => {
+    const { enUpdate } = await import('./en/update');
+    return enUpdate;
+  },
 });
 
 /** 表示言語の更新の文言。`loadUpdateMessages()` が完了するまで空である。 */

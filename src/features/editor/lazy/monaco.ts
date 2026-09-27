@@ -6,10 +6,10 @@
  * 補完系・言語サービス系・`links`（ナビゲーション禁止と衝突）・`format`（N-CMP-03）・`quickCommand`（コマンドパレットはアプリ側）・`minimap`（既定 OFF）は採らない。
  * `stickyScroll` は長い文書でいま読んでいる箇所の見出しを示すために採る（Reading/Writing Experience / `folding.ts`）。
  *
- * `nls/lang/ja.js` は評価時に `_VSCODE_NLS_MESSAGES` を設定するだけであり、`localize()` を呼ぶモジュールより先に評価されないと効果が無い。
+ * `./nls` は `localize()` を呼ぶモジュールより先に評価されないと効果が無い（`nls.ts`）。
  * 並び順に意味があるため import 順の lint ルールはこのファイルだけ外してある。
  */
-import 'monaco-editor/nls/lang/ja.js';
+import './nls';
 import 'monaco-editor/languages/definitions/markdown/register.js';
 import 'monaco-editor/editor/browser/coreCommands.js';
 import 'monaco-editor/features/bracketMatching/register.js';

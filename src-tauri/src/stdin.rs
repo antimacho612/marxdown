@@ -32,14 +32,14 @@ pub fn run(argv: &[String]) -> i32 {
 
     let stdin = std::io::stdin();
     if stdin.is_terminal() {
-        eprintln!("marxdown: - を指定したときは、パイプで内容を渡してください（例: cat a.md | marxdown -）");
+        eprintln!("marxdown: {}", crate::i18n::text().stdin_needs_pipe);
         return 2;
     }
 
     let file = match spool(stdin.lock()) {
         Ok(file) => file,
         Err(e) => {
-            eprintln!("marxdown: 標準入力を読み込めませんでした: {e}");
+            eprintln!("marxdown: {}: {e}", crate::i18n::text().stdin_read_failed);
             return 1;
         }
     };
@@ -47,7 +47,7 @@ pub fn run(argv: &[String]) -> i32 {
     let exe = match std::env::current_exe() {
         Ok(exe) => exe,
         Err(e) => {
-            eprintln!("marxdown: Marxdown を起動できませんでした: {e}");
+            eprintln!("marxdown: {}: {e}", crate::i18n::text().launch_failed);
             let _ = std::fs::remove_file(&file);
             return 1;
         }
@@ -64,7 +64,7 @@ pub fn run(argv: &[String]) -> i32 {
     match spawned {
         Ok(_) => 0,
         Err(e) => {
-            eprintln!("marxdown: Marxdown を起動できませんでした: {e}");
+            eprintln!("marxdown: {}: {e}", crate::i18n::text().launch_failed);
             let _ = std::fs::remove_file(&file);
             1
         }

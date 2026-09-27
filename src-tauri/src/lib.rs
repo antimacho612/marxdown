@@ -22,6 +22,7 @@ pub mod error;
 mod export;
 pub mod fsops;
 pub mod glob;
+pub mod i18n;
 pub mod marp_themes;
 pub mod path_env;
 pub mod scope;
@@ -266,7 +267,7 @@ pub fn run() {
     let args = cli::parse_process_args();
 
     if args.show_help {
-        println!("{}", cli::HELP);
+        println!("{}", i18n::text().help);
         return;
     }
     if args.show_version {
@@ -322,6 +323,8 @@ pub fn run() {
 
     let settings_path = settings::settings_path(&context.config().identifier);
     let mut settings_data = settings::load(settings_path.as_deref());
+    // ダイアログとトレイの文言の言語。フロントエンドと同じく起動時に 1 回だけ決める（ADR-0026）。
+    i18n::init(settings_data.values.ui_language);
 
     // ログイン時の自動起動（ADR-0022）。トレイに格納できない設定では、見えないプロセスが残るだけになる。
     if args.background && !settings_data.values.window_close_to_tray {

@@ -25,6 +25,18 @@ export const jaSettings = {
   themeDark: 'ダーク',
   themeHint: 'ライトとダークを切り替えます。色の組み合わせは「配色」で、プレビューとエディターそれぞれに選べます。',
 
+  /** 選択肢の言語名は、表示言語によらずその言語自身で書く。 */
+  language: {
+    label: '表示言語',
+    description:
+      '画面の文言の言語を選びます。「自動」は OS の表示言語に合わせます。アプリを終了して開き直すと反映されます。',
+    options: {
+      auto: '自動',
+      ja: '日本語',
+      en: 'English',
+    },
+  },
+
   palette: '配色',
   paletteHint: '組み込みの 50 種類と、themes フォルダーに置いた CSS ファイルから選べます。',
   paletteDefault: 'Marxdown',
@@ -241,7 +253,8 @@ export const jaSettings = {
   sampleBody: '本文とコードの見本',
   sampleList: 'リストの項目',
 
-  defaultValue: (value: boolean) => `既定: ${value ? 'オン' : 'オフ'}`,
+  /** 説明文の末尾に付ける。括弧の形が言語ごとに違うため、括弧も文言に含める。 */
+  defaultValue: (value: boolean) => `（既定: ${value ? 'オン' : 'オフ'}）`,
   reset: '既定に戻す',
   resetOf: (label: string) => `${label}を既定に戻す`,
   edit: 'settings.json を開く',

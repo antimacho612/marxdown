@@ -156,7 +156,8 @@ export const SETTINGS_SCHEMA = defineSettingsSchema({
    * 単語単位の移動・選択で、区切りを `Intl.Segmenter` で決めるロケール（BCP 47）。
    *
    * VS Code の既定は空だが、空のままでは日本語の文が句読点か空白まで 1 語として扱われる。
-   * UI が日本語のみであるため（OQ-11）、既定を `ja` にしてある。
+   * 既定を `ja` にしてあるのは日本語の本文のためであり、UI の表示言語とは関係しない（ADR-0026）。
+   * 英語の文は `ja` の分割でも空白で区切られる。
    */
   'editor.wordSegmenterLocales': { kind: 'string[]', default: ['ja'], maxLength: 8, maxItemLength: 35 },
   /** 単語単位のカーソル移動（`ctrl + ←` / `ctrl + →`）で区切りとして扱う文字。既定値は VS Code と同じ。 */
@@ -234,6 +235,9 @@ export const SETTINGS_SCHEMA = defineSettingsSchema({
    * 選択肢と綴りの扱いは `editor.theme` と同じである。
    */
   'preview.theme': { kind: 'string', default: 'default' },
+
+  /** UI の表示言語（ADR-0026）。`auto` は OS の表示言語に従う。起動時に 1 回だけ読み、変更は再起動後に反映される。 */
+  'ui.language': { kind: 'enum', values: ['auto', 'ja', 'en'], default: 'auto' },
 
   /** 新しい版を自動で確認するか（ADR-0024）。false でもコマンドパレットの「更新を確認」は使える。 */
   'update.autoCheck': { kind: 'boolean', default: true },

@@ -6,11 +6,11 @@
  * 遅延チャンクだけが使う文言（`explorer.ts` など）は、その遅延チャンクの入口が読み込みを待つ。
  * top-level await で待つ形は使わない。文言を参照するモジュールがすべて非同期モジュールになり、rolldown が `main` と遅延チャンクの共有部分を細かいチャンクに分けるためである（critical path が 5.8KB 増えた）。
  */
-import { locale, type Locale } from './locale';
+import { getLocale, type Locale } from './locale';
 import type { Messages } from './types';
 
-export type { Locale } from './locale';
-export { locale } from './locale';
+export type { LanguageSetting, Locale } from './locale';
+export { getLocale, resolveLocale, setLocale } from './locale';
 export type { Messages } from './types';
 
 /** 読み込みが完了するまで空の文言と、その読み込み。 */
@@ -25,7 +25,7 @@ export function lazyMessages<T extends object>(loaders: Record<Locale, () => Pro
   const messages = {} as T;
   let loading: Promise<void> | undefined;
   async function load(): Promise<void> {
-    Object.assign(messages, await loaders[locale]());
+    Object.assign(messages, await loaders[getLocale()]());
   }
   return { messages, load: () => (loading ??= load()) };
 }
@@ -34,6 +34,10 @@ const core = lazyMessages<Messages>({
   ja: async () => {
     const { ja } = await import('./ja/core');
     return ja;
+  },
+  en: async () => {
+    const { en } = await import('./en/core');
+    return en;
   },
 });
 

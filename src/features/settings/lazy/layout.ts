@@ -122,6 +122,14 @@ export function buildLayout() {
         },
         {
           kind: 'field',
+          key: 'ui.language',
+          widget: 'select',
+          label: tSettings.language.label,
+          description: tSettings.language.description,
+          labels: tSettings.language.options,
+        },
+        {
+          kind: 'field',
           key: 'window.closeToTray',
           widget: 'toggle',
           label: tSettings.window.closeToTray.label,
