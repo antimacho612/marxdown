@@ -23,10 +23,10 @@ jobs:
     if: github.event.pull_request.user.login != 'dependabot[bot]'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
         with:
           node-version: 24
           cache: pnpm
@@ -70,7 +70,7 @@ jobs:
     if: github.event.pull_request.user.login != 'dependabot[bot]'
     runs-on: windows-latest # Windows 第一優先（Design Brief §12）
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: dtolnay/rust-toolchain@stable
         with:
@@ -103,7 +103,7 @@ jobs:
         os: [macos-latest, ubuntu-latest]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # Tauri が Linux で要求するシステムライブラリ（WebKitGTK、トレイ、ダイアログ）。
       - name: 依存ライブラリ (Linux)
