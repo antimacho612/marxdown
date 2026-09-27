@@ -37,6 +37,7 @@ export const enExplorer = {
     copyPath: 'Copy Path',
     copyRelativePath: 'Copy Relative Path',
     copyLink: 'Copy as Markdown Link',
+    copyTree: 'Copy Directory Tree',
     reveal: 'Reveal in File Explorer',
     rename: 'Rename…',
     delete: 'Delete',
@@ -52,5 +53,8 @@ export const enExplorer = {
   moved: (n: number) => `Moved ${items(n)}`,
   hiddenCreated: (name: string) => `Created "${name}". Items whose names start with . are not shown in the Explorer`,
   linkCopied: 'Copied the Markdown link',
+  treeCopied: 'Copied the directory tree',
+  treeCopiedPartial: 'Copied the directory tree (only part of it, because it is large)',
+  treeCopyFailed: 'Could not copy the directory tree',
   operationFailed: (detail: string) => `The file operation failed: ${detail}`,
 } satisfies ExplorerMessages;

@@ -20,6 +20,7 @@ import {
 } from '@/features/document';
 import { formatTableLazily, gotoLineLazily } from '@/features/editor';
 import { exportLazily } from '@/features/export';
+import { runHelpLazily } from '@/features/help';
 import { canGoBack, canGoForward, goBack, goForward } from '@/features/history';
 import { cycleMode, openFind, openReplace, setMode, togglePreview, toggleSplit } from '@/features/mode';
 import { openJumpLazily, showOutline } from '@/features/outline';
@@ -32,6 +33,7 @@ import { isSatellite, viewStore } from '@/features/view';
 import {
   closeTab,
   collapseAll,
+  copyTreeLazily,
   createInExplorer,
   cycleTab,
   moveCurrentTabToMainLazily,
@@ -159,6 +161,9 @@ const COMMANDS: Command[] = [
   { id: 'explorer.newFolder', run: () => void createInExplorer('folder'), isListed: hasTree },
   { id: 'explorer.refresh', run: () => void reloadTree(), isListed: hasTree },
   { id: 'explorer.collapseAll', run: () => collapseAll(), isListed: hasTree },
+  // ディレクトリ構造をアスキーアートにしてコピーする。右クリックメニューのコピー項目の 1 つで、パレットからは基点が対象になる。
+  // キーは割り当てない（`document.toggleEol` と同じく、覚えるキーを増やすほどの頻度ではない）。
+  { id: 'explorer.copyTree', run: (target) => void copyTreeLazily(target), isListed: hasTree },
 
   // 見出しへジャンプ。実体は遅延チャンクにある。
   // コマンドパレット（`Ctrl+Shift+P`）ではなく、見出し専用である。
@@ -249,6 +254,14 @@ const COMMANDS: Command[] = [
   { id: 'app.quit', run: () => void getPlatform().quitApp() },
   // 更新の確認（ADR-0024）。設定 `update.autoCheck` を切っていても、ここからは確認できる。
   { id: 'app.checkUpdate', run: () => void checkForUpdatesLazily() },
+
+  // ヘルプ（F-OS-09 / ADR-0027）。実体は `help` チャンクにあり、選ばれるまで読み込まない。
+  // キーは割り当てない。使用頻度が低く、覚えるキーを増やす利点がない（`document.toggleEol` と同じ判断）。
+  { id: 'help.reportIssue', run: () => void runHelpLazily('reportIssue') },
+  { id: 'help.suggestFeature', run: () => void runHelpLazily('suggestFeature') },
+  { id: 'help.license', run: () => void runHelpLazily('license') },
+  { id: 'help.thirdPartyNotices', run: () => void runHelpLazily('thirdPartyNotices') },
+  { id: 'help.about', run: () => void runHelpLazily('about') },
 ];
 
 interface KeyBinding {

@@ -111,6 +111,7 @@ export const en = {
     explorerNewFolder: 'Explorer: New Folder',
     explorerRefresh: 'Explorer: Refresh',
     explorerCollapseAll: 'Explorer: Collapse All',
+    explorerCopyTree: 'Explorer: Copy Directory Tree',
     quickOpen: 'Go to File',
     zoom: 'Zoom',
     zoomIn: 'Zoom In',
@@ -121,6 +122,12 @@ export const en = {
     replace: 'Replace',
     quit: 'Quit',
     checkUpdate: 'Check for Updates',
+    help: 'Help',
+    reportIssue: 'Report Issue',
+    suggestFeature: 'Suggest Feature',
+    license: 'License',
+    thirdPartyNotices: 'Third-Party Notices',
+    about: 'About Marxdown',
   },
 
   pane: {

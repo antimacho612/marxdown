@@ -10,13 +10,15 @@
  */
 import { describeOpenError, documentStore, notifyStatus } from '@/features/document';
 import { t } from '@/i18n';
-import { tExplorer } from '@/i18n/explorer';
+import { loadExplorerMessages, tExplorer } from '@/i18n/explorer';
 import { dirOf, relocatePath, splitPath } from '@/lib/path';
 import { getPlatform, type DirEntry } from '@/platform';
 
 import { openPathInSatellite } from '../new-window';
 import { isTabDirty, openPathInNewTab, tabMeta, tabsStore } from '../tabs.svelte';
 import { expandDir, refreshDirs, treeStore } from '../tree.svelte';
+import { toAsciiTree } from './ascii-tree';
+import { visibleTree } from './filter.svelte';
 import { markdownLink, relativeToRoot } from './link';
 import { withDefaultExtension } from './name';
 import { forgetPaths, selection, selectOnly } from './selection.svelte';
@@ -252,13 +254,13 @@ export async function importDropped(paths: readonly string[], dest: string): Pro
   }
 }
 
-async function writeClipboard(text: string, done: string): Promise<void> {
+async function writeClipboard(text: string, done: string, failed: string = t.status.pathCopyFailed): Promise<void> {
   try {
     await navigator.clipboard.writeText(text);
     notifyStatus(done);
   } catch {
     // 権限が無い場合やセキュアコンテキストでない場合に失敗する（`app/StatusBar.svelte` と同じ）。
-    notifyStatus(t.status.pathCopyFailed);
+    notifyStatus(failed);
   }
 }
 
@@ -279,6 +281,31 @@ export async function copyMarkdownLink(path: string): Promise<void> {
   const from = current === null ? treeStore.root : dirOf(current);
   if (from === null) return;
   await writeClipboard(markdownLink(path, from), tExplorer.linkCopied);
+}
+
+/**
+ * ディレクトリ構造を `tree` コマンドと同じ罫線で描いてコピーする。
+ *
+ * 閉じている枝も含めて全体を描く。走査は Rust 側が 1 回で返す（`list_tree`）。
+ * 除外（`explorer.exclude`）とツールバーの絞り込みはツリーの表示と同じものを当てる。
+ * 上限で打ち切られた場合は、貼り付けた木が一部であることを添える。
+ */
+export async function copyTree(path: string): Promise<void> {
+  // NOTE: コマンドパレットからは、ツリーを一度も開いていない状態で呼ばれる。
+  // `tExplorer` はツリーかタブのメニューの入口が読み込むため、ここで待たないと通知の文言が空になる。
+  await loadExplorerMessages();
+  const root = treeStore.root ?? path;
+  let text: string;
+  let truncated: boolean;
+  try {
+    const tree = await getPlatform().listTree(path, root);
+    text = toAsciiTree({ ...tree, nodes: visibleTree(tree.nodes) });
+    truncated = tree.truncated;
+  } catch (e) {
+    fail(e, splitPath(path).name || path);
+    return;
+  }
+  await writeClipboard(text, truncated ? tExplorer.treeCopiedPartial : tExplorer.treeCopied, tExplorer.treeCopyFailed);
 }
 
 /** OS のファイルマネージャで、その項目を選んだ状態で開く。 */

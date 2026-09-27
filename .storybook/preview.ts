@@ -17,6 +17,7 @@ import '../src/styles/preview/preview.css';
 import { registerAppCommands } from '../src/app/commands';
 import { loadMessages } from '../src/i18n';
 import { loadExplorerMessages } from '../src/i18n/explorer';
+import { loadHelpMessages } from '../src/i18n/help';
 import { loadMarpMessages } from '../src/i18n/marp';
 import { loadSettingsMessages } from '../src/i18n/settings';
 import { loadUpdateMessages } from '../src/i18n/update';
@@ -66,6 +67,7 @@ const preview: Preview = {
       await Promise.all([
         loadMessages(),
         loadExplorerMessages(),
+        loadHelpMessages(),
         loadMarpMessages(),
         loadSettingsMessages(),
         loadUpdateMessages(),

@@ -12,8 +12,11 @@ import { MARKDOWN_EXTENSIONS } from '@/lib/path';
 
 import type { Settings } from './settings-schema';
 import type {
+  AppInfo,
   Bootstrap,
+  BundledFile,
   DirEntry,
+  DirTree,
   DiscardChoice,
   DocumentPayload,
   EntriesMoved,
@@ -131,6 +134,10 @@ export const tauriPlatform: Platform = {
   listFiles(root) {
     // 拡張子はここから渡す。Markdown の判断は `lib/path.ts` の 1 か所にしかない。
     return invoke<FileList>('list_files', { path: root, extensions: MARKDOWN_EXTENSIONS });
+  },
+
+  listTree(path, root) {
+    return invoke<DirTree>('list_tree', { path, root });
   },
 
   watchTree(dirs) {
@@ -414,6 +421,14 @@ export const tauriPlatform: Platform = {
 
   checkUpdate() {
     return invoke<UpdateInfo | null>('check_update');
+  },
+
+  appInfo() {
+    return invoke<AppInfo>('app_info');
+  },
+
+  openBundledFile(file: BundledFile) {
+    return invoke<void>('open_bundled_file', { file });
   },
 
   installUpdate() {
