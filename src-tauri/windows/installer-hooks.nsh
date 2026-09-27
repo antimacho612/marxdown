@@ -70,7 +70,7 @@
     ${IfNot} ${Errors}
       StrCpy $R0 1
     ${EndIf}
-  ${ElseIf} ${Cmd} `MessageBox MB_YESNO|MB_ICONQUESTION "新しいターミナルから marxdown コマンドで開けるようにしますか？$\r$\n$\r$\nユーザーの環境変数 PATH に次のフォルダーを追加します。$\r$\n$INSTDIR\bin" IDYES`
+  ${ElseIf} ${Cmd} `MessageBox MB_YESNO|MB_ICONQUESTION "ターミナルから marxdown コマンドを使えるようにしますか？$\r$\n$\r$\nユーザー環境変数 PATH に次のフォルダーを追加します。この後に開いたターミナルから使えます。$\r$\n$\r$\n$INSTDIR\bin" IDYES`
     StrCpy $R0 1
   ${EndIf}
   WriteRegDWORD SHCTX "${MANUPRODUCTKEY}" "AddToPath" $R0
@@ -84,9 +84,9 @@
   ${EndIf}
   ${If} ${Errors}
   ${OrIf} $R1 != 0
-    DetailPrint "PATH を更新できませんでした（終了コード: $R1）"
+    DetailPrint "環境変数 PATH を更新できませんでした（終了コード: $R1）"
     ${IfNot} ${Silent}
-      MessageBox MB_OK|MB_ICONEXCLAMATION "PATH を更新できませんでした。$\r$\nMarxdown 自体は使えます。"
+      MessageBox MB_OK|MB_ICONEXCLAMATION "環境変数 PATH を更新できませんでした。$\r$\nmarxdown コマンド以外の機能は、このまま使えます。"
     ${EndIf}
   ${EndIf}
 !macroend

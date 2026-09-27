@@ -6,6 +6,7 @@
  */
 import {
   configureOpener,
+  describeOpenError,
   documentStore,
   externalOpenActions,
   installFileWatch,
@@ -48,7 +49,6 @@ import {
 } from '@/features/workspace';
 import { ja } from '@/i18n/ja';
 import { runCommand } from '@/lib/commands';
-import { toMessage } from '@/lib/error';
 import { requestIdle } from '@/lib/idle';
 import { adoptT4, drain, initTrace, isTracing, mark } from '@/lib/trace';
 import { createParser } from '@/markdown/parser';
@@ -366,7 +366,7 @@ async function resolveInitialDocument(bootstrap: Bootstrap | null): Promise<Docu
     try {
       return await getPlatform().readDocument(doc.path);
     } catch (e) {
-      documentStore.notice = { level: 'error', message: toMessage(e) };
+      documentStore.notice = { level: 'error', message: describeOpenError(e, doc.path) };
       return null;
     }
   }
@@ -388,7 +388,7 @@ function reportStartupProblems(bootstrap: Bootstrap | null): void {
     const e = bootstrap.documentError;
     documentStore.notice = {
       level: 'error',
-      message: describeError(e.kind, e.path, e.message),
+      message: describeOpenError(e, e.path),
       // `marxdown foo.png` も既定アプリで開く経路を同じにする（`openPath` の失敗時と揃える）。
       ...(e.kind === 'binary' && { actions: externalOpenActions(e.path) }),
     };
@@ -556,12 +556,4 @@ async function openDropped(paths: readonly string[]): Promise<void> {
     }
   }
   if (files.length > 0) await openPathsInTabs(files);
-}
-
-function describeError(kind: string, path: string, fallback: string): string {
-  const table = ja.error as Record<string, unknown>;
-  const entry = table[kind];
-  if (typeof entry === 'function') return (entry as (p: string) => string)(path);
-  if (typeof entry === 'string') return entry;
-  return fallback;
 }

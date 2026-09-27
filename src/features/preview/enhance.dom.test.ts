@@ -133,7 +133,7 @@ describe('拒まれた画像', () => {
     element.querySelector<HTMLButtonElement>('.mx-image-blocked__allow')?.click();
 
     await vi.waitFor(() => {
-      expect(element.querySelector('.mx-image-blocked__reason')?.textContent).toBe('許可できませんでした');
+      expect(element.querySelector('.mx-image-blocked__reason')?.textContent).toBe('表示を許可できませんでした');
     });
   });
 });
