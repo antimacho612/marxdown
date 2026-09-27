@@ -12,7 +12,9 @@ import { MARKDOWN_EXTENSIONS } from '@/lib/path';
 
 import type { Settings } from './settings-schema';
 import type {
+  AppInfo,
   Bootstrap,
+  BundledFile,
   DirEntry,
   DirTree,
   DiscardChoice,
@@ -419,6 +421,14 @@ export const tauriPlatform: Platform = {
 
   checkUpdate() {
     return invoke<UpdateInfo | null>('check_update');
+  },
+
+  appInfo() {
+    return invoke<AppInfo>('app_info');
+  },
+
+  openBundledFile(file: BundledFile) {
+    return invoke<void>('open_bundled_file', { file });
   },
 
   installUpdate() {

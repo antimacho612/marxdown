@@ -1,5 +1,6 @@
 import type { ja } from './ja/core';
 import type { jaExplorer } from './ja/explorer';
+import type { jaHelp } from './ja/help';
 import type { jaMarp } from './ja/marp';
 import type { jaSettings } from './ja/settings';
 import type { jaUpdate } from './ja/update';
@@ -15,6 +16,8 @@ type Widen<T> = T extends string
 export type Messages = Widen<typeof ja>;
 /** `tExplorer`（`@/i18n/explorer`）の型。 */
 export type ExplorerMessages = Widen<typeof jaExplorer>;
+/** `tHelp`（`@/i18n/help`）の型。 */
+export type HelpMessages = Widen<typeof jaHelp>;
 /** `tMarp`（`@/i18n/marp`）の型。 */
 export type MarpMessages = Widen<typeof jaMarp>;
 /** `tSettings`（`@/i18n/settings`）の型。 */

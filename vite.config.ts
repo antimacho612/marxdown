@@ -215,7 +215,7 @@ export default defineConfig(({ mode }) => ({
           if (isLanguage) return 'assets/hljs-[name]-[hash].js';
 
           /*
-           * UI の文言（ADR-0026）。`i18n-<言語>-<core|explorer|marp|update>` の名前にする。
+           * UI の文言（ADR-0026）。`i18n-<言語>-<core|explorer|help|marp|update>` の名前にする。
            *
            * 起動時に読むのは表示言語の `core` の 1 つだけである。
            * size-limit は言語ごとに `i18n-<言語>-core-*.js` を critical path に数え、他の言語の分は数えない。
@@ -324,6 +324,13 @@ export default defineConfig(({ mode }) => ({
            */
           const isUpdate = /[\\/]src[\\/]features[\\/]update[\\/]lazy[\\/]/.test(chunk.facadeModuleId ?? '');
           if (isUpdate) return 'assets/update-[hash].js';
+
+          /*
+           * ヘルプの項目と「Marxdown について」（F-OS-09 / ADR-0027）。他と同じく名前付けだけ。
+           * `features/help/index.ts`（動的 import の入口）は `main` に残る。
+           */
+          const isHelp = /[\\/]src[\\/]features[\\/]help[\\/]lazy[\\/]/.test(chunk.facadeModuleId ?? '');
+          if (isHelp) return 'assets/help-[hash].js';
 
           /*
            * エディター。menu / settings / outline と同じく名前付けだけ。

@@ -73,9 +73,16 @@
     "gzip": true
   },
   {
-    "name": "i18n ja (遅延チャンクが使う文言。ファイルツリー・設定・更新を開くまでロードしない — ADR-0026)",
+    "name": "help (ヘルプの項目と「Marxdown について」。ヘルプの項目を選ぶまでロードしない — ADR-0027)",
+    "path": ["dist/assets/help-*.js"],
+    "limit": "3 KB",
+    "gzip": true
+  },
+  {
+    "name": "i18n ja (遅延チャンクが使う文言。ファイルツリー・設定・更新・ヘルプを開くまでロードしない — ADR-0026)",
     "path": [
       "dist/assets/i18n-ja-explorer-*.js",
+      "dist/assets/i18n-ja-help-*.js",
       "dist/assets/i18n-ja-settings-*.js",
       "dist/assets/i18n-ja-update-*.js"
     ],
@@ -122,7 +129,7 @@
       "!dist/assets/editor-*.js",
       "!dist/assets/i18n-*-marp-*.js"
     ],
-    "limit": "235 KB",
+    "limit": "238 KB",
     "gzip": true
   }
 ]

@@ -430,6 +430,22 @@ export interface UpdateInfo {
  */
 export type InstallRefusal = 'dirty' | 'up-to-date';
 
+/** アプリ自身の情報（「Marxdown について」と不具合の報告 / F-OS-09）。 */
+export interface AppInfo {
+  version: string;
+  /** OS の名前と版（`Windows 11 24H2 (26100.4061)` の形）。 */
+  os: string;
+  /** WebView2 の版。取れなければ `null`。 */
+  webview: string | null;
+}
+
+/**
+ * インストーラに同梱したライセンス文の種類。
+ *
+ * パスではなく種類で指定する。任意のファイルを既定アプリで開く経路を作らないため（ADR-0006）。
+ */
+export type BundledFile = 'license' | 'thirdPartyNotices';
+
 /**
  * Platform 層のインタフェース。
  *
@@ -878,6 +894,10 @@ export interface Platform {
    * 確認の契機と間隔は Rust 側が決める（`src-tauri/src/update.rs`）。
    */
   onUpdateAvailable(handler: (info: UpdateInfo) => void): () => void;
+  /** Marxdown のバージョン・OS・WebView2 の版を返す（F-OS-09）。 */
+  appInfo(): Promise<AppInfo>;
+  /** 同梱したライセンス文を OS の既定アプリで開く（F-OS-09）。 */
+  openBundledFile(file: BundledFile): Promise<void>;
   /**
    * Markdown 以外のローカルファイルを OS の既定アプリで開く（F-VIEW-06）。
    * 許可ディレクトリの外は Rust 側で拒まれる。
