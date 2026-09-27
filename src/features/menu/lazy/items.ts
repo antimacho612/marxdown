@@ -117,7 +117,7 @@ type MenuEntry = CommandEntry | SubmenuEntry | RecentEntry | ZoomEntry;
  * - `file` … ファイルを開く・書き出す操作。一覧を伴うもの（履歴・書き出し形式）はサブメニューに収める
  * - `view` … 見え方を変える操作。文書の中身は変わらない
  * - `document` … いま開いている文書に対する操作。再読み込みと検索は同じ対象を指すので隣に置く
- * - `app` … アプリに対する操作。ファイルを開いていなくても実行できる
+ * - `app` … アプリに対する操作。ファイルを開いていなくても実行できる。ヘルプもここに収める
  */
 const MENU: { id: string; entries: MenuEntry[] }[] = [
   {
@@ -188,6 +188,20 @@ const MENU: { id: string; entries: MenuEntry[] }[] = [
       // キーを知らない人がすべての機能へ辿り着ける経路は、メニューからパレットへ入る 2 手だけである。
       { id: 'palette', command: 'palette.open' },
       { id: 'settings', command: 'settings.open' },
+      // ヘルプ（F-OS-09 / ADR-0027）。一覧を伴うため、書き出しと同じくサブメニューに収める。
+      // 「更新を確認」もここに置く。アプリそのものについての操作であり、使用頻度もほかの項目と同程度に低い。
+      {
+        id: 'help',
+        label: t.menu.help,
+        submenu: [
+          { id: 'report-issue', command: 'help.reportIssue' },
+          { id: 'suggest-feature', command: 'help.suggestFeature' },
+          { id: 'check-update', command: 'app.checkUpdate' },
+          { id: 'license', command: 'help.license' },
+          { id: 'third-party-notices', command: 'help.thirdPartyNotices' },
+          { id: 'about', command: 'help.about' },
+        ],
+      },
       // 終了（ADR-0007 論点 3 の 3 経路のうちの 1 つ）。
       //
       // `✕` はトレイ格納の意味であるため、この項目が必要である。

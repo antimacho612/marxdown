@@ -844,6 +844,15 @@ export const webPlatform: Platform = {
     return () => {};
   },
 
+  async appInfo() {
+    return { version: '0.0.0-web', os: 'ブラウザ', webview: null };
+  },
+
+  async openBundledFile(file) {
+    // ブラウザには同梱ファイルも既定アプリも無い（`openLocalFile` と同じ扱い）。
+    console.info('[marxdown] openBundledFile', file);
+  },
+
   async openLocalFile(path) {
     // ブラウザには既定アプリの概念が無い。呼ばれたことだけ分かるようにしておく
     console.info('[marxdown] openLocalFile', path);

@@ -58,6 +58,7 @@ const UNICORN_NOT_ENFORCED_BEFORE = [
 const FEATURE_BARREL_ENFORCED = [
   'document',
   'editor',
+  'help',
   'history',
   'menu',
   'mode',

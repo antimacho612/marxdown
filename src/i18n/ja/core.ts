@@ -128,6 +128,13 @@ export const ja = {
     replace: '置換',
     quit: '終了',
     checkUpdate: '更新を確認',
+    /** ヘルプの項目を並べるサブメニューの見出し（F-OS-09）。 */
+    help: 'ヘルプ',
+    reportIssue: '不具合を報告',
+    suggestFeature: '機能を提案',
+    license: 'ライセンス',
+    thirdPartyNotices: '第三者のライセンス',
+    about: 'Marxdown について',
   },
 
   pane: {
