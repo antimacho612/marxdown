@@ -69,7 +69,7 @@ describe('手動の確認', () => {
 
     await checkForUpdates();
 
-    expect(documentStore.notice).toMatchObject({ level: 'error', message: ja.update.checkFailed('offline') });
+    expect(documentStore.notice).toMatchObject({ level: 'error', message: ja.update.checkFailed });
   });
 });
 
@@ -94,6 +94,6 @@ describe('適用', () => {
     await pressInstall(() => Promise.reject(new Error('signature')));
 
     await vi.waitFor(() => expect(documentStore.notice?.level).toBe('error'));
-    expect(documentStore.notice?.message).toBe(ja.update.installFailed('signature'));
+    expect(documentStore.notice?.message).toBe(ja.update.installFailed);
   });
 });

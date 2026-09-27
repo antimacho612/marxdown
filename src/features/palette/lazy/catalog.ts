@@ -56,6 +56,8 @@ export const COMMAND_CATALOG: CommandEntry[] = [
   { id: 'document.reload', label: ja.menu.reload, keywords: 'reload revert file', shortcut: 'F5' },
   { id: 'document.save', label: ja.menu.save, keywords: 'save file write', shortcut: 'Ctrl+S' },
   { id: 'document.saveAs', label: ja.menu.saveAs, keywords: 'save as file write', shortcut: 'Ctrl+Shift+S' },
+  { id: 'document.exportHtml', label: ja.menu.exportHtml, keywords: 'export html save write' },
+  { id: 'document.exportPdf', label: ja.menu.exportPdf, keywords: 'export pdf print save write' },
   { id: 'document.toggleEol', label: ja.menu.toggleEol, keywords: 'toggle eol line ending newline crlf lf' },
 
   { id: 'window.moveTab', label: ja.menu.moveToNewWindow, keywords: 'move tab window satellite detach' },
@@ -88,6 +90,10 @@ export const COMMAND_CATALOG: CommandEntry[] = [
     keywords: 'explorer show file tree sidebar',
     shortcut: 'Ctrl+Shift+E',
   },
+  { id: 'explorer.newFile', label: ja.menu.explorerNewFile, keywords: 'explorer new file create add' },
+  { id: 'explorer.newFolder', label: ja.menu.explorerNewFolder, keywords: 'explorer new folder directory create add' },
+  { id: 'explorer.refresh', label: ja.menu.explorerRefresh, keywords: 'explorer refresh reload file tree' },
+  { id: 'explorer.collapseAll', label: ja.menu.explorerCollapseAll, keywords: 'explorer collapse all folders tree' },
   {
     id: 'outline.show',
     label: ja.menu.showOutline,

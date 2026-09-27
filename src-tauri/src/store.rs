@@ -199,7 +199,7 @@ pub struct StoreData {
     /// `panes` と同じく `#[serde(default)]` で、この値を持たない古い `state.json` も読める。
     #[serde(default)]
     pub session: Session,
-    /// 最後に更新を自動で確認した時刻（UNIX 秒 / ADR-0020 §3.4）。
+    /// 最後に更新を自動で確認した時刻（UNIX 秒 / ADR-0024 §3.4）。
     ///
     /// メモリにだけ持つと、起動し直すたびに確認することになる。
     #[serde(default)]

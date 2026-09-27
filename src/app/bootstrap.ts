@@ -6,6 +6,7 @@
  */
 import {
   configureOpener,
+  describeOpenError,
   documentStore,
   externalOpenActions,
   installFileWatch,
@@ -20,7 +21,7 @@ import {
 import { mountEditorLazily, preloadEditor, setSplitSyncLazily } from '@/features/editor';
 import { configureHistory } from '@/features/history';
 import { decideInitialMode, initMode } from '@/features/mode';
-import { initPanes } from '@/features/panes';
+import { initPanes, openLeftPane } from '@/features/panes';
 import { applyZoom, installLinkHandler, installTaskHandler, installWheelZoom } from '@/features/preview';
 import {
   enabledSyntax,
@@ -31,8 +32,9 @@ import {
 } from '@/features/settings';
 import { awaitPreviewTheme, enableThemeNotices, installPreviewThemeWatch, primePreviewTheme } from '@/features/theme';
 import { installUpdateNotice } from '@/features/update';
-import { initSplit, initWindowRole, viewStore } from '@/features/view';
+import { initSplit, initWindowRole, isSatellite, viewStore } from '@/features/view';
 import {
+  installEntryWatch,
   openPathInSatellite,
   openPathsInTabs,
   receiveTabLazily,
@@ -41,13 +43,13 @@ import {
   restoreTransferredState,
   setTreeRoot,
   takeTabTransfer,
+  treeDropHandler,
   watchSession,
   workspaceOpenerHooks,
   type TabTransfer,
 } from '@/features/workspace';
 import { ja } from '@/i18n/ja';
 import { runCommand } from '@/lib/commands';
-import { toMessage } from '@/lib/error';
 import { requestIdle } from '@/lib/idle';
 import { adoptT4, drain, initTrace, isTracing, mark } from '@/lib/trace';
 import { createParser } from '@/markdown/parser';
@@ -118,6 +120,7 @@ export async function startup(renderShell: () => void): Promise<void> {
     parser: createParser(),
     softBreak: () => settingsStore.values['preview.softBreak'],
     syntax: () => enabledSyntax(settingsStore.values),
+    marpThemes: () => settingsStore.values['marp.themes'],
     ...workspaceOpenerHooks(),
   });
 
@@ -227,11 +230,12 @@ export async function startup(renderShell: () => void): Promise<void> {
   getPlatform().onTabArrive((arrival) => void receiveTabLazily(arrival));
   installTrayOpen();
   installSaveAndQuit();
-  // 自動の確認で見つかった更新（ADR-0020）。確認そのものは Rust 側が `ready()` の後に始める。
+  // 自動の確認で見つかった更新（ADR-0024）。確認そのものは Rust 側が `ready()` の後に始める。
   installUpdateNotice();
   installTrayResume();
   installDragAndDrop();
   installFileWatch();
+  installEntryWatch();
   installSettingsWatch();
   installWindowState();
   // パースの結果そのものを変える設定（`preview.softBreak` と `markdown.*`）に追従して本文を再描画する。
@@ -366,7 +370,7 @@ async function resolveInitialDocument(bootstrap: Bootstrap | null): Promise<Docu
     try {
       return await getPlatform().readDocument(doc.path);
     } catch (e) {
-      documentStore.notice = { level: 'error', message: toMessage(e) };
+      documentStore.notice = { level: 'error', message: describeOpenError(e, doc.path) };
       return null;
     }
   }
@@ -388,7 +392,7 @@ function reportStartupProblems(bootstrap: Bootstrap | null): void {
     const e = bootstrap.documentError;
     documentStore.notice = {
       level: 'error',
-      message: describeError(e.kind, e.path, e.message),
+      message: describeOpenError(e, e.path),
       // `marxdown foo.png` も既定アプリで開く経路を同じにする（`openPath` の失敗時と揃える）。
       ...(e.kind === 'binary' && { actions: externalOpenActions(e.path) }),
     };
@@ -498,21 +502,29 @@ function installOpenRequestHandler(): void {
  *
  * ドロップ先の表示は `data-mx-dragover` 属性 1 つで表す。
  * Svelte を通さないのは、ドラッグ中に `over` が毎フレーム発火するためである（ADR-0005 と同じ判断）。
+ *
+ * ファイルツリーの上に落とされたものは、ツリーがそのフォルダへ複製する（F-NAV-13 / `treeDropHandler`）。
+ * そのときは画面全体の表示を出さず、ツリーが落とす先のフォルダを強調する。
  */
 function installDragAndDrop(): void {
   const root = document.documentElement;
 
   getPlatform().onDragDrop((event) => {
+    const tree = treeDropHandler();
     if (event.type === 'over') {
-      root.dataset['mxDragover'] = 'true';
+      if (tree?.over(event.x, event.y) === true) delete root.dataset['mxDragover'];
+      else root.dataset['mxDragover'] = 'true';
       return;
     }
 
     delete root.dataset['mxDragover'];
-    if (event.type !== 'drop') return;
+    if (event.type !== 'drop') {
+      tree?.leave();
+      return;
+    }
+    if (tree?.drop(event.paths, event.x, event.y) === true) return;
 
-    // ドロップされた数だけタブを開く（F-OPEN-08）。
-    void openPathsInTabs(event.paths);
+    void openDropped(event.paths);
   });
 
   // 他のウィンドウから引き出されたタブがこの上に来た（OQ-43）。
@@ -523,10 +535,29 @@ function installDragAndDrop(): void {
   });
 }
 
-function describeError(kind: string, path: string, fallback: string): string {
-  const table = ja.error as Record<string, unknown>;
-  const entry = table[kind];
-  if (typeof entry === 'function') return (entry as (p: string) => string)(path);
-  if (typeof entry === 'string') return entry;
-  return fallback;
+/**
+ * ツリーの外に落とされたものを開く。ファイルはタブで開き（F-OPEN-08）、フォルダはファイルツリーの基点として開く（F-NAV-13）。
+ *
+ * どちらなのかはフロントからは分からないため、フォルダとして許可を求めて断られたものをファイルとして扱う。
+ * サテライトはファイルツリーを持たないので、すべてファイルとして扱う。
+ */
+async function openDropped(paths: readonly string[]): Promise<void> {
+  const platform = getPlatform();
+  const files: string[] = [];
+  for (const path of paths) {
+    if (isSatellite()) {
+      files.push(path);
+      continue;
+    }
+    try {
+      // eslint-disable-next-line no-await-in-loop -- 基点は 1 つしか持てず、後に落としたフォルダが勝つ順序を保つ
+      const folder = await platform.openDroppedFolder(path);
+      // eslint-disable-next-line no-await-in-loop -- 同上
+      await setTreeRoot(folder);
+      openLeftPane();
+    } catch {
+      files.push(path);
+    }
+  }
+  if (files.length > 0) await openPathsInTabs(files);
 }

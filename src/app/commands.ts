@@ -9,6 +9,7 @@
  * ラベルは遅延チャンク側（`features/palette/lazy/catalog.ts`）に置いてある。
  */
 import {
+  describeOpenError,
   documentStore,
   openPath,
   openViaDialog,
@@ -18,6 +19,7 @@ import {
   toggleEol,
 } from '@/features/document';
 import { formatTableLazily, gotoLineLazily } from '@/features/editor';
+import { exportLazily } from '@/features/export';
 import { canGoBack, canGoForward, goBack, goForward } from '@/features/history';
 import { cycleMode, openFind, openReplace, setMode, togglePreview, toggleSplit } from '@/features/mode';
 import { openJumpLazily, showOutline } from '@/features/outline';
@@ -29,18 +31,21 @@ import { checkForUpdates } from '@/features/update';
 import { isSatellite, viewStore } from '@/features/view';
 import {
   closeTab,
+  collapseAll,
+  createInExplorer,
   cycleTab,
   moveCurrentTabToMainLazily,
   moveCurrentTabToSatellite,
   openFolderViaDialog,
   openUntitledTab,
+  reloadTree,
   reopenClosedTab,
   selectTabAt,
   showExplorer,
   tabsStore,
+  treeStore,
 } from '@/features/workspace';
 import { registerCommands, runCommand, type Command, type CommandId } from '@/lib/commands';
-import { toMessage } from '@/lib/error';
 import { bindKeys } from '@/lib/shortcuts';
 import { getPlatform } from '@/platform';
 
@@ -57,6 +62,11 @@ function hasDocument(): boolean {
  */
 function hasPanes(): boolean {
   return !isSatellite();
+}
+
+/** ファイルツリーの基点が決まっているか。決まっていなければ作る場所も読み直す対象も無い。 */
+function hasTree(): boolean {
+  return hasPanes() && treeStore.root !== null;
 }
 
 /** タブが 2 枚以上あるか。切り替えは 1 枚では意味を持たない。 */
@@ -115,6 +125,10 @@ const COMMANDS: Command[] = [
   { id: 'document.save', run: () => void saveSafely(), isListed: hasDocument },
   { id: 'document.saveAs', run: () => void saveAsSafely(), isListed: hasDocument },
 
+  // エクスポート（F-VIEW-18）。実体は `export` チャンクにあり、押すまで読み込まない。キーは割り当てない。
+  { id: 'document.exportHtml', run: () => void exportLazily('html'), isListed: hasDocument },
+  { id: 'document.exportPdf', run: () => void exportLazily('pdf'), isListed: hasDocument },
+
   // 改行コードの変換（F-EDIT-14 / 03.ux-spec/07-status-and-notifications.md §3）。
   // 実体はステータスバーの `LF` / `CRLF` で、ここはコマンドとしての入口である。
   // キーは割り当てない。使用頻度が低く、覚えるキーを増やす利点がない。
@@ -140,6 +154,11 @@ const COMMANDS: Command[] = [
   { id: 'outline.show', run: () => void showOutline(), isListed: hasPanes },
   // Explorer を出してフォーカスする（`Ctrl+Shift+E`）。`outline.show` と対になるビュー側のキーである。
   { id: 'explorer.show', run: () => void showExplorer(), isListed: hasPanes },
+  // ツールバーの操作をパレットからも届くようにする（OQ-42 の決着 / ADR-0020）。絞り込みは状態を残すため載せない。
+  { id: 'explorer.newFile', run: () => void createInExplorer('file'), isListed: hasTree },
+  { id: 'explorer.newFolder', run: () => void createInExplorer('folder'), isListed: hasTree },
+  { id: 'explorer.refresh', run: () => void reloadTree(), isListed: hasTree },
+  { id: 'explorer.collapseAll', run: () => collapseAll(), isListed: hasTree },
 
   // 見出しへジャンプ（03.ux-spec/04-keybindings.md §3「移動」）。実体は遅延チャンクにある。
   // コマンドパレット（`Ctrl+Shift+P`）ではなく、見出し専用である。
@@ -228,7 +247,7 @@ const COMMANDS: Command[] = [
   //
   // ダーティ状態の確認（03.ux-spec/07-status-and-notifications.md §1）もこの経路に入るため、確認を挟む場所は 1 か所で済む。
   { id: 'app.quit', run: () => void getPlatform().quitApp() },
-  // 更新の確認（ADR-0020）。設定 `update.autoCheck` を切っていても、ここからは確認できる。
+  // 更新の確認（ADR-0024）。設定 `update.autoCheck` を切っていても、ここからは確認できる。
   { id: 'app.checkUpdate', run: () => void checkForUpdates() },
 ];
 
@@ -429,7 +448,7 @@ async function openViaDialogSafely(): Promise<void> {
   try {
     await openViaDialog();
   } catch (e) {
-    documentStore.notice = { level: 'error', message: toMessage(e) };
+    documentStore.notice = { level: 'error', message: describeOpenError(e, '') };
   }
 }
 
@@ -442,6 +461,6 @@ async function openFolderSafely(): Promise<void> {
   try {
     await openFolderViaDialog();
   } catch (e) {
-    documentStore.notice = { level: 'error', message: toMessage(e) };
+    documentStore.notice = { level: 'error', message: describeOpenError(e, '') };
   }
 }

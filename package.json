@@ -36,6 +36,7 @@
     "build:storybook": "storybook build"
   },
   "dependencies": {
+    "@marp-team/marp-core": "^4.4.0",
     "@tauri-apps/api": "^2",
     "dompurify": "^3.4.14",
     "highlight.js": "^11.12.0",

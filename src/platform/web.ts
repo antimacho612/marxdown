@@ -15,8 +15,10 @@ import {
   DEFAULT_PANES,
   SPLIT_DEFAULT,
   type Bootstrap,
+  type CoreError,
   type DiscardChoice,
   type DocumentPayload,
+  type MarpThemes,
   type OpenRequest,
   type Panes,
   type Platform,
@@ -28,6 +30,11 @@ import {
   type WindowRole,
   type WriteRequest,
 } from './types';
+
+/** `dev:web` では扱えない操作のエラー。形は Rust の `CoreError` に揃える。 */
+function unsupported(): { kind: 'io'; message: string } {
+  return { kind: 'io', message: 'dev:web の仮想 FS では扱えない' };
+}
 
 const STORE_KEY = 'marxdown:web-fs';
 const STATE_KEY = 'marxdown:web-state';
@@ -435,6 +442,57 @@ export const webPlatform: Platform = {
     return { files: [], truncated: false };
   },
 
+  /** 仮想 FS はこのタブの中にしかなく、外から書き換わることがない。 */
+  async watchTree() {},
+
+  onDirChanged() {
+    return () => {};
+  },
+
+  /*
+   * ファイル操作（ADR-0020）。仮想 FS にはディレクトリが無く、ツリーも空であるため操作の対象が存在しない。
+   * 操作の流れは Storybook と Rust のユニットテストで確かめる。
+   */
+  async createEntry() {
+    throw unsupported();
+  },
+
+  async renameEntry() {
+    throw unsupported();
+  },
+
+  async moveEntries() {
+    throw unsupported();
+  },
+
+  async copyEntries() {
+    throw unsupported();
+  },
+
+  async trashEntries() {
+    throw unsupported();
+  },
+
+  async importDropped() {
+    throw unsupported();
+  },
+
+  async openDroppedFolder() {
+    throw unsupported();
+  },
+
+  onEntriesMoved() {
+    return () => {};
+  },
+
+  onEntriesRemoved() {
+    return () => {};
+  },
+
+  async confirmAction(message) {
+    return globalThis.confirm(message);
+  },
+
   /** `dev:web` では復元しない。起動のたびに同じ状態から始まるほうが確かめやすい。 */
   async setSession() {},
 
@@ -507,6 +565,15 @@ export const webPlatform: Platform = {
     return userThemesNow();
   },
 
+  /** 仮想 FS（`?file=` と同じ `localStorage`）に置いたファイルをテーマとして返す。検証は実装（Rust）だけが行う。 */
+  async readMarpThemes(paths): Promise<MarpThemes> {
+    const fs = loadFs();
+    return {
+      themes: paths.flatMap((path) => (fs[path] ? [{ path, css: fs[path].content }] : [])),
+      problems: paths.flatMap((path) => (fs[path] ? [] : [{ path, kind: 'missing' as const }])),
+    };
+  },
+
   async openThemesDir() {
     // 実装では「無ければ作って雛形を置いてから開く」。
     // ブラウザには開く先が無いので、見本を仮想の `themes/` に置いて、次の読み直しから適用されるようにする。
@@ -563,6 +630,27 @@ export const webPlatform: Platform = {
     return name === null || name.trim() === '' ? null : `/virtual/${name.trim()}`;
   },
 
+  /** ブラウザのダウンロードとして書き出す。保存先は選べない。 */
+  async exportHtml(html, suggested) {
+    const name = `${(suggested === null ? 'untitled' : splitPath(suggested).name).replace(/\.[^.]*$/, '')}.html`;
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(new Blob([html], { type: 'text/html' }));
+    link.download = name;
+    link.click();
+    URL.revokeObjectURL(link.href);
+    return name;
+  },
+
+  /** ブラウザには PDF を直接書き出す手段が無い。呼び出し側が `window.print()` で代用する。 */
+  async exportPdf() {
+    throw { kind: 'invalid-argument', message: 'dev:web では PDF を直接書き出せない' } satisfies CoreError;
+  },
+
+  /** dev:web の画像は元から data URI か外部の URL である。 */
+  async inlineImage(src) {
+    return src;
+  },
+
   /**
    * dev:web には終了の経路もトレイも無く（`close.rs` に対応するものが無い）、通知先が存在しないため何もしない。
    */
@@ -613,14 +701,14 @@ export const webPlatform: Platform = {
     // Domain 層から見た形は Tauri 実装と同じになる。
     const onOver = (e: DragEvent) => {
       e.preventDefault();
-      handler({ type: 'over' });
+      handler({ type: 'over', x: e.clientX, y: e.clientY });
     };
     const onLeave = () => handler({ type: 'leave' });
     const onDrop = (e: DragEvent) => {
       e.preventDefault();
       const files = [...(e.dataTransfer?.files ?? [])];
       void Promise.all(files.map(adoptFile)).then((paths) => {
-        handler({ type: 'drop', paths: paths.filter((p): p is string => p !== null) });
+        handler({ type: 'drop', paths: paths.filter((p): p is string => p !== null), x: e.clientX, y: e.clientY });
         return paths;
       });
     };

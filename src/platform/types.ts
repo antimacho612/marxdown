@@ -52,6 +52,28 @@ export interface DirEntry {
   dir: boolean;
 }
 
+/** 移動・リネームの結果（`src-tauri/src/fsops.rs` の `Moved`）。どちらも絶対パス。 */
+export interface Moved {
+  from: string;
+  to: string;
+}
+
+/**
+ * ファイルツリーでの移動・リネーム（`marxdown://entries-moved`）。全ウィンドウに届く。
+ *
+ * 最近開いたファイルは Rust 側で付け替え済みで、更新後の一覧が `recent` に入っている。
+ */
+export interface EntriesMoved {
+  moves: Moved[];
+  recent: RecentEntry[];
+}
+
+/** ファイルツリーでゴミ箱へ移した項目（`marxdown://entries-removed`）。全ウィンドウに届く。 */
+export interface EntriesRemoved {
+  paths: string[];
+  recent: RecentEntry[];
+}
+
 /** クイックオープンの候補（F-NAV-05）。 */
 export interface FileList {
   /** 正規化済み絶対パス。パス順に並んでいる。 */
@@ -93,6 +115,7 @@ export interface CoreError {
     | 'too-large'
     | 'binary'
     | 'conflict'
+    | 'already-exists'
     | 'invalid-argument'
     | 'settings-broken'
     | 'io';
@@ -156,6 +179,15 @@ export interface SettingsProblem {
 export interface SettingsLoad {
   values: Settings;
   broken: SettingsProblem | null;
+}
+
+/** Marp の自作テーマを読めなかった理由（`src-tauri/src/marp_themes.rs` の `ProblemKind`）。 */
+export type MarpThemeProblemKind = 'not-absolute' | 'missing' | 'not-css' | 'too-large' | 'too-many' | 'unreadable';
+
+/** 設定 `marp.themes` から読んだ Marp の自作テーマ（`src-tauri/src/marp_themes.rs` の `MarpThemes`）。 */
+export interface MarpThemes {
+  themes: { path: string; css: string }[];
+  problems: { path: string; kind: MarpThemeProblemKind }[];
 }
 
 /**
@@ -345,9 +377,13 @@ export interface TraceMark {
  * WebView はドロップされたファイルの絶対パスを JS へ渡さないため、`DataTransfer` からでは最近開いたファイルに追加できず、相対パスの画像も解決できない（F-VIEW-08 / N-SEC-05）。
  */
 export type DragDropEvent =
-  /** ウィンドウの上にファイルが来ている。ドロップ先の見た目を出す。 */
-  | { type: 'over' }
-  | { type: 'drop'; paths: string[] }
+  /**
+   * ウィンドウの上にファイルが来ている。ドロップ先の見た目を出す。
+   *
+   * 位置は CSS ピクセルのビューポート座標で、`document.elementFromPoint` にそのまま渡せる（F-NAV-13）。
+   */
+  | { type: 'over'; x: number; y: number }
+  | { type: 'drop'; paths: string[]; x: number; y: number }
   /** 外へ出た / 取り消された。 */
   | { type: 'leave' };
 
@@ -358,7 +394,7 @@ export type DragDropEvent =
  */
 export type WarmKind = 'warm' | 'tray-resume';
 
-/** 公開されている新しい版（ADR-0020）。 */
+/** 公開されている新しい版（ADR-0024）。 */
 export interface UpdateInfo {
   version: string;
   /** 変更内容を読める Release のページ。 */
@@ -368,7 +404,7 @@ export interface UpdateInfo {
 /**
  * `installUpdate` が更新を始めなかった理由。
  *
- * `dirty` は未保存の変更がある（ADR-0020 §3.6）。
+ * `dirty` は未保存の変更がある（ADR-0024 §3.6）。
  * `up-to-date` は確認し直したら新しい版が無かった。
  */
 export type InstallRefusal = 'dirty' | 'up-to-date';
@@ -429,6 +465,56 @@ export interface Platform {
    */
   listFiles(root: string): Promise<FileList>;
   /**
+   * ファイルツリーで開いている枝を監視する（ADR-0021）。
+   *
+   * 渡した集合がそのまま監視の対象になり、含まれなくなった枝は解放される。空を渡せばすべて手放す。
+   * 変化は `onDirChanged` で届く。
+   */
+  watchTree(dirs: string[]): Promise<void>;
+  /** 監視している枝の中身が変わった。受け取ったらそのディレクトリを読み直す。 */
+  onDirChanged(handler: (dir: string) => void): () => void;
+  /**
+   * 新しいファイルかフォルダを作る（F-NAV-11）。作ったパスを返す。
+   *
+   * 同じ名前が既にあれば `already-exists` で失敗する。上書きはしない。
+   */
+  createEntry(parent: string, name: string, dir: boolean): Promise<string>;
+  /** 同じフォルダの中で名前を変える（F-NAV-11）。開いているタブへの反映は `onEntriesMoved` で届く。 */
+  renameEntry(path: string, newName: string): Promise<Moved>;
+  /**
+   * フォルダの中へ移す（F-NAV-11 / F-NAV-12）。
+   *
+   * 途中で失敗しても、それまでに移した分は `onEntriesMoved` で届く。
+   */
+  moveEntries(paths: string[], dest: string): Promise<Moved[]>;
+  /** フォルダの中へ複製する（F-NAV-11 / F-NAV-12）。同じ名前があれば `名前 copy` として置く。 */
+  copyEntries(paths: string[], dest: string): Promise<string[]>;
+  /**
+   * ゴミ箱へ移す（ADR-0020 §3.3）。消えたパスを返す。
+   *
+   * 確認は呼び出し側が `confirmAction` で先に済ませること。
+   * ゴミ箱に入らない項目は OS が完全に削除してよいかを尋ね、断られた項目は返り値に含まれない。
+   */
+  trashEntries(paths: string[]): Promise<string[]>;
+  /**
+   * 外部からドロップされた項目をフォルダへ複製する（F-NAV-13）。
+   *
+   * `paths` は直近の `onDragDrop` の `drop` で受け取ったものでなければならない。Rust 側が照合して、それ以外は拒む。
+   */
+  importDropped(paths: string[], dest: string): Promise<string[]>;
+  /** 外部からドロップされたフォルダを、ファイルツリーの基点として許可する（F-NAV-13）。正規化済みのパスを返す。 */
+  openDroppedFolder(path: string): Promise<string>;
+  /** 移動・リネームを購読する。他のウィンドウで行った操作も届く。 */
+  onEntriesMoved(handler: (event: EntriesMoved) => void): () => void;
+  /** ゴミ箱へ移した項目を購読する。他のウィンドウで行った操作も届く。 */
+  onEntriesRemoved(handler: (event: EntriesRemoved) => void): () => void;
+  /**
+   * 確認のダイアログを出す（ファイルツリーの削除・移動）。
+   *
+   * `confirm` は実行する側のボタンの文言である。既定は実行しない側で、閉じられた場合も `false` になる。
+   */
+  confirmAction(message: string, confirm: string): Promise<boolean>;
+  /**
    * 開いているタブを覚える。引数なしで起動したときだけ復元される。
    *
    * 覚えるのはパスと表示中のタブだけで、本文は持たない。
@@ -477,6 +563,25 @@ export interface Platform {
    * 正規化は保存時に行われる。
    */
   pickSavePath(suggested: string | null): Promise<string | null>;
+  /**
+   * HTML を書き出す（F-VIEW-18）。保存先はダイアログで選ばせ、書き込んだパスを返す。取り消されたら `null`。
+   *
+   * `suggested` は元の文書のパスで、同じ場所と同じ名前（拡張子だけ差し替える）を初期値にする。
+   */
+  exportHtml(html: string, suggested: string | null): Promise<string | null>;
+  /**
+   * 表示中のウィンドウを PDF に書き出す（F-VIEW-18）。何を印刷させるかは、呼ぶ前に `@media print` で整えておく。
+   *
+   * WebView2 の `PrintToPdf` を使うため、Windows 以外では `invalid-argument` で失敗する（`src-tauri/src/export.rs`）。
+   */
+  exportPdf(suggested: string | null): Promise<string | null>;
+  /**
+   * 表示中のローカル画像を data URI にする（HTML の書き出しで 1 ファイルに収めるため）。
+   *
+   * `src` は `resolveAsset` が返した URL である。
+   * 読めるのはプレビューが表示を許可している範囲だけで、それ以外は失敗する。
+   */
+  inlineImage(src: string): Promise<string>;
   /**
    * 未保存の変更があることを知らせる（F-EDIT-03）。
    *
@@ -534,6 +639,13 @@ export interface Platform {
    * どの 1 枚が変わったかも渡さない。選択中の配色が変わったかどうかは、読み直した結果と突き合わせないと判断できない。
    */
   onUserThemesChanged(handler: () => void): () => void;
+  /**
+   * Marp の自作テーマを読む（設定 `marp.themes` / ADR-0023 §3.4）。
+   *
+   * `paths` はファイルかフォルダーの絶対パスで、フォルダーは直下の `.css` を読む。
+   * 読めなかったものは例外にせず `problems` に入れて返す。
+   */
+  readMarpThemes(paths: readonly string[]): Promise<MarpThemes>;
   /**
    * 表示中のファイルの監視を始める（F-EDIT-16 / 02.architecture/04-rust-responsibilities.md §4）。
    *
@@ -719,13 +831,13 @@ export interface Platform {
   onTrayResume(handler: (requestId: number) => void): () => void;
   openExternal(url: string): Promise<void>;
   /**
-   * 新しい版を問い合わせる（コマンドパレットの「更新を確認」 / ADR-0020）。
+   * 新しい版を問い合わせる（コマンドパレットの「更新を確認」 / ADR-0024）。
    *
    * 設定 `update.autoCheck` と確認の間隔には関係なく、常に問い合わせる。
    */
   checkUpdate(): Promise<UpdateInfo | null>;
   /**
-   * 見つけた更新をダウンロードして適用する（ADR-0020 §3.6）。
+   * 見つけた更新をダウンロードして適用する（ADR-0024 §3.6）。
    *
    * Windows では更新を始めた時点でプロセスが終わり、Promise は解決しない。
    * 解決するのは更新を始めなかったときだけである。

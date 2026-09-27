@@ -1,4 +1,5 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
 import { dirname } from 'node:path';
 import { fileURLToPath, URL } from 'node:url';
 
@@ -67,6 +68,58 @@ function katexWoff2Only(): Plugin {
   };
 }
 
+/** marp-core から読まれるときだけ空のモジュールに差し替えるもの。 */
+const MARP_STUBBED = /^(?:mathjax-full\/|highlight\.js\/lib\/|katex(?:\/|$))/;
+
+const MARP_STUB_ID = '\0marxdown:marp-stub';
+
+/** marp チャンクに複製させるもの（`marpStubs` の NOTE）。 */
+const MARP_PRIVATE = new Set(['punycode.js', 'mdurl']);
+
+/** 複製したモジュールの ID に付ける印。 */
+const MARP_COPY = '?marp';
+
+/** アプリ自身が使う markdown-it のディレクトリ。これ以外の markdown-it は Marpit が使うものである。 */
+const APP_MARKDOWN_IT = dirname(createRequire(import.meta.url).resolve('markdown-it/package.json')).replaceAll(
+  '\\',
+  '/',
+);
+
+/**
+ * marp-core が静的に読み込む重い依存を、marp-core からの読み込みに限って空のモジュールにする（ADR-0023 §3.2）。
+ *
+ * marp-core は MathJax と highlight.js の全言語を静的に読み込み、そのままでは gzip で 1MB を超える。
+ * Marxdown は数式（`math: false`）とハイライト（`highlighter` の差し替え）を既存の遅延チャンクで描くため、これらの実体は実行されない。
+ * `alias` にしないのは、Marxdown 自身の highlight.js / KaTeX の読み込みまで差し替わるためである。
+ *
+ * NOTE: marp-core の更新でこれらを初期化時に呼ぶようになると、Marp の文書を開いたときに例外になる。
+ * Vitest は `vitest.config.ts` を使い、この差し替えを通らない。差し替えた状態の確認は実ビルドで行う（docs/measurements/07-bundle.md §8）。
+ */
+function marpStubs(): Plugin {
+  return {
+    name: 'marxdown:marp-stubs',
+    enforce: 'pre',
+    async resolveId(source, importer) {
+      const from = importer?.replaceAll('\\', '/') ?? '';
+      if (from.includes('/node_modules/@marp-team/marp-core/')) return MARP_STUBBED.test(source) ? MARP_STUB_ID : null;
+
+      // NOTE: Marpit が使う markdown-it（14）と、pipeline の markdown-it（15）は同じ版の punycode と mdurl を使う。
+      // 共有されると別のチャンクへ切り出され、CJS 互換の包みも付いて critical path が増える。marp チャンクには別のモジュールとして複製させる。
+      // 複製したモジュールが読むもの（mdurl の `lib/`）にも同じ印を付ける。付けないと中身だけが共有される。
+      const privateCopy =
+        from.endsWith(MARP_COPY) ||
+        (from.includes('/node_modules/markdown-it/') && !from.startsWith(APP_MARKDOWN_IT) && MARP_PRIVATE.has(source));
+      if (!privateCopy) return null;
+      // eslint-disable-next-line unicorn/no-this-outside-of-class -- Rollup のプラグインのフックは解決の文脈を `this` で受け取る
+      const resolved = await this.resolve(source, importer, { skipSelf: true });
+      return resolved && !resolved.external ? `${resolved.id.replace(/\?.*$/, '')}${MARP_COPY}` : null;
+    },
+    load(id) {
+      return id === MARP_STUB_ID ? 'export default {};' : null;
+    },
+  };
+}
+
 /** バンドルに入った npm パッケージの一覧の書き出し先（`scripts/gen-third-party-notices.mjs` が読む）。 */
 const BUNDLED_PACKAGES_FILE = fileURLToPath(new URL('./node_modules/.tmp/bundled-packages.json', import.meta.url));
 
@@ -117,6 +170,7 @@ export default defineConfig(({ mode }) => ({
   plugins: [
     svelte(),
     katexWoff2Only(),
+    marpStubs(),
     recordBundledPackages(),
     ...(mode === 'analyze'
       ? [visualizer({ filename: 'dist/stats.html', gzipSize: true, brotliSize: true, open: false })]

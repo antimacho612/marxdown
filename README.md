@@ -7,7 +7,7 @@
 
 ### Markdown を見る・書くなら、これ一択。
 
-ターミナルで `marxdown README.md` と打った瞬間に読める、軽くて美しい Markdown ビューア＆エディター。
+ターミナルで `marxdown README.md` と入力した瞬間に読める、軽くて美しい Markdown ビューアー＆エディターです。
 
 [![CI](https://github.com/antimacho612/marxdown/actions/workflows/ci.yml/badge.svg)](https://github.com/antimacho612/marxdown/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/antimacho612/marxdown?include_prereleases&sort=semver)](https://github.com/antimacho612/marxdown/releases)
@@ -28,76 +28,77 @@
 
 <br />
 
-![Split 表示。左のエディターで Markdown を編集し、右のプレビューに表・コード・数式・Mermaid の図が描画されている](assets/screenshot.png)
+![Split 表示。左のエディターで Markdown を編集し、右のプレビューに表・コード・数式・Mermaid の図が表示されている](assets/screenshot.png)
 
 ## 💡 こんなときに
 
 LLM に書かせた設計書、リポジトリの README、議事録。
-Markdown を「ちょっと開いて確認したい」場面は 1 日に何十回もある。
+Markdown を「ちょっと開いて確認したい」場面は、1 日に何十回もあります。
 
-そのたびに IDE を立ち上げて、ワークスペースと拡張機能の読み込みを待つ必要はない。
-Marxdown は、**開いて・読んで・少し直す** ためだけに作られている。
+そのたびに IDE を立ち上げて、ワークスペースや拡張機能の読み込みを待つ必要はありません。
+Marxdown は、**開いて・読んで・少し直す** ためのアプリです。
 
 ## ✨ 特徴
 
 ### ⚡ 一瞬で開く
 
-- 初回起動 **600ms 以内**、2 回目以降は **120ms 以内** を予算として守っている
-- 起動後は常駐し、2 回目以降の `marxdown foo.md` は既存のウィンドウに**タブ**として開く
-- アイドル時の CPU 使用率はほぼゼロ
+- 初回の起動は 600ms 以内、2 回目以降は 120ms 以内を目標に作っています
+- 起動後はタスクトレイで待機し、2 回目以降の `marxdown foo.md` は既存のウィンドウに**タブ**で開きます
+- 待機中は CPU をほとんど使いません
 
-### 📖 読むことに全振りしたプレビュー
+### 📖 読むためのプレビュー
 
-- 余白・行間・本文幅まで調整済みのタイポグラフィで、開いたままで読みやすい
-- **表・コードのシンタックスハイライト・数式（KaTeX）・図（Mermaid）** をそのまま描画
-- GitHub のアラート（`> [!NOTE]`）、タスクリスト、脚注、定義リスト、マーカー、上付き・下付き文字にも対応
-- アウトラインから見出しへジャンプ、プレビュー内検索
+- 余白・行間・本文幅を整えたタイポグラフィで、長い文書も読みやすく表示します
+- **表・コード（シンタックスハイライト）・数式（KaTeX）・図（Mermaid）** をそのまま表示します
+- GitHub のアラート（`> [!NOTE]`）、タスクリスト、脚注にも対応しています。定義リスト、マーカー、上付き・下付き文字などは設定で有効にできます
+- アウトラインから見出しへ移動したり、プレビュー内を検索したりできます
 
 ### ✍️ そのまま書ける
 
-- Preview / Edit / **Split** をキー 1 つで切り替え
-- エディターは VS Code と同じ Monaco
-- 保存しても、**触っていない箇所のバイト列は一切変えない**。改行コード・BOM・末尾改行も読み込み時のまま
-- 外部のツールがファイルを書き換えたら、自動で読み込み直す
+- Preview / Edit / **Split**（左右に並べる）をキー 1 つで切り替えられます
+- エディターは VS Code と同じ Monaco です
+- 保存しても、**編集していない箇所は 1 バイトも変わりません**。改行コード・BOM・末尾の改行も、開いたときのまま保ちます
+- ほかのアプリがファイルを書き換えると、自動で再読み込みします
 
 ### 🗂️ フォルダーごと開ける
 
-- `marxdown docs/` でファイルツリー付きで開く
-- `Ctrl+P` でフォルダー内の Markdown をあいまい検索
-- `Ctrl+Shift+P` のコマンドパレットから、すべての操作に届く
+- `marxdown docs/` で、フォルダー内のファイル一覧（エクスプローラー）と一緒に開きます
+- `Ctrl+P` で、フォルダー内の Markdown ファイルを名前の一部から検索できます
+- `Ctrl+Shift+P` のコマンドパレットから、すべての操作を実行できます
 
 ### 🎨 自分好みに
 
-- ライト / ダーク / システム追従
-- **50 種類の組み込み配色** に加え、CSS を置くだけで自作テーマを追加できる
-- 本文・コードのフォント、文字サイズ、行間、本文幅を設定画面から調整
+- ライトとダークを切り替えられます。Windows の設定に合わせることもできます
+- **50 種類の組み込み配色** に加え、CSS ファイルを置くだけで自分の配色を追加できます
+- 本文とコードのフォント、文字サイズ、行間、本文幅を設定画面で調整できます
 
 ### 🛡️ 知らないファイルも安心して開ける
 
-自分が書いていない Markdown を開くことを前提に、CSP・HTML のサニタイズ・ナビゲーションの禁止・ファイルアクセス範囲の検証を多層で組み合わせている。
-Mermaid が生成した図も同じサニタイザを通す。
+自分で書いていない Markdown を開くことを前提に作っています。
+文書に埋め込まれたスクリプトは実行せず、リンクを踏んでもアプリ内で別のページへ移動しません。
+開いたファイルのフォルダーの外にあるファイルは、許可しない限り読み込みません。
 
 ## 📦 インストール
 
 > [!NOTE]
-> 現在は **Windows 10 / 11（x64）** のみ配布しています。
+> 現在は **Windows 10 / 11（x64）** 版のみ配布しています。
 
-1. [Releases](https://github.com/antimacho612/marxdown/releases/latest) から `Marxdown_<バージョン>_x64-setup.exe` をダウンロードする
-2. 実行する。管理者権限は不要（`%LOCALAPPDATA%\Marxdown` にインストールされる）
-3. 最後に「新しいターミナルから marxdown コマンドで開けるようにしますか？」と聞かれたら **「はい」** を選ぶ
+1. [Releases](https://github.com/antimacho612/marxdown/releases/latest) から `Marxdown_<バージョン>_x64-setup.exe` をダウンロードします
+2. ダウンロードしたファイルを実行します。管理者権限は不要です（`%LOCALAPPDATA%\Marxdown` にインストールされます）
+3. 最後に「ターミナルから marxdown コマンドを使えるようにしますか？」と表示されたら、**「はい」** を選びます
 
-`.md` / `.markdown` に関連付けられるので、エクスプローラーからのダブルクリックでも開ける。
+`.md` / `.markdown` ファイルに関連付けられるため、エクスプローラーからダブルクリックしても開けます。
 
-新しいバージョンが出ると、アプリ内に通知が出る。
-「更新して再起動」を押せばそのまま入れ替わる（変更内容は [CHANGELOG](CHANGELOG.md)）。
+新しいバージョンが出ると、アプリ内に通知が表示されます。
+「更新して再起動」を押すと、そのまま新しいバージョンに入れ替わります（変更内容は [CHANGELOG](CHANGELOG.md)）。
 
 <details>
 <summary>「Windows によって PC が保護されました」と表示されたら</summary>
 
 <br />
 
-インストーラにコード署名をしていないため、初回実行時に SmartScreen が表示されます（[ADR-0018](docs/adr/0018-no-code-signing.md)）。
-「詳細情報」→「実行」で続行できます。
+インストーラーにはコード署名をしていないため、初回の実行時に SmartScreen の警告が表示されます。
+「詳細情報」→「実行」の順に選ぶと、インストールを続けられます。
 
 </details>
 
@@ -107,7 +108,7 @@ Mermaid が生成した図も同じサニタイザを通す。
 <br />
 
 Windows 11 には標準で入っています。
-入っていない環境（一部の Windows 10）では、インストール中に自動でダウンロードするため、ネットワーク接続が必要です。
+入っていない環境（一部の Windows 10）では、インストール中に自動でダウンロードするため、インターネット接続が必要です。
 
 </details>
 
@@ -116,8 +117,8 @@ Windows 11 には標準で入っています。
 
 <br />
 
-`/ADDTOPATH` を付けると PATH にも追加します。
-更新時は前回の選択を引き継ぎます。
+`/ADDTOPATH` を付けると、PATH にも追加します。
+更新するときは、前回の選択を引き継ぎます。
 
 ```powershell
 .\Marxdown_0.1.0_x64-setup.exe /S /ADDTOPATH
@@ -143,8 +144,8 @@ Windows 11 には標準で入っています。
 <br />
 
 「設定 > アプリ > インストールされているアプリ」から Marxdown をアンインストールします。
-関連付けと PATH のエントリは元に戻ります。
-設定と最近開いたファイルの履歴も消したい場合は、アンインストール画面の「アプリのデータを削除」にチェックを入れてください。
+ファイルの関連付けと PATH は元に戻ります。
+設定と最近開いたファイルの履歴も削除する場合は、アンインストール画面で「アプリのデータを削除」にチェックを入れてください。
 
 </details>
 
@@ -152,35 +153,41 @@ Windows 11 には標準で入っています。
 
 ```bash
 marxdown README.md                 # ファイルを開く
-marxdown README.md CHANGELOG.md    # 複数まとめて開く
+marxdown README.md CHANGELOG.md    # 複数のファイルをまとめて開く
 marxdown docs/                     # フォルダーを開く
-marxdown -m split notes.md         # 表示モードを指定: preview | edit | split
+marxdown -m split notes.md         # 表示モードを指定して開く: preview | edit | split
+llm "設計案を出して" | marxdown -   # 標準入力の内容を無題の文書として開く
 marxdown --help
 ```
 
-cmd.exe / PowerShell / Git Bash のどれから実行しても、プロンプトはすぐに戻ります。
+cmd.exe / PowerShell / Git Bash のどこから実行しても、プロンプトはすぐに戻ります。
+
+標準入力から開いた文書は、まだファイルとして保存されていません。残したいときは <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>S</kbd>（名前を付けて保存）で保存してください。
+Windows PowerShell 5.1 からパイプで渡すと、ASCII 以外の文字が `?` に置き換わります（PowerShell の仕様です）。PowerShell 7.4 以降では起きません。
+
+エクスプローラーでフォルダーを右クリックし、「Marxdown で開く」を選んでも開けます（Windows 11 では「その他のオプションを確認」の中にあります）。
 
 > [!TIP]
 > `✕` でウィンドウを閉じても、Marxdown はタスクトレイで待機しています。
-> 次の `marxdown` が一瞬で開くのはこのためです。
-> 完全に終了するには `Ctrl+Q` か、トレイメニューの「終了」を使ってください。
+> 次の `marxdown` がすぐに開くのはこのためです。
+> 完全に終了するには、<kbd>Ctrl</kbd>+<kbd>Q</kbd> を押すか、タスクトレイのメニューから「終了」を選んでください。
 
 ### ⌨️ 主なショートカット
 
 | キー | 動作 |
 | --- | --- |
-| <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>V</kbd> | Preview ⇄ Edit |
-| <kbd>Ctrl</kbd>+<kbd>\\</kbd> | Split（編集とプレビューを並べる） |
+| <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>V</kbd> | Preview と Edit を切り替える |
+| <kbd>Ctrl</kbd>+<kbd>\</kbd> | Split（エディターとプレビューを左右に並べる） |
 | <kbd>Ctrl</kbd>+<kbd>P</kbd> | フォルダー内のファイルを検索して開く |
 | <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd> | コマンドパレット |
 | <kbd>Ctrl</kbd>+<kbd>,</kbd> | 設定 |
 | <kbd>Ctrl</kbd>+<kbd>Q</kbd> | 終了 |
 
-すべてのキーバインドは [キーバインド一覧](docs/03.ux-spec/04-keybindings.md) を参照。
+すべてのショートカットは [キーバインド一覧](docs/03.ux-spec/04-keybindings.md) を参照してください。
 
 ## 🛠️ 開発に参加する
 
-ビルド手順・検査・計測・コード構成は [CONTRIBUTING.md](CONTRIBUTING.md) に、設計の全体は [`docs/`](docs/README.md) にあります。
+ビルド手順・検査・計測・コードの構成は [CONTRIBUTING.md](CONTRIBUTING.md) に、設計の全体は [`docs/`](docs/README.md) にあります。
 
 ## 📄 ライセンス
 

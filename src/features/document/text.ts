@@ -38,6 +38,13 @@ export interface EditorTextPort {
   replaceLine: (line: number, text: string) => void;
   /** そのタブが保持しているものを解放する（タブを閉じたとき / N-PERF-06）。 */
   dispose: (key: number) => void;
+  /**
+   * そのタブの文書の同一性だけを付け替える（ファイルツリーでのリネーム・移動 / ADR-0020）。
+   *
+   * 中身は同じ文書のままなので、Undo 履歴とカーソルを引き継ぐ。
+   * 付け替えないと、次に `switchTo` へ来たときに別の文書と見なされてモデルが作り直される。
+   */
+  relabel: (key: number, documentId: string) => void;
 }
 
 /** エディターがマウントされていない間の保持先。マウントされたら `null` に戻す。 */
@@ -82,6 +89,16 @@ export interface DocumentIdentity {
   key: number;
   /** 文書の同一性。パスを使い、無題の文書は `<untitled>` で表す。 */
   documentId: string;
+}
+
+/**
+ * そのタブの文書のパスが変わったことを伝える（ファイルツリーでのリネーム・移動 / ADR-0020）。
+ *
+ * 同じ文書の続きとして扱い、Undo 履歴を引き継ぐ（`EditorTextPort.relabel`）。
+ */
+export function relabelDocumentText(key: number, documentId: string): void {
+  if (current?.key === key) current = { key, documentId };
+  port?.relabel(key, documentId);
 }
 
 /** そのタブが保持しているものを解放する。タブを閉じたときに呼ぶ（N-PERF-06）。 */

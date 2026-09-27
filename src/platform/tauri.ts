@@ -16,9 +16,13 @@ import type {
   DirEntry,
   DiscardChoice,
   DocumentPayload,
+  EntriesMoved,
+  EntriesRemoved,
   FileChange,
   FileList,
   InstallRefusal,
+  MarpThemes,
+  Moved,
   OpenRequest,
   Platform,
   RecentEntry,
@@ -44,6 +48,9 @@ const EVENT_MAXIMIZE_HOVER = 'marxdown://maximize-hover';
 const EVENT_TAB_ARRIVE = 'marxdown://tab-arrive';
 const EVENT_TAB_DRAG_OVER = 'marxdown://tab-drag-over';
 const EVENT_UPDATE_AVAILABLE = 'marxdown://update-available';
+const EVENT_DIR_CHANGED = 'marxdown://dir-changed';
+const EVENT_ENTRIES_MOVED = 'marxdown://entries-moved';
+const EVENT_ENTRIES_REMOVED = 'marxdown://entries-removed';
 
 /**
  * このウィンドウ宛てのイベントだけを受け取る。
@@ -126,6 +133,54 @@ export const tauriPlatform: Platform = {
     return invoke<FileList>('list_files', { path: root, extensions: MARKDOWN_EXTENSIONS });
   },
 
+  watchTree(dirs) {
+    return invoke<void>('watch_tree', { dirs });
+  },
+
+  onDirChanged(handler) {
+    return subscribe(() => listenHere<FileChange>(EVENT_DIR_CHANGED, (event) => handler(event.payload.path)));
+  },
+
+  createEntry(parent, name, dir) {
+    return invoke<string>('create_entry', { parent, name, dir });
+  },
+
+  renameEntry(path, newName) {
+    return invoke<Moved>('rename_entry', { path, newName });
+  },
+
+  moveEntries(paths, dest) {
+    return invoke<Moved[]>('move_entries', { paths, dest });
+  },
+
+  copyEntries(paths, dest) {
+    return invoke<string[]>('copy_entries', { paths, dest });
+  },
+
+  trashEntries(paths) {
+    return invoke<string[]>('trash_entries', { paths });
+  },
+
+  importDropped(paths, dest) {
+    return invoke<string[]>('import_dropped', { paths, dest });
+  },
+
+  openDroppedFolder(path) {
+    return invoke<string>('open_dropped_folder', { path });
+  },
+
+  onEntriesMoved(handler) {
+    return subscribe(() => listenHere<EntriesMoved>(EVENT_ENTRIES_MOVED, (event) => handler(event.payload)));
+  },
+
+  onEntriesRemoved(handler) {
+    return subscribe(() => listenHere<EntriesRemoved>(EVENT_ENTRIES_REMOVED, (event) => handler(event.payload)));
+  },
+
+  confirmAction(message, confirm) {
+    return invoke<boolean>('confirm_action', { message, confirm });
+  },
+
   setSession(paths, active) {
     return invoke<void>('store_set_session', { paths, active });
   },
@@ -162,6 +217,20 @@ export const tauriPlatform: Platform = {
     return invoke<string | null>('pick_save_path', { suggested });
   },
 
+  exportHtml(html, suggested) {
+    return invoke<string | null>('export_html', { html, suggested });
+  },
+
+  exportPdf(suggested) {
+    return invoke<string | null>('export_pdf', { suggested });
+  },
+
+  inlineImage(src) {
+    // `convertFileSrc` の逆。パスは URL のパス部分に 1 つのセグメントとしてエンコードされている。
+    const path = decodeURIComponent(new URL(src).pathname.slice(1));
+    return invoke<string>('inline_image', { path });
+  },
+
   setDirty(dirty) {
     return invoke<void>('set_dirty', { dirty });
   },
@@ -190,6 +259,10 @@ export const tauriPlatform: Platform = {
     return invoke<void>('open_themes_dir');
   },
 
+  readMarpThemes(paths) {
+    return invoke<MarpThemes>('read_marp_themes', { paths });
+  },
+
   onUserThemesChanged(handler) {
     return subscribe(() => listenHere(EVENT_THEMES_CHANGED, () => handler()));
   },
@@ -213,9 +286,15 @@ export const tauriPlatform: Platform = {
   onDragDrop(handler) {
     return subscribe(() =>
       getCurrentWebview().onDragDropEvent(({ payload }) => {
-        if (payload.type === 'drop') handler({ type: 'drop', paths: payload.paths });
-        else if (payload.type === 'over') handler({ type: 'over' });
-        else handler({ type: 'leave' });
+        if (payload.type === 'leave') {
+          handler({ type: 'leave' });
+          return;
+        }
+        // 位置は物理ピクセルで届く。`elementFromPoint` に渡せるよう CSS ピクセルへ直す。
+        const x = payload.position.x / globalThis.devicePixelRatio;
+        const y = payload.position.y / globalThis.devicePixelRatio;
+        if (payload.type === 'drop') handler({ type: 'drop', paths: payload.paths, x, y });
+        else handler({ type: 'over', x, y });
       }),
     );
   },

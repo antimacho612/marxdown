@@ -122,6 +122,13 @@ export const LAYOUT = [
       },
       {
         kind: 'field',
+        key: 'window.launchAtLogin',
+        widget: 'toggle',
+        label: ja.settings.window.launchAtLogin.label,
+        description: ja.settings.window.launchAtLogin.description,
+      },
+      {
+        kind: 'field',
         key: 'update.autoCheck',
         widget: 'toggle',
         label: ja.settings.update.autoCheck.label,
@@ -414,7 +421,17 @@ export const LAYOUT = [
     id: 'markdown',
     label: ja.settings.categories.markdown,
     // 節の見出しは置かない。カテゴリ自体が「記法」であり、7 項目に見出しを足しても分かれ目が増えるだけである。
-    entries: SYNTAX_FIELDS,
+    entries: [
+      ...SYNTAX_FIELDS,
+      {
+        kind: 'field',
+        key: 'marp.themes',
+        widget: 'list',
+        placeholder: ja.settings.marp.themes.placeholder,
+        label: ja.settings.marp.themes.label,
+        description: ja.settings.marp.themes.description,
+      },
+    ],
   },
   {
     id: 'explorer',

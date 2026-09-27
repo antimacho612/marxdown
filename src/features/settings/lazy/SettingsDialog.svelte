@@ -204,7 +204,8 @@ Rust 側も拒否するが、UI が「保存できたように見せる」のを
 
   /** 並びを入力欄の 1 行にする。縦罫線は桁だけを出す。 */
   function listText(key: ListKey): string {
-    if (key === 'explorer.exclude' || key === 'editor.wordSegmenterLocales') return values[key].join(', ');
+    if (key === 'explorer.exclude' || key === 'editor.wordSegmenterLocales' || key === 'marp.themes')
+      return values[key].join(', ');
     return values[key].map(rulerColumn).join(', ');
   }
 
@@ -220,7 +221,7 @@ Rust 側も拒否するが、UI が「保存できたように見せる」のを
       .map((part) => part.trim())
       .filter((part) => part.length > 0);
 
-    if (key === 'explorer.exclude' || key === 'editor.wordSegmenterLocales') {
+    if (key === 'explorer.exclude' || key === 'editor.wordSegmenterLocales' || key === 'marp.themes') {
       changeSetting(key, parts);
       return parts.join(', ');
     }
@@ -325,7 +326,7 @@ Rust 側も拒否するが、UI が「保存できたように見せる」のを
     <ToggleField
       settingKey={entry.key}
       label={entry.label}
-      description={`${description}（既定値: ${String(DEFAULT_SETTINGS[entry.key])}）`}
+      description={`${description}（${ja.settings.defaultValue(DEFAULT_SETTINGS[entry.key])}）`}
       checked={values[entry.key]}
       onChange={(checked) => changeSetting(entry.key, checked)}
     />

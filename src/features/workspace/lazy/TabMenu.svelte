@@ -10,7 +10,7 @@
   `Esc` で閉じてタブへ戻る / `↑↓` で移動 / `Home` `End` で端へ移動する。
 -->
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount, tick } from 'svelte';
 
   import { isSatellite } from '@/features/view';
   import { ja } from '@/i18n/ja';
@@ -62,7 +62,7 @@
     (last ? list.at(-1) : list[0])?.focus();
   }
 
-  onMount(() => {
+  onMount(async () => {
     // 画面からはみ出す分だけ戻す。
     // 測るのはマウント後の 1 回だけで、開いている間に大きさは変わらない。
     const box = panel.getBoundingClientRect();
@@ -70,6 +70,8 @@
       left: Math.max(EDGE_MARGIN, Math.min(x, globalThis.innerWidth - box.width - EDGE_MARGIN)),
       top: Math.max(EDGE_MARGIN, Math.min(y, globalThis.innerHeight - box.height - EDGE_MARGIN)),
     };
+    // 位置が決まるまでは `visibility: hidden` で、その間の `focus()` は無視される。表示に切り替わってから移す。
+    await tick();
     focusEdge(false);
   });
 

@@ -252,6 +252,10 @@ export function mountEditor(host: HTMLElement): monaco.editor.IStandaloneCodeEdi
     },
     switchTo: switchToDocument,
     dispose: disposeTabModel,
+    relabel: (key, documentId) => {
+      const entry = tabModels.get(key);
+      if (entry) entry.documentId = documentId;
+    },
   });
 
   return editor;

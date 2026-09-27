@@ -1,8 +1,8 @@
 //! ファイル監視（02.architecture/04-rust-responsibilities.md §4 / §5 / F-EDIT-16）。
 //!
-//! 監視対象は開いているファイルと、`settings.json` と、配色のディレクトリ（`themes/`）だけである。
-//! ディレクトリ全体は監視しない（N-PERF-05）。
-//! 中心ユースケースは「LLM が書き換えたファイルを開いたまま閲覧する」ことであり、周辺のファイルが変わったかどうかは不要な情報でしかない。
+//! 監視対象は開いているファイルと、`settings.json` と、配色のディレクトリ（`themes/`）と、ファイルツリーで開いている枝だけである。
+//! ディレクトリを再帰的に監視することはしない（N-PERF-05）。
+//! ファイルツリーの枝は見えている範囲だけを非再帰で監視し、閉じれば解放する（ADR-0021）。
 //!
 //! 監視しているファイルはアプリ自身も書き込む（設定 UI からの保存、本文の保存）。
 //! そのため、書き込み直後のイベントをそのまま処理すると、保存するたびに再読み込みが発生してしまう。
@@ -32,6 +32,8 @@ pub const EVENT_FILE_CHANGED: &str = "marxdown://file-changed";
 pub const EVENT_SETTINGS_CHANGED: &str = "marxdown://settings-changed";
 /// `themes/` の中身の変更（02.architecture/10-theming.md §3.4）。フロントは `list_user_themes` で読み直して適用し直す。
 pub const EVENT_THEMES_CHANGED: &str = "marxdown://themes-changed";
+/// ファイルツリーで開いている枝の中身の変更（ADR-0021）。フロントはそのディレクトリを 1 階層読み直す。
+pub const EVENT_DIR_CHANGED: &str = "marxdown://dir-changed";
 
 /// 変更が落ち着いたと見なすまでの時間（02.architecture/04-rust-responsibilities.md §4）。
 ///
@@ -60,6 +62,11 @@ pub enum Role {
     /// ここだけ対象がディレクトリである。
     /// 1 枚ごとに登録すると、後から置かれたファイルを検出できない。
     Themes,
+    /// ファイルツリーで開いている枝（ADR-0021）。対象はディレクトリで、ウィンドウに属する。
+    ///
+    /// 通知にはディレクトリ自身のパスを載せる。
+    /// 受け取る側は中身をすべて読み直すだけであり、どの項目が変わったかでは処理が分かれない。
+    Tree,
 }
 
 impl Role {
@@ -68,6 +75,7 @@ impl Role {
             Self::Document => EVENT_FILE_CHANGED,
             Self::Settings => EVENT_SETTINGS_CHANGED,
             Self::Themes => EVENT_THEMES_CHANGED,
+            Self::Tree => EVENT_DIR_CHANGED,
         }
     }
 }
@@ -121,7 +129,7 @@ struct Target {
     directory: bool,
     /// この対象を必要としているウィンドウのラベル（F-OPEN-06）。
     ///
-    /// `Role::Document` でのみ使う。`settings.json` と `themes/` はウィンドウに属さないため空のままである。
+    /// `Role::Document` と `Role::Tree` でのみ使う。`settings.json` と `themes/` はウィンドウに属さないため空のままである。
     ///
     /// 集合で持つ必要がある。
     /// 同じファイルを 2 つのウィンドウで開くと 1 つの対象を共有するため、片方が閉じただけで解除するともう片方の自動再読み込みが止まる。
@@ -156,11 +164,17 @@ impl Registry {
         // 中身の増減も編集も、受け取る側にとっては「全部読み直せ」でしかなく、どの枚が変わったかで処理が分かれない。
         // 覚えないぶん自分が書いた直後のイベントも通るが、通った先で読み直して同じ結果になるだけである。
         if target.directory {
-            let stamp = stamp_of(path);
+            // ファイルツリーはディレクトリ単位で読み直すため、中身ではなくディレクトリ自身を渡す（ADR-0021）。
+            let reported = if target.role == Role::Tree {
+                key.as_path()
+            } else {
+                path
+            };
+            let stamp = stamp_of(reported);
             return Some((
                 target.role,
                 FileChange {
-                    path: path.display().to_string(),
+                    path: reported.display().to_string(),
                     mtime_ms: stamp.map(|s| s.mtime_ms).unwrap_or(0),
                     kind: if stamp.is_some() {
                         ChangeKind::Modified
@@ -189,6 +203,36 @@ impl Registry {
                 },
             },
         ))
+    }
+
+    /// [`decide`](Self::decide) に加えて、そのパスを中身に持つファイルツリーの枝にも知らせる。
+    ///
+    /// 開いている文書が枝の中にあると、`decide` は文書の側だけを返す。
+    /// その文書が消えたり作られたりしたことは、枝の一覧にとっても変化である。
+    fn decide_all(&mut self, path: &Path) -> Vec<(Role, FileChange)> {
+        let mut decided = self.decide(path).into_iter().collect::<Vec<_>>();
+        if decided.iter().any(|(role, _)| *role == Role::Tree) {
+            return decided;
+        }
+        let tree = self
+            .directory_of(path)
+            .filter(|dir| self.targets.get(dir).is_some_and(|t| t.role == Role::Tree));
+        if let Some(dir) = tree {
+            let stamp = stamp_of(&dir);
+            decided.push((
+                Role::Tree,
+                FileChange {
+                    path: dir.display().to_string(),
+                    mtime_ms: stamp.map(|s| s.mtime_ms).unwrap_or(0),
+                    kind: if stamp.is_some() {
+                        ChangeKind::Modified
+                    } else {
+                        ChangeKind::Removed
+                    },
+                },
+            ));
+        }
+        decided
     }
 
     /// イベントのパスを、登録済みのキーに合わせる。
@@ -259,10 +303,19 @@ impl FileWatcher {
             paths.sort_unstable();
             paths.dedup();
 
+            // ディレクトリの監視では、中身の数だけ同じ通知ができる。1 回にまとめてから流す。
+            let mut emitted: Vec<(Role, FileChange)> = Vec::new();
             for path in paths {
-                let decided = for_handler.lock().ok().and_then(|mut r| r.decide(&path));
-                if let Some((role, change)) = decided {
-                    let _ = app.emit(role.event(), &change);
+                let decided = for_handler
+                    .lock()
+                    .map(|mut r| r.decide_all(&path))
+                    .unwrap_or_default();
+                for item in decided {
+                    if emitted.contains(&item) {
+                        continue;
+                    }
+                    let _ = app.emit(item.0.event(), &item.1);
+                    emitted.push(item);
                 }
             }
         })
@@ -427,6 +480,36 @@ impl FileWatcher {
         self.watch_for(path, Role::Document, Some(label))
     }
 
+    /// そのウィンドウのファイルツリーで開いている枝を差し替える（ADR-0021）。
+    ///
+    /// 渡した集合がそのまま監視の対象になる。
+    /// 含まれなくなった枝（閉じた枝・基点が変わる前の枝）はここで解放し、空を渡せばすべて手放す。
+    pub fn watch_tree(&self, label: &str, dirs: &[PathBuf]) {
+        let keep = dirs
+            .iter()
+            .filter_map(|dir| document::canonicalize(dir).ok())
+            .filter(|dir| dir.is_dir())
+            .collect::<Vec<_>>();
+
+        let stale = match self.registry.lock() {
+            Ok(registry) => registry
+                .targets
+                .iter()
+                .filter(|(p, t)| {
+                    t.role == Role::Tree && t.owners.contains(label) && !keep.contains(p)
+                })
+                .map(|(p, _)| p.clone())
+                .collect::<Vec<_>>(),
+            Err(_) => return,
+        };
+        for path in stale {
+            self.release_key(label, &path);
+        }
+        for dir in keep {
+            self.watch_for(&dir, Role::Tree, Some(label));
+        }
+    }
+
     /// 閉じたウィンドウが持っていたドキュメントの監視をすべて手放す。
     ///
     /// 常駐するアプリであるため、ウィンドウを閉じただけでは監視スレッドは止まらない（ADR-0004 / N-PERF-06）。
@@ -436,7 +519,9 @@ impl FileWatcher {
             Ok(registry) => registry
                 .targets
                 .iter()
-                .filter(|(_, t)| t.role == Role::Document && t.owners.contains(label))
+                .filter(|(_, t)| {
+                    matches!(t.role, Role::Document | Role::Tree) && t.owners.contains(label)
+                })
                 .map(|(p, _)| p.clone())
                 .collect::<Vec<_>>(),
             Err(_) => return,
@@ -598,6 +683,52 @@ mod tests {
         assert_eq!(Role::Document.event(), EVENT_FILE_CHANGED);
         assert_eq!(Role::Settings.event(), EVENT_SETTINGS_CHANGED);
         assert_eq!(Role::Themes.event(), EVENT_THEMES_CHANGED);
+        assert_eq!(Role::Tree.event(), EVENT_DIR_CHANGED);
+    }
+
+    /// ファイルツリーの枝には、中身ではなく枝自身のパスを渡す（ADR-0021）。
+    #[test]
+    fn a_tree_is_told_its_own_path() {
+        let d = temp_dir("tree");
+        let mut registry = registry_with(&d, Role::Tree);
+        let created = d.join("new.md");
+        std::fs::write(&created, "# new").unwrap();
+
+        let decided = registry.decide_all(&created);
+        assert_eq!(decided.len(), 1);
+        assert_eq!(decided[0].0, Role::Tree);
+        assert_eq!(decided[0].1.path, d.display().to_string());
+        std::fs::remove_dir_all(&d).ok();
+    }
+
+    /// 開いている文書が枝の中にあっても、枝への通知は落とさない。
+    #[test]
+    fn a_document_inside_a_tree_notifies_both() {
+        let d = temp_dir("tree-doc");
+        let doc = d.join("open.md");
+        std::fs::write(&doc, "# a").unwrap();
+
+        let mut registry = registry_with(&d, Role::Tree);
+        let key = document::canonicalize(&doc).unwrap();
+        registry.targets.insert(
+            key.clone(),
+            Target {
+                role: Role::Document,
+                root: key.clone(),
+                seen: stamp_of(&key),
+                directory: false,
+                owners: HashSet::new(),
+            },
+        );
+        std::fs::remove_file(&doc).unwrap();
+
+        let roles = registry
+            .decide_all(&doc)
+            .into_iter()
+            .map(|(role, _)| role)
+            .collect::<Vec<_>>();
+        assert_eq!(roles, vec![Role::Document, Role::Tree]);
+        std::fs::remove_dir_all(&d).ok();
     }
 
     /// 同じフォルダーの 2 枚を開いたときの帰結。

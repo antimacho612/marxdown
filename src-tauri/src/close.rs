@@ -25,7 +25,7 @@ use crate::window::MAIN_LABEL;
 ///
 /// 終了の確認（`ask_then_quit`）と、別の文書へ移るときの確認（`commands::confirm_discard`）で共有する。
 /// 同じ状態を指す言葉が経路ごとに違うと、同じ危険が別のことのように見える。
-pub const DIRTY_MESSAGE: &str = "保存していない変更があります。";
+pub const DIRTY_MESSAGE: &str = "未保存の変更があります。保存しますか？";
 
 /// いま `✕` がどちらの意味か（設定 `window.closeToTray`）。
 ///
@@ -338,14 +338,14 @@ fn ask_then_stash<R: Runtime>(app: AppHandle<R>, label: String) {
     let handle = app.clone();
     app.dialog()
         .message(
-            "Marxdown はトレイに常駐します。閉じても次に開くときが速くなります。\n\
-             この動作は設定で変更できます（window.closeToTray）。",
+            "ウィンドウを閉じても、Marxdown はタスクトレイで動作し続けます。次に開くときにすぐ表示されます。\n\n\
+             この動作は、設定の「閉じるときにタスクトレイに格納する」で変更できます。",
         )
         .title("Marxdown")
         .kind(MessageDialogKind::Info)
         .buttons(MessageDialogButtons::OkCancelCustom(
-            "トレイに格納".to_string(),
-            "終了する".to_string(),
+            "タスクトレイに格納".to_string(),
+            "終了".to_string(),
         ))
         .show(move |stash_it| {
             if stash_it {

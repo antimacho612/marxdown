@@ -24,6 +24,44 @@ export interface ParseResult {
   parseMs: number;
   /** 文字数と読了時間（03.ux-spec/07-status-and-notifications.md §3）。本文を持っている側で数える。 */
   textStats: TextStats;
+  /**
+   * Marp の文書（Front Matter に `marp: true`）のときの描画結果（F-VIEW-17 / ADR-0023）。
+   *
+   * このとき `chunks` と `blocks` は空で、本文は `features/preview/marp.ts` が描く。
+   */
+  marp?: MarpRender;
+}
+
+/** Marp の文書の描画結果。HTML はサニタイズしていない。 */
+export interface MarpRender {
+  /** スライドごとの HTML。1 枚が `<svg data-marpit-svg>` 1 つにあたる。 */
+  slides: string[];
+  /** テーマと文書中の `<style>` をまとめた CSS。Marpit がスライドの中へ閉じ込めてある。 */
+  css: string;
+  outline: OutlineItem[];
+  /**
+   * 自作テーマ（`marp.themes`）のうち、登録できなかったもの。
+   *
+   * テーマを読み直したときだけ入る。打鍵ごとの再描画で同じ通知を繰り返さないためである。
+   */
+  themeProblems?: MarpThemeProblem[];
+}
+
+/** Marp の自作テーマの読み込み結果（`platform` の `MarpThemes` と同じ形）。 */
+export interface MarpThemeSet {
+  themes: { path: string; css: string }[];
+  problems: MarpThemeProblem[];
+}
+
+/**
+ * 自作テーマを登録できなかった理由。
+ *
+ * `no-theme-name` 以外は Rust 側が読むときに判定する（`src-tauri/src/marp_themes.rs`）。
+ * `no-theme-name` は `/* @theme 名前 *\/` が無く、marp-core が登録を拒んだものである。
+ */
+export interface MarpThemeProblem {
+  path: string;
+  kind: 'not-absolute' | 'missing' | 'not-css' | 'too-large' | 'too-many' | 'unreadable' | 'no-theme-name';
 }
 
 /** 段階的描画の既定値。最初のチャンクがおよそ 1 画面分になるように選ぶ。 */

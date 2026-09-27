@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * 版の番号と変更履歴を扱うリリース用のスクリプト（docs/adr/0020-auto-update.md §3.7）。
+ * 版の番号と変更履歴を扱うリリース用のスクリプト（docs/adr/0024-auto-update.md §3.7）。
  *
  * 版の番号は `package.json` を唯一の情報源とする。
  * `tauri.conf.json` は `"../package.json"` を参照するため書き換えない。

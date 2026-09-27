@@ -130,7 +130,14 @@ pub fn create(
     // ウィンドウは `visible: false` で生成されるため、ここで設定しておけば表示されている間は一度も出ない。
     crate::webview::disable_default_context_menu(&window);
 
-    spawn_show_fallback(app.clone(), label.to_string());
+    // `--background`（ADR-0020）では表示しない。`ready` が来なくても、表示を強制すればログインのたびにウィンドウが現れる。
+    let background = label == MAIN_LABEL
+        && app
+            .try_state::<crate::state::AppState>()
+            .is_some_and(|s| s.args.background);
+    if !background {
+        spawn_show_fallback(app.clone(), label.to_string());
+    }
     Ok(window)
 }
 

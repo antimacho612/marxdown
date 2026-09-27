@@ -75,6 +75,8 @@ describe('ハンバーガーメニューの項目 (03.ux-spec/01-screen-layout.m
       'new',
       'save',
       'save-as',
+      'export-html',
+      'export-pdf',
       'move-to-new-window',
       'mode',
       'split',

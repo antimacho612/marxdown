@@ -33,6 +33,7 @@ pub enum PathOp {
 
 /// 解析済みの起動引数。
 /// 不正な引数でも解析は失敗させず、`unknown` に加えて通知バーで知らせる。
+/// `unknown` の各要素は画面にそのまま並ぶため、利用者が入力した引数の形（値の欠けた `--mode`、不正な値の `--mode foo`）で持つ。
 #[derive(Debug, Clone, Default)]
 pub struct CliArgs {
     /// 絶対パスに解決済み。存在確認はまだ行っていない。
@@ -58,6 +59,20 @@ pub struct CliArgs {
     /// インストーラ専用（`windows/installer-hooks.nsh`）。
     /// single-instance プラグインより前に処理するため、アプリが常駐していても argv は転送されない。
     pub path_op: Option<PathOp>,
+    /// `-`。標準入力を読み、一時ファイルへ書き出してから起動し直す（F-OPEN-10 / `stdin.rs`）。
+    ///
+    /// `--` より後の `-` はファイル名として扱い、ここには入らない。
+    pub stdin: bool,
+    /// `--stdin-file <PATH>`。`-` を受けたプロセスが起動し直すときに付ける。
+    ///
+    /// 利用者が指定するものではない。
+    /// 読んだ後に消すため、一時ディレクトリ直下のファイル以外は `stdin::take` が拒否する。
+    pub stdin_file: Option<PathBuf>,
+    /// `--background`。ウィンドウを表示せずにトレイへ格納した状態で起動する（ADR-0020）。
+    ///
+    /// ログイン時の自動起動（`autostart.rs`）が `Run` に書く値に付ける。
+    /// 常駐中のプロセスへ転送されたときは何もしない。
+    pub background: bool,
     pub show_help: bool,
     pub show_version: bool,
     /// 解析できなかった引数。警告として通知バーに出す。
@@ -65,27 +80,24 @@ pub struct CliArgs {
 }
 
 /// `--help` の出力。オプションを足したらここも直す。
+///
+/// 載せるのは利用者が使うオプションだけである。
+/// 計測用（`--trace-startup` / `--exit-after-trace` / `--gc-probe` / `--bench-input`）とインストーラ用（`--add-to-path` / `--remove-from-path`）は解析するが、ここには載せない。
 pub const HELP: &str = "\
-marxdown — Markdown を見る・書くなら、これ一択。
+marxdown — Markdown ビューアー＆エディター
 
-USAGE:
-    marxdown [OPTIONS] [FILE|DIR]...
+使い方:
+    marxdown [オプション] [ファイル|フォルダー]...
+    <コマンド> | marxdown [オプション] -
 
-OPTIONS:
-    -m, --mode <MODE>          起動時の表示モード: preview | edit | split
-        --trace-startup <OUT>  起動計測を有効にし、JSON を OUT へ書き出す
-                               OUT に nul を指定すると計測のみ行い書き出さない
-        --exit-after-trace     計測の書き出し後にプロセスを終了する（ベンチ用）
-    -h, --help                 このヘルプを表示する
-    -V, --version              バージョンを表示する
+引数:
+    -                      標準入力の内容を無題の文書として開く
 
-MEASUREMENT OPTIONS (計測用。開発ビルドでのみ意味を持つ):
-        --gc-probe                              DevTools から gc() を呼べるようにする
-        --bench-input <OUT>                     入力レスポンスを計測し JSON を OUT へ書き出して終了する
-
-INSTALLER OPTIONS (インストーラが使う):
-        --add-to-path          インストール先の bin をユーザーの PATH に追加して終了する
-        --remove-from-path     同じエントリをユーザーの PATH から削除して終了する
+オプション:
+    -m, --mode <モード>    表示モードを指定して開く: preview | edit | split
+        --background       ウィンドウを表示せず、タスクトレイで起動する
+    -h, --help             このヘルプを表示する
+    -V, --version          バージョンを表示する
 ";
 
 /// `argv`（実行ファイル名を含まない）と `cwd` から引数を解析する。
@@ -123,7 +135,7 @@ pub fn parse(argv: &[String], cwd: &Path) -> CliArgs {
                     i += 1;
                     Some(v)
                 } else {
-                    args.unknown.push(concat!($name, " に値がない").to_string());
+                    args.unknown.push($name.to_string());
                     None
                 }
             }};
@@ -131,10 +143,12 @@ pub fn parse(argv: &[String], cwd: &Path) -> CliArgs {
 
         match key {
             "--" => only_paths = true,
+            "-" => args.stdin = true,
             "-h" | "--help" => args.show_help = true,
             "-V" | "--version" => args.show_version = true,
             "--exit-after-trace" => args.exit_after_trace = true,
             "--gc-probe" => args.gc_probe = true,
+            "--background" => args.background = true,
             "--add-to-path" => args.path_op = Some(PathOp::Add),
             "--remove-from-path" => args.path_op = Some(PathOp::Remove),
             "-m" | "--mode" => {
@@ -143,13 +157,18 @@ pub fn parse(argv: &[String], cwd: &Path) -> CliArgs {
                         "preview" => args.mode = Some(ViewMode::Preview),
                         "edit" => args.mode = Some(ViewMode::Edit),
                         "split" => args.mode = Some(ViewMode::Split),
-                        other => args.unknown.push(format!("--mode の値が不正: {other}")),
+                        other => args.unknown.push(format!("--mode {other}")),
                     }
                 }
             }
             "--trace-startup" => {
                 if let Some(v) = take_value!("--trace-startup") {
                     args.trace_startup = Some(resolve(cwd, &v));
+                }
+            }
+            "--stdin-file" => {
+                if let Some(v) = take_value!("--stdin-file") {
+                    args.stdin_file = Some(resolve(cwd, &v));
                 }
             }
             "--bench-input" => {
@@ -212,6 +231,28 @@ mod tests {
     fn the_gc_probe_is_opt_in() {
         assert!(!args(&["a.md"]).gc_probe, "既定では expose-gc を渡さない");
         assert!(args(&["--gc-probe", "a.md"]).gc_probe);
+    }
+
+    #[test]
+    fn a_lone_dash_reads_stdin() {
+        let a = args(&["-m", "edit", "-"]);
+        assert!(a.stdin);
+        assert!(a.paths.is_empty(), "`-` はパスとして扱わない");
+        assert!(a.unknown.is_empty());
+    }
+
+    #[test]
+    fn a_dash_after_double_dash_is_a_file_name() {
+        let a = args(&["--", "-"]);
+        assert!(!a.stdin);
+        assert_eq!(a.paths, vec![cwd().join("-")]);
+    }
+
+    #[test]
+    fn parses_stdin_file() {
+        let a = args(&["--stdin-file", "x.md"]);
+        assert_eq!(a.stdin_file, Some(cwd().join("x.md")));
+        assert!(a.paths.is_empty());
     }
 
     #[test]

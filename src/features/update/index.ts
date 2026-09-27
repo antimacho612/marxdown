@@ -1,5 +1,5 @@
 /**
- * update feature の公開面（02.architecture/03-layers.md §2 / ADR-0020）。
+ * update feature の公開面（02.architecture/03-layers.md §2 / ADR-0024）。
  *
  * 確認の契機も適用も Rust 側にあり、ここが持つのは通知バーへの表示と 2 つのコマンドの呼び出しだけである。
  *

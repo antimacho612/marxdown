@@ -9,6 +9,7 @@
 //! UI ロジックと Markdown の意味解釈は TypeScript 側にある。
 
 pub mod asset;
+mod autostart;
 mod bootstrap;
 pub mod cli;
 pub mod close;
@@ -18,13 +19,17 @@ mod document;
 /// タブのドラッグ中にカーソルへ追従する表示。Windows 以外では空になる（ファイル冒頭の `#![cfg(windows)]`）。
 pub mod drag_ghost;
 pub mod error;
+mod export;
+pub mod fsops;
 pub mod glob;
+pub mod marp_themes;
 pub mod path_env;
 pub mod scope;
 pub mod settings;
 /// Windows の Snap Layouts。Windows 以外では空になる（ファイル冒頭の `#![cfg(windows)]`）。
 pub mod snap_layouts;
 pub mod state;
+mod stdin;
 pub mod store;
 pub mod tab_drag;
 pub mod themes;
@@ -272,6 +277,12 @@ pub fn run() {
     if let Some(op) = args.path_op {
         std::process::exit(path_env::run(op));
     }
+    // `-`: 標準入力を書き出して起動し直す（`stdin.rs`）。
+    // このプロセスはシムがフォアグラウンドで実行しており、常駐させるとシェルが返らない。
+    if args.stdin {
+        let argv: Vec<String> = std::env::args().skip(1).collect();
+        std::process::exit(stdin::run(&argv));
+    }
 
     // `--gc-probe`: メモリ計測で強制 GC を使うための経路（05.performance-budget/05-operations.md §3）。
     // 閉じた文書のメモリが解放されるかを確かめるには強制 GC の後で測る必要があるが、既定の WebView2 に `gc()` は無い。
@@ -312,6 +323,11 @@ pub fn run() {
     let settings_path = settings::settings_path(&context.config().identifier);
     let mut settings_data = settings::load(settings_path.as_deref());
 
+    // ログイン時の自動起動（ADR-0020）。トレイに格納できない設定では、見えないプロセスが残るだけになる。
+    if args.background && !settings_data.values.window_close_to_tray {
+        return;
+    }
+
     if settings_data.broken.is_none() {
         let mut changed = false;
         if migrated.preview && settings_data.values.preview_theme == settings::DEFAULT_THEME_ID {
@@ -343,7 +359,7 @@ pub fn run() {
     let preview_theme = themes::find(themes_dir.as_deref(), &settings_data.values.preview_theme);
 
     // T2: ファイル読み込み。ウィンドウ生成の前に行い、WebView 初期化と重ねる。
-    let payload = bootstrap::build(&args, &trace, &store_data, &settings_data, preview_theme);
+    let mut payload = bootstrap::build(&args, &trace, &store_data, &settings_data, preview_theme);
     trace.mark(
         "T2",
         payload
@@ -352,6 +368,7 @@ pub fn run() {
             .map(|d| format!("{} bytes, inlined={}", d.meta.size, d.content.is_some())),
     );
 
+    let stdin_file = args.stdin_file.clone();
     let state = state::AppState::new(
         args,
         trace,
@@ -365,6 +382,21 @@ pub fn run() {
         },
     );
 
+    // 標準入力は、未保存のタブをサテライトへ移すときと同じ受け渡し箱で渡す（ADR-0016 §3.4）。
+    // パスを持たない文書は `read_document` で読み直せないため、本文ごと預ける必要がある。
+    if let Some(file) = stdin_file {
+        match stdin::take(&file) {
+            Ok(transfer) => payload.transfer = Some(state.stash_transfer(transfer)),
+            Err(e) => {
+                payload.document_error = Some(bootstrap::BootstrapError {
+                    path: "-".to_owned(),
+                    kind: e.kind().to_string(),
+                    message: e.to_string(),
+                });
+            }
+        }
+    }
+
     let mut builder = tauri::Builder::default();
 
     // 単一インスタンス化は他のどのプラグインよりも先に登録する必要がある。
@@ -372,13 +404,18 @@ pub fn run() {
     #[cfg(desktop)]
     {
         builder = builder.plugin(tauri_plugin_single_instance::init(|app, argv, cwd| {
-            // W0。argv 転送を受けた瞬間。ここから「本文が読める」までがウォーム起動。
-            let request_id = app.state::<state::AppState>().begin_warm();
-
             let forwarded = cli::parse(
                 &argv.into_iter().skip(1).collect::<Vec<_>>(),
                 std::path::Path::new(&cwd),
             );
+            // ログイン時の自動起動が、既に常駐しているプロセスへ届いた（ADR-0020）。
+            // 前面へ出すと、ログインのたびにウィンドウが現れる。
+            if forwarded.background {
+                return;
+            }
+
+            // W0。argv 転送を受けた瞬間。ここから「本文が読める」までがウォーム起動。
+            let request_id = app.state::<state::AppState>().begin_warm();
             let paths = forwarded
                 .paths
                 .iter()
@@ -396,7 +433,27 @@ pub fn run() {
             // トレイに格納されている場合もここを通る（ADR-0007 論点 10）。
             // `restore` がサスペンドの解除まで担当するため、格納中の `marxdown foo.md` を特別扱いしなくて済む。
             close::restore(app);
-            let _ = app.emit_to(target_window(app).as_str(), EVENT_OPEN_REQUEST, &request);
+            let target = target_window(app);
+            let _ = app.emit_to(target.as_str(), EVENT_OPEN_REQUEST, &request);
+
+            // 標準入力（`stdin.rs`）。起動時と同じ受け渡し箱を使い、他のウィンドウから移されてきたタブとして届ける。
+            // 失敗を知らせる画面上の経路が無いため、標準エラーへ書くだけにする。
+            if let Some(file) = forwarded.stdin_file.as_deref() {
+                match stdin::take(file) {
+                    Ok(transfer) => {
+                        let id = app.state::<state::AppState>().stash_transfer(transfer);
+                        send_tab(
+                            app,
+                            &target,
+                            &TabArrival {
+                                paths: Vec::new(),
+                                transfer: Some(id),
+                            },
+                        );
+                    }
+                    Err(e) => eprintln!("[marxdown] 標準入力を開けませんでした: {e}"),
+                }
+            }
         }));
     }
 
@@ -432,6 +489,7 @@ pub fn run() {
             commands::open_settings_file,
             commands::list_user_themes,
             commands::open_themes_dir,
+            commands::read_marp_themes,
             commands::watch_path,
             commands::unwatch_path,
             commands::window_minimize,
@@ -451,12 +509,24 @@ pub fn run() {
             commands::open_external,
             commands::open_local_file,
             commands::reveal_in_file_manager,
+            commands::create_entry,
+            commands::rename_entry,
+            commands::move_entries,
+            commands::copy_entries,
+            commands::trash_entries,
+            commands::import_dropped,
+            commands::open_dropped_folder,
+            commands::watch_tree,
+            commands::confirm_action,
             commands::startup_trace,
             commands::warm_done,
             commands::bench_input_done,
             commands::app_quit,
             commands::check_update,
             commands::install_update,
+            export::export_html,
+            export::export_pdf,
+            export::inline_image,
         ])
         .setup(move |app| {
             // T2b: Tauri のブートとプラグイン初期化が終わった時点。
@@ -514,6 +584,15 @@ pub fn run() {
         .on_window_event(|window, event| {
             let label = window.label().to_owned();
 
+            // ドロップされたパスを覚えておく（02.architecture/09-security.md §5）。
+            // ファイルツリーへの取り込みは、ここで受け取ったパスだけを複製元にする。
+            if let tauri::WindowEvent::DragDrop(tauri::DragDropEvent::Drop { paths, .. }) = event {
+                window
+                    .state::<state::AppState>()
+                    .note_drop(&label, paths.clone());
+                return;
+            }
+
             // 最大化状態の変化をフロントへ通知する（ウィンドウ操作ボタンの表示）。
             //
             // ボタンを押したときだけでなく、`Win+↑` / ダブルクリック / 上端へのドラッグでも変化する。
@@ -536,7 +615,7 @@ pub fn run() {
             // 「外から 1 枚開かせる」経路の宛先を更新する（`target_window`）。
             if let tauri::WindowEvent::Focused(true) = event {
                 window.state::<state::AppState>().note_focused(&label);
-                // 常駐したまま使われ続ける場合の更新の確認（ADR-0020 §3.4）。行うのは時刻の比較だけである。
+                // 常駐したまま使われ続ける場合の更新の確認（ADR-0024 §3.4）。行うのは時刻の比較だけである。
                 update::on_focus(window.app_handle());
                 return;
             }

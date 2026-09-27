@@ -1,6 +1,5 @@
 import { documentStore } from '@/features/document';
 import { ja } from '@/i18n/ja';
-import { toMessage } from '@/lib/error';
 import { getPlatform, type UpdateInfo } from '@/platform';
 
 /**
@@ -31,7 +30,9 @@ export async function checkForUpdates(): Promise<void> {
       documentStore.statusMessage = ja.update.upToDate;
     }
   } catch (error) {
-    documentStore.notice = { level: 'error', message: ja.update.checkFailed(toMessage(error)) };
+    // 詳細（reqwest のエラー文）は利用者に見せない（docs/conventions/02-ui-wording.md §1）。
+    console.warn('[marxdown] 更新の確認に失敗した', error);
+    documentStore.notice = { level: 'error', message: ja.update.checkFailed };
   }
 }
 
@@ -51,7 +52,7 @@ function showAvailable(info: UpdateInfo): void {
  *
  * Windows では更新を始めた時点でプロセスが終わるため、ここへ戻るのは始めなかったときか失敗したときだけである。
  * 未保存の変更があれば Rust 側が始めずに戻る。
- * そのときは同じ操作を残し、保存してからもう一度押せるようにする（ADR-0020 §3.6）。
+ * そのときは同じ操作を残し、保存してからもう一度押せるようにする（ADR-0024 §3.6）。
  */
 async function install(): Promise<void> {
   // ダウンロードには数秒かかる。押した結果が何も見えない時間を作らない。
@@ -69,6 +70,7 @@ async function install(): Promise<void> {
       documentStore.statusMessage = ja.update.upToDate;
     }
   } catch (error) {
-    documentStore.notice = { level: 'error', message: ja.update.installFailed(toMessage(error)) };
+    console.warn('[marxdown] 更新の適用に失敗した', error);
+    documentStore.notice = { level: 'error', message: ja.update.installFailed };
   }
 }

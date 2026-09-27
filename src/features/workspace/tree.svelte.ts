@@ -81,9 +81,60 @@ export async function setTreeRootFromFile(path: string | null): Promise<void> {
 export async function reloadTree(): Promise<void> {
   const root = treeStore.root;
   if (root === null) return;
+  await reloadDirs([root, ...treeStore.expanded]);
+}
 
-  const dirs = [root, ...treeStore.expanded];
-  await Promise.all(dirs.map((dir) => loadDir(dir)));
+/**
+ * 指定したディレクトリだけを読み直す（開いている枝の監視 / ファイル操作の後 / ADR-0021）。
+ *
+ * 読んでいないディレクトリ（閉じた枝）は対象にしない。開けば読み直される。
+ * 消えた枝の後始末は `reloadTree` と同じである。
+ */
+export async function refreshDirs(dirs: readonly string[]): Promise<void> {
+  const root = treeStore.root;
+  if (root === null) return;
+  const loaded = dirs.filter((dir) => dir === root || treeStore.expanded.includes(dir));
+  if (loaded.length > 0) await reloadDirs(loaded);
+}
+
+/** 開いている枝をすべて閉じる（ツールバーの「すべて折りたたむ」）。基点の中身は残す。 */
+export function collapseAll(): void {
+  const root = treeStore.root;
+  treeStore.expanded = [];
+  treeStore.entries = root === null ? {} : { [root]: treeStore.entries[root] ?? [] };
+}
+
+/**
+ * 枝を開く。既に開いていれば何もしない。
+ *
+ * `toggleDir` と違って閉じる側に倒れない。
+ * 閉じた枝の中へ新しいファイルを作るときや、ドラッグで枝の上に止まったときに使う。
+ */
+export async function expandDir(path: string): Promise<void> {
+  if (treeStore.expanded.includes(path)) return;
+  await toggleDir(path);
+}
+
+/**
+ * リネーム・移動した枝の開閉状態とフォーカスを、新しいパスへ付け替える（ADR-0020）。
+ *
+ * 付け替えないと、開いていたフォルダを移しただけで移動先では閉じた状態になる。
+ * 中身のパスも古くなるため、付け替えた後で読み直す。
+ */
+export async function relocateTree(relocate: (path: string) => string | null): Promise<void> {
+  if (treeStore.root === null) return;
+  treeStore.expanded = treeStore.expanded.map((path) => relocate(path) ?? path);
+  const focus = treeStore.focusPath;
+  if (focus !== null) treeStore.focusPath = relocate(focus) ?? focus;
+  await reloadTree();
+}
+
+/** 読み直して、親の一覧から消えた枝を開いた状態ごと破棄する。 */
+async function reloadDirs(dirs: readonly string[]): Promise<void> {
+  const root = treeStore.root;
+  if (root === null) return;
+
+  await Promise.all(dirs.map((dir) => loadDir(dir, true)));
 
   // 基点から辿り直して、まだ親の一覧に残っている枝だけを残す。
   // `Set` は使わない。開いている枝はせいぜい数十で、`includes` で足りる。
@@ -126,8 +177,9 @@ export async function toggleDir(path: string): Promise<void> {
  * 読めないディレクトリ（権限が無い / 消えた）は空として扱う。
  * 通知は出さない。一覧を眺めているだけの操作で通知バーが出続けることになる。
  */
-async function loadDir(path: string): Promise<void> {
-  if (treeStore.loading.includes(path)) return;
+async function loadDir(path: string, again = false): Promise<void> {
+  // 読み直しは重ねてよい。監視の通知は読み込み中にも届き、その変化を落とすと一覧が古いまま残る。
+  if (!again && treeStore.loading.includes(path)) return;
   treeStore.loading = [...treeStore.loading, path];
 
   try {

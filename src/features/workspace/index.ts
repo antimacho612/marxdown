@@ -6,10 +6,18 @@
 export { default as Welcome } from './Welcome.svelte';
 export { workspaceOpenerHooks } from './opened';
 export { openFolderViaDialog } from './open-folder';
-export { reloadTree, setTreeRoot, setTreeRootFromFile, treeStore, workspaceRoot } from './tree.svelte';
+export { collapseAll, reloadTree, setTreeRoot, setTreeRootFromFile, treeStore, workspaceRoot } from './tree.svelte';
+export { installEntryWatch } from './relocate';
 export { forgetRecent, recentStore, rememberRecent } from './recent.svelte';
 export { default as Explorer } from './Explorer.svelte';
-export { registerExplorerFocus, showExplorer } from './show-explorer';
+export {
+  createInExplorer,
+  registerExplorerCreate,
+  registerExplorerFocus,
+  registerTreeDrop,
+  showExplorer,
+  treeDropHandler,
+} from './show-explorer';
 export { resetSessionWatch, restoreSession, watchSession } from './session.svelte';
 export { default as TabStrip } from './TabStrip.svelte';
 export { moveCurrentTabToMainLazily, receiveTabLazily } from './join-window';

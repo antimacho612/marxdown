@@ -1,12 +1,12 @@
-//! 自動更新（F-OS-06 / [ADR-0020]）。
+//! 自動更新（F-OS-06 / [ADR-0024]）。
 //!
-//! 確認の契機は起動（主ウィンドウの `ready` の後）・ウィンドウのフォーカス・コマンドパレットの 3 つで、タイマーは使わない（ADR-0020 §3.4）。
+//! 確認の契機は起動（主ウィンドウの `ready` の後）・ウィンドウのフォーカス・コマンドパレットの 3 つで、タイマーは使わない（ADR-0024 §3.4）。
 //! 自動の確認は前回から 24 時間以上たっているときだけ行い、失敗しても何も知らせない。
 //!
 //! 確認も適用も Rust 側で完結させる。
 //! フロントが持つのは、通知バーの表示と 2 つのコマンドの呼び出しだけである。
 //!
-//! [ADR-0020]: ../../docs/adr/0020-auto-update.md
+//! [ADR-0024]: ../../docs/adr/0024-auto-update.md
 
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;
@@ -21,7 +21,7 @@ use crate::state::AppState;
 /// 新しい版が見つかったことをフロントへ知らせるイベント（ペイロードは [`UpdateInfo`]）。
 pub const EVENT_UPDATE_AVAILABLE: &str = "marxdown://update-available";
 
-/// 自動で確認する間隔の下限（ADR-0020 §3.4）。
+/// 自動で確認する間隔の下限（ADR-0024 §3.4）。
 const CHECK_INTERVAL_SECS: u64 = 24 * 60 * 60;
 
 const RELEASES_URL: &str = "https://github.com/antimacho612/marxdown/releases/tag";
@@ -41,7 +41,7 @@ pub struct UpdateInfo {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum InstallRefusal {
-    /// 未保存の変更がある（ADR-0020 §3.6）。
+    /// 未保存の変更がある（ADR-0024 §3.6）。
     Dirty,
     /// 確認し直したら新しい版が無かった。
     UpToDate,
@@ -72,7 +72,7 @@ impl Updates {
     }
 }
 
-/// 自動で確認してよい時刻か（ADR-0020 §3.4）。
+/// 自動で確認してよい時刻か（ADR-0024 §3.4）。
 ///
 /// 時計が戻っている（前回が未来にある）場合も確認する。
 /// 確認しないと、戻った分だけ確認が止まる。
@@ -142,7 +142,7 @@ fn check_if_due<R: Runtime>(app: &AppHandle<R>) {
 
     let app = app.clone();
     tauri::async_runtime::spawn(async move {
-        // 自動の確認では失敗を知らせない（ADR-0020 §3.4）。
+        // 自動の確認では失敗を知らせない（ADR-0024 §3.4）。
         if let Ok(Some(info)) = check(&app).await {
             let _ = app.emit_to(
                 crate::target_window(&app).as_str(),
@@ -160,7 +160,7 @@ fn check_if_due<R: Runtime>(app: &AppHandle<R>) {
 pub async fn check<R: Runtime>(
     app: &AppHandle<R>,
 ) -> Result<Option<UpdateInfo>, tauri_plugin_updater::Error> {
-    // 更新後は引数なしで起動し直す（ADR-0020 §3.6）。
+    // 更新後は引数なしで起動し直す（ADR-0024 §3.6）。
     // updater の既定は、更新前のプロセスが起動したときの引数を `/ARGS` で引き継ぐ。
     // `marxdown foo.md` で起動して常駐していた場合に `foo.md` だけが開き、前回のタブが復元されない。
     // 引き継ぎを止め、NSIS に「完了後に起動する」（`/R`）だけを渡す。

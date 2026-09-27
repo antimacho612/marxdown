@@ -124,7 +124,7 @@ Release の本文と、アプリの更新通知から開く「変更内容」は
 ## リリース
 
 版の番号は `package.json` だけが持つ（`tauri.conf.json` はそれを参照し、`Cargo.toml` はスクリプトが合わせる）。
-設計は [ADR-0020](docs/adr/0020-auto-update.md) を参照。
+設計は [ADR-0024](docs/adr/0024-auto-update.md) を参照。
 
 ```bash
 pnpm release bump 0.2.0      # 版を上げ、CHANGELOG の Unreleased を 0.2.0 の節にする
