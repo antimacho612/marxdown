@@ -59,6 +59,26 @@ describe('SVG の枠', () => {
     expect(container.querySelector('section')?.dataset['line']).toBe('3');
   });
 
+  it('分割背景では本文の <section> にだけ行番号を残す', () => {
+    const section = '<section data-line="7"><h1>a</h1></section>';
+    mountMarp(
+      container,
+      render([
+        `<svg data-marpit-svg="" viewBox="0 0 1280 720">${['background', 'content', 'pseudo']
+          .map(
+            (layer) =>
+              `<foreignObject width="1280" height="720" data-marpit-advanced-background="${layer}">${section}</foreignObject>`,
+          )
+          .join('')}</svg>`,
+      ]),
+      '',
+    );
+    const lines = [...container.querySelectorAll('foreignObject')].map((frame) =>
+      frame.querySelector('section')?.getAttribute('data-line'),
+    );
+    expect(lines).toEqual([null, '7', null]);
+  });
+
   it('寸法の形が違う枠と、想定外の要素はスライドごと出さない', () => {
     mountMarp(
       container,

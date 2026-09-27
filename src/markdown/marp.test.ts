@@ -82,6 +82,12 @@ describe('renderMarp', () => {
     expect(slides[1]).toContain('data-line="6"');
   });
 
+  it('スライドの中の見出しと段落にも開始行を付ける', () => {
+    const { slides } = renderMarp(deck);
+    expect(slides[0]).toMatch(/<h1[^>]*data-line="4"/);
+    expect(slides[1]).toMatch(/<p[^>]*data-line="10"/);
+  });
+
   it('見出しをアウトラインとして返す', () => {
     const { outline } = renderMarp(deck);
     expect(outline.map((item) => [item.level, item.text, item.line])).toEqual([

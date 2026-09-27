@@ -149,6 +149,9 @@ function rebuildSlide(html: string): SVGSVGElement | null {
     }
     const layer = frame.getAttribute(LAYER_ATTRIBUTE);
     if (layer !== null && LAYERS.has(layer)) foreignObject.setAttribute(LAYER_ATTRIBUTE, layer);
+    // NOTE: 分割背景の背景用とページ番号用の <section> は、本文の後ろに同じ行番号で並ぶ。
+    // 残すと `data-line` の昇順が崩れ、Split のスクロール同期（`features/view/scroll-sync.ts`）の補間がずれる。
+    if (layer === 'background' || layer === 'pseudo') slide.removeAttribute('data-line');
 
     foreignObject.append(slide);
     svg.append(foreignObject);

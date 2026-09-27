@@ -46,15 +46,30 @@ function createMarp({ mathPlugin, extractOutline }: MarpHelpers): Marp {
   return instance;
 }
 
+/** `data-line` を付けるトークン。スライドと、属性をそのまま出力するブロック要素である（`plugins/line-map.ts` の `BLOCK_OPEN_RULES` の一部）。 */
+const LINE_TOKENS = new Set([
+  'marpit_slide_open',
+  'heading_open',
+  'paragraph_open',
+  'blockquote_open',
+  'bullet_list_open',
+  'ordered_list_open',
+  'list_item_open',
+  'table_open',
+]);
+
 /**
- * スライドの開始行を `data-line` に付ける。
+ * スライドとブロック要素の開始行を `data-line` に付ける。
  *
- * Split のスクロール同期とアウトラインはスライド単位で行う（docs/06.roadmap/m9-marp.md §4.2）。
+ * Split のスクロール同期、アウトラインからの移動、プレビューからエディターへの移動が使う。
+ * 見出しの `id` は marp-core が描画の時点で付けるため、アウトラインの `slug` は空になる。移動は行番号で探す（`features/outline/jump.ts`）。
  * 分割背景では同じスライドの `<section>` が 3 つ出力されるが、どれも同じ行を指す。
+ *
+ * NOTE: `plugins/line-map.ts` のようにレンダラを包まず、トークンの属性に付ける。marp-core がレンダラを差し替えている記法（コードなど）には付かない。
  */
 function markSlides(state: StateCore): void {
   for (const token of state.tokens) {
-    if (token.type === 'marpit_slide_open' && token.map) token.attrSet('data-line', String(token.map[0]));
+    if (LINE_TOKENS.has(token.type) && token.map) token.attrSet('data-line', String(token.map[0]));
   }
 }
 
