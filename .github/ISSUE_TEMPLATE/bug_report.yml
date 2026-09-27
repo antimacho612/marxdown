@@ -1,0 +1,47 @@
+name: 不具合の報告
+description: 期待どおりに動かないことを報告する
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: 起きたこと
+      description: 何をしたら、何が起きたかを書いてください。
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: 期待していたこと
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: 再現手順
+      description: 可能であれば、再現に使った Markdown ファイルを添付してください。
+      placeholder: |
+        1. `marxdown sample.md` で開く
+        2. `Ctrl+\` で Split にする
+        3. ...
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Marxdown のバージョン
+      description: ターミナルで `marxdown --version` を実行すると表示されます。
+    validations:
+      required: true
+  - type: input
+    id: os
+    attributes:
+      label: Windows のバージョン
+      placeholder: Windows 11 24H2
+    validations:
+      required: true
+  - type: textarea
+    id: extra
+    attributes:
+      label: そのほか
+      description: スクリーンショットや、気づいたことがあれば書いてください。
