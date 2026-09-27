@@ -306,7 +306,7 @@ pub fn config_dir(identifier: &str) -> Option<PathBuf> {
 }
 
 /// 古いバージョンの identifier。アプリのデータ置き場のフォルダー名がこれだった。
-const LEGACY_IDENTIFIER: &str = "com.antimacho612.marxdown";
+const LEGACY_IDENTIFIER: &str = "Marxdown";
 
 /// 古い identifier の名前のデータ置き場を、現在の identifier の名前へ移す。
 ///
@@ -317,7 +317,7 @@ const LEGACY_IDENTIFIER: &str = "com.antimacho612.marxdown";
 ///
 /// NOTE: `%LOCALAPPDATA%` 側は移さない。
 /// 置かれているのは WebView2 のキャッシュだけで、次の起動で作り直される。
-/// また、新しい名前のフォルダーは NSIS の既定のインストール先（`%LOCALAPPDATA%\Marxdown`）と同じフォルダーであり、常に存在している。
+/// また、古い名前のフォルダーは NSIS の既定のインストール先（`%LOCALAPPDATA%\Marxdown`）と同じフォルダーであり、丸ごと移すと本体まで移ってしまう。
 pub fn migrate_legacy_dir(identifier: &str) {
     if let (Some(from), Some(to)) = (config_dir(LEGACY_IDENTIFIER), config_dir(identifier)) {
         move_dir(&from, &to);
@@ -385,7 +385,7 @@ mod tests {
     fn the_legacy_dir_is_moved_with_its_contents() {
         let d = temp_dir("legacy-move");
         let from = d.join(LEGACY_IDENTIFIER);
-        let to = d.join("Marxdown");
+        let to = d.join("com.antimacho612.marxdown");
         std::fs::create_dir_all(from.join("themes")).unwrap();
         std::fs::write(from.join("settings.json"), "{}").unwrap();
         std::fs::write(from.join("themes").join("mine.css"), "").unwrap();
@@ -401,7 +401,7 @@ mod tests {
     fn the_legacy_dir_does_not_overwrite_the_current_one() {
         let d = temp_dir("legacy-keep");
         let from = d.join(LEGACY_IDENTIFIER);
-        let to = d.join("Marxdown");
+        let to = d.join("com.antimacho612.marxdown");
         std::fs::create_dir_all(&from).unwrap();
         std::fs::create_dir_all(&to).unwrap();
         std::fs::write(from.join("settings.json"), "old").unwrap();
@@ -419,7 +419,7 @@ mod tests {
     #[test]
     fn a_missing_legacy_dir_is_not_an_error() {
         let d = temp_dir("legacy-none");
-        let to = d.join("Marxdown");
+        let to = d.join("com.antimacho612.marxdown");
         assert!(!move_dir(&d.join(LEGACY_IDENTIFIER), &to));
         assert!(!to.exists());
         std::fs::remove_dir_all(&d).ok();

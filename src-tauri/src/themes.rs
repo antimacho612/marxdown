@@ -1,6 +1,6 @@
 //! ユーザーが追加した配色（02.architecture/10-theming.md §3.4 / [ADR-0014](../../docs/adr/0014-editor-theme-catalog.md)）。
 //!
-//! `%APPDATA%\Marxdown\themes\<id>.css` を列挙して読む。
+//! `%APPDATA%\com.antimacho612.marxdown\themes\<id>.css` を列挙して読む。
 //! 組み込みの 50 枚はフロント側の遅延チャンクにあり、ここには一切現れない。
 //! Rust が担当するのはディスク上のファイルだけである。
 //!
