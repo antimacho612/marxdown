@@ -11,6 +11,17 @@ Marxdown をソースからビルド・開発するための手順。
 
 `docs/` は利用者向けのドキュメントである。
 
+## コントリビューション
+
+不具合の報告と機能の要望は [Issue](https://github.com/antimacho612/marxdown/issues/new/choose) で受け付けている。
+脆弱性は Issue に書かず、[SECURITY.md](SECURITY.md) の手順で報告する。
+
+**Pull Request は、先に Issue で相談してから出す。**
+設計ドキュメントが非公開のため、方針や性能予算と衝突するかどうかを外から判断しにくい。
+誤字の修正や明らかな不具合の修正は、相談なしで構わない。
+
+PR を出す前に、[テンプレート](.github/pull_request_template.md) の確認項目を満たしておく。
+
 ## 必要なもの
 
 - Node 24
