@@ -29,6 +29,7 @@ export const jaExplorer = {
     copyPath: 'パスのコピー',
     copyRelativePath: '相対パスのコピー',
     copyLink: 'Markdown リンクとしてコピー',
+    copyTree: 'ディレクトリ構造のコピー',
     reveal: 'エクスプローラーで表示',
     rename: '名前の変更…',
     delete: '削除',
@@ -46,5 +47,9 @@ export const jaExplorer = {
   moved: (count: number) => `${count} 件を移動しました`,
   hiddenCreated: (name: string) => `「${name}」を作成しました。名前が . で始まる項目はエクスプローラーに表示されません`,
   linkCopied: 'Markdown リンクをコピーしました',
+  treeCopied: 'ディレクトリ構造をコピーしました',
+  /** 深さ・件数の上限で打ち切った場合（`src-tauri/src/dir.rs`）。貼り付けた木が一部であることを伝える。 */
+  treeCopiedPartial: 'ディレクトリ構造をコピーしました（大きいため一部だけです）',
+  treeCopyFailed: 'ディレクトリ構造をコピーできませんでした',
   operationFailed: (detail: string) => `ファイル操作に失敗しました: ${detail}`,
 } as const;

@@ -118,6 +118,7 @@ export const ja = {
     explorerNewFolder: 'エクスプローラー: 新しいフォルダー',
     explorerRefresh: 'エクスプローラー: 最新の情報に更新',
     explorerCollapseAll: 'エクスプローラー: すべて折りたたむ',
+    explorerCopyTree: 'エクスプローラー: ディレクトリ構造のコピー',
     quickOpen: 'ファイルへ移動',
     zoom: '表示倍率',
     zoomIn: '拡大',

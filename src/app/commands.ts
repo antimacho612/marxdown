@@ -33,6 +33,7 @@ import { isSatellite, viewStore } from '@/features/view';
 import {
   closeTab,
   collapseAll,
+  copyTreeLazily,
   createInExplorer,
   cycleTab,
   moveCurrentTabToMainLazily,
@@ -160,6 +161,9 @@ const COMMANDS: Command[] = [
   { id: 'explorer.newFolder', run: () => void createInExplorer('folder'), isListed: hasTree },
   { id: 'explorer.refresh', run: () => void reloadTree(), isListed: hasTree },
   { id: 'explorer.collapseAll', run: () => collapseAll(), isListed: hasTree },
+  // ディレクトリ構造をアスキーアートにしてコピーする。右クリックメニューのコピー項目の 1 つで、パレットからは基点が対象になる。
+  // キーは割り当てない（`document.toggleEol` と同じく、覚えるキーを増やすほどの頻度ではない）。
+  { id: 'explorer.copyTree', run: (target) => void copyTreeLazily(target), isListed: hasTree },
 
   // 見出しへジャンプ。実体は遅延チャンクにある。
   // コマンドパレット（`Ctrl+Shift+P`）ではなく、見出し専用である。

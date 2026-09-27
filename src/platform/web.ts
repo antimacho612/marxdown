@@ -442,6 +442,11 @@ export const webPlatform: Platform = {
     return { files: [], truncated: false };
   },
 
+  /** 同じ理由でツリーも空になる。コピーしても基点の 1 行だけになる。 */
+  async listTree() {
+    return { name: '', nodes: [], truncated: false };
+  },
+
   /** 仮想 FS はこのタブの中にしかなく、外から書き換わることがない。 */
   async watchTree() {},
 

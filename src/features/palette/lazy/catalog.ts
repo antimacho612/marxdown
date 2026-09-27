@@ -95,6 +95,11 @@ export const COMMAND_CATALOG: CommandEntry[] = [
   { id: 'explorer.refresh', label: t.menu.explorerRefresh, keywords: 'explorer refresh reload file tree' },
   { id: 'explorer.collapseAll', label: t.menu.explorerCollapseAll, keywords: 'explorer collapse all folders tree' },
   {
+    id: 'explorer.copyTree',
+    label: t.menu.explorerCopyTree,
+    keywords: 'explorer copy tree directory structure ascii',
+  },
+  {
     id: 'outline.show',
     label: t.menu.showOutline,
     keywords: 'outline show heading sidebar',

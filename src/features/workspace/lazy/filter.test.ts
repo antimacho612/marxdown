@@ -6,9 +6,9 @@
  */
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import type { DirEntry } from '@/platform';
+import type { DirEntry, TreeNode } from '@/platform';
 
-import { filterStore, parseExtensions, resetFilter, visibleEntries } from './filter.svelte';
+import { filterStore, parseExtensions, resetFilter, visibleEntries, visibleTree } from './filter.svelte';
 
 function file(name: string): DirEntry {
   return { name, path: `C:/work/${name}`, dir: false };
@@ -92,5 +92,18 @@ describe('visibleEntries', () => {
     expect(visible).not.toContain('LICENSE');
     // 先頭のドットは拡張子ではない。`gitignore` を指定しても現れない。
     expect(visible).not.toContain('.gitignore');
+  });
+});
+
+describe('visibleTree', () => {
+  function node(name: string, children: TreeNode[] = [], dir = children.length > 0): TreeNode {
+    return { name, dir, children };
+  }
+
+  it('入れ子の奥まで同じ絞り込みを当て、ディレクトリは空になっても残す', () => {
+    filterStore.markdownOnly = true;
+    const tree = [node('docs', [node('a.md'), node('logo.png'), node('assets', [node('b.png')])]), node('c.json')];
+
+    expect(visibleTree(tree)).toEqual([node('docs', [node('a.md'), node('assets', [], true)])]);
   });
 });

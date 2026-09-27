@@ -20,6 +20,7 @@
   import {
     copyMarkdownLink,
     copyPaths,
+    copyTree,
     findEntry,
     openEntry,
     paste,
@@ -115,16 +116,20 @@
         keys: 'Ctrl+Shift+Alt+C',
         run: () => void copyPaths(targets.length > 0 ? targets : [base ?? ''], true),
       },
-      ...(file
-        ? [
-            {
-              id: 'copy-link',
-              label: tExplorer.menu.copyLink,
-              disabled: !single,
-              run: () => void copyMarkdownLink(entry.path),
-            },
-          ]
-        : []),
+      // ファイルにはリンク、フォルダと余白には配下の構造。どちらも 1 件にしか意味を持たない。
+      file
+        ? {
+            id: 'copy-link',
+            label: tExplorer.menu.copyLink,
+            disabled: !single,
+            run: () => void copyMarkdownLink(entry.path),
+          }
+        : {
+            id: 'copy-tree',
+            label: tExplorer.menu.copyTree,
+            disabled: !single,
+            run: () => void copyTree(base ?? ''),
+          },
     ],
     [{ id: 'reveal', label: tExplorer.menu.reveal, keys: 'Shift+Alt+R', run: () => void revealEntry(base ?? '') }],
     targets.length > 0

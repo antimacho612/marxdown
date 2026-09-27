@@ -52,6 +52,27 @@ export interface DirEntry {
   dir: boolean;
 }
 
+/**
+ * ツリーの 1 件（`src-tauri/src/dir.rs` の `TreeNode`）。
+ *
+ * 入れ子のまま受け取る。罫線を組むには木の形が要る。
+ */
+export interface TreeNode {
+  name: string;
+  dir: boolean;
+  /** ディレクトリ以外では常に空。 */
+  children: TreeNode[];
+}
+
+/** 基点とその配下（`src-tauri/src/dir.rs` の `DirTree`）。 */
+export interface DirTree {
+  /** 基点の表示名。パスではない。 */
+  name: string;
+  nodes: TreeNode[];
+  /** 上限で打ち切ったか。true なら木は全体の一部である。 */
+  truncated: boolean;
+}
+
 /** 移動・リネームの結果（`src-tauri/src/fsops.rs` の `Moved`）。どちらも絶対パス。 */
 export interface Moved {
   from: string;
@@ -480,6 +501,14 @@ export interface Platform {
    * 対象の拡張子は Platform 層が `lib/path.ts` から渡す。件数と深さには上限があり、超えたときは `truncated` が立つ（`src-tauri/src/dir.rs`）。
    */
   listFiles(root: string): Promise<FileList>;
+  /**
+   * 指定したディレクトリの配下を木の形で返す（エクスプローラーの「ディレクトリ構造のコピー」）。
+   *
+   * 除外は `listDir` と同じで、深さと件数には上限がある（`src-tauri/src/dir.rs`）。
+   * 1 階層ずつではなく 1 回で全体を返すのは、往復の回数が枝の数だけ増えるのを避けるためである。
+   * `root` の意味は `listDir` と同じ。
+   */
+  listTree(path: string, root: string): Promise<DirTree>;
   /**
    * ファイルツリーで開いている枝を監視する（ADR-0021）。
    *

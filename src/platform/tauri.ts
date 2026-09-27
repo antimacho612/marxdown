@@ -16,6 +16,7 @@ import type {
   Bootstrap,
   BundledFile,
   DirEntry,
+  DirTree,
   DiscardChoice,
   DocumentPayload,
   EntriesMoved,
@@ -133,6 +134,10 @@ export const tauriPlatform: Platform = {
   listFiles(root) {
     // 拡張子はここから渡す。Markdown の判断は `lib/path.ts` の 1 か所にしかない。
     return invoke<FileList>('list_files', { path: root, extensions: MARKDOWN_EXTENSIONS });
+  },
+
+  listTree(path, root) {
+    return invoke<DirTree>('list_tree', { path, root });
   },
 
   watchTree(dirs) {

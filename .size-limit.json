@@ -129,7 +129,7 @@
       "!dist/assets/editor-*.js",
       "!dist/assets/i18n-*-marp-*.js"
     ],
-    "limit": "238 KB",
+    "limit": "240 KB",
     "gzip": true
   }
 ]

@@ -30,6 +30,7 @@ export type CommandId =
   | 'editor.gotoLine'
   | 'editor.formatTable'
   | 'explorer.collapseAll'
+  | 'explorer.copyTree'
   | 'explorer.newFile'
   | 'explorer.newFolder'
   | 'explorer.refresh'
