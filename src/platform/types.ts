@@ -394,6 +394,21 @@ export type DragDropEvent =
  */
 export type WarmKind = 'warm' | 'tray-resume';
 
+/** 公開されている新しい版（ADR-0024）。 */
+export interface UpdateInfo {
+  version: string;
+  /** 変更内容を読める Release のページ。 */
+  notesUrl: string;
+}
+
+/**
+ * `installUpdate` が更新を始めなかった理由。
+ *
+ * `dirty` は未保存の変更がある（ADR-0024 §3.6）。
+ * `up-to-date` は確認し直したら新しい版が無かった。
+ */
+export type InstallRefusal = 'dirty' | 'up-to-date';
+
 /**
  * Platform 層のインタフェース。
  *
@@ -815,6 +830,25 @@ export interface Platform {
    */
   onTrayResume(handler: (requestId: number) => void): () => void;
   openExternal(url: string): Promise<void>;
+  /**
+   * 新しい版を問い合わせる（コマンドパレットの「更新を確認」 / ADR-0024）。
+   *
+   * 設定 `update.autoCheck` と確認の間隔には関係なく、常に問い合わせる。
+   */
+  checkUpdate(): Promise<UpdateInfo | null>;
+  /**
+   * 見つけた更新をダウンロードして適用する（ADR-0024 §3.6）。
+   *
+   * Windows では更新を始めた時点でプロセスが終わり、Promise は解決しない。
+   * 解決するのは更新を始めなかったときだけである。
+   */
+  installUpdate(): Promise<InstallRefusal>;
+  /**
+   * 自動の確認で新しい版が見つかったことを購読する。
+   *
+   * 確認の契機と間隔は Rust 側が決める（`src-tauri/src/update.rs`）。
+   */
+  onUpdateAvailable(handler: (info: UpdateInfo) => void): () => void;
   /**
    * Markdown 以外のローカルファイルを OS の既定アプリで開く（F-VIEW-06）。
    * 許可ディレクトリの外は Rust 側で拒まれる。

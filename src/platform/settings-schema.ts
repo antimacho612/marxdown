@@ -177,7 +177,7 @@ export const SETTINGS_SCHEMA = defineSettingsSchema({
    */
   'explorer.exclude': { kind: 'string[]', default: [], maxLength: 64, maxItemLength: 256 },
   /**
-   * ファイルツリーの単一クリックで仮タブとして開くか（ADR-0024）。
+   * ファイルツリーの単一クリックで仮タブとして開くか（ADR-0025）。
    * キーに `preview` を使わないのは、Marxdown の表示モード（Preview）と区別するためである。
    */
   'explorer.temporaryTab': { kind: 'boolean', default: true },
@@ -234,6 +234,9 @@ export const SETTINGS_SCHEMA = defineSettingsSchema({
    * 選択肢と綴りの扱いは `editor.theme` と同じである。
    */
   'preview.theme': { kind: 'string', default: 'default' },
+
+  /** 新しい版を自動で確認するか（ADR-0024）。false でもコマンドパレットの「更新を確認」は使える。 */
+  'update.autoCheck': { kind: 'boolean', default: true },
 
   /** `✕` で閉じたときにトレイへ格納するか（ADR-0007）。false ならプロセスを終了する。 */
   'window.closeToTray': { kind: 'boolean', default: true },

@@ -53,7 +53,7 @@ pub const KEY_EDITOR_WORD_WRAP_COLUMN: &str = "editor.wordWrapColumn";
 
 /// エクスプローラーから常に除外するパスの glob（`src/glob.rs`）。
 pub const KEY_EXPLORER_EXCLUDE: &str = "explorer.exclude";
-/// ファイルツリーの単一クリックで仮タブとして開くか（ADR-0024）。
+/// ファイルツリーの単一クリックで仮タブとして開くか（ADR-0025）。
 pub const KEY_EXPLORER_TEMPORARY_TAB: &str = "explorer.temporaryTab";
 
 /// 追加記法（`src/markdown/plugins/syntax.ts` の `SYNTAX_NAMES` と 1:1）。どれも既定 OFF。
@@ -78,6 +78,8 @@ pub const KEY_PREVIEW_MAX_WIDTH: &str = "preview.maxWidth";
 pub const KEY_PREVIEW_SOFT_BREAK: &str = "preview.softBreak";
 pub const KEY_PREVIEW_TABLE_STYLE: &str = "preview.tableStyle";
 pub const KEY_PREVIEW_THEME: &str = "preview.theme";
+
+pub const KEY_UPDATE_AUTO_CHECK: &str = "update.autoCheck";
 
 pub const KEY_WINDOW_CLOSE_TO_TRAY: &str = "window.closeToTray";
 pub const KEY_WINDOW_LAUNCH_AT_LOGIN: &str = "window.launchAtLogin";
@@ -336,7 +338,7 @@ pub struct Settings {
     /// 空なら追加の除外はしない。隠しファイルと `node_modules` は設定に関わらず除外される（`dir.rs`）。
     #[serde(rename = "explorer.exclude")]
     pub explorer_exclude: Vec<String>,
-    /// ファイルツリーの単一クリックで仮タブとして開くか（ADR-0024）。
+    /// ファイルツリーの単一クリックで仮タブとして開くか（ADR-0025）。
     /// 仮タブは次の単一クリックで置き換わり、編集・ダブルクリック・「保持」で通常のタブになる。
     #[serde(rename = "explorer.temporaryTab")]
     pub explorer_temporary_tab: bool,
@@ -393,6 +395,11 @@ pub struct Settings {
     /// 知らない綴りを既定に戻さないのもそのためで、`themes/` の読み込みが済むまでは選択中の配色が存在するかどうかを判定できない。
     #[serde(rename = "preview.theme")]
     pub preview_theme: String,
+
+    /// 新しい版を自動で確認するか（F-OS-06 / ADR-0024）。
+    /// `false` でも、コマンドパレットの「更新を確認」は使える。
+    #[serde(rename = "update.autoCheck")]
+    pub update_auto_check: bool,
 
     /// `✕` で閉じたときにトレイへ格納するか（F-OS-08 / ADR-0007）。
     /// 既定を `true` にしているのは、常駐してウォーム起動を利用することがプロダクトの中心価値だからである（ADR-0004）。
@@ -472,6 +479,8 @@ impl Default for Settings {
             preview_soft_break: false,
             preview_table_style: TableStyle::default(),
             preview_theme: DEFAULT_THEME_ID.to_owned(),
+
+            update_auto_check: true,
 
             window_close_to_tray: true,
             window_launch_at_login: false,
@@ -594,6 +603,8 @@ impl Settings {
             preview_table_style: take(&mut map, KEY_PREVIEW_TABLE_STYLE)
                 .unwrap_or(d.preview_table_style),
             preview_theme: take_theme_id(&mut map, KEY_PREVIEW_THEME).unwrap_or(d.preview_theme),
+
+            update_auto_check: take(&mut map, KEY_UPDATE_AUTO_CHECK).unwrap_or(d.update_auto_check),
 
             window_close_to_tray: take(&mut map, KEY_WINDOW_CLOSE_TO_TRAY)
                 .unwrap_or(d.window_close_to_tray),

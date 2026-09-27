@@ -91,7 +91,7 @@ function strip(): string[] {
   return tabsStore.tabs.map((tab) => `${tabMeta(tab).path ?? ''}${tab.temporary ? '*' : ''}`);
 }
 
-describe('仮タブ (ADR-0024)', () => {
+describe('仮タブ (ADR-0025)', () => {
   it('次の仮タブで同じ位置が置き換わる', async () => {
     await openPath('C:/work/a.md');
     await openPathInTemporaryTab('C:/work/b.md');

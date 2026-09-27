@@ -25,6 +25,7 @@ import {
   type RecentEntry,
   type SaveResult,
   type SettingsProblem,
+  type UpdateInfo,
   type UserTheme,
   type WindowRole,
   type WriteRequest,
@@ -317,6 +318,13 @@ function userThemesNow(): UserTheme[] {
   if (params.get('userTheme') === 'escape') return [ESCAPING_USER_THEME];
   if (params.has('userTheme')) return [SAMPLE_USER_THEME];
   return loadState().userThemes;
+}
+
+/** `?update` のときだけ返す、架空の新しい版。 */
+function fakeUpdate(): UpdateInfo | null {
+  const params = new URLSearchParams(globalThis.location?.search ?? '');
+  if (!params.has('update')) return null;
+  return { version: '9.9.9', notesUrl: 'https://github.com/antimacho612/marxdown/releases' };
 }
 
 /**
@@ -817,6 +825,23 @@ export const webPlatform: Platform = {
 
   async openExternal(url) {
     globalThis.open(url, '_blank', 'noopener,noreferrer');
+  },
+
+  // `?update` で新しい版がある状態を再現する。通知バーの表示をブラウザだけで確かめられるようにするため。
+  async checkUpdate() {
+    return fakeUpdate();
+  },
+
+  async installUpdate() {
+    console.info('[marxdown] installUpdate（ブラウザでは何も起きない）');
+    return 'up-to-date';
+  },
+
+  onUpdateAvailable(handler) {
+    const info = fakeUpdate();
+    // 実機では通信を挟むため、起動直後の文書のオープン（通知をクリアする）より後に届く。
+    if (info) setTimeout(() => handler(info), 1000);
+    return () => {};
   },
 
   async openLocalFile(path) {

@@ -12,5 +12,5 @@ export { installTaskHandler, type TaskTargets } from './task';
 export { paintMarp } from './marp';
 export { openSearchLazily } from './open-search';
 export { paint, patch, type PaintResult } from './paint';
-export { applyZoom, formatZoom, ZOOM_STEPS, zoomIn, zoomOut, zoomReset } from './zoom';
+export { applyZoom, formatZoom, ZOOM_MAX, ZOOM_MIN, ZOOM_STEPS, zoomIn, zoomOut, zoomReset } from './zoom';
 export { installWheelZoom } from './wheel-zoom';

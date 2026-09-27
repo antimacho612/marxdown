@@ -31,6 +31,7 @@ import {
   settingsStore,
 } from '@/features/settings';
 import { awaitPreviewTheme, enableThemeNotices, installPreviewThemeWatch, primePreviewTheme } from '@/features/theme';
+import { installUpdateNotice } from '@/features/update';
 import { initSplit, initWindowRole, isSatellite, viewStore } from '@/features/view';
 import {
   installEntryWatch,
@@ -229,6 +230,8 @@ export async function startup(renderShell: () => void): Promise<void> {
   getPlatform().onTabArrive((arrival) => void receiveTabLazily(arrival));
   installTrayOpen();
   installSaveAndQuit();
+  // 自動の確認で見つかった更新（ADR-0024）。確認そのものは Rust 側が `ready()` の後に始める。
+  installUpdateNotice();
   installTrayResume();
   installDragAndDrop();
   installFileWatch();

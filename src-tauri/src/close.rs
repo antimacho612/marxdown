@@ -41,7 +41,9 @@ pub fn stashes_on_close<R: Runtime>(app: &AppHandle<R>) -> bool {
 ///
 /// 最小化中など、保存すると次回の復元に失敗する状態では `capture` が `None` を返す。
 /// そのときは前回の値を残し、上書きしない。
-fn save_window_state<R: Runtime>(app: &AppHandle<R>) {
+///
+/// 終了の経路を通らずにプロセスが終わる更新の適用（`update.rs`）からも呼ぶ。
+pub(crate) fn save_window_state<R: Runtime>(app: &AppHandle<R>) {
     let Some(window) = app.get_webview_window(MAIN_LABEL) else {
         return;
     };

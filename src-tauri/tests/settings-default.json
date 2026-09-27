@@ -45,6 +45,7 @@
   "preview.tableStyle": "lines",
   "preview.theme": "default",
   "theme": "system",
+  "update.autoCheck": true,
   "window.closeToTray": true,
   "window.launchAtLogin": false
 }
