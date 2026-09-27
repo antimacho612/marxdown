@@ -139,6 +139,7 @@ export const COMMAND_CATALOG: CommandEntry[] = [
 
   { id: 'palette.open', label: ja.palette.title, keywords: 'command palette', shortcut: 'Ctrl+Shift+P' },
   { id: 'settings.open', label: ja.menu.settings, keywords: 'settings preferences config option', shortcut: 'Ctrl+,' },
+  { id: 'app.checkUpdate', label: ja.menu.checkUpdate, keywords: 'update upgrade version release' },
   { id: 'app.quit', label: ja.menu.quit, keywords: 'quit exit close app', shortcut: 'Ctrl+Q' },
 ];
 

@@ -30,6 +30,7 @@
     "notices": "vite build && node scripts/gen-third-party-notices.mjs",
     "bench:boot": "node scripts/bench-startup.mjs",
     "bench:input": "node scripts/bench-input.mjs",
+    "release": "node scripts/release.mjs",
     "tauri": "tauri",
     "storybook": "storybook dev -p 6006",
     "build:storybook": "storybook build"

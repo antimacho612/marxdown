@@ -267,6 +267,26 @@ impl AppState {
             .unwrap_or(true)
     }
 
+    /// 新しい版を自動で確認するか（設定 `update.autoCheck` / ADR-0024）。メモリ上の設定を見る。
+    ///
+    /// フォーカスのたびに呼ばれるため、ディスクは読まない（`closes_to_tray` と同じ理由）。
+    pub fn auto_checks_updates(&self) -> bool {
+        self.settings
+            .lock()
+            .map(|s| s.values.update_auto_check)
+            .unwrap_or(false)
+    }
+
+    /// 最後に更新を確認した時刻（UNIX 秒）。
+    pub fn last_update_check(&self) -> Option<u64> {
+        self.store.lock().ok().and_then(|s| s.last_update_check)
+    }
+
+    /// 更新を確認した時刻を記録する。`state.json` に永続化する。
+    pub fn mark_update_checked(&self, at: u64) {
+        self.update_store(|s| s.last_update_check = Some(at));
+    }
+
     /// エクスプローラーから除外する glob（`explorer.exclude`）。メモリ上の設定を見る。
     ///
     /// `closes_to_tray` と同じ理由でディスクを読み直さない。

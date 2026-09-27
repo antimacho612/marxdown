@@ -33,6 +33,10 @@ serde_json = "1"
 # イベント駆動であり、アイドル時のポーリングを増やさないことが採用の前提（05.performance-budget/04-targets.md §5）。
 notify = "8"
 notify-debouncer-full = "0.6"
+# 自動更新（F-OS-06 / ADR-0024）。`dialog` と同じく Rust 側だけに入れ、JS の `@tauri-apps/plugin-updater` は入れない。
+# TLS は OS のもの（Windows では SChannel）を使う。rustls より配布物が小さく、社内のプロキシが差し込むルート証明書も OS の証明書ストアから信頼される。
+# `zip` を外しているのは、配布している NSIS の updater 成果物が展開を要しないためである。macOS / Linux を配布するときは戻す（OQ-45）。
+tauri-plugin-updater = { version = "2", default-features = false, features = ["native-tls", "system-proxy"] }
 
 # 単一インスタンス化と argv 転送（ADR-0004 / F-OPEN-05 / 04.tech-stack/06-rust.md §1）
 [target.'cfg(any(target_os = "windows", target_os = "macos", all(unix, not(target_os = "macos"))))'.dependencies]

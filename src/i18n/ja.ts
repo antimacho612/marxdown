@@ -128,6 +128,7 @@ export const ja = {
     find: '検索',
     replace: '置換',
     quit: '終了',
+    checkUpdate: '更新を確認',
   },
 
   pane: {
@@ -448,6 +449,13 @@ export const ja = {
         label: '表示する見出しの階層',
         description:
           'アウトラインに表示する見出しの深さを、1〜6 で指定します。指定した階層より深い見出しは表示しません。',
+      },
+    },
+
+    update: {
+      autoCheck: {
+        label: '新しいバージョンを自動で確認する',
+        description: '起動時とウィンドウを前面に出したときに、1 日 1 回まで確認します。',
       },
     },
 
