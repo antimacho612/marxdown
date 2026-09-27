@@ -1,7 +1,15 @@
 # 開発ガイド
 
 Marxdown をソースからビルド・開発するための手順。
-使い方は [README](README.md) を、設計の全体は [`docs/`](docs/README.md)（Git Submodule）を参照。
+使い方は [README](README.md) を参照。
+
+## 設計ドキュメント
+
+要件・アーキテクチャ・ADR・実測値などの設計ドキュメントは、別の非公開リポジトリで管理している。
+コードやコメントに出てくる `ADR-0009` / `OQ-36` / `F-EDIT-11` のような ID は、その中の文書を指す。
+読めなくてもビルドと開発には支障がない。
+
+`docs/` は利用者向けのドキュメントである。
 
 ## 必要なもの
 
@@ -55,7 +63,8 @@ Rust 側は `src-tauri/` で `cargo fmt` / `cargo clippy --all-targets -- -D war
 
 ## 計測
 
-性能目標は [`docs/05.performance-budget/`](docs/05.performance-budget/README.md) にある。
+バンドルの予算は [`.size-limit.json`](.size-limit.json) にあり、CI の `size-limit` が超過を検出する。
+超えたときに上限を引き上げてはいけない。遅延チャンクへ追い出すか、依存を減らすか、機能を諦める。
 
 ```bash
 pnpm fixtures                                  # bench/fixtures/ の基準ファイルを生成
@@ -124,7 +133,7 @@ Release の本文と、アプリの更新通知から開く「変更内容」は
 ## リリース
 
 版の番号は `package.json` だけが持つ（`tauri.conf.json` はそれを参照し、`Cargo.toml` はスクリプトが合わせる）。
-設計は [ADR-0024](docs/adr/0024-auto-update.md) を参照。
+設計は ADR-0024 にある。
 
 ```bash
 pnpm release bump 0.2.0      # 版を上げ、CHANGELOG の Unreleased を 0.2.0 の節にする

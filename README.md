@@ -183,11 +183,11 @@ Windows PowerShell 5.1 からパイプで渡すと、ASCII 以外の文字が `?
 | <kbd>Ctrl</kbd>+<kbd>,</kbd> | 設定 |
 | <kbd>Ctrl</kbd>+<kbd>Q</kbd> | 終了 |
 
-すべてのショートカットは [キーバインド一覧](docs/03.ux-spec/04-keybindings.md) を参照してください。
+すべてのショートカットは [キーボードショートカット](docs/keybindings.md) を参照してください。
 
 ## 🛠️ 開発に参加する
 
-ビルド手順・検査・計測・コードの構成は [CONTRIBUTING.md](CONTRIBUTING.md) に、設計の全体は [`docs/`](docs/README.md) にあります。
+ビルド手順・検査・計測・コードの構成は [CONTRIBUTING.md](CONTRIBUTING.md) にあります。
 
 ## 📄 ライセンス
 

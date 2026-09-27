@@ -39,7 +39,7 @@
 `huge.md` を描き切ってから `tiny.md` へ戻す往復を繰り返し、各点のメモリを記録する
 （[measurements > memory](../docs/measurements/06-memory.md)）。
 往復の回数は `MX_MEMORY_CYCLES`、CDP の利用有無は `MX_MEMORY_CDP` で変えられる。
-結果は `docs/measurements/memory-oq18.json` に出る。
+結果は `design/measurements/memory-oq18.json` に出る。
 
 分けてあるのは、1 本で数分かかることと、WebView2 に `--enable-precise-memory-info` を渡した状態を
 他の spec に持ち込まないためである。

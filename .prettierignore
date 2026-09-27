@@ -7,4 +7,4 @@ bench/fixtures
 pnpm-lock.yaml
 .claude
 *.md
-docs
+design
