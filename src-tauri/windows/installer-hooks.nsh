@@ -109,7 +109,7 @@
 
 ; 本体を消す前に呼ぶ必要がある。PATH の解除は marxdown.exe が行うため。
 ; 更新のときは解除しない。直後のインストールが前回の選択を引き継ぐ。
-; ログイン時の自動起動（ADR-0020）の値も消す。書くのは marxdown.exe（src/autostart.rs）で、設定を読むたびに書き直すため、更新のときは残しておけば次の起動で整う。
+; ログイン時の自動起動（ADR-0022）の値も消す。書くのは marxdown.exe（src/autostart.rs）で、設定を読むたびに書き直すため、更新のときは残しておけば次の起動で整う。
 !macro NSIS_HOOK_PREUNINSTALL
   ${If} $UpdateMode <> 1
     ExecWait '"$INSTDIR\${MAINBINARYNAME}.exe" --remove-from-path'
