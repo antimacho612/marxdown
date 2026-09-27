@@ -55,6 +55,8 @@ version = "0.38.2"
 version = "0.61"
 features = [
   "Win32_Foundation",
+  # `--help` の言語を OS の表示言語に合わせる（`src/cli.rs` / ADR-0026）。
+  "Win32_Globalization",
   "Win32_Graphics_Gdi",
   "Win32_System_LibraryLoader",
   # ユーザーの PATH の登録と解除（`src/path_env.rs` / F-OS-02）。

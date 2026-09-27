@@ -88,8 +88,20 @@ pub fn refresh<R: Runtime>(app: &AppHandle<R>) {
 }
 
 fn build_menu<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<Menu<R>> {
-    let open = MenuItem::with_id(app, ID_OPEN, "Marxdown を開く", true, None::<&str>)?;
-    let quit = MenuItem::with_id(app, ID_QUIT, "終了", true, None::<&str>)?;
+    let open = MenuItem::with_id(
+        app,
+        ID_OPEN,
+        crate::i18n::text().tray_open,
+        true,
+        None::<&str>,
+    )?;
+    let quit = MenuItem::with_id(
+        app,
+        ID_QUIT,
+        crate::i18n::text().tray_quit,
+        true,
+        None::<&str>,
+    )?;
 
     let recent = app
         .try_state::<AppState>()
@@ -103,7 +115,7 @@ fn build_menu<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<Menu<R>> {
     // 最近開いたファイルが 1 件も無いなら、submenu ごと出さない。
     // 空のサブメニューは「壊れている」ように見える（Welcome が空欄を並べないのと同じ）。
     if !recent.is_empty() {
-        let sub = Submenu::new(app, "最近開いたファイル", true)?;
+        let sub = Submenu::new(app, crate::i18n::text().tray_recent, true)?;
         for entry in recent.iter().take(TRAY_RECENT_SHOWN) {
             // ラベルはファイル名だけにする。
             // トレイのメニューは幅が取れず、絶対パスを入れると画面外まで伸びる。

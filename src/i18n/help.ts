@@ -12,6 +12,10 @@ const help = lazyMessages<HelpMessages>({
     const { jaHelp } = await import('./ja/help');
     return jaHelp;
   },
+  en: async () => {
+    const { enHelp } = await import('./en/help');
+    return enHelp;
+  },
 });
 
 /** 表示言語のヘルプの文言。`loadHelpMessages()` が完了するまで空である。 */

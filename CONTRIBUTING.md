@@ -207,6 +207,7 @@ updater の署名鍵（Tauri 独自の minisign 鍵。コード署名ではな�
 src/
   app/            起動シーケンス・アプリシェル・計測
   features/       document / preview / editor / …
+  i18n/           UI の文言（ja/ と en/）
   markdown/       markdown-it パイプライン・サニタイズ
   platform/       Tauri API の唯一の呼び出し口（テスト時は差し替え）
   styles/         デザイントークンとプレビューのタイポグラフィ
@@ -221,7 +222,11 @@ src-tauri/src/
 
 守っている不変条件は 4 つ。
 
-1. **クリティカルパスを太らせない** — `main` + `shared` + `pipeline` + アプリの CSS の合計を 150KB (gzip) 以内に保つ。エディター・Mermaid・KaTeX・ハイライタはすべて遅延チャンク。
+1. **クリティカルパスを太らせない** — `main` + `shared` + `pipeline` + 表示言語の文言 + アプリの CSS の合計を 150KB (gzip) 以内に保つ。エディター・Mermaid・KaTeX・ハイライタはすべて遅延チャンク。
 2. **Markdown テキストが唯一の真実** — AST も DOM も派生物で、テキストへ書き戻す経路を作らない。編集・保存で、触っていない箇所のバイト列を変えない。
 3. **ドキュメント本体をリアクティブな状態に置かない** — 本文の DOM はコンポーネントツリーの外にある。
 4. **Rust は速いことだけを担当する** — UI ロジックと Markdown の意味解釈は TypeScript 側。
+
+UI の文言はコンポーネントに直接書かず、`src/i18n/ja/` と `src/i18n/en/` の両方に同じキーで足す。
+キーの構成は `ja/` が正で、`en/` に足し忘れると `tsc` が失敗する。
+コードからは `t`（`@/i18n`）など、言語を問わない名前で参照する。

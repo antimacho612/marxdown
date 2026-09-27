@@ -138,7 +138,10 @@ pub fn ensure_dir(dir: &Path) -> CoreResult<()> {
 
     let sample = dir.join("README.css");
     if !sample.exists() {
-        crate::document::atomic::write(sample.as_path(), TEMPLATE.as_bytes())?;
+        crate::document::atomic::write(
+            sample.as_path(),
+            crate::i18n::text().themes_template.as_bytes(),
+        )?;
     }
     Ok(())
 }
@@ -214,42 +217,6 @@ fn move_into_themes(config: &Path, legacy_name: &str, id: &str) -> bool {
     }
     std::fs::rename(&legacy, &target).is_ok()
 }
-
-/// 雛形。説明だけで、有効な宣言を 1 つも含めない。
-///
-/// 有効な形で例を書くと、`README` という名前の配色が選択肢に現れてしまう。
-/// 全体が 1 つのコメントであれば、読み込まれても宣言は 0 個であり、選んでも何も起きない。
-const TEMPLATE: &str = "/*
- * Marxdown の配色ファイル
- *
- * このフォルダーに置いた .css ファイル 1 つが 1 つの配色になり、設定の「配色」に表示されます。
- * プレビューとエディターのどちらでも選べます。
- * 配色の名前は、拡張子を除いたファイル名です（英数字と - _ だけ使えます）。
- *
- * ファイルには、セレクターを付けずに宣言だけを書きます。
- *
- *   --mx-color-bg: #101010;
- *   --mx-color-fg: #ffffff;
- *   --mx-color-code-string: #99ffe4;
- *
- * ライトとダークで色を変えるときは、light-dark() を使います。
- *
- *   --mx-color-bg: light-dark(#ffffff, #101010);
- *
- * ライトかダークの一方にだけ対応する配色は、color-scheme で固定できます。
- *
- *   color-scheme: dark;
- *
- * 宣言の後には、セレクター付きの規則も書けます。
- * 規則は、その配色を選んだ場所の中だけに適用されます。
- * エディターには適用されないため、実際に効果があるのはプレビューだけです。
- *
- *   h1 { border-bottom: 1px solid }
- *
- * 組み込みの配色と同じ名前を付けると、組み込みの配色の代わりに使われます。
- * ファイルを保存すると、すぐに反映されます。
- */
-";
 
 #[cfg(test)]
 mod tests {
@@ -404,10 +371,12 @@ mod tests {
     /// 有効な宣言を含めると、`README` という配色が選択肢に現れる。
     #[test]
     fn the_template_is_one_comment_and_nothing_else() {
-        let trimmed = TEMPLATE.trim();
-        assert!(trimmed.starts_with("/*"), "{TEMPLATE}");
-        assert!(trimmed.ends_with("*/"), "{TEMPLATE}");
-        assert_eq!(trimmed.matches("*/").count(), 1, "{TEMPLATE}");
+        for template in crate::i18n::all_themes_templates() {
+            let trimmed = template.trim();
+            assert!(trimmed.starts_with("/*"), "{template}");
+            assert!(trimmed.ends_with("*/"), "{template}");
+            assert_eq!(trimmed.matches("*/").count(), 1, "{template}");
+        }
     }
 
     #[test]
@@ -415,9 +384,11 @@ mod tests {
         let d = temp_dir("ensure").join("themes");
 
         ensure_dir(&d).unwrap();
-        assert!(std::fs::read_to_string(d.join("README.css"))
-            .unwrap()
-            .contains("Marxdown の配色ファイル"));
+        // 雛形の言語は実行環境の OS の表示言語で決まる（`i18n.rs`）。
+        assert_eq!(
+            std::fs::read_to_string(d.join("README.css")).unwrap(),
+            crate::i18n::text().themes_template
+        );
 
         std::fs::write(d.join("README.css"), "書き換えた").unwrap();
         ensure_dir(&d).unwrap();

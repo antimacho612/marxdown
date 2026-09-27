@@ -1,5 +1,7 @@
 # キーボードショートカット
 
+日本語 | [English](keybindings.en.md)
+
 Marxdown のショートカットの一覧です。
 ここに無い操作も、<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd>（コマンドパレット）からすべて実行できます。
 
