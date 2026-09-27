@@ -3,7 +3,7 @@
  -->
 
 <script lang="ts">
-  import { ja } from '@/i18n/ja';
+  import { tSettings } from '@/i18n/settings';
 
   interface Props {
     onClick: () => void;
@@ -12,7 +12,7 @@
   let { onClick }: Props = $props();
 </script>
 
-<button type="button" class="mx-settings__reset" title={ja.settings.reset} onclick={onClick}>
+<button type="button" class="mx-settings__reset" title={tSettings.reset} onclick={onClick}>
   <svg
     xmlns="http://www.w3.org/2000/svg"
     width="18"

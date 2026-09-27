@@ -6,7 +6,7 @@
  */
 import { pushHistory } from '@/features/history';
 import { enhance, paint, paintMarp, scrollToAnchor } from '@/features/preview';
-import { ja } from '@/i18n/ja';
+import { t } from '@/i18n';
 import { dirOf } from '@/lib/path';
 import { refreshOutline, refreshSearch } from '@/lib/refresh';
 import { mark } from '@/lib/trace';
@@ -292,7 +292,7 @@ export async function openDocument(payload: StoredPayload, options: OpenOptions 
 
     return outcome;
   } catch {
-    documentStore.notice = { level: 'error', message: ja.error.renderFailed };
+    documentStore.notice = { level: 'error', message: t.error.renderFailed };
     return null;
   }
 }
@@ -318,7 +318,7 @@ export async function openPath(path: string, options: OpenOptions = {}): Promise
     const missing = kind === 'not-found' && config !== null;
     documentStore.notice = {
       level: 'error',
-      message: describeOpenError(e, path) + (missing ? ja.error.removedFromRecent : ''),
+      message: describeOpenError(e, path) + (missing ? t.error.removedFromRecent : ''),
       // Marxdown では読めないが、OS の既定アプリでなら開ける（F-VIEW-06）。
       // ファイルツリーは Markdown 以外も並べる以上、画像や書庫を選ぶこと自体は避けられない。
       ...(kind === 'binary' && { actions: externalOpenActions(path) }),
@@ -340,18 +340,18 @@ export async function openPath(path: string, options: OpenOptions = {}): Promise
 export function externalOpenActions(path: string): NoticeAction[] {
   return [
     {
-      label: ja.link.open,
+      label: t.link.open,
       run: () => {
         void getPlatform()
           .openLocalFile(path)
           .catch(() => {
             // 許可ディレクトリの外であれば Rust 側が拒否する。
-            documentStore.notice = { level: 'error', message: ja.link.outOfScope(path) };
+            documentStore.notice = { level: 'error', message: t.link.outOfScope(path) };
           });
       },
     },
     {
-      label: ja.link.reveal,
+      label: t.link.reveal,
       run: () => {
         void getPlatform().revealInFileManager(path);
       },
@@ -393,7 +393,7 @@ export async function reloadCurrent(options: ReloadOptions = {}): Promise<OpenOu
   });
 
   // 内容が同じで画面が変化しない場合も、操作を受け付けたことは伝える（3 秒で消えるステータスバーのメッセージ）。
-  if (outcome) notifyStatus(options.status ?? ja.open.reloaded);
+  if (outcome) notifyStatus(options.status ?? t.open.reloaded);
   return outcome;
 }
 
@@ -442,9 +442,9 @@ function kindOf(e: unknown): string | null {
 export function describeOpenError(e: unknown, path: string): string {
   const kind = kindOf(e);
   if (kind !== null) {
-    const entry = (ja.error as Record<string, unknown>)[kind];
+    const entry = (t.error as Record<string, unknown>)[kind];
     if (typeof entry === 'function') return (entry as (p: string) => string)(path);
     if (typeof entry === 'string') return entry;
   }
-  return ja.error.unexpected;
+  return t.error.unexpected;
 }

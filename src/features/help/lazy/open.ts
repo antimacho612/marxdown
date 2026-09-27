@@ -5,7 +5,7 @@
  * どれも利用者が選んで実行したものであり、何も起きないまま終わると押せていないように見える。
  */
 import { documentStore } from '@/features/document';
-import { jaHelp } from '@/i18n/ja-help';
+import { tHelp } from '@/i18n/help';
 import { getPlatform, type AppInfo, type BundledFile } from '@/platform';
 
 export async function openPage(url: string): Promise<void> {
@@ -13,7 +13,7 @@ export async function openPage(url: string): Promise<void> {
     await getPlatform().openExternal(url);
   } catch (error) {
     console.warn('[marxdown] ページを開けなかった', error);
-    documentStore.notice = { level: 'error', message: jaHelp.openPageFailed };
+    documentStore.notice = { level: 'error', message: tHelp.openPageFailed };
   }
 }
 
@@ -22,7 +22,7 @@ export async function openBundled(file: BundledFile): Promise<void> {
     await getPlatform().openBundledFile(file);
   } catch (error) {
     console.warn('[marxdown] 同梱のライセンス文を開けなかった', error);
-    documentStore.notice = { level: 'error', message: jaHelp.openLicenseFailed };
+    documentStore.notice = { level: 'error', message: tHelp.openLicenseFailed };
   }
 }
 

@@ -5,7 +5,7 @@
  * Clean なら確認せずに読み直してステータスバーに出し、Dirty なら何もせず消えない通知バーで選ばせる（入力を失わないため）。
  * デバウンスと自己イベントの排除は Rust 側（`src-tauri/src/watch.rs`）が済ませており、ここに届くのは実体が変わったことが確定したイベントだけである。
  */
-import { ja } from '@/i18n/ja';
+import { t } from '@/i18n';
 import { getPlatform } from '@/platform';
 
 import { markClean } from './dirty';
@@ -70,10 +70,10 @@ export function installFileWatch(): void {
 function offerReloadChoice(): void {
   documentStore.notice = {
     level: 'warning',
-    message: ja.open.changedExternally,
+    message: t.open.changedExternally,
     actions: [
-      { label: ja.open.reloadAction, run: () => void discardAndReload() },
-      { label: ja.open.ignoreAction, run: () => (documentStore.notice = null) },
+      { label: t.open.reloadAction, run: () => void discardAndReload() },
+      { label: t.open.ignoreAction, run: () => (documentStore.notice = null) },
     ],
   };
 }
@@ -81,7 +81,7 @@ function offerReloadChoice(): void {
 /** 編集内容を破棄して読み直す。通知バーで明示的に選ばれたときだけ呼ばれる。 */
 async function discardAndReload(): Promise<void> {
   markClean();
-  await reloadCurrent({ status: ja.open.reloadedExternal });
+  await reloadCurrent({ status: t.open.reloadedExternal });
 }
 
 function reloadFromDisk(): void {
@@ -92,7 +92,7 @@ function reloadFromDisk(): void {
   reloading = true;
   missedChange = false;
 
-  void reloadCurrent({ status: ja.open.reloadedExternal }).finally(() => {
+  void reloadCurrent({ status: t.open.reloadedExternal }).finally(() => {
     reloading = false;
     // 読み込み中に届いた変更を処理し直す。
     // 新しいイベントが来ない限りここは 1 回で終わる（`missedChange` を立てるのはイベントだけである）。

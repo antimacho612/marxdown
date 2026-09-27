@@ -9,7 +9,7 @@
   import type { Snippet } from 'svelte';
 
   import { isSatellite } from '@/features/view';
-  import { ja } from '@/i18n/ja';
+  import { t } from '@/i18n';
 
   import MenuButton from './MenuButton.svelte';
   import WindowControls from './WindowControls.svelte';
@@ -41,7 +41,7 @@
     {#if center}
       {@render center()}
     {:else}
-      <span class="mx-titlebar__name">{ja.app.name}</span>
+      <span class="mx-titlebar__name">{t.app.name}</span>
     {/if}
   </div>
 

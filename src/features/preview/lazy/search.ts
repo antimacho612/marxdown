@@ -5,7 +5,7 @@
  * 一致箇所を `<mark>` で包む実装にはしない（段階的描画で増える DOM と混ざる／`huge.md` で本文の DOM が作り直され続ける／`data-line` の行マッピングが壊れる）。
  * 代わりに CSS Custom Highlight API で `Range` を登録するだけにし、DOM には触れない（WebView2 Evergreen / WKWebView のみが対象のため前提にしてよい）。
  */
-import { ja } from '@/i18n/ja';
+import { t } from '@/i18n';
 import { registerSearchRefresher } from '@/lib/refresh';
 import { bindKeys } from '@/lib/shortcuts';
 
@@ -90,16 +90,16 @@ function mount(container: HTMLElement): SearchState {
   const input = document.createElement('input');
   input.type = 'text';
   input.className = 'mx-search__input';
-  input.setAttribute('aria-label', ja.search.label);
-  input.placeholder = ja.search.placeholder;
+  input.setAttribute('aria-label', t.search.label);
+  input.placeholder = t.search.placeholder;
 
   const counter = document.createElement('span');
   counter.className = 'mx-search__counter';
   counter.setAttribute('aria-live', 'polite');
 
-  const prev = button('mx-search__nav', '‹', ja.search.previous, () => step(-1));
-  const next = button('mx-search__nav', '›', ja.search.next, () => step(1));
-  const close = button('mx-search__close', '✕', ja.search.close, closeSearch);
+  const prev = button('mx-search__nav', '‹', t.search.previous, () => step(-1));
+  const next = button('mx-search__nav', '›', t.search.next, () => step(1));
+  const close = button('mx-search__close', '✕', t.search.close, closeSearch);
 
   panel.append(input, counter, prev, next, close);
   document.body.append(panel);
@@ -282,8 +282,8 @@ function render(current: SearchState): void {
     current.input.value === ''
       ? ''
       : count === 0
-        ? ja.search.noMatch
-        : ja.search.position(current.index + 1, count, current.truncated);
+        ? t.search.noMatch
+        : t.search.position(current.index + 1, count, current.truncated);
 
   current.panel.dataset['mxEmpty'] = current.input.value !== '' && count === 0 ? 'true' : 'false';
 }

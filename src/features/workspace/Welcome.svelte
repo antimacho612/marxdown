@@ -4,7 +4,7 @@
   押しても何も起きない項目を置くのは Principle 3 に反する。
 -->
 <script lang="ts">
-  import { ja } from '@/i18n/ja';
+  import { t } from '@/i18n';
   import { runCommand } from '@/lib/commands';
   import Icon from '@/lib/Icon.svelte';
   import Mark from '@/lib/Mark.svelte';
@@ -27,7 +27,7 @@
   <div class="mx-welcome__panel">
     <h1 class="mx-welcome__title">
       <Mark size={30} />
-      {ja.welcome.title}
+      {t.welcome.title}
     </h1>
 
     <!--
@@ -36,26 +36,26 @@
     -->
     <button type="button" class="mx-welcome__action" onclick={() => runCommand('document.open')}>
       <Icon name="document" />
-      <span>{ja.welcome.openFile}</span>
+      <span>{t.welcome.openFile}</span>
       <kbd>Ctrl+O</kbd>
     </button>
 
     <button type="button" class="mx-welcome__action" onclick={() => runCommand('folder.open')}>
       <Icon name="folder" />
-      <span>{ja.welcome.openFolder}</span>
+      <span>{t.welcome.openFolder}</span>
       <kbd>Ctrl+Alt+O</kbd>
     </button>
 
     <button type="button" class="mx-welcome__action" onclick={() => runCommand('document.new')}>
       <Icon name="document-plus" />
-      <span>{ja.welcome.newFile}</span>
+      <span>{t.welcome.newFile}</span>
       <kbd>Ctrl+N</kbd>
     </button>
 
     <section class="mx-welcome__recent">
-      <h2 class="mx-welcome__heading">{ja.welcome.recent}</h2>
+      <h2 class="mx-welcome__heading">{t.welcome.recent}</h2>
       {#if shown.length === 0}
-        <p class="mx-welcome__empty">{ja.welcome.noRecent}</p>
+        <p class="mx-welcome__empty">{t.welcome.noRecent}</p>
       {:else}
         <ul class="mx-welcome__list">
           {#each shown as entry (entry.path)}
@@ -86,8 +86,8 @@
       {/if}
     </section>
 
-    <p class="mx-welcome__hint">{ja.welcome.dropHint}</p>
-    <p class="mx-welcome__hint">{ja.welcome.cliHint} <code>marxdown &lt;file.md&gt;</code></p>
+    <p class="mx-welcome__hint">{t.welcome.dropHint}</p>
+    <p class="mx-welcome__hint">{t.welcome.cliHint} <code>marxdown &lt;file.md&gt;</code></p>
   </div>
 </div>
 

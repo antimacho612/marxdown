@@ -29,7 +29,7 @@ Rust 側も拒否するが、UI が「保存できたように見せる」のを
   import { onMount } from 'svelte';
 
   import type ThemeFieldComponent from '@/features/theme/lazy/ThemeField.svelte';
-  import { ja } from '@/i18n/ja';
+  import { tSettings } from '@/i18n/settings';
   import CloseIcon from '@/lib/CloseIcon.svelte';
   import { DEFAULT_SETTINGS, getPlatform, type SettingKey, type SettingsProblem } from '@/platform';
 
@@ -45,7 +45,7 @@ Rust 側も拒否するが、UI が「保存できたように見せる」のを
     TextField,
     ToggleField,
   } from './components';
-  import { LAYOUT, type CategoryId, type FieldEntry } from './layout';
+  import { buildLayout, type CategoryId, type FieldEntry } from './layout';
   import { createRulerMemory, rulerColumn } from './rulers';
   import type SampleComponent from './samples/Sample.svelte';
 
@@ -69,6 +69,7 @@ Rust 側も拒否するが、UI が「保存できたように見せる」のを
     lastCategory = category;
   });
 
+  const LAYOUT = buildLayout();
   const CATEGORIES = LAYOUT.map(({ id, label }) => ({ id, label }));
 
   const entries = $derived(LAYOUT.find((c) => c.id === category)?.entries ?? []);
@@ -236,7 +237,7 @@ Rust 側も拒否するが、UI が「保存できたように見せる」のを
 
 <dialog
   class="mx-settings"
-  aria-label={ja.settings.title}
+  aria-label={tSettings.title}
   bind:this={dialog}
   onkeydown={onKeydown}
   onclick={onBackdropClick}
@@ -247,14 +248,14 @@ Rust 側も拒否するが、UI が「保存できたように見せる」のを
   }}
 >
   <header class="mx-settings__header">
-    <h2 class="mx-settings__title">{ja.settings.title}</h2>
-    <button type="button" class="mx-settings__close" aria-label={ja.settings.close} onclick={close}>
+    <h2 class="mx-settings__title">{tSettings.title}</h2>
+    <button type="button" class="mx-settings__close" aria-label={tSettings.close} onclick={close}>
       <CloseIcon />
     </button>
   </header>
 
   {#if broken}
-    <p class="mx-settings__broken" role="alert">{ja.settings.readOnly}</p>
+    <p class="mx-settings__broken" role="alert">{tSettings.readOnly}</p>
   {/if}
 
   <div class="mx-settings__body">
@@ -326,7 +327,7 @@ Rust 側も拒否するが、UI が「保存できたように見せる」のを
     <ToggleField
       settingKey={entry.key}
       label={entry.label}
-      description={`${description}（${ja.settings.defaultValue(DEFAULT_SETTINGS[entry.key])}）`}
+      description={`${description}（${tSettings.defaultValue(DEFAULT_SETTINGS[entry.key])}）`}
       checked={values[entry.key]}
       onChange={(checked) => changeSetting(entry.key, checked)}
     />

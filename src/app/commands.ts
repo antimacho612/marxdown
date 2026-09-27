@@ -251,7 +251,7 @@ const COMMANDS: Command[] = [
   // 更新の確認（ADR-0024）。設定 `update.autoCheck` を切っていても、ここからは確認できる。
   { id: 'app.checkUpdate', run: () => void checkForUpdatesLazily() },
 
-  // ヘルプ（F-OS-09 / ADR-0026）。実体は `help` チャンクにあり、選ばれるまで読み込まない。
+  // ヘルプ（F-OS-09 / ADR-0027）。実体は `help` チャンクにあり、選ばれるまで読み込まない。
   // キーは割り当てない。使用頻度が低く、覚えるキーを増やす利点がない（`document.toggleEol` と同じ判断）。
   { id: 'help.reportIssue', run: () => void runHelpLazily('reportIssue') },
   { id: 'help.suggestFeature', run: () => void runHelpLazily('suggestFeature') },

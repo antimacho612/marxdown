@@ -1,5 +1,5 @@
 /**
- * 「Marxdown について」の出し入れ（F-OS-09 / ADR-0026）。
+ * 「Marxdown について」の出し入れ（F-OS-09 / ADR-0027）。
  *
  * シェル側に `{#if}` を置かず、ここで自分をマウントする（`features/settings/lazy/panel.ts` と同じ形 / ADR-0005）。
  */

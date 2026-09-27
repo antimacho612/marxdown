@@ -1,5 +1,5 @@
 /**
- * help feature の公開面（F-OS-09 / ADR-0026）。
+ * help feature の公開面（F-OS-09 / ADR-0027）。
  *
  * `main` に置くのは動的 import の入口だけである。
  * 不具合報告の URL の組み立て・「Marxdown について」のダイアログ・文言は `lazy/`（`help` チャンク）にあり、ヘルプの項目が選ばれるまで読み込まない。

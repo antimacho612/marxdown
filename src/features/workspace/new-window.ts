@@ -10,7 +10,7 @@
  */
 import { documentStore, getDocumentText, setDirty, type StoredMeta } from '@/features/document';
 import { viewStore } from '@/features/view';
-import { ja } from '@/i18n/ja';
+import { t } from '@/i18n';
 import { getPlatform, type Eol, type ViewMode } from '@/platform';
 
 import { closeTab, isTabDirty, tabMeta, tabsStore, type Tab } from './tabs.svelte';
@@ -90,7 +90,7 @@ export async function prepareHandoff(tab: Tab): Promise<Handoff | null> {
 
   const text = textOf(tab.id, tab.text);
   if (text === null) {
-    documentStore.notice = { level: 'warning', message: ja.window.textUnavailable };
+    documentStore.notice = { level: 'warning', message: t.window.textUnavailable };
     return null;
   }
 
@@ -105,7 +105,7 @@ export async function prepareHandoff(tab: Tab): Promise<Handoff | null> {
   try {
     return { transfer: await getPlatform().stashTransfer(JSON.stringify(payload)) };
   } catch {
-    documentStore.notice = { level: 'error', message: ja.window.failed };
+    documentStore.notice = { level: 'error', message: t.window.failed };
     return null;
   }
 }
@@ -131,7 +131,7 @@ export async function takeTabTransfer(id: number): Promise<TabTransfer | null> {
     const raw = await getPlatform().takeTransfer(id);
     return raw === null ? null : (JSON.parse(raw) as TabTransfer);
   } catch {
-    documentStore.notice = { level: 'error', message: ja.window.moveFailed };
+    documentStore.notice = { level: 'error', message: t.window.moveFailed };
     return null;
   }
 }
@@ -181,7 +181,7 @@ async function spawnSatellite(options: {
     await getPlatform().openSatellite(options);
     return true;
   } catch {
-    documentStore.notice = { level: 'error', message: ja.window.failed };
+    documentStore.notice = { level: 'error', message: t.window.failed };
     return false;
   }
 }

@@ -8,7 +8,7 @@
 <script module lang="ts">
   import { defineMeta } from '@storybook/addon-svelte-csf';
 
-  import { ja } from '@/i18n/ja';
+  import { t } from '@/i18n';
 
   import StatusBarButton from './StatusBarButton.svelte';
 
@@ -27,7 +27,7 @@
 
 {#snippet one()}
   <div style={BAR}>
-    <StatusBarButton title={ja.status.zoomSelect} aria-haspopup="menu" onclick={() => {}}>100%</StatusBarButton>
+    <StatusBarButton title={t.status.zoomSelect} aria-haspopup="menu" onclick={() => {}}>100%</StatusBarButton>
   </div>
 {/snippet}
 
@@ -36,8 +36,8 @@
 <!-- 選択肢を開いている間。どこから開いたかが分かるように強調したままにする。 -->
 {#snippet expanded()}
   <div style={BAR}>
-    <StatusBarButton title={ja.status.modeSwitch} aria-haspopup="menu" aria-expanded={true} onclick={() => {}}>
-      {ja.status.mode.preview}
+    <StatusBarButton title={t.status.modeSwitch} aria-haspopup="menu" aria-expanded={true} onclick={() => {}}>
+      {t.status.mode.preview}
     </StatusBarButton>
   </div>
 {/snippet}
@@ -46,18 +46,18 @@
 
 {#snippet row()}
   <div style={BAR}>
-    <StatusBarButton title={ja.status.modeSwitch} aria-haspopup="menu" onclick={() => {}}>
-      {ja.status.mode.split}
+    <StatusBarButton title={t.status.modeSwitch} aria-haspopup="menu" onclick={() => {}}>
+      {t.status.mode.split}
     </StatusBarButton>
-    <StatusBarButton title={ja.status.encodingReinterpret} aria-haspopup="menu" onclick={() => {}}>
-      {ja.status.encoding.utf8}
+    <StatusBarButton title={t.status.encodingReinterpret} aria-haspopup="menu" onclick={() => {}}>
+      {t.status.encoding.utf8}
     </StatusBarButton>
-    <StatusBarButton title={ja.status.eolConvert('crlf')} onclick={() => {}}>LF</StatusBarButton>
+    <StatusBarButton title={t.status.eolConvert('crlf')} onclick={() => {}}>LF</StatusBarButton>
     <!-- 押せない項目。ボタンに見せない。 -->
     <span>BOM</span>
-    <span>{ja.status.chars(4210)}</span>
+    <span>{t.status.chars(4210)}</span>
     <span style="flex: 1;"></span>
-    <StatusBarButton title={ja.status.zoomSelect} aria-haspopup="menu" onclick={() => {}}>120%</StatusBarButton>
+    <StatusBarButton title={t.status.zoomSelect} aria-haspopup="menu" onclick={() => {}}>120%</StatusBarButton>
   </div>
 {/snippet}
 

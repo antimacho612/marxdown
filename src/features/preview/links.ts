@@ -6,7 +6,7 @@
  * どの分岐でも必ず `preventDefault()` する。
  * WebView がページ遷移するとアプリのシェルごと差し替わり復帰できないためである（N-SEC-04）。
  */
-import { ja } from '@/i18n/ja';
+import { t } from '@/i18n';
 import { dirOf, isMarkdownPath, joinPath } from '@/lib/path';
 import { getPlatform } from '@/platform';
 
@@ -127,21 +127,21 @@ function handle(href: string, container: HTMLElement, newWindow = false): void {
 function confirmOpenExternally(path: string): void {
   targets?.notify({
     level: 'info',
-    message: ja.link.confirmOpen(path),
+    message: t.link.confirmOpen(path),
     actions: [
       {
-        label: ja.link.open,
+        label: t.link.open,
         run: () => {
           void getPlatform()
             .openLocalFile(path)
             .catch(() => {
               // 許可ディレクトリの外であれば Rust 側が拒否する。その結果は通知に出す。
-              targets?.notify({ level: 'error', message: ja.link.outOfScope(path) });
+              targets?.notify({ level: 'error', message: t.link.outOfScope(path) });
             });
         },
       },
       {
-        label: ja.link.reveal,
+        label: t.link.reveal,
         run: () => {
           void getPlatform().revealInFileManager(path);
         },

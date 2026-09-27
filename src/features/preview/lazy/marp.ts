@@ -9,7 +9,7 @@
  * 閉じ込めの判定は配色の注入（`features/theme/inject.ts`）と同じく、ブラウザに解釈させた規則の数とセレクタだけを見る。
  * 入れ子にすると ID の分だけ詳細度が上がり、アプリのプレビュー用の規則（`.mx-preview pre` など）より優先される。
  */
-import { jaMarp } from '@/i18n/ja-marp';
+import { loadMarpMessages, tMarp } from '@/i18n/marp';
 import type { MarpRender } from '@/markdown/protocol';
 import { isAllowedUri, sanitizeMarp } from '@/markdown/sanitize';
 import { getPlatform } from '@/platform';
@@ -64,6 +64,9 @@ let nested: { css: string; result: string | null } | null = null;
 /** 相対パスの背景画像の解決結果。キーは `baseDir` と参照の組。 */
 const resolved = new Map<string, Promise<string | null>>();
 
+/** 文言（`tMarp`）の読み込み。呼び出し側（`features/preview/marp.ts`）は `mountMarp` の前にこれを待つ。 */
+export const ready = loadMarpMessages();
+
 /** `mountMarp` の結果。 */
 export interface MountResult {
   /**
@@ -95,12 +98,12 @@ export function mountMarp(container: HTMLElement, marp: MarpRender, baseDir: str
   container.append(style, deck);
 
   void resolveBackgrounds(deck, baseDir);
-  return { notice: theme === null ? jaMarp.styleRejected : themeNotice(marp.themeProblems ?? []) };
+  return { notice: theme === null ? tMarp.styleRejected : themeNotice(marp.themeProblems ?? []) };
 }
 
 function themeNotice(problems: NonNullable<MarpRender['themeProblems']>): string | null {
   const first = problems[0];
-  return first ? jaMarp.themeFailed(jaMarp.themeProblem[first.kind], first.path, problems.length - 1) : null;
+  return first ? tMarp.themeFailed(tMarp.themeProblem[first.kind], first.path, problems.length - 1) : null;
 }
 
 /** 保持しているものを解放する（N-PERF-06）。文書を閉じたときに呼ぶ。 */

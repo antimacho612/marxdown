@@ -7,7 +7,7 @@
  */
 import { documentStore } from '@/features/document';
 import { reloadTree } from '@/features/workspace';
-import { ja } from '@/i18n/ja';
+import { t } from '@/i18n';
 import { DEFAULT_SETTINGS, getPlatform, type Bootstrap, type Settings, type SettingsProblem } from '@/platform';
 
 import { applyAppearance } from './appearance';
@@ -81,7 +81,7 @@ export async function refreshSettings(): Promise<void> {
   }
   // 修正されていれば、自動では消えない通知をここで閉じる。
   // 壊れている間だけ表示すべきものであり、修正後も残ると未修正であるかのように見える。
-  if (documentStore.notice?.message === ja.settings.broken) documentStore.notice = null;
+  if (documentStore.notice?.message === t.settings.broken) documentStore.notice = null;
 }
 
 /** 並びが同じ内容か。件数の少ない文字列の並びにしか使わない。 */
@@ -101,10 +101,10 @@ export function reportSettingsProblem(problem: SettingsProblem | null): void {
 
   documentStore.notice = {
     level: 'error',
-    message: ja.settings.broken,
+    message: t.settings.broken,
     actions: [
       {
-        label: ja.settings.openFile,
+        label: t.settings.openFile,
         run: () => void getPlatform().openSettingsFile(),
       },
     ],

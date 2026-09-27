@@ -215,6 +215,15 @@ export default defineConfig(({ mode }) => ({
           if (isLanguage) return 'assets/hljs-[name]-[hash].js';
 
           /*
+           * UI の文言（ADR-0026）。`i18n-<言語>-<core|explorer|help|marp|update>` の名前にする。
+           *
+           * 起動時に読むのは表示言語の `core` の 1 つだけである。
+           * size-limit は言語ごとに `i18n-<言語>-core-*.js` を critical path に数え、他の言語の分は数えない。
+           */
+          const i18n = /[\\/]src[\\/]i18n[\\/](\w+)[\\/](\w+)\.ts$/.exec(chunk.facadeModuleId ?? '');
+          if (i18n) return `assets/i18n-${i18n[1]}-${i18n[2]}-[hash].js`;
+
+          /*
            * ハンバーガーメニューの中身。
            *
            * 分割そのものは動的 import の結果であって、ここでやっているのは名前付けだけ（hljs と同じ）。
@@ -296,7 +305,7 @@ export default defineConfig(({ mode }) => ({
             !chunk.facadeModuleId &&
             modules.length > 0 &&
             modules.every((id) =>
-              /[\\/]src[\\/](?:features[\\/]workspace[\\/]lazy[\\/]|i18n[\\/]ja-explorer)/.test(id),
+              /[\\/]src[\\/](?:features[\\/]workspace[\\/]lazy[\\/]|i18n[\\/]explorer\.ts$)/.test(id),
             );
           if (isExplorerOnly) return 'assets/explorer-[hash].js';
 
@@ -317,7 +326,7 @@ export default defineConfig(({ mode }) => ({
           if (isUpdate) return 'assets/update-[hash].js';
 
           /*
-           * ヘルプの項目と「Marxdown について」（F-OS-09 / ADR-0026）。他と同じく名前付けだけ。
+           * ヘルプの項目と「Marxdown について」（F-OS-09 / ADR-0027）。他と同じく名前付けだけ。
            * `features/help/index.ts`（動的 import の入口）は `main` に残る。
            */
           const isHelp = /[\\/]src[\\/]features[\\/]help[\\/]lazy[\\/]/.test(chunk.facadeModuleId ?? '');
@@ -390,7 +399,7 @@ export default defineConfig(({ mode }) => ({
           /*
            * 共有チャンク（facade を持たない = 動的 import の入口ではない）。
            *
-           * 遅延チャンクの枚数がある数を超えると、rolldown は `main` と遅延チャンクの両方から参照されるモジュール（Svelte ランタイム / `i18n/ja.ts` / ストア）を別のチャンクへ切り出す。
+           * 遅延チャンクの枚数がある数を超えると、rolldown は `main` と遅延チャンクの両方から参照されるモジュール（Svelte ランタイム / `i18n/index.ts` / ストア）を別のチャンクへ切り出す。
            *
            * 切り出されても `main` が静的に import するので、起動時に必ず読まれる。
            * つまりこれはクリティカルパスの一部であり、予算の外に出してはいけない。

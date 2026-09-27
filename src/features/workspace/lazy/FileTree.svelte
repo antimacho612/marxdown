@@ -25,7 +25,7 @@
 
   import { documentStore } from '@/features/document';
   import { settingsStore } from '@/features/settings';
-  import { ja } from '@/i18n/ja';
+  import { t } from '@/i18n';
   import ChevronIcon from '@/lib/ChevronIcon.svelte';
   import Icon from '@/lib/Icon.svelte';
   import { isMarkdownPath } from '@/lib/path';
@@ -283,10 +283,10 @@
 {/snippet}
 
 {#if loading && entries.length === 0 && creating === null}
-  <p class="mx-tree__note">{ja.tree.loading}</p>
+  <p class="mx-tree__note">{t.tree.loading}</p>
 {:else if entries.length === 0 && creating === null}
   <!-- 空のフォルダと、絞り込んだ結果 0 件になった状態を書き分ける。前者では条件を緩めても何も増えない。 -->
-  <p class="mx-tree__note">{loaded.length === 0 ? ja.tree.empty : ja.tree.noMatch}</p>
+  <p class="mx-tree__note">{loaded.length === 0 ? t.tree.empty : t.tree.noMatch}</p>
 {:else}
   <!--
     `role` と状態は `<button>` 側に置く。

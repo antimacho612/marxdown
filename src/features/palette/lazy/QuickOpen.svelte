@@ -11,7 +11,7 @@
 <script lang="ts">
   import { documentStore } from '@/features/document';
   import { openPathInNewTab, recentStore, workspaceRoot } from '@/features/workspace';
-  import { ja } from '@/i18n/ja';
+  import { t } from '@/i18n';
   import { getPlatform } from '@/platform';
 
   import { buildCandidates, type FileCandidate } from './candidates';
@@ -26,7 +26,7 @@
   const root = workspaceRoot(documentStore.meta?.path ?? null);
 
   /** 走査を待たずに最近開いたファイルだけで描く。基点が無いときはこれで確定する。 */
-  let candidates = $state<FileCandidate[]>(buildCandidates(root, [], recentStore.entries, ja.quickOpen.recent));
+  let candidates = $state<FileCandidate[]>(buildCandidates(root, [], recentStore.entries, t.quickOpen.recent));
   /** 上限で打ち切られたことの断り。全体を検索できていないことを伝える。 */
   let note = $state('');
 
@@ -38,8 +38,8 @@
       try {
         const list = await getPlatform().listFiles(root);
         if (!alive) return;
-        candidates = buildCandidates(root, list.files, recentStore.entries, ja.quickOpen.recent);
-        if (list.truncated) note = ja.quickOpen.truncated(list.files.length);
+        candidates = buildCandidates(root, list.files, recentStore.entries, t.quickOpen.recent);
+        if (list.truncated) note = t.quickOpen.truncated(list.files.length);
       } catch {
         // 走査に失敗しても最近開いたファイルは並んでいる。通知は出さない。
       }
@@ -61,12 +61,12 @@
 </script>
 
 <Palette
-  label={ja.quickOpen.title}
-  placeholder={ja.quickOpen.placeholder}
+  label={t.quickOpen.title}
+  placeholder={t.quickOpen.placeholder}
   {items}
   {note}
-  emptyText={ja.quickOpen.empty}
-  noMatchText={ja.quickOpen.noMatch}
+  emptyText={t.quickOpen.empty}
+  noMatchText={t.quickOpen.noMatch}
   onselect={open}
   {onclose}
 />

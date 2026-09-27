@@ -1,17 +1,17 @@
 <!--
 @component
-「Marxdown について」（F-OS-09 / ADR-0026）。
+「Marxdown について」（F-OS-09 / ADR-0027）。
 
 遅延チャンクにあり、ヘルプの「Marxdown について」が選ばれるまでロードされない。
 設定と同じくモーダルの `<dialog>` で、フォーカストラップ・inert 化・`::backdrop` はブラウザに任せる。
-設定以外のモーダルを置く理由は ADR-0026 にある。
+設定以外のモーダルを置く理由は ADR-0027 にある。
 -->
 <script lang="ts">
   import { onMount } from 'svelte';
 
   import { notifyStatus } from '@/features/document';
-  import { ja } from '@/i18n/ja';
-  import { jaHelp } from '@/i18n/ja-help';
+  import { t } from '@/i18n';
+  import { tHelp } from '@/i18n/help';
   import CloseIcon from '@/lib/CloseIcon.svelte';
   import Mark from '@/lib/Mark.svelte';
   import type { AppInfo } from '@/platform';
@@ -39,10 +39,10 @@
   async function copyInfo(): Promise<void> {
     if (!info) return;
     try {
-      await navigator.clipboard.writeText(describeInfo(info, jaHelp.unknown));
-      notifyStatus(jaHelp.infoCopied);
+      await navigator.clipboard.writeText(describeInfo(info, tHelp.unknown));
+      notifyStatus(tHelp.infoCopied);
     } catch {
-      notifyStatus(jaHelp.infoCopyFailed);
+      notifyStatus(tHelp.infoCopyFailed);
     }
   }
 
@@ -60,7 +60,7 @@
 
   function field(key: 'version' | 'os' | 'webview'): string {
     if (info === undefined) return '…';
-    return info?.[key] ?? jaHelp.unknown;
+    return info?.[key] ?? tHelp.unknown;
   }
 </script>
 
@@ -75,7 +75,7 @@
     onclose();
   }}
 >
-  <button type="button" class="mx-about__close" aria-label={ja.titlebar.close} onclick={onclose}>
+  <button type="button" class="mx-about__close" aria-label={t.titlebar.close} onclick={onclose}>
     <CloseIcon />
   </button>
 
@@ -85,7 +85,7 @@
   </header>
 
   <dl class="mx-about__info">
-    <dt>{jaHelp.version}</dt>
+    <dt>{tHelp.version}</dt>
     <dd>{field('version')}</dd>
     <dt>OS</dt>
     <dd>{field('os')}</dd>
@@ -94,10 +94,10 @@
   </dl>
 
   <button type="button" class="mx-about__copy" disabled={!info} onclick={() => void copyInfo()}>
-    {jaHelp.copyInfo}
+    {tHelp.copyInfo}
   </button>
 
-  <p class="mx-about__legal">{COPYRIGHT}<br />{jaHelp.license}</p>
+  <p class="mx-about__legal">{COPYRIGHT}<br />{tHelp.license}</p>
 </dialog>
 
 <style>
