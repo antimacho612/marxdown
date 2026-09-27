@@ -22,4 +22,4 @@ Marxdown の利用者に見える変更を記録する。
 - Windows 向けインストーラ。`.md` / `.markdown` の関連付け、「プログラムから開く」への登録、`marxdown` コマンドの PATH への追加（選択制）
 - 自動更新。起動時とウィンドウを前面に出したときに（1 日 1 回まで）新しい版を確認し、通知バーから更新できる。設定 `update.autoCheck` で止められる
 
-[Unreleased]: https://github.com/antimacho612/marxdown/commits/main
+[Unreleased]: https://github.com/antimacho612/marxdown/commits/develop
