@@ -8,13 +8,10 @@
  * ユーザーが直す先はどちらも `themes/` の同じファイルであり、どの面に適用されなかったかは設定画面を見れば分かる。
  */
 import { documentStore } from '@/features/document';
-import { ja } from '@/i18n/ja';
+import { t } from '@/i18n';
 import { getPlatform } from '@/platform';
 
 import type { ApplyResult } from './inject';
-
-/** 自分が出した通知だけを閉じる。他の通知（本文の読み込み失敗など）を消さないためである。 */
-const OWN_NOTICES = new Set<string>([ja.themes.unknown, ja.themes.rejected]);
 
 /**
  * 適用結果を通知に反映する。解消していれば自分が出した通知を閉じる。
@@ -26,7 +23,7 @@ const OWN_NOTICES = new Set<string>([ja.themes.unknown, ja.themes.rejected]);
  * 本文を開けなかった通知のほうが、配色が適用されないことより重要である。
  */
 export function reportThemeResult(result: ApplyResult): void {
-  const message = result === 'unknown' ? ja.themes.unknown : result === 'rejected' ? ja.themes.rejected : null;
+  const message = result === 'unknown' ? t.themes.unknown : result === 'rejected' ? t.themes.rejected : null;
 
   if (message === null) {
     if (isOwnNotice(documentStore.notice?.message)) documentStore.notice = null;
@@ -37,10 +34,11 @@ export function reportThemeResult(result: ApplyResult): void {
   documentStore.notice = {
     level: 'warning',
     message,
-    actions: [{ label: ja.themes.open, run: () => void getPlatform().openThemesDir() }],
+    actions: [{ label: t.themes.open, run: () => void getPlatform().openThemesDir() }],
   };
 }
 
+/** 自分が出した通知だけを閉じる。他の通知（本文の読み込み失敗など）を消さないためである。 */
 function isOwnNotice(message: string | undefined): boolean {
-  return message !== undefined && OWN_NOTICES.has(message);
+  return message === t.themes.unknown || message === t.themes.rejected;
 }

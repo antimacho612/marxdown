@@ -82,7 +82,7 @@ export function createMarkdownIt(config: RenderConfig = {}): MarkdownIt {
 
   // GitHub Alerts（F-VIEW-14）。`> [!NOTE]` の blockquote を `alert_open` に書き換える。
   // タイトルは GitHub と同じ英語のままにする（Familiar）。
-  // これは UI 文言ではなく本文の一部として描画されるものであるため、`i18n/ja.ts` の対象にしない。
+  // これは UI 文言ではなく本文の一部として描画されるものであるため、`i18n/` の対象にしない。
   md.use(githubAlerts);
 
   // 脚注（F-VIEW-16）。生成されるブロックは本文の末尾に追加される。

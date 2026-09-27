@@ -1,10 +1,11 @@
 [
   {
-    "name": "critical path (main + shared + pipeline + app css)",
+    "name": "critical path (main + shared + pipeline + i18n core + app css)",
     "path": [
       "dist/assets/main-*.js",
       "dist/assets/shared-*.js",
       "dist/assets/pipeline-*.js",
+      "dist/assets/i18n-ja-core-*.js",
       "dist/assets/index-*.css",
       "dist/assets/workspace-*.css"
     ],
@@ -72,6 +73,16 @@
     "gzip": true
   },
   {
+    "name": "i18n ja (遅延チャンクが使う文言。ファイルツリー・設定・更新を開くまでロードしない — ADR-0026)",
+    "path": [
+      "dist/assets/i18n-ja-explorer-*.js",
+      "dist/assets/i18n-ja-settings-*.js",
+      "dist/assets/i18n-ja-update-*.js"
+    ],
+    "limit": "6 KB",
+    "gzip": true
+  },
+  {
     "name": "bench input (--bench-input のときだけロードする計測経路)",
     "path": ["dist/assets/bench-*.js"],
     "limit": "4 KB",
@@ -97,7 +108,7 @@
   },
   {
     "name": "marp (Marp のスライド。marp: true の文書を開くまでロードしない。予算の対象外 — ADR-0023)",
-    "path": ["dist/assets/marp-*.js"],
+    "path": ["dist/assets/marp-*.js", "dist/assets/i18n-*-marp-*.js"],
     "limit": "200 KB",
     "gzip": true
   },
@@ -108,7 +119,8 @@
       "!dist/assets/mermaid-*.js",
       "!dist/assets/math-*.js",
       "!dist/assets/marp-*.js",
-      "!dist/assets/editor-*.js"
+      "!dist/assets/editor-*.js",
+      "!dist/assets/i18n-*-marp-*.js"
     ],
     "limit": "235 KB",
     "gzip": true

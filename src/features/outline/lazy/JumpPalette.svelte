@@ -9,7 +9,7 @@
 <script lang="ts">
   import { documentStore } from '@/features/document';
   import Palette, { type PaletteItem } from '@/features/palette/lazy/Palette.svelte';
-  import { ja } from '@/i18n/ja';
+  import { t } from '@/i18n';
 
   import { jumpToHeading } from '../jump';
 
@@ -41,11 +41,11 @@
 </script>
 
 <Palette
-  label={ja.outline.jump}
-  placeholder={ja.outline.jumpPlaceholder}
+  label={t.outline.jump}
+  placeholder={t.outline.jumpPlaceholder}
   {items}
-  emptyText={ja.outline.empty}
-  noMatchText={ja.outline.jumpNoMatch}
+  emptyText={t.outline.empty}
+  noMatchText={t.outline.jumpNoMatch}
   onselect={jump}
   {onclose}
 />

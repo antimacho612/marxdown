@@ -11,7 +11,7 @@
 -->
 
 <script lang="ts">
-  import { ja } from '@/i18n/ja';
+  import { tSettings } from '@/i18n/settings';
 
   import { formatFontFamily, paletteAttr } from '../../format';
 
@@ -55,10 +55,10 @@
   {#if showLineNumbers}
     <span class="mx-settings__sample-gutter" aria-hidden="true">1<br />2<br />3<br />4</span>
   {/if}
-  <pre class="mx-settings__sample-code"><span class="mx-settings__syntax-structure"># {ja.settings.sampleHeading}</span>
+  <pre class="mx-settings__sample-code"><span class="mx-settings__syntax-structure"># {tSettings.sampleHeading}</span>
 
-{ja.settings.sampleBody}<span class="mx-settings__syntax-inline">`code`</span>
-<span class="mx-settings__syntax-structure">-</span> {ja.settings.sampleList}</pre>
+{tSettings.sampleBody}<span class="mx-settings__syntax-inline">`code`</span>
+<span class="mx-settings__syntax-structure">-</span> {tSettings.sampleList}</pre>
 </div>
 
 <style>

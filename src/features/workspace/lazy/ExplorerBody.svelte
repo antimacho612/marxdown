@@ -11,6 +11,13 @@
   開いている枝の監視（ADR-0021）、余白の右クリック、コンテキストメニュー、外部からのドロップの受け口（F-NAV-13）である。
   どれもペインが開いている間だけ要り、閉じれば（このコンポーネントが消えれば）解放する。
 -->
+<script module lang="ts">
+  import { loadExplorerMessages } from '@/i18n/explorer';
+
+  /** 文言（`tExplorer`）の読み込み。`Explorer.svelte` はこれを待ってから描く。 */
+  export const ready = loadExplorerMessages();
+</script>
+
 <script lang="ts">
   import { onDestroy, onMount } from 'svelte';
 

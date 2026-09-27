@@ -1,5 +1,5 @@
 import { documentStore } from '@/features/document';
-import { jaUpdate } from '@/i18n/ja-update';
+import { loadUpdateMessages, tUpdate } from '@/i18n/update';
 import { getPlatform, type UpdateInfo } from '@/platform';
 
 /**
@@ -9,7 +9,8 @@ import { getPlatform, type UpdateInfo } from '@/platform';
  * 外部での変更や保存の失敗は、利用者が選ぶまで残すべき通知であり、更新の案内で上書きしてはいけない。
  * 出せなかった分は、次の確認（24 時間後）か手動の確認で改めて出る。
  */
-export function notifyAvailable(info: UpdateInfo): void {
+export async function notifyAvailable(info: UpdateInfo): Promise<void> {
+  await loadUpdateMessages();
   if (documentStore.notice === null) showAvailable(info);
 }
 
@@ -20,27 +21,28 @@ export function notifyAvailable(info: UpdateInfo): void {
  * 新しい版が無いことは済んだことの報告としてステータスバーへ、失敗は通知バーへ出す。
  */
 export async function checkForUpdates(): Promise<void> {
+  await loadUpdateMessages();
   try {
     const info = await getPlatform().checkUpdate();
     if (info) {
       showAvailable(info);
     } else {
-      documentStore.statusMessage = jaUpdate.upToDate;
+      documentStore.statusMessage = tUpdate.upToDate;
     }
   } catch (error) {
     // 詳細（reqwest のエラー文）は利用者に見せない。
     console.warn('[marxdown] 更新の確認に失敗した', error);
-    documentStore.notice = { level: 'error', message: jaUpdate.checkFailed };
+    documentStore.notice = { level: 'error', message: tUpdate.checkFailed };
   }
 }
 
 function showAvailable(info: UpdateInfo): void {
   documentStore.notice = {
     level: 'info',
-    message: jaUpdate.available(info.version),
+    message: tUpdate.available(info.version),
     actions: [
-      { label: jaUpdate.install, run: () => void install() },
-      { label: jaUpdate.notes, run: () => void getPlatform().openExternal(info.notesUrl) },
+      { label: tUpdate.install, run: () => void install() },
+      { label: tUpdate.notes, run: () => void getPlatform().openExternal(info.notesUrl) },
     ],
   };
 }
@@ -54,21 +56,21 @@ function showAvailable(info: UpdateInfo): void {
  */
 async function install(): Promise<void> {
   // ダウンロードには数秒かかる。押した結果が何も見えない時間を作らない。
-  documentStore.notice = { level: 'info', message: jaUpdate.downloading };
+  documentStore.notice = { level: 'info', message: tUpdate.downloading };
   try {
     const refusal = await getPlatform().installUpdate();
     if (refusal === 'dirty') {
       documentStore.notice = {
         level: 'warning',
-        message: jaUpdate.dirty,
-        actions: [{ label: jaUpdate.install, run: () => void install() }],
+        message: tUpdate.dirty,
+        actions: [{ label: tUpdate.install, run: () => void install() }],
       };
     } else {
       documentStore.notice = null;
-      documentStore.statusMessage = jaUpdate.upToDate;
+      documentStore.statusMessage = tUpdate.upToDate;
     }
   } catch (error) {
     console.warn('[marxdown] 更新の適用に失敗した', error);
-    documentStore.notice = { level: 'error', message: jaUpdate.installFailed };
+    documentStore.notice = { level: 'error', message: tUpdate.installFailed };
   }
 }

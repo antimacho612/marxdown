@@ -10,7 +10,7 @@
 -->
 
 <script lang="ts">
-  import { ja } from '@/i18n/ja';
+  import { tSettings } from '@/i18n/settings';
 
   import { paletteAttr } from '../../format';
 
@@ -23,9 +23,9 @@
 </script>
 
 <div class="mx-settings__sample mx-settings__sample--content" data-mx-theme={paletteAttr(palette)}>
-  <strong class="mx-settings__sample-heading">{ja.settings.sampleHeading}</strong>
+  <strong class="mx-settings__sample-heading">{tSettings.sampleHeading}</strong>
   <p class="mx-settings__sample-body">
-    {ja.settings.sampleBody}
+    {tSettings.sampleBody}
     <code class="mx-settings__sample-code-chip">code</code>
   </p>
 </div>

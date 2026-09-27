@@ -1,8 +1,4 @@
-/**
- * Marp のスライドの表示（F-VIEW-17 / ADR-0023）だけが使う文言。
- *
- * `ja.ts` から分けてあるのは、使う側が遅延チャンク（`features/preview/lazy/marp.ts`）にあるためである（`ja-explorer.ts` と同じ理由）。
- */
+/** Marp のスライドの表示だけが使う日本語の文言。`core.ts` と分けてある理由は `../marp.ts` にある。 */
 import type { MarpThemeProblem } from '@/markdown/protocol';
 
 export const jaMarp = {

@@ -5,7 +5,7 @@
  * 読み直しは `reloadCurrent()` を通し、`F5` と同じ経路にエンコーディング指定だけを 1 つ渡す。
  * 未保存の確認は `openPath` の入口（`document/discard.ts`）がそのまま行うのでここには足さない。
  */
-import { ja } from '@/i18n/ja';
+import { t } from '@/i18n';
 import type { Encoding } from '@/platform';
 
 import { reloadCurrent } from './open';
@@ -28,5 +28,5 @@ export async function reinterpret(encoding: Encoding): Promise<void> {
   const meta = documentStore.meta;
   if (meta === null || meta.encoding === encoding) return;
 
-  await reloadCurrent({ encoding, status: ja.status.reinterpreted(ja.status.encoding[encoding]) });
+  await reloadCurrent({ encoding, status: t.status.reinterpreted(t.status.encoding[encoding]) });
 }

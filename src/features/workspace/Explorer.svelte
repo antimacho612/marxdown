@@ -8,7 +8,7 @@
 -->
 <script lang="ts">
   import { documentStore } from '@/features/document';
-  import { ja } from '@/i18n/ja';
+  import { t } from '@/i18n';
   import { runCommand } from '@/lib/commands';
   import { splitPath } from '@/lib/path';
 
@@ -18,6 +18,13 @@
 
   /** 見出し行に出す基点の名前。パス全体はツールチップに表示する。 */
   const rootName = $derived(treeStore.root === null ? null : splitPath(treeStore.root).name || treeStore.root);
+
+  /** ツリーの本体を読み込む。文言（`tExplorer`）の読み込みも待つ。 */
+  async function loadBody() {
+    const module = await import('./lazy/ExplorerBody.svelte');
+    await module.ready;
+    return module;
+  }
 </script>
 
 <!--
@@ -25,7 +32,7 @@
   ライトペイン（`features/outline/Outline.svelte`）が同じ形の行を持っており、こちらだけ無いと、左右のペインで情報の始まりが揃わない。
 -->
 <div class="mx-explorer__head">
-  <span class="mx-explorer__title">{ja.tree.title}</span>
+  <span class="mx-explorer__title">{t.tree.title}</span>
   {#if rootName !== null}
     <span class="mx-explorer__root" title={treeStore.root}>{rootName}</span>
   {/if}
@@ -44,10 +51,10 @@
       文言だけでは次に何をすればよいか分からないため、そこから実行できる操作を並べる。
     -->
     <div class="mx-explorer__empty">
-      <p class="mx-explorer__note">{ja.tree.noRoot}</p>
+      <p class="mx-explorer__note">{t.tree.noRoot}</p>
 
       <button type="button" class="mx-explorer__action" onclick={() => runCommand('folder.open')}>
-        {ja.tree.openFolder}
+        {t.tree.openFolder}
       </button>
 
       <!--
@@ -61,17 +68,17 @@
           class="mx-explorer__action mx-explorer__action--secondary"
           onclick={() => void setTreeRootFromFile(path)}
         >
-          {ja.tree.openCurrentFolder}
+          {t.tree.openCurrentFolder}
         </button>
       {/if}
     </div>
   {:else}
-    {#await import('./lazy/ExplorerBody.svelte')}
-      <p class="mx-explorer__note">{ja.tree.loading}</p>
+    {#await loadBody()}
+      <p class="mx-explorer__note">{t.tree.loading}</p>
     {:then module}
       <module.default />
     {:catch}
-      <p class="mx-explorer__note">{ja.tree.failed}</p>
+      <p class="mx-explorer__note">{t.tree.failed}</p>
     {/await}
   {/if}
 </div>

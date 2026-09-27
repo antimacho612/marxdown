@@ -2,7 +2,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { recentStore, resetTabs, workspaceOpenerHooks } from '@/features/workspace';
-import { ja } from '@/i18n/ja';
+import { t } from '@/i18n';
 import type { MarkdownParser } from '@/markdown/parser';
 import { getPlatform, setPlatform, type DocumentPayload, type FileChange, type Platform } from '@/platform';
 
@@ -100,7 +100,7 @@ describe('外部変更の自動反映', () => {
 
     h.emit(changed('C:/work/a.md'));
     // ダーティでなければ失われるものが無い。尋ねずに読み込み、本文を隠さないステータスバーに出す
-    await vi.waitFor(() => expect(documentStore.statusMessage).toBe(ja.open.reloadedExternal));
+    await vi.waitFor(() => expect(documentStore.statusMessage).toBe(t.open.reloadedExternal));
 
     expect(documentStore.notice).toBeNull();
     expect(h.readDocument).toHaveBeenCalledWith('C:/work/a.md', undefined);
@@ -193,7 +193,7 @@ describe('編集中に外部変更が来たとき', () => {
     const notice = documentStore.notice;
     expect(h.readDocument).not.toHaveBeenCalled();
     // 自動で消えると、気づかないまま古い内容を保存することになる。通知バーには消える仕組みを持たせていない
-    expect(notice).toMatchObject({ level: 'warning', message: ja.open.changedExternally });
+    expect(notice).toMatchObject({ level: 'warning', message: t.open.changedExternally });
   });
 
   it('「再読み込み」を選ぶと読み直す', async () => {

@@ -10,6 +10,7 @@ import { mount } from 'svelte';
 
 import App from '@/app/App.svelte';
 import { startup } from '@/app/bootstrap';
+import { loadMessages } from '@/i18n';
 
 const root = document.getElementById('root');
 
@@ -18,4 +19,5 @@ function renderShell(): void {
   mount(App, { target: root });
 }
 
-void startup(renderShell);
+// NOTE: 起動処理は通知やシェルの描画で文言を使うため、文言の読み込みを待ってから始める。
+void loadMessages().then(() => startup(renderShell));

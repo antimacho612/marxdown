@@ -23,7 +23,8 @@ let disposeView: (() => void) | null = null;
  * スクロール位置は呼び出し側が扱う（開く経路は復元し、打鍵ごとの再描画は保つ）。
  */
 export async function paintMarp(container: HTMLElement, marp: MarpRender, baseDir: string): Promise<MarpPaintResult> {
-  const { mountMarp, disposeMarp } = await import('./lazy/marp');
+  const { mountMarp, disposeMarp, ready } = await import('./lazy/marp');
+  await ready;
   disposeView = disposeMarp;
 
   // 空のチャンク列で描くと、段階的描画の打ち切りと差分更新の基準の破棄も行われる。
