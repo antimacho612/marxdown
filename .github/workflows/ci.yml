@@ -13,9 +13,14 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+# Dependabot の PR では各ジョブを飛ばす。
+# 判定は PR の作成者で行う。`github.actor` だと、人が再実行やプッシュをしたときに対象から外れてしまう。
+# develop へのマージ後は push で検証される。
+
 jobs:
   frontend:
     name: フロントエンド
+    if: github.event.pull_request.user.login != 'dependabot[bot]'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -62,6 +67,7 @@ jobs:
 
   rust:
     name: Rust Core
+    if: github.event.pull_request.user.login != 'dependabot[bot]'
     runs-on: windows-latest # Windows 第一優先（Design Brief §12）
     steps:
       - uses: actions/checkout@v4
@@ -90,6 +96,7 @@ jobs:
   # Windows 専用のコードが他のプラットフォームのビルドを壊していないかを、コンパイルとテストで確かめる。
   rust-other-platforms:
     name: Rust Core (${{ matrix.os }})
+    if: github.event.pull_request.user.login != 'dependabot[bot]'
     strategy:
       fail-fast: false
       matrix:

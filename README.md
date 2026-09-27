@@ -5,7 +5,7 @@
   <img src="assets/logo-light.svg" alt="Marxdown" width="320" />
 </picture>
 
-### Markdown を見る・書くなら、これ一択。
+### Markdown を見る・書くなら、これ。
 
 ターミナルで `marxdown README.md` と入力した瞬間に読める、軽くて美しい Markdown ビューアー＆エディターです。
 
