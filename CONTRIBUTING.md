@@ -69,6 +69,29 @@ pnpm storybook        # http://localhost:6006
 通知バーの 3 段階も、履歴が空の Welcome も、実アプリでは特定の失敗を再現しないと見られない。
 Storybook はそれを並べるためだけに入っている。
 
+## 紹介サイト
+
+```bash
+pnpm site             # http://localhost:4173/marxdown/
+pnpm site:build       # site/dist に書き出す
+pnpm site:preview     # 書き出したものを確認する
+```
+
+`site/` は GitHub Pages で公開する紹介ページとガイド（<https://antimacho612.github.io/marxdown/>）である。
+main へのマージで `.github/workflows/pages.yml` が公開する。
+
+ページは Svelte コンポーネントをビルド時に HTML へ変換したもので、Svelte のランタイムは配信しない。
+ガイドの中身はアプリの実装から作るため、アプリ側を直せばサイトも追従する。
+
+| ページ | 元になるもの |
+| --- | --- |
+| キーボードショートカット | `docs/keybindings.md` / `docs/keybindings.en.md` |
+| 設定 | `src/platform/settings-schema.ts`・設定画面の並び（`features/settings/lazy/layout.ts`）・`src/i18n/*/settings.ts` |
+| 記法 | 書き方は `site/src/content/syntax.ts`、表示はアプリの Markdown パイプライン |
+| はじめに | `site/src/content/guide/start.*.md` |
+
+サイトだけの文言は `site/src/content/ja.ts` と `en.ts` にある。`ja.ts` が正で、`en.ts` に足し忘れると `tsc` が失敗する。
+
 ## 検査
 
 ```bash
@@ -217,6 +240,7 @@ src/
   platform/       Tauri API の唯一の呼び出し口（テスト時は差し替え）
   styles/         デザイントークンとプレビューのタイポグラフィ
                   （コンポーネント固有の CSS は各 .svelte の <style> に同居）
+site/             紹介サイト（GitHub Pages）。アプリには含まれない
 src-tauri/src/
   cli.rs          CLI 引数解析
   bootstrap.rs    起動時の先読みと初期ペイロード

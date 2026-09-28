@@ -19,6 +19,7 @@
 ![Rust](https://img.shields.io/badge/Rust-stable-000000?logo=rust&logoColor=white)
 
 [**ダウンロード**](https://github.com/antimacho612/marxdown/releases/latest) ·
+[Web サイト](https://antimacho612.github.io/marxdown/) ·
 [特徴](#-特徴) ·
 [インストール](#-インストール) ·
 [使い方](#-使い方) ·
@@ -190,6 +191,7 @@ Windows PowerShell 5.1 からパイプで渡すと、ASCII 以外の文字が `?
 | <kbd>Ctrl</kbd>+<kbd>Q</kbd> | 終了 |
 
 すべてのショートカットは [キーボードショートカット](docs/keybindings.md) を参照してください。
+記法と設定の一覧は [ガイド](https://antimacho612.github.io/marxdown/guide/) にあります。
 
 ## 🛠️ 開発に参加する
 
