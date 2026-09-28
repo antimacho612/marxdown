@@ -1,0 +1,969 @@
+/*
+ * サイト全体の土台。
+ *
+ * 色の切り替えはアプリと同じ仕組みにしてある。`:root[data-theme]` が無ければ OS の設定に従う。
+ * アプリの `tokens.css` も読み込んでいるので、ウィンドウの見本の中はアプリと同じ変数で塗られる。
+ */
+
+:root {
+  color-scheme: light dark;
+
+  --font-display:
+    'Segoe UI Variable Display', 'SF Pro Display', -apple-system, BlinkMacSystemFont, system-ui, 'Hiragino Sans',
+    'Yu Gothic UI', 'Meiryo', 'Noto Sans JP', sans-serif;
+  --font-text:
+    'Segoe UI Variable Text', 'SF Pro Text', -apple-system, BlinkMacSystemFont, system-ui, 'Hiragino Sans',
+    'Yu Gothic UI', 'Meiryo', 'Noto Sans JP', sans-serif;
+  --font-mono: 'Cascadia Code', 'SF Mono', ui-monospace, 'Consolas', 'BIZ UDGothic', 'Menlo', monospace;
+
+  /* ブランドの 3 色。ロゴの藍・薔薇・金と同じ値。 */
+  --indigo-300: #8e9dff;
+  --indigo-500: #5566ee;
+  --indigo-700: #2f35b4;
+  --rose-300: #ff8fa8;
+  --rose-500: #f2506a;
+  --rose-700: #b81c46;
+  --gold-200: #ffe9a3;
+  --gold-400: #ffc44a;
+  --gold-600: #e8940e;
+
+  --brand-gradient: linear-gradient(
+    100deg,
+    var(--indigo-500) 0%,
+    #9a57e0 45%,
+    var(--rose-500) 75%,
+    var(--gold-400) 100%
+  );
+
+  --bg: #fbfbfd;
+  --bg-raised: #ffffff;
+  --bg-sunken: #f2f3f7;
+  --bg-inverse: #0d0e12;
+  --fg: #14161b;
+  --fg-muted: #4b505b;
+  --fg-subtle: #6a6f7a;
+  --fg-inverse: #f3f4f7;
+  --line: rgb(20 22 27 / 9%);
+  --line-strong: rgb(20 22 27 / 16%);
+  --accent: #3b5bdb;
+  --accent-fg: #ffffff;
+  --glow-opacity: 0.55;
+  --focus: 0 0 0 2px var(--bg), 0 0 0 4px var(--accent);
+
+  --shadow-sm: 0 1px 2px rgb(16 20 40 / 6%), 0 2px 8px -2px rgb(16 20 40 / 8%);
+  --shadow-md: 0 1px 2px rgb(16 20 40 / 5%), 0 8px 24px -6px rgb(16 20 40 / 14%);
+  --shadow-window:
+    0 0 0 1px rgb(16 20 40 / 6%), 0 2px 4px rgb(16 20 40 / 4%), 0 16px 40px -12px rgb(24 28 70 / 22%),
+    0 48px 96px -32px rgb(24 28 70 / 28%);
+
+  --radius-sm: 8px;
+  --radius: 14px;
+  --radius-lg: 22px;
+
+  --container: 1200px;
+  --gutter: clamp(16px, 4vw, 32px);
+  --header-height: 64px;
+  --section-space: clamp(96px, 12vw, 168px);
+
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+:root[data-theme='light'] {
+  color-scheme: light;
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --bg: #0a0b0e;
+  --bg-raised: #121419;
+  --bg-sunken: #0e1014;
+  --bg-inverse: #f3f4f7;
+  --fg: #eef0f4;
+  --fg-muted: #a8adb8;
+  --fg-subtle: #858b96;
+  --fg-inverse: #0d0e12;
+  --line: rgb(255 255 255 / 8%);
+  --line-strong: rgb(255 255 255 / 15%);
+  --accent: #8da2fb;
+  --accent-fg: #10131a;
+  --glow-opacity: 0.8;
+  --shadow-sm: 0 1px 2px rgb(0 0 0 / 40%);
+  --shadow-md: 0 1px 2px rgb(0 0 0 / 40%), 0 12px 32px -8px rgb(0 0 0 / 60%);
+  --shadow-window:
+    0 0 0 1px rgb(255 255 255 / 8%), 0 2px 4px rgb(0 0 0 / 30%), 0 24px 48px -12px rgb(0 0 0 / 60%),
+    0 64px 120px -32px rgb(0 0 0 / 70%);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --bg: #0a0b0e;
+    --bg-raised: #121419;
+    --bg-sunken: #0e1014;
+    --bg-inverse: #f3f4f7;
+    --fg: #eef0f4;
+    --fg-muted: #a8adb8;
+    --fg-subtle: #858b96;
+    --fg-inverse: #0d0e12;
+    --line: rgb(255 255 255 / 8%);
+    --line-strong: rgb(255 255 255 / 15%);
+    --accent: #8da2fb;
+    --accent-fg: #10131a;
+    --glow-opacity: 0.8;
+    --shadow-sm: 0 1px 2px rgb(0 0 0 / 40%);
+    --shadow-md: 0 1px 2px rgb(0 0 0 / 40%), 0 12px 32px -8px rgb(0 0 0 / 60%);
+    --shadow-window:
+      0 0 0 1px rgb(255 255 255 / 8%), 0 2px 4px rgb(0 0 0 / 30%), 0 24px 48px -12px rgb(0 0 0 / 60%),
+      0 64px 120px -32px rgb(0 0 0 / 70%);
+  }
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  scroll-padding-top: calc(var(--header-height) + 16px);
+  background: var(--bg);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  /*
+   * サイト内のページ移動を、白く抜けずに切り替える。対応していないブラウザでは通常の移動になる。
+   * ヘッダーはどのページでも同じなので、切り替えの対象から外して動かさない。
+   */
+  @view-transition {
+    navigation: auto;
+  }
+
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation-duration: 160ms;
+  }
+}
+
+body {
+  margin: 0;
+  min-height: 100svh;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-text);
+  font-size: 16px;
+  line-height: 1.7;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  overflow-x: clip;
+}
+
+/*
+ * 日本語の見出しは約物を詰める。欧文の字間を詰める指定は日本語には強すぎるので分ける。
+ * 改行は文節の区切りで行う（`auto-phrase`）。対応していないブラウザでは、これまでどおり文字の間で折り返す。
+ */
+:lang(ja) :is(h1, h2, h3, .display, .title, .lead, .statement__text) {
+  font-feature-settings: 'palt';
+  word-break: auto-phrase;
+}
+
+:lang(ja) :is(h1, h2, h3, .display, .title) {
+  letter-spacing: 0.01em;
+}
+
+img,
+svg,
+video {
+  display: block;
+  max-width: 100%;
+}
+
+a {
+  color: inherit;
+}
+
+button,
+input,
+select {
+  font: inherit;
+  color: inherit;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+::selection {
+  background: color-mix(in srgb, var(--indigo-500) 30%, transparent);
+}
+
+code,
+kbd,
+pre,
+samp {
+  font-family: var(--font-mono);
+  font-variant-ligatures: none;
+}
+
+.visually-hidden {
+  position: absolute !important;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.skip-link {
+  position: fixed;
+  top: 8px;
+  left: 8px;
+  z-index: 1000;
+  padding: 8px 14px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-inverse);
+  color: var(--fg-inverse);
+  font-weight: 600;
+  text-decoration: none;
+  transform: translateY(-150%);
+  transition: transform 150ms var(--ease-out);
+
+  &:focus-visible {
+    transform: none;
+  }
+}
+
+.container {
+  width: 100%;
+  max-width: calc(var(--container) + var(--gutter) * 2);
+  margin-inline: auto;
+  padding-inline: var(--gutter);
+}
+
+/* ---------- 文字の型 ---------- */
+
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 20px;
+  color: var(--fg-muted);
+  font-size: 0.8125rem;
+  font-weight: 650;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+
+  &::before {
+    content: '';
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--eyebrow-color, var(--indigo-500));
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--eyebrow-color, var(--indigo-500)) 18%, transparent);
+  }
+
+  &:lang(ja) {
+    letter-spacing: 0.12em;
+  }
+}
+
+.eyebrow--rose {
+  --eyebrow-color: var(--rose-500);
+}
+
+.eyebrow--gold {
+  --eyebrow-color: var(--gold-400);
+}
+
+.title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 1.1rem + 3vw, 3.5rem);
+  font-weight: 720;
+  line-height: 1.15;
+  letter-spacing: -0.028em;
+  text-wrap: balance;
+}
+
+.lead {
+  margin: 20px 0 0;
+  max-width: 38rem;
+  color: var(--fg-muted);
+  font-size: clamp(1.02rem, 0.95rem + 0.3vw, 1.18rem);
+  line-height: 1.85;
+  text-wrap: pretty;
+}
+
+.gradient-text {
+  background: var(--brand-gradient);
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+}
+
+/* ---------- ボタン ---------- */
+
+.button {
+  --button-bg: var(--bg-inverse);
+  --button-fg: var(--fg-inverse);
+
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 48px;
+  padding: 0 22px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--button-bg);
+  color: var(--button-fg);
+  font-size: 0.975rem;
+  font-weight: 650;
+  line-height: 1.2;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  isolation: isolate;
+  transition:
+    transform 200ms var(--ease-out),
+    box-shadow 200ms var(--ease-out),
+    background-color 200ms;
+
+  & svg {
+    width: 18px;
+    height: 18px;
+    flex: none;
+  }
+
+  &:hover {
+    transform: translateY(-1px);
+  }
+
+  &:active {
+    transform: translateY(0) scale(0.98);
+  }
+}
+
+/* 主ボタンの後ろにだけブランドの色の光を置く。ボタンの形を崩さないよう、疑似要素でぼかす。 */
+.button--primary {
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 14%),
+    0 1px 2px rgb(0 0 0 / 20%);
+
+  &::before {
+    content: '';
+    position: absolute;
+    inset: -2px;
+    z-index: -1;
+    border-radius: inherit;
+    background: var(--brand-gradient);
+    filter: blur(14px);
+    opacity: 0;
+    transition: opacity 250ms var(--ease-out);
+  }
+
+  &:hover::before {
+    opacity: 0.7;
+  }
+}
+
+.button--ghost {
+  --button-bg: transparent;
+  --button-fg: var(--fg);
+
+  box-shadow: inset 0 0 0 1px var(--line-strong);
+
+  &:hover {
+    background: color-mix(in srgb, var(--fg) 5%, transparent);
+  }
+}
+
+.button--small {
+  min-height: 36px;
+  padding: 0 14px;
+  font-size: 0.875rem;
+  gap: 8px;
+
+  & svg {
+    width: 16px;
+    height: 16px;
+  }
+}
+
+.button__meta {
+  display: block;
+  margin-top: 10px;
+  color: var(--fg-subtle);
+  font-size: 0.8125rem;
+}
+
+.icon-button {
+  display: inline-grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--fg-muted);
+  cursor: pointer;
+  transition:
+    background-color 150ms,
+    color 150ms;
+
+  & svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  &:hover {
+    background: color-mix(in srgb, var(--fg) 7%, transparent);
+    color: var(--fg);
+  }
+}
+
+/* ---------- キーキャップ ---------- */
+
+kbd,
+.kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.9em;
+  height: 1.75em;
+  padding: 0 0.45em;
+  border: 1px solid var(--line-strong);
+  border-bottom-width: 2px;
+  border-radius: 6px;
+  background: var(--bg-raised);
+  color: var(--fg);
+  font-family: var(--font-text);
+  font-size: 0.8em;
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+  vertical-align: 0.1em;
+  box-shadow: 0 1px 0 var(--line);
+}
+
+.keys {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  color: var(--fg-subtle);
+  font-size: 0.9375rem;
+}
+
+/* ---------- ヘッダー ---------- */
+
+.site-header {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  height: var(--header-height);
+  view-transition-name: site-header;
+  border-bottom: 1px solid transparent;
+  transition:
+    border-color 250ms,
+    background-color 250ms;
+
+  &[data-scrolled] {
+    border-bottom-color: var(--line);
+    background: color-mix(in srgb, var(--bg) 78%, transparent);
+    backdrop-filter: saturate(1.6) blur(18px);
+    -webkit-backdrop-filter: saturate(1.6) blur(18px);
+  }
+}
+
+.site-header__inner {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  height: 100%;
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--fg);
+  font-family: var(--font-display);
+  font-size: 1.125rem;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  text-decoration: none;
+
+  & .mx-mark {
+    height: 26px;
+    width: auto;
+  }
+}
+
+.site-nav {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 8px;
+
+  & a {
+    padding: 6px 12px;
+    border-radius: 999px;
+    color: var(--fg-muted);
+    font-size: 0.9375rem;
+    font-weight: 550;
+    text-decoration: none;
+    transition:
+      color 150ms,
+      background-color 150ms;
+
+    &:hover,
+    &[aria-current='page'] {
+      color: var(--fg);
+      background: color-mix(in srgb, var(--fg) 6%, transparent);
+    }
+  }
+}
+
+.site-header__actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+}
+
+.search-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  height: 36px;
+  margin-right: 6px;
+  padding: 0 8px 0 12px;
+  border: 1px solid var(--line-strong);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--bg-raised) 70%, transparent);
+  color: var(--fg-subtle);
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition:
+    border-color 150ms,
+    color 150ms;
+
+  & svg {
+    width: 16px;
+    height: 16px;
+  }
+
+  & kbd {
+    font-size: 0.7rem;
+  }
+
+  &:hover {
+    border-color: color-mix(in srgb, var(--accent) 50%, var(--line-strong));
+    color: var(--fg);
+  }
+}
+
+.menu-toggle {
+  display: none;
+}
+
+/* 外観と言語の切り替え。ポップアップは `<details>` で開閉する（スクリプトが無くても動く）。 */
+.popover {
+  position: relative;
+
+  & > summary {
+    list-style: none;
+
+    &::-webkit-details-marker {
+      display: none;
+    }
+  }
+}
+
+.popover__panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 10;
+  min-width: 180px;
+  padding: 6px;
+  border: 1px solid var(--line-strong);
+  border-radius: 12px;
+  background: var(--bg-raised);
+  box-shadow: var(--shadow-md);
+  animation: popover-in 160ms var(--ease-out);
+
+  & a,
+  & button {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 8px 10px;
+    border: 0;
+    border-radius: 8px;
+    background: none;
+    color: var(--fg-muted);
+    font-size: 0.9rem;
+    text-align: left;
+    text-decoration: none;
+    cursor: pointer;
+
+    & svg {
+      width: 16px;
+      height: 16px;
+    }
+
+    &:hover {
+      background: color-mix(in srgb, var(--fg) 6%, transparent);
+      color: var(--fg);
+    }
+
+    &[aria-current='true'],
+    &[aria-checked='true'] {
+      color: var(--fg);
+      font-weight: 600;
+    }
+
+    &[aria-checked='true']::after,
+    &[aria-current='true']::after {
+      content: '';
+      width: 6px;
+      height: 6px;
+      margin-left: auto;
+      border-radius: 50%;
+      background: var(--accent);
+    }
+  }
+}
+
+@keyframes popover-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.98);
+  }
+}
+
+@media (max-width: 880px) {
+  .site-nav,
+  .search-trigger__label,
+  .search-trigger kbd,
+  .site-header__download {
+    display: none;
+  }
+
+  .search-trigger {
+    width: 36px;
+    margin: 0;
+    padding: 0;
+    justify-content: center;
+    border: 0;
+    background: none;
+  }
+
+  .menu-toggle {
+    display: inline-grid;
+  }
+
+  .site-header[data-menu-open] .site-nav {
+    position: fixed;
+    inset: var(--header-height) 0 auto;
+    display: grid;
+    gap: 4px;
+    margin: 0;
+    padding: 12px var(--gutter) 20px;
+    border-bottom: 1px solid var(--line);
+    background: var(--bg);
+
+    & a {
+      padding: 12px 14px;
+      font-size: 1.05rem;
+    }
+  }
+}
+
+/* ---------- フッター ---------- */
+
+.site-footer {
+  position: relative;
+  padding: 72px 0 48px;
+  border-top: 1px solid var(--line);
+  color: var(--fg-muted);
+  font-size: 0.9375rem;
+}
+
+.site-footer__grid {
+  display: grid;
+  grid-template-columns: 1.4fr repeat(3, 1fr);
+  gap: 40px;
+
+  @media (max-width: 760px) {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.site-footer__brand {
+  @media (max-width: 760px) {
+    grid-column: 1 / -1;
+  }
+
+  & p {
+    margin: 12px 0 0;
+    max-width: 22rem;
+  }
+}
+
+.site-footer h2 {
+  margin: 0 0 14px;
+  color: var(--fg);
+  font-size: 0.875rem;
+  font-weight: 650;
+}
+
+.site-footer ul {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.site-footer a {
+  text-decoration: none;
+
+  &:hover {
+    color: var(--fg);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+}
+
+.site-footer__bottom {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 56px;
+  padding-top: 24px;
+  border-top: 1px solid var(--line);
+  color: var(--fg-subtle);
+  font-size: 0.8125rem;
+}
+
+/* ---------- 表示されたら現れる ---------- */
+
+@media (prefers-reduced-motion: no-preference) {
+  .js [data-reveal] {
+    opacity: 0;
+    transform: translateY(28px);
+    transition:
+      opacity 900ms var(--ease-out),
+      transform 900ms var(--ease-out);
+    transition-delay: calc(var(--reveal-delay, 0) * 1ms);
+  }
+
+  .js [data-reveal][data-revealed] {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* ---------- 検索パレット ---------- */
+
+.palette {
+  width: min(640px, calc(100vw - 32px));
+  max-height: min(560px, calc(100svh - 120px));
+  margin: 12vh auto auto;
+  padding: 0;
+  border: 1px solid var(--line-strong);
+  border-radius: 16px;
+  background: var(--bg-raised);
+  color: var(--fg);
+  box-shadow:
+    var(--shadow-md),
+    0 40px 100px -20px rgb(0 0 0 / 40%);
+  overflow: hidden;
+
+  &[open] {
+    display: flex;
+    flex-direction: column;
+    animation: palette-in 180ms var(--ease-out);
+  }
+
+  &::backdrop {
+    background: rgb(8 10 20 / 40%);
+    backdrop-filter: blur(4px);
+  }
+}
+
+@keyframes palette-in {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.985);
+  }
+}
+
+.palette__field {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 18px;
+  border-bottom: 1px solid var(--line);
+
+  & svg {
+    width: 18px;
+    height: 18px;
+    color: var(--fg-subtle);
+    flex: none;
+  }
+
+  & input {
+    flex: 1;
+    min-width: 0;
+    height: 56px;
+    border: 0;
+    background: none;
+    font-size: 1.05rem;
+    outline: none;
+  }
+}
+
+.palette__results {
+  flex: 1;
+  margin: 0;
+  padding: 8px;
+  overflow-y: auto;
+  list-style: none;
+  overscroll-behavior: contain;
+}
+
+.palette__item a {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 4px 16px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  color: var(--fg);
+  text-decoration: none;
+}
+
+.palette__item[aria-selected='true'] a {
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+}
+
+.palette__title {
+  font-weight: 600;
+
+  & mark {
+    background: none;
+    color: var(--accent);
+  }
+}
+
+.palette__meta {
+  grid-column: 1;
+  color: var(--fg-subtle);
+  font-size: 0.8125rem;
+}
+
+.palette__aside {
+  grid-row: 1 / span 2;
+  grid-column: 2;
+  color: var(--fg-subtle);
+  font-size: 0.8125rem;
+}
+
+.palette__empty {
+  padding: 32px 12px;
+  color: var(--fg-subtle);
+  text-align: center;
+}
+
+.palette__hint {
+  padding: 10px 18px;
+  border-top: 1px solid var(--line);
+  color: var(--fg-subtle);
+  font-size: 0.8125rem;
+}
+
+/* ---------- 暗い面に置くコードの色（CSS の見本） ---------- */
+
+.c-comment {
+  color: #7f858d;
+}
+
+.c-prop {
+  color: #8db4fb;
+}
+
+.c-fn {
+  color: #c4a7fb;
+}
+
+.c-value {
+  color: #6ecfb8;
+}
+
+/* ---------- コピーのボタン ---------- */
+
+.cli__copy-done,
+.copy-done {
+  display: none;
+  color: #6ee7a8;
+}
+
+[data-copied] :is(.cli__copy-idle, .copy-idle) {
+  display: none;
+}
+
+[data-copied] :is(.cli__copy-done, .copy-done) {
+  display: contents;
+}
+
+/* ---------- ヘッダーの外観アイコン ---------- */
+
+.theme-icon {
+  display: contents;
+}
+
+.theme-icon--dark {
+  display: none;
+}
+
+:root[data-theme='dark'] {
+  & .theme-icon--light {
+    display: none;
+  }
+
+  & .theme-icon--dark {
+    display: contents;
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    & .theme-icon--light {
+      display: none;
+    }
+
+    & .theme-icon--dark {
+      display: contents;
+    }
+  }
+}

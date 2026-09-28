@@ -1,0 +1,52 @@
+name: Pages
+
+# 紹介サイト（site/）を GitHub Pages に公開する。
+# 公開するのは main（リリースした版）だけにする。ガイドは設定やショートカットをアプリの実装から作るため、develop から公開すると未リリースの機能が載る。
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# 公開の途中で次の公開が始まると、古いほうが後から上書きしうる。取り消さずに順番に処理する。
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: ビルド
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: サイトのビルド
+        run: pnpm site:build
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site/dist
+
+  deploy:
+    name: 公開
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

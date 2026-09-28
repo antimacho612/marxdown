@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="31.5 41.6 187.2 166.8">
+  <!-- 形のマスターは src-tauri/icons/source.svg。src/lib/Mark.svelte と同じ座標で、縁取りなどは省いてある。 -->
+  <defs>
+    <clipPath id="cw"><rect x="-64" y="-64" width="192" height="384"/></clipPath>
+    <clipPath id="ce"><rect x="128" y="-64" width="192" height="384"/></clipPath>
+    <linearGradient id="b" gradientUnits="userSpaceOnUse" x1="48" y1="54" x2="112" y2="206"><stop offset="0" stop-color="#8e9dff"/><stop offset="0.45" stop-color="#5566ee"/><stop offset="1" stop-color="#2f35b4"/></linearGradient>
+    <linearGradient id="r" gradientUnits="userSpaceOnUse" x1="146" y1="62" x2="212" y2="208"><stop offset="0" stop-color="#ff8fa8"/><stop offset="0.45" stop-color="#f2506a"/><stop offset="1" stop-color="#b81c46"/></linearGradient>
+    <linearGradient id="y" x1="0.14" y1="0.02" x2="0.86" y2="0.98"><stop offset="0" stop-color="#ffe9a3"/><stop offset="0.5" stop-color="#ffc44a"/><stop offset="1" stop-color="#e8940e"/></linearGradient>
+  </defs>
+  <g fill="none" stroke-width="42.8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M58.75 184.55 L58.75 68.89 L158 214.33" stroke="url(#b)" clip-path="url(#cw)"/>
+    <path d="M197.25 184.55 L197.25 68.89 L98 214.33" stroke="url(#r)" clip-path="url(#ce)"/>
+  </g>
+  <circle cx="58.75" cy="68.89" r="27.22" fill="url(#y)"/>
+  <circle cx="197.25" cy="68.89" r="21.4" fill="url(#y)"/>
+</svg>
