@@ -52,6 +52,10 @@ jobs:
       - name: ビルド
         run: pnpm exec vite build
 
+      # 紹介サイトは main へのマージで公開される（pages.yml）。壊れたまま main に入らないよう、ここでも作る。
+      - name: ビルド (紹介サイト)
+        run: pnpm site:build
+
       # 依存を増やしたのに一覧を作り直していないと落ちる。
       # クレートのライセンス文を読むため、先にソースを取得しておく。
       - name: 第三者ライセンスの一覧
