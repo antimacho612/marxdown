@@ -157,6 +157,10 @@ export const jaSettings = {
       bounded: 'ウィンドウの幅と桁の狭いほう',
     },
     wordWrapColumn: { label: '折り返す桁', description: '折り返す位置を、半角文字の数で指定します。' },
+    wordWrapIndicator: {
+      label: '折り返しの記号',
+      description: '折り返した行の端に記号を表示して、本当の改行と区別できるようにします。',
+    },
     tabSize: { label: 'タブ幅', description: 'タブ 1 つの幅を、スペースの数で指定します。' },
     insertSpaces: {
       label: 'タブをスペースで入力',

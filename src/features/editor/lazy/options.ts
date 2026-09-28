@@ -53,6 +53,7 @@ export function editorOptions(values: Settings): EditorOptions {
 
     wordWrap,
     wordWrapColumn: values['editor.wordWrapColumn'],
+    wordWrapIndicator: values['editor.wordWrapIndicator'],
     tabSize: values['editor.tabSize'],
     insertSpaces: values['editor.insertSpaces'],
     wordSeparators: values['editor.wordSeparators'],
