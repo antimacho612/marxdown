@@ -17,6 +17,22 @@
         "--no-open"
       ],
       "port": 6006
+    },
+    {
+      "name": "site",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": [
+        "site"
+      ],
+      "port": 4173
+    },
+    {
+      "name": "site-preview",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": [
+        "site:preview"
+      ],
+      "port": 4174
     }
   ]
 }

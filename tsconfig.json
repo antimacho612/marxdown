@@ -26,7 +26,7 @@
     // `svelte`: `$state` などのルーンの ambient 宣言のために必要
     "types": ["vite/client", "svelte"]
   },
-  "include": ["src", "tests"]
+  "include": ["src", "tests", "site/src"]
 
   // import の解決器が `paths` を読まなくなるため `references` は置かない。
 }

@@ -19,6 +19,7 @@ A light and beautiful Markdown viewer & editor that shows your file the moment y
 ![Rust](https://img.shields.io/badge/Rust-stable-000000?logo=rust&logoColor=white)
 
 [**Download**](https://github.com/antimacho612/marxdown/releases/latest) ·
+[Website](https://antimacho612.github.io/marxdown/en/) ·
 [Features](#-features) ·
 [Installation](#-installation) ·
 [Usage](#-usage) ·
@@ -190,6 +191,7 @@ You can also right-click a folder in File Explorer and choose "Open with Marxdow
 | <kbd>Ctrl</kbd>+<kbd>Q</kbd> | Quit |
 
 See [Keyboard Shortcuts](docs/keybindings.en.md) for all shortcuts.
+The [guide](https://antimacho612.github.io/marxdown/en/guide/) lists the syntax and every setting.
 
 ## 🛠️ Contributing
 
