@@ -136,6 +136,19 @@ html {
   html {
     scroll-behavior: smooth;
   }
+
+  /*
+   * サイト内のページ移動を、白く抜けずに切り替える。対応していないブラウザでは通常の移動になる。
+   * ヘッダーはどのページでも同じなので、切り替えの対象から外して動かさない。
+   */
+  @view-transition {
+    navigation: auto;
+  }
+
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation-duration: 160ms;
+  }
 }
 
 body {
@@ -463,6 +476,7 @@ kbd,
   top: 0;
   z-index: 100;
   height: var(--header-height);
+  view-transition-name: site-header;
   border-bottom: 1px solid transparent;
   transition:
     border-color 250ms,

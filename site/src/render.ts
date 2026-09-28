@@ -23,6 +23,15 @@ const ENTRIES = {
   guide: '/src/client/guide.ts',
 } as const;
 
+/**
+ * ページごとの CSS。スクリプトではなく <link> で読み込み、最初の描画の前に当てる（`styles/common.css`）。
+ * 共通部分を別のファイルにしてあるのは、ページを移動したときにブラウザのキャッシュを使えるようにするためである。
+ */
+const STYLES = {
+  home: ['/src/styles/common.css', '/src/styles/window.css', '/src/styles/landing.css'],
+  guide: ['/src/styles/common.css', '/src/styles/guide.css'],
+} as const;
+
 function escapeHtml(text: string): string {
   return text.replaceAll('&', '&amp;').replaceAll('"', '&quot;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
 }
@@ -38,6 +47,7 @@ interface DocumentParts {
   body: string;
   head: string;
   entry: string;
+  styles: readonly string[];
 }
 
 function documentHtml(ctx: PageContext, parts: DocumentParts): string {
@@ -70,6 +80,7 @@ ${alternates}
 <meta property="og:locale" content="${route.locale === 'ja' ? 'ja_JP' : 'en_US'}">
 <meta name="twitter:card" content="summary_large_image">
 <script>${THEME_BOOT}</script>
+${parts.styles.map((href) => `<link rel="stylesheet" href="${href}">`).join('\n')}
 ${parts.head}
 <script type="module" src="${parts.entry}"></script>
 </head>
@@ -93,6 +104,7 @@ export async function renderPage(route: Route): Promise<string> {
       head,
       body,
       entry: ENTRIES.home,
+      styles: STYLES.home,
     });
   }
 
@@ -104,6 +116,7 @@ export async function renderPage(route: Route): Promise<string> {
     head,
     body,
     entry: ENTRIES.guide,
+    styles: STYLES.guide,
   });
 }
 

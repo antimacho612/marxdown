@@ -220,10 +220,6 @@ export default tseslint.config(
       // KaTeX の CSS
       'src/features/preview/lazy/math.ts',
       'src/features/preview/lazy/mermaid.ts',
-      // 紹介サイトの入口と Mermaid の CSS
-      'site/src/client/landing.ts',
-      'site/src/client/guide.ts',
-      'site/src/client/mermaid.ts',
       '.storybook/**',
     ],
     rules: { 'import-x/no-unassigned-import': 'off' },

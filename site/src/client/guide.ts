@@ -1,10 +1,3 @@
-import '@/styles/tokens.css';
-import '@/styles/preview/preview.css';
-import '@/styles/preview/math.css';
-import 'katex/dist/katex.min.css';
-import '../styles/base.css';
-import '../styles/guide.css';
-
 import { initCommon } from './common';
 import { observeMermaid } from './mermaid';
 

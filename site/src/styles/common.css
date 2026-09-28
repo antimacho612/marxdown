@@ -1,0 +1,12 @@
+/*
+ * 全ページに共通する CSS の入口。
+ *
+ * CSS は HTML の <link> から読み込む（`render.ts` の `STYLES`）。
+ * スクリプトから読み込むと、開発サーバではスクリプトが動くまでスタイルが当たらず、読み込むたびに一瞬崩れた表示になる。
+ */
+@import '@/styles/tokens.css';
+@import '@/styles/preview/preview.css';
+@import '@/styles/preview/math.css';
+@import '@/styles/preview/mermaid.css';
+@import 'katex/dist/katex.min.css';
+@import './base.css';

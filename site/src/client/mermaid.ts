@@ -7,8 +7,6 @@
  */
 import type mermaid from 'mermaid';
 
-import '@/styles/preview/mermaid.css';
-
 let engine: Promise<typeof mermaid> | undefined;
 let sequence = 0;
 const sources = new WeakMap<HTMLElement, string>();

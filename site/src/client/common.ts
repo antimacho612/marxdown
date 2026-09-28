@@ -146,7 +146,27 @@ function initPalette(): void {
   });
 }
 
+async function settle(transition: ViewTransition): Promise<void> {
+  try {
+    await transition.ready;
+  } catch {
+    // タブが隠れているときなど、ブラウザが切り替えを省いた。ページの移動自体は完了している。
+  }
+}
+
+/** ページ移動の切り替え（`base.css` の `@view-transition`）が省かれたときの拒否を、未処理のまま残さない。 */
+function initViewTransition(): void {
+  for (const type of ['pageswap', 'pagereveal'] as const) {
+    // `pageswap` の側も同じ形の `viewTransition` を持つ。
+    window.addEventListener(type, (event) => {
+      const { viewTransition } = event as PageRevealEvent;
+      if (viewTransition) void settle(viewTransition);
+    });
+  }
+}
+
 export function initCommon(): void {
+  initViewTransition();
   initTheme();
   initHeader();
   initCopy();
