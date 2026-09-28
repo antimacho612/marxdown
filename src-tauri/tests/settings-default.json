@@ -25,6 +25,7 @@
   "editor.wordSeparators": "`~!@#$%^&*()-=+[{]}\\|;:'\",.<>/?",
   "editor.wordWrap": "on",
   "editor.wordWrapColumn": 80.0,
+  "editor.wordWrapIndicator": false,
   "explorer.exclude": [],
   "explorer.temporaryTab": true,
   "markdown.abbreviations": false,

@@ -8122,7 +8122,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 
 ================================================================================
-monaco-editor 0.56.0 (MIT) https://github.com/microsoft/monaco-editor
+monaco-editor 0.57.0 (MIT) https://github.com/microsoft/monaco-editor
 
 The MIT License (MIT)
 
@@ -8147,7 +8147,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 ================================================================================
-monaco-editor 0.56.0 (MIT) https://github.com/microsoft/monaco-editor
+monaco-editor 0.57.0 (MIT) https://github.com/microsoft/monaco-editor
 
 THIRD-PARTY SOFTWARE NOTICES AND INFORMATION
 Do Not Translate or Localize

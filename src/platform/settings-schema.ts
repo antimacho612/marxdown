@@ -168,6 +168,7 @@ export const SETTINGS_SCHEMA = defineSettingsSchema({
     default: 'on',
   },
   'editor.wordWrapColumn': { kind: 'number', default: 80, min: 20, max: 500 },
+  'editor.wordWrapIndicator': { kind: 'boolean', default: false },
 
   /**
    * エクスプローラーとクイックオープンから常に除外するパスの glob。

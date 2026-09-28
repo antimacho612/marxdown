@@ -166,6 +166,9 @@ function buildTheme(): monaco.editor.IStandaloneThemeData {
       'editorCursor.foreground': foreground,
       'editorLineNumber.foreground': readColor('--mx-color-fg-subtle', '#8b8d98'),
       'editorLineNumber.activeForeground': readColor('--mx-color-fg-muted', '#60646c'),
+      // 折り返しの記号（`editor.wordWrapIndicator`、ADR-0012）。行番号と同じく行の区切りを示す情報なので同じ色にする。
+      // Monaco の既定は空白記号の色を継承するが、その色は配色から与えていない。
+      'editorWordWrapIndicator.foreground': readColor('--mx-color-fg-subtle', '#8b8d98'),
       'editor.lineHighlightBackground': readColor('--mx-color-bg-subtle', '#f6f7f9'),
       'editor.lineHighlightBorder': '#00000000',
       'editor.selectionBackground': readColor('--mx-color-selection', '#3b5bdb52'),
