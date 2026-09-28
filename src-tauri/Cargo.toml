@@ -1,6 +1,6 @@
 [package]
 name = "marxdown"
-version = "0.1.0"
+version = "0.1.1"
 description = "Markdown を見る・書くなら、これ。"
 authors = ["antimacho612"]
 license = "MIT"
