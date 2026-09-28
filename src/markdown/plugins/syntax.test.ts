@@ -1,13 +1,13 @@
 /**
  * 設定で有効化する追加記法。
  *
- * 検証したいのは「ON にしたものだけが適用される」ことと、「既定では何も適用されない」ことである。
+ * 検証したいのは「ON にしたものだけが実際に描画へ反映される」ことと、「既定では何も適用されない」ことである。
  * どれも既定 OFF なのは、標準的でない記法が意図せず発火して本文が壊れるほうが認知負荷が高いためで、ここが緩むと `==` や `~` を普通に含む文書の見た目が意図せず変わる。
  */
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import { render, resetMarkdownIt } from '../pipeline';
-import { loadSyntax, resetSyntax, SYNTAX_NAMES } from './syntax';
+import { loadSyntax, resetSyntax, SYNTAX_NAMES, type SyntaxName } from './syntax';
 
 /** 記法を読み込んだうえで描画する。実際の経路（`markdown/parser.ts`）と同じ順序である。 */
 async function renderWith(text: string, names: readonly string[]): Promise<string> {
@@ -15,6 +15,28 @@ async function renderWith(text: string, names: readonly string[]): Promise<strin
   resetMarkdownIt();
   return render(text, { syntax: names }).html;
 }
+
+/** 行末の `\` で次の行と 1 つのセルにする表。 */
+const MULTILINE_TABLE = '| 方式 | 説明 |\n| --- | --- |\n| TTL | 失効させる。 |\\\n|     | 実装が簡単。 |\n';
+
+/**
+ * 記法ごとの見本と、有効にしたときに描画結果へ現れるもの。
+ *
+ * NOTE: 記法を追加したときに見本の追加を型で強制するため、`Record<SyntaxName, …>` にしてある。
+ * 名前の一覧だけを検査していた間は、有効にすると描画が例外で失敗する記法（`multilineTables`）を検出できなかった。
+ */
+const SAMPLES: Record<SyntaxName, { source: string; expected: string | RegExp }> = {
+  abbreviations: {
+    source: '*[HTML]: HyperText Markup Language\n\nHTML を書く\n',
+    expected: '<abbr title="HyperText Markup Language">HTML</abbr>',
+  },
+  definitionLists: { source: '用語\n: 説明\n', expected: '<dl>' },
+  insertions: { source: '++挿入++', expected: '<ins>挿入</ins>' },
+  marks: { source: '==強調==', expected: '<mark>強調</mark>' },
+  multilineTables: { source: MULTILINE_TABLE, expected: /<td>\s*<p[^>]*>失効させる。\n実装が簡単。<\/p>/ },
+  subscript: { source: 'H~2~O', expected: '<sub>2</sub>' },
+  superscript: { source: 'x^2^', expected: '<sup>2</sup>' },
+};
 
 beforeEach(() => {
   resetSyntax();
@@ -34,38 +56,44 @@ describe('既定では 1 つも効かない', () => {
   it('定義リストにならない', () => {
     expect(render('用語\n: 説明\n').html).not.toContain('<dl>');
   });
+
+  it('行末の \\ で次の行とセルをまとめない', () => {
+    expect(render(MULTILINE_TABLE).html).not.toMatch(SAMPLES.multilineTables.expected);
+  });
 });
 
 describe('ON にしたものだけが効く', () => {
-  it('下付きを有効にする', async () => {
-    expect(await renderWith('H~2~O', ['subscript'])).toContain('<sub>2</sub>');
+  it.each(SYNTAX_NAMES)('%s を有効にすると描画に反映される', async (name) => {
+    const { source, expected } = SAMPLES[name];
+    expect(await renderWith(source, [name])).toMatch(expected);
   });
 
-  it('上付きを有効にする', async () => {
-    expect(await renderWith('x^2^', ['superscript'])).toContain('<sup>2</sup>');
-  });
-
-  it('マーカーを有効にする', async () => {
-    expect(await renderWith('==強調==', ['marks'])).toContain('<mark>');
-  });
-
-  it('挿入を有効にする', async () => {
-    expect(await renderWith('++挿入++', ['insertions'])).toContain('<ins>');
-  });
-
-  it('定義リストを有効にする', async () => {
-    expect(await renderWith('用語\n: 説明\n', ['definitionLists'])).toContain('<dl>');
-  });
-
-  it('略語を有効にする', async () => {
-    const html = await renderWith('*[HTML]: HyperText Markup Language\n\nHTML を書く\n', ['abbreviations']);
-    expect(html).toContain('<abbr');
+  it('すべてを同時に有効にしても描画できる', async () => {
+    const source = SYNTAX_NAMES.map((name) => SAMPLES[name].source).join('\n\n');
+    const html = await renderWith(source, SYNTAX_NAMES);
+    for (const name of SYNTAX_NAMES) expect(html).toMatch(SAMPLES[name].expected);
   });
 
   it('ON にしていないものは巻き添えで有効にならない', async () => {
     const html = await renderWith('H~2~O と x^2^', ['subscript']);
     expect(html).toContain('<sub>');
     expect(html).not.toContain('<sup>');
+  });
+});
+
+describe('複数行の表', () => {
+  it('^^ で上のセルと縦に結合する', async () => {
+    const html = await renderWith('| 方式 | p95 |\n| --- | --- |\n| TTL | 22ms |\n| ^^ | 18ms |\n', [
+      'multilineTables',
+    ]);
+    expect(html).toContain('<td rowspan="2">TTL</td>');
+  });
+
+  it('空行で区切った表を 1 つの表にまとめない', async () => {
+    // プラグインの既定（`multibody: true`）のままだと、後ろの表が前の表の本文として解釈される。
+    const source = '| a | b |\n| --- | --- |\n| 1 | 2 |\n\n| c | d |\n| --- | --- |\n| 3 | 4 |\n';
+    const html = await renderWith(source, ['multilineTables']);
+    expect(html.match(/<table/g)).toHaveLength(2);
   });
 });
 

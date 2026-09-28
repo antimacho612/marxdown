@@ -38,17 +38,14 @@ export type SyntaxName = (typeof SYNTAX_NAMES)[number];
  * 記法ごとの読み込み口。
  *
  * 型を持たないパッケージの宣言は `vendor.d.ts` にある。
- *
- * 戻り値を `unknown` にしてあるのは、`markdown-it-multimd-table` だけが自前の型を同梱しており、そちらが `md` を markdown-it の default export（呼び出し可能なクラス）として宣言しているためである。
- * こちらの `MarkdownIt`（インスタンスの型）と名前が一致せず、渡すものは同じなのに代入できない。
- * 全部を同じ扱いにして、`md.use` に渡すところで 1 度だけ揃える。
+ * 複数行の表だけはパッケージを直接読まず、オプションと markdown-it 15 への互換処理を足した `multiline-tables.ts` を読む。
  */
-const LOADERS: Record<SyntaxName, () => Promise<{ default: unknown }>> = {
+const LOADERS: Record<SyntaxName, () => Promise<{ default: Plugin }>> = {
   abbreviations: () => import('markdown-it-abbr'),
   definitionLists: () => import('markdown-it-deflist'),
   insertions: () => import('markdown-it-ins'),
   marks: () => import('markdown-it-mark'),
-  multilineTables: () => import('markdown-it-multimd-table'),
+  multilineTables: () => import('./multiline-tables'),
   subscript: () => import('markdown-it-sub'),
   superscript: () => import('markdown-it-sup'),
 };
@@ -75,7 +72,7 @@ export async function loadSyntax(names: readonly string[]): Promise<void> {
     missing.map(async (name) => {
       if (!isSyntaxName(name)) return;
       const module = await LOADERS[name]();
-      loaded.set(name, module.default as Plugin);
+      loaded.set(name, module.default);
     }),
   );
 }
