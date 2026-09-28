@@ -127,7 +127,7 @@ Add `/ADDTOPATH` to also add the command to PATH.
 When updating, the previous choice is kept.
 
 ```powershell
-.\Marxdown_0.1.0_x64-setup.exe /S /ADDTOPATH
+.\Marxdown_0.1.1_x64-setup.exe /S /ADDTOPATH
 ```
 
 </details>
