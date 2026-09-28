@@ -27,6 +27,7 @@ describe('editorOptions', () => {
       withSettings({
         'editor.wordWrap': 'bounded',
         'editor.wordWrapColumn': 120,
+        'editor.wordWrapIndicator': true,
         'editor.lineNumbers': 'relative',
         'editor.renderWhitespace': 'boundary',
         'editor.cursorStyle': 'line-thin',
@@ -41,6 +42,7 @@ describe('editorOptions', () => {
 
     expect(options.wordWrap).toBe('bounded');
     expect(options.wordWrapColumn).toBe(120);
+    expect(options.wordWrapIndicator).toBe(true);
     expect(options.lineNumbers).toBe('relative');
     expect(options.renderWhitespace).toBe('boundary');
     expect(options.cursorStyle).toBe('line-thin');

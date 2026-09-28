@@ -170,6 +170,10 @@ export const enSettings = {
       label: 'Wrap Column',
       description: 'The column to wrap at, counted in half-width characters.',
     },
+    wordWrapIndicator: {
+      label: 'Wrap Indicator',
+      description: 'Shows a symbol at the end of wrapped lines to tell them apart from real line breaks.',
+    },
     tabSize: { label: 'Tab Size', description: 'The width of a tab, in spaces.' },
     insertSpaces: {
       label: 'Insert Spaces for Tab',

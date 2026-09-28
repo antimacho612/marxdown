@@ -50,6 +50,7 @@ pub const KEY_EDITOR_WORD_SEGMENTER_LOCALES: &str = "editor.wordSegmenterLocales
 pub const KEY_EDITOR_WORD_SEPARATORS: &str = "editor.wordSeparators";
 pub const KEY_EDITOR_WORD_WRAP: &str = "editor.wordWrap";
 pub const KEY_EDITOR_WORD_WRAP_COLUMN: &str = "editor.wordWrapColumn";
+pub const KEY_EDITOR_WORD_WRAP_INDICATOR: &str = "editor.wordWrapIndicator";
 
 /// エクスプローラーから常に除外するパスの glob（`src/glob.rs`）。
 pub const KEY_EXPLORER_EXCLUDE: &str = "explorer.exclude";
@@ -348,6 +349,8 @@ pub struct Settings {
     pub editor_word_wrap: WordWrap,
     #[serde(rename = "editor.wordWrapColumn")]
     pub editor_word_wrap_column: f64,
+    #[serde(rename = "editor.wordWrapIndicator")]
+    pub editor_word_wrap_indicator: bool,
 
     /// エクスプローラーとクイックオープンから常に除外するパスの glob。
     /// 空なら追加の除外はしない。隠しファイルと `node_modules` は設定に関わらず除外される（`dir.rs`）。
@@ -470,6 +473,7 @@ impl Default for Settings {
             editor_word_separators: DEFAULT_EDITOR_WORD_SEPARATORS.to_owned(),
             editor_word_wrap: WordWrap::default(),
             editor_word_wrap_column: DEFAULT_EDITOR_WORD_WRAP_COLUMN,
+            editor_word_wrap_indicator: false,
 
             // 既定では追加の除外をしない。
             // 隠しファイルと `node_modules` は設定に関わらず除外されるため（`dir.rs`）、ここに書き出すと同じ判断が 2 か所に分かれる。
@@ -585,6 +589,8 @@ impl Settings {
                 WORD_WRAP_COLUMN_RANGE,
             )
             .unwrap_or(d.editor_word_wrap_column),
+            editor_word_wrap_indicator: take(&mut map, KEY_EDITOR_WORD_WRAP_INDICATOR)
+                .unwrap_or(d.editor_word_wrap_indicator),
 
             explorer_exclude: take_exclude(&mut map).unwrap_or(d.explorer_exclude),
             explorer_temporary_tab: take(&mut map, KEY_EXPLORER_TEMPORARY_TAB)

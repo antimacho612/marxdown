@@ -95,6 +95,10 @@ function syntaxFields() {
   }));
 }
 
+function wraps(values: Settings): boolean {
+  return values['editor.wordWrap'] !== 'off';
+}
+
 /** 折り返し桁は、折り返しの設定が桁を見る 2 つの値のときだけ意味を持つ。 */
 function wrapsByColumn(values: Settings): boolean {
   const wrap = values['editor.wordWrap'];
@@ -364,6 +368,14 @@ export function buildLayout() {
           label: tSettings.editor.wordWrapColumn.label,
           description: tSettings.editor.wordWrapColumn.description,
           visibleWhen: wrapsByColumn,
+        },
+        {
+          kind: 'field',
+          key: 'editor.wordWrapIndicator',
+          widget: 'toggle',
+          label: tSettings.editor.wordWrapIndicator.label,
+          description: tSettings.editor.wordWrapIndicator.description,
+          visibleWhen: wraps,
         },
         {
           kind: 'field',
