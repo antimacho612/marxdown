@@ -36,9 +36,13 @@ function escapeHtml(text: string): string {
   return text.replaceAll('&', '&amp;').replaceAll('"', '&quot;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
 }
 
-/** Svelte がハイドレーションのために出力する印。ハイドレーションはしないので取り除く。 */
+/**
+ * Svelte がハイドレーションのために出力する印（`<!--[-->` や `<!--$s1-->` など）。ハイドレーションはしないので取り除く。
+ *
+ * 印は空白を含まない。空白を含む通常のコメントは残す。
+ */
 function stripMarkers(html: string): string {
-  return html.replaceAll(/<!--(?:\[!?|\]|\$s\d+|)-->/g, '');
+  return html.replaceAll(/<!--[^\s>]*-->/g, '');
 }
 
 interface DocumentParts {
@@ -76,7 +80,7 @@ ${alternates}
 <meta property="og:title" content="${escapeHtml(parts.title)}">
 <meta property="og:description" content="${escapeHtml(parts.description)}">
 <meta property="og:url" content="${url(route.locale)}">
-<meta property="og:image" content="${ORIGIN}${ctx.asset('og.png')}">
+<meta property="og:image" content="${ORIGIN}${ctx.url('og.png')}">
 <meta property="og:locale" content="${route.locale === 'ja' ? 'ja_JP' : 'en_US'}">
 <meta name="twitter:card" content="summary_large_image">
 <script>${THEME_BOOT}</script>

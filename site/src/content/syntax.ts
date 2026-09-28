@@ -337,29 +337,22 @@ export const SYNTAX: SyntaxSection[] = [
           en: 'CSP restricts what can be loaded.\n\n*[CSP]: Content Security Policy',
         },
       },
+      {
+        id: 'multiline-tables',
+        setting: 'multilineTables',
+        title: { ja: '複数行の表', en: 'Multiline tables' },
+        body: {
+          ja: '行の最後の | の後ろに \\ を置くと、次の行を同じセルの続きとして書けます。続けた行はまとめて Markdown として解釈されるため、セルの中にリストも書けます。^^ と書いたセルは、上のセルと縦に結合します。',
+          en: 'Put \\ after the last | of a row to continue the same cells on the next line. The continued lines are read together as Markdown, so a cell can hold a list. A cell containing ^^ merges with the cell above it.',
+        },
+        source: {
+          ja: '| 方式 | 特徴 | コスト |\n| --- | --- | --- |\n| TTL | - 決まった時間で失効させる | 低 |\\\n|     | - 実装が簡単 | |\n| キャッシュなし | 常に最新を返す | ^^ |\n| SWR | 古い応答を返しつつ更新する | 中 |',
+          en: '| Strategy | Traits | Cost |\n| --- | --- | --- |\n| TTL | - Expires after a fixed time | Low |\\\n|     | - Easy to build | |\n| No cache | Always fresh | ^^ |\n| SWR | Returns stale data while refreshing | Medium |',
+        },
+      },
     ],
   },
 ];
-
-/**
- * 複数行の表の見本。
- *
- * BUG: `markdown-it-multimd-table` が markdown-it 15 で削除された `md.utils.assign` を呼ぶため、この記法を有効にすると描画が例外で失敗する。
- * アプリ側が直るまで、記法のページには載せない。直ったら `extensions` の末尾に戻す。
- */
-export const MULTILINE_TABLES: SyntaxExample = {
-  id: 'multiline-tables',
-  setting: 'multilineTables',
-  title: { ja: '複数行の表', en: 'Multiline tables' },
-  body: {
-    ja: '行末の \\ で、次の行を同じセルの続きとして書けます。見出しを 2 行にしたり、セルを結合したりもできます。',
-    en: 'End a row with \\ to continue the same cells on the next line. Multi-row headers and merged cells work too.',
-  },
-  source: {
-    ja: '| 方式 | 説明 |\n| --- | --- |\n| TTL | 決まった時間で失効させる。 \\\n|     | 実装が簡単。 |\n| SWR | 古い応答を返しつつ更新する。 |',
-    en: '| Strategy | Notes |\n| --- | --- |\n| TTL | Expires after a fixed time. \\\n|     | Easy to build. |\n| SWR | Returns stale data while refreshing. |',
-  },
-};
 
 /** 言語ごとに書き方を取り出す。 */
 export function sourceOf(example: SyntaxExample, locale: Locale): string {

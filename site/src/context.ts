@@ -13,8 +13,14 @@ export interface PageContext {
   version: string;
   /** サイト内のページへのリンク。言語を省くと表示中のページと同じ言語にする。 */
   href: (page: PageId, locale?: Locale) => string;
-  /** `public/` に置いたファイルへのリンク。 */
+  /**
+   * `public/` に置いたファイルを、HTML の `src` / `href` から参照するときのパス。
+   *
+   * `BASE` は付けない。Vite が HTML を処理するときに付ける（先に付けると、開発サーバでは二重になる）。
+   */
   asset: (path: string) => string;
+  /** `public/` や書き出したファイルの URL。Vite が処理しない属性（`data-*`・`<meta>`）に使う。 */
+  url: (path: string) => string;
 }
 
 export const LINKS = {
@@ -35,6 +41,7 @@ export function createContext(route: Route, version: string): PageContext {
     m: MESSAGES[route.locale],
     version,
     href: (page, locale = route.locale) => `${BASE}${pathOf(page, locale)}`,
-    asset: (path) => `${BASE}${path}`,
+    asset: (path) => `/${path}`,
+    url: (path) => `${BASE}${path}`,
   };
 }

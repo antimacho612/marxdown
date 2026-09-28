@@ -14,7 +14,7 @@
   class="palette"
   aria-label={m.palette.open}
   data-palette
-  data-index={ctx.asset(`search/${ctx.route.locale}.json`)}
+  data-index={ctx.url(`search/${ctx.route.locale}.json`)}
   data-empty={m.palette.empty}
   data-kinds={JSON.stringify(m.palette.kinds)}
 >
