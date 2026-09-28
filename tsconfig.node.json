@@ -13,5 +13,5 @@
     "outDir": "./node_modules/.tmp/tsconfig-node",
     "types": ["node"]
   },
-  "include": ["vite.config.ts", "vitest.config.ts"]
+  "include": ["vite.config.ts", "vitest.config.ts", "site/vite.config.ts", "site/build/**/*.ts"]
 }

@@ -180,6 +180,34 @@ export default tseslint.config(
   },
 
   {
+    // 紹介サイトのビルド設定。`this` は Rollup のプラグインの規約で使う（`this.emitFile`）。
+    files: ['site/vite.config.ts', 'site/build/**'],
+    languageOptions: { globals: { ...globals.node } },
+    rules: { 'unicorn/no-this-outside-of-class': 'off' },
+  },
+
+  {
+    // 紹介サイト。
+    // 演出は 1 手ずつ待ちながら進め、ビルド時の生成も順に行うため、ループの中の await が正しい書き方になる。
+    // `{@html}` に渡すのは、このリポジトリの文書からビルド時に作った HTML だけで、利用者の入力は含まない。
+    files: ['site/**'],
+    rules: {
+      'no-await-in-loop': 'off',
+      'svelte/no-at-html-tags': 'off',
+    },
+  },
+
+  {
+    // 見本の文書は数式（`$h$`）を含む Markdown で、テンプレート文字列の埋め込みではない。
+    // `UTF-8` はステータスバーに出す文字コードの表記そのものである。
+    files: ['site/src/content/**'],
+    rules: {
+      'unicorn/no-incorrect-template-string-interpolation': 'off',
+      'unicorn/text-encoding-identifier-case': 'off',
+    },
+  },
+
+  {
     files: [
       // CSS の副作用インポートのため
       'src/main.ts',
@@ -192,6 +220,10 @@ export default tseslint.config(
       // KaTeX の CSS
       'src/features/preview/lazy/math.ts',
       'src/features/preview/lazy/mermaid.ts',
+      // 紹介サイトの入口と Mermaid の CSS
+      'site/src/client/landing.ts',
+      'site/src/client/guide.ts',
+      'site/src/client/mermaid.ts',
       '.storybook/**',
     ],
     rules: { 'import-x/no-unassigned-import': 'off' },
