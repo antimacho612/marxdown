@@ -7,9 +7,10 @@ Marxdown の利用者に見える変更を記録する。
 
 ## [Unreleased]
 
-## [0.1.0] - 2026-09-28
+## [0.1.1] - 2026-09-28
 
 最初の公開版。
+0.1.0 は公開の手順を誤ったため欠番とした。
 
 ### 追加
 
@@ -26,5 +27,5 @@ Marxdown の利用者に見える変更を記録する。
 - 自動更新。起動時とウィンドウを前面に出したときに（1 日 1 回まで）新しい版を確認し、通知バーから更新できる。設定 `update.autoCheck` で止められる
 - メニューの「ヘルプ」。不具合の報告（バージョンと OS を入力済みの Issue フォームを開く）・機能の提案・更新の確認・ライセンスの表示・「Marxdown について」
 
-[Unreleased]: https://github.com/antimacho612/marxdown/compare/v0.1.0...HEAD
-[0.1.0]: https://github.com/antimacho612/marxdown/releases/tag/v0.1.0
+[Unreleased]: https://github.com/antimacho612/marxdown/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/antimacho612/marxdown/releases/tag/v0.1.1

@@ -127,7 +127,7 @@ Windows 11 には標準で入っています。
 更新するときは、前回の選択を引き継ぎます。
 
 ```powershell
-.\Marxdown_0.1.0_x64-setup.exe /S /ADDTOPATH
+.\Marxdown_0.1.1_x64-setup.exe /S /ADDTOPATH
 ```
 
 </details>
