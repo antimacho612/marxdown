@@ -23,7 +23,11 @@
         <h2 id="footer-product">{m.footer.product}</h2>
         <ul>
           <li><a href={`${ctx.href('home')}#features`}>{m.footer.features}</a></li>
-          <li><a href={LINKS.releases}>{m.footer.download}</a></li>
+          <li>
+            <a href={LINKS.releases} data-goatcounter-click="download-footer" data-goatcounter-title="Download (footer)"
+              >{m.footer.download}</a
+            >
+          </li>
           <li><a href={LINKS.changelog}>{m.footer.changelog}</a></li>
         </ul>
       </nav>

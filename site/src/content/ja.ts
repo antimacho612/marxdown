@@ -10,6 +10,7 @@ export const ja = {
     description:
       'ターミナルで marxdown README.md と入力した瞬間に読める、軽くて美しい Markdown ビューアー＆エディター。Windows 10 / 11 向け、無料のオープンソースです。',
     guideSuffix: 'Marxdown ガイド',
+    imageAlt: 'Marxdown のスクリーンショット。Markdown の文書が整った見た目で表示されている',
   },
 
   nav: {
