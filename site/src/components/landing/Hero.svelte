@@ -44,7 +44,12 @@
     </p>
 
     <div class="hero__actions">
-      <a class="button button--primary hero__download" href={LINKS.releases}>
+      <a
+        class="button button--primary hero__download"
+        href={LINKS.releases}
+        data-goatcounter-click="download-hero"
+        data-goatcounter-title="Download (hero)"
+      >
         <Icon name="download" />{m.hero.download}
       </a>
       <a class="button button--ghost" href={ctx.href('start')}>

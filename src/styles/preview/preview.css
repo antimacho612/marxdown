@@ -413,6 +413,15 @@
 }
 
 /*
+ * 張り出した包む要素の中で、表を中央に置く。
+ * 包む要素はプレビューの左端から始まるため、指定しないと表がプレビューの左端に寄る。
+ * 張り出しても収まらない表では `auto` が 0 に解決され、左端から横スクロールする。
+ */
+.mx-content > .mx-table[data-mx-wide] > table {
+  margin-inline: auto;
+}
+
+/*
  * 横に収まった表だけ、スクロール容器であることをやめる。
  *
  * 見出し行の `position: sticky` は、スクロール容器の縦方向のスクロール量を基準に位置が決まる。
@@ -739,19 +748,7 @@
  * リスト全体に適用すると、同じリストに混ざった普通の項目までビュレットを失う（GitHub は失わない）。
  */
 .mx-preview .task-list-item {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: var(--mx-space-2);
   list-style: none;
-}
-
-/*
- * ネストしたリストは自分の行へ送る。
- * display: flex の既定では親項目のテキストの横に並んでしまい、箇条書きに見えなくなる。
- */
-.mx-preview .task-list-item > :is(ul, ol) {
-  flex-basis: 100%;
 }
 
 /*
@@ -762,10 +759,15 @@
  *
  * 大きさを em で持つのが要点。px で固定すると、表示倍率を上げたときに本文だけが大きくなって取り残される。
  * .mx-preview の font-size には --mx-zoom が掛かっている。
+ *
+ * NOTE: 項目を display: flex にしてはいけない。
+ * tight なリストでは `<p>` が無く、本文のテキストとリンクがそれぞれ別のフレックスアイテムになり、アイテム単位で折り返される。
  */
 .mx-preview .mx-task {
-  flex: none;
+  display: inline-block;
   box-sizing: border-box;
+  /* 本文は記号直後の空白から始まるため、その空白と合わせて間隔を取る */
+  margin-inline-end: 0.25em;
   width: 0.95em;
   height: 0.95em;
   border: 1px solid var(--mx-color-border);

@@ -70,7 +70,12 @@
         </div>
       </details>
 
-      <a class="button button--primary button--small site-header__download" href={LINKS.releases}>
+      <a
+        class="button button--primary button--small site-header__download"
+        href={LINKS.releases}
+        data-goatcounter-click="download-header"
+        data-goatcounter-title="Download (header)"
+      >
         <Icon name="download" />{m.nav.download}
       </a>
 

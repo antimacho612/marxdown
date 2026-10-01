@@ -7,6 +7,13 @@ Marxdown の利用者に見える変更を記録する。
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-10-01
+
+### 修正
+
+- プレビューで、タスクリストの項目にリンクなどが含まれるとき、チェックボックスと本文が不自然な位置で折り返されていた不具合を修正した
+- プレビューで、本文幅に収まらない表がプレビューの左端に寄っていた不具合を修正した。中央に表示する
+
 ## [0.2.0] - 2026-09-28
 
 ### 追加
@@ -37,6 +44,7 @@ Marxdown の利用者に見える変更を記録する。
 - 自動更新。起動時とウィンドウを前面に出したときに（1 日 1 回まで）新しい版を確認し、通知バーから更新できる。設定 `update.autoCheck` で止められる
 - メニューの「ヘルプ」。不具合の報告（バージョンと OS を入力済みの Issue フォームを開く）・機能の提案・更新の確認・ライセンスの表示・「Marxdown について」
 
-[Unreleased]: https://github.com/antimacho612/marxdown/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/antimacho612/marxdown/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/antimacho612/marxdown/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/antimacho612/marxdown/compare/v0.1.1...v0.2.0
 [0.1.1]: https://github.com/antimacho612/marxdown/releases/tag/v0.1.1
