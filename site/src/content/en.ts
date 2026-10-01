@@ -8,6 +8,7 @@ export const en: Messages = {
     description:
       'A light and beautiful Markdown viewer & editor that shows your file the moment you type marxdown README.md in a terminal. Free and open source, for Windows 10 / 11.',
     guideSuffix: 'Marxdown Guide',
+    imageAlt: 'Screenshot of Marxdown showing a Markdown document rendered cleanly',
   },
 
   nav: {

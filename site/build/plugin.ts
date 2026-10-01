@@ -41,6 +41,7 @@ const RENDER_ENTRY = '/src/render.ts';
 interface RenderModule {
   renderPage: (route: Route) => Promise<string>;
   renderSearchIndex: (locale: Locale) => Promise<string>;
+  renderSitemap: () => string;
 }
 
 /**
@@ -121,6 +122,7 @@ export function pages(): Plugin {
         this.emitFile({ type: 'asset', fileName, source: readFileSync(source) });
       }
       const module = await renderer();
+      this.emitFile({ type: 'asset', fileName: 'sitemap.xml', source: module.renderSitemap() });
       for (const locale of LOCALES) {
         this.emitFile({
           type: 'asset',
@@ -154,6 +156,13 @@ export function pages(): Plugin {
         const extra = EXTRA_ASSETS[rest];
         if (extra) {
           res.end(readFileSync(extra));
+          return;
+        }
+
+        if (rest === 'sitemap.xml') {
+          const module = await renderer();
+          res.setHeader('Content-Type', 'application/xml; charset=utf-8');
+          res.end(module.renderSitemap());
           return;
         }
 

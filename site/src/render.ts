@@ -4,16 +4,23 @@
 import { render } from 'svelte/server';
 
 import pkg from '../../package.json';
-import { createContext, type PageContext } from './context';
+import { createContext, LINKS, type PageContext } from './context';
 import Guide from './pages/Guide.svelte';
 import Landing from './pages/Landing.svelte';
-import { LOCALES, type Locale, type Route } from './routes';
+import { LOCALES, ROUTES, type Locale, type Route } from './routes';
 import { loadGuide } from './server/guide';
 import { loadLanding } from './server/landing';
 import { buildSearchIndex } from './server/search';
 
 /** 公開先。GitHub Pages のプロジェクトサイトで、`BASE` はこの後ろに付く。 */
 const ORIGIN = 'https://antimacho612.github.io';
+
+/**
+ * GoatCounter のサイトコード（`<code>.goatcounter.com` の `<code>`）。空のあいだは計測のスクリプトを出力しない。
+ *
+ * Cookie を使わず、個人を識別しない集計だけを行う。ダウンロードの導線のクリックは `data-goatcounter-click` で数える。
+ */
+const GOATCOUNTER_CODE = 'antimacho612';
 
 /** 外観の指定を、スタイルが当たる前に反映する。遅れると一瞬だけ OS の外観で表示される。 */
 const THEME_BOOT = `(()=>{const d=document.documentElement;d.classList.replace('no-js','js');try{const t=localStorage.getItem('marxdown-site-theme');if(t==='light'||t==='dark')d.dataset.theme=t}catch{}})();`;
@@ -33,7 +40,11 @@ const STYLES = {
 } as const;
 
 function escapeHtml(text: string): string {
-  return text.replaceAll('&', '&amp;').replaceAll('"', '&quot;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
+  return text
+    .replaceAll('&', '&amp;')
+    .replaceAll('"', '&quot;')
+    .replaceAll(String.raw`<`, '&lt;')
+    .replaceAll('>', '&gt;');
 }
 
 /**
@@ -52,6 +63,33 @@ interface DocumentParts {
   head: string;
   entry: string;
   styles: readonly string[];
+}
+
+function analyticsTag(): string {
+  if (!GOATCOUNTER_CODE) return '';
+  return `<script data-goatcounter="https://${GOATCOUNTER_CODE}.goatcounter.com/count" async src="https://gc.zgo.at/count.js"></script>`;
+}
+
+/** 検索エンジンにアプリとして認識させる構造化データ。トップページにだけ付ける。 */
+function structuredData(ctx: PageContext, pageUrl: string): string {
+  const { m, version } = ctx;
+  const data = {
+    '@context': 'https://schema.org',
+    '@type': 'SoftwareApplication',
+    name: m.meta.siteName,
+    description: m.meta.description,
+    url: pageUrl,
+    inLanguage: ctx.route.locale,
+    applicationCategory: 'DeveloperApplication',
+    operatingSystem: 'Windows 10, Windows 11',
+    softwareVersion: version,
+    downloadUrl: LINKS.releases,
+    license: LINKS.license,
+    image: `${ORIGIN}${ctx.url('og.png')}`,
+    offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
+  };
+  // NOTE: `</script>` で JSON が途切れないよう、`<` をエスケープする。
+  return `<script type="application/ld+json">${JSON.stringify(data).replaceAll('<', String.raw`\u003c`)}</script>`;
 }
 
 function documentHtml(ctx: PageContext, parts: DocumentParts): string {
@@ -82,7 +120,13 @@ ${alternates}
 <meta property="og:url" content="${url(route.locale)}">
 <meta property="og:image" content="${ORIGIN}${ctx.url('og.png')}">
 <meta property="og:locale" content="${route.locale === 'ja' ? 'ja_JP' : 'en_US'}">
+<meta property="og:image:alt" content="${escapeHtml(m.meta.imageAlt)}">
 <meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="${escapeHtml(parts.title)}">
+<meta name="twitter:description" content="${escapeHtml(parts.description)}">
+<meta name="twitter:image" content="${ORIGIN}${ctx.url('og.png')}">
+${route.page === 'home' ? structuredData(ctx, url(route.locale)) : ''}
+${analyticsTag()}
 <script>${THEME_BOOT}</script>
 ${parts.styles.map((href) => `<link rel="stylesheet" href="${href}">`).join('\n')}
 ${parts.head}
@@ -126,4 +170,27 @@ export async function renderPage(route: Route): Promise<string> {
 
 export async function renderSearchIndex(locale: Locale): Promise<string> {
   return JSON.stringify(await buildSearchIndex(locale));
+}
+
+/**
+ * `sitemap.xml`。全ページを列挙し、各ページに言語違いの URL を `hreflang` で対応づける。
+ *
+ * `robots.txt` はホストのルートにしか置けず、このサイトの公開先（プロジェクトサイト）では管理できない。検索エンジンへは Search Console から送る。
+ */
+export function renderSitemap(): string {
+  const locUrl = (route: Route) => `${ORIGIN}${createContext(route, pkg.version).href(route.page)}`;
+  const entries = ROUTES.map((route) => {
+    const alternates = LOCALES.map((locale) => {
+      const alt = ROUTES.find((r) => r.page === route.page && r.locale === locale);
+      return alt ? `    <xhtml:link rel="alternate" hreflang="${locale}" href="${locUrl(alt)}"/>` : '';
+    }).join('\n');
+    return `  <url>\n    <loc>${locUrl(route)}</loc>\n${alternates}\n  </url>`;
+  });
+  return [
+    '<?xml version="1.0" encoding="UTF-8"?>',
+    '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">',
+    ...entries,
+    '</urlset>',
+    '',
+  ].join('\n');
 }
