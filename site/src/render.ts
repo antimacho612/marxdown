@@ -107,6 +107,7 @@ function documentHtml(ctx: PageContext, parts: DocumentParts): string {
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${escapeHtml(parts.title)}</title>
 <meta name="description" content="${escapeHtml(parts.description)}">
+<meta name="google-site-verification" content="AmgZXOiTTdMAO6LKB1cJW_4tBV12fb9uZ0-oINm5lvs">
 <meta name="color-scheme" content="light dark">
 <meta name="theme-color" media="(prefers-color-scheme: light)" content="#fbfbfd">
 <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0a0b0e">
