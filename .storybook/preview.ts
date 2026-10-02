@@ -21,6 +21,8 @@ import { loadHelpMessages } from '../src/i18n/help';
 import { loadMarpMessages } from '../src/i18n/marp';
 import { loadSettingsMessages } from '../src/i18n/settings';
 import { loadUpdateMessages } from '../src/i18n/update';
+import { setPlatform } from '../src/platform';
+import { webPlatform } from '../src/platform/web';
 
 /**
  * コマンドを登録する（`src/app/commands.ts`）。
@@ -32,6 +34,9 @@ import { loadUpdateMessages } from '../src/i18n/update';
  * Storybook で `Ctrl+F` を奪われると、story を探せなくなる。
  */
 registerAppCommands();
+
+// NOTE: `src/platform/index.ts` は開発サーバーでしか `webPlatform` を選ばない。`storybook build` でも同じ実装を使うため明示的に差し替える。
+setPlatform(webPlatform);
 
 const preview: Preview = {
   parameters: {
