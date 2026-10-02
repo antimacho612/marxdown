@@ -7767,7 +7767,6 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 ================================================================================
-katex 0.16.47 (MIT) https://github.com/KaTeX/KaTeX.git
 katex 0.18.9 (MIT) https://github.com/KaTeX/KaTeX.git
 
 The MIT License (MIT)

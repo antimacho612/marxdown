@@ -22,7 +22,9 @@ function isTauri(): boolean {
   );
 }
 
-let current: Platform = isTauri() ? tauriPlatform : webPlatform;
+// NOTE: 本番ビルドでは条件が定数に畳まれ、`web.ts` がバンドルから外れる（OQ-34）。
+// 本番ビルドを Tauri の外で開くと `tauriPlatform` が選ばれて動かない。Storybook の静的ビルドは `.storybook/preview.ts` で差し替えている。
+let current: Platform = import.meta.env.DEV && !isTauri() ? webPlatform : tauriPlatform;
 
 /** 現在の Platform 実装。Domain 層と UI 層はここを経由してのみ Platform に触れる。 */
 export function getPlatform(): Platform {
