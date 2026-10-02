@@ -2237,3 +2237,219 @@ input[type='range'] {
   gap: 12px;
   margin-top: 36px;
 }
+
+/* ---------- VS Code との関係 ---------- */
+
+.different {
+  padding-block: var(--section-space);
+}
+
+.different__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  max-width: 960px;
+  margin-inline: auto;
+
+  @media (max-width: 760px) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.different__card {
+  padding: 32px;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  background: var(--bg-raised);
+}
+
+.different__card--ours {
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--line));
+  box-shadow: 0 18px 48px -24px color-mix(in srgb, var(--accent) 45%, transparent);
+}
+
+.different__name {
+  margin: 0;
+  font-size: 1.35rem;
+  font-weight: 750;
+}
+
+.different__role {
+  margin: 4px 0 0;
+  color: var(--fg-muted);
+}
+
+.different__points {
+  display: grid;
+  gap: 12px;
+  margin: 24px 0 0;
+  padding: 0;
+  list-style: none;
+
+  & li {
+    display: flex;
+    gap: 10px;
+    line-height: 1.6;
+  }
+
+  & svg {
+    flex: none;
+    margin-top: 0.3em;
+    color: var(--fg-subtle);
+  }
+}
+
+.different__card--ours .different__points svg {
+  color: var(--accent);
+}
+
+/* ---------- AI が書いた Markdown ---------- */
+
+.ai {
+  padding-block: var(--section-space);
+  border-top: 1px solid var(--line);
+}
+
+.ai__inner {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: start;
+  gap: clamp(40px, 6vw, 88px);
+
+  @media (max-width: 960px) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.ai__points {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ai__point {
+  padding: 24px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: var(--bg-raised);
+
+  & h3 {
+    margin: 0;
+    font-size: 1.05rem;
+    font-weight: 700;
+  }
+
+  & p {
+    margin: 6px 0 0;
+    color: var(--fg-muted);
+    font-size: 0.95rem;
+    line-height: 1.75;
+  }
+}
+
+.ai__command {
+  display: block;
+  margin-top: 14px;
+  padding: 10px 14px;
+  overflow-x: auto;
+  border-radius: 10px;
+  background: #0f1115;
+  color: #f1f3f6;
+  font-size: 0.875rem;
+  white-space: nowrap;
+}
+
+.ai__prompt {
+  margin-right: 0.6em;
+  color: #7f858d;
+}
+
+/* ---------- 速さの注記・コマンドの大きな表示 ---------- */
+
+.speed__note {
+  margin: 20px 0 0;
+  color: var(--fg-subtle);
+  font-size: 0.8125rem;
+  line-height: 1.7;
+}
+
+.cli__hero {
+  margin: 0 0 20px;
+  font-size: clamp(1.5rem, 0.9rem + 2.4vw, 2.6rem);
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  overflow-wrap: anywhere;
+
+  & span {
+    color: var(--fg-subtle);
+  }
+
+  & code {
+    background: var(--brand-gradient);
+    background-clip: text;
+    -webkit-background-clip: text;
+    color: transparent;
+  }
+}
+
+/* ---------- よくある質問 ---------- */
+
+.faq {
+  padding-block: var(--section-space) 0;
+}
+
+.faq__inner {
+  display: grid;
+  grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
+  gap: clamp(32px, 6vw, 88px);
+
+  @media (max-width: 960px) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.faq__list {
+  border-top: 1px solid var(--line);
+}
+
+.faq__item {
+  border-bottom: 1px solid var(--line);
+
+  & summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 20px 4px;
+    cursor: pointer;
+    font-weight: 650;
+    list-style: none;
+
+    &::-webkit-details-marker {
+      display: none;
+    }
+  }
+
+  & p {
+    margin: 0;
+    padding: 0 4px 22px;
+    color: var(--fg-muted);
+    line-height: 1.8;
+  }
+
+  &[open] .faq__chevron {
+    rotate: -90deg;
+  }
+}
+
+.faq__chevron {
+  display: grid;
+  flex: none;
+  place-items: center;
+  color: var(--fg-subtle);
+  rotate: 90deg;
+  transition: rotate 200ms var(--ease-out);
+}

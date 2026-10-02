@@ -24,8 +24,14 @@
 
     <nav class="site-nav" id="site-nav" aria-label={m.nav.menu}>
       <a href={`${ctx.href('home')}#features`}>{m.nav.features}</a>
+      <a href={`${ctx.href('home')}#faq`}>{m.nav.faq}</a>
       <a href={ctx.href('start')} aria-current={isGuide ? 'page' : undefined}>{m.nav.guide}</a>
-      <a href={LINKS.repository} rel="noopener">{m.nav.github}</a>
+      <a
+        href={LINKS.repository}
+        rel="noopener"
+        data-goatcounter-click="github-header"
+        data-goatcounter-title="GitHub (header)">{m.nav.github}</a
+      >
     </nav>
 
     <div class="site-header__actions">

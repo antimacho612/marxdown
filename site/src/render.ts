@@ -22,6 +22,11 @@ const ORIGIN = 'https://antimacho612.github.io';
  */
 const GOATCOUNTER_CODE = 'antimacho612';
 
+/** SNS で共有したときの画像（`build/plugin.ts` の `EXTRA_ASSETS`）。言語ごとに文言が違う。 */
+function ogImage(ctx: PageContext): string {
+  return `${ORIGIN}${ctx.url(ctx.route.locale === 'ja' ? 'og.png' : 'og.en.png')}`;
+}
+
 /** 外観の指定を、スタイルが当たる前に反映する。遅れると一瞬だけ OS の外観で表示される。 */
 const THEME_BOOT = `(()=>{const d=document.documentElement;d.classList.replace('no-js','js');try{const t=localStorage.getItem('marxdown-site-theme');if(t==='light'||t==='dark')d.dataset.theme=t}catch{}})();`;
 
@@ -85,7 +90,7 @@ function structuredData(ctx: PageContext, pageUrl: string): string {
     softwareVersion: version,
     downloadUrl: LINKS.releases,
     license: LINKS.license,
-    image: `${ORIGIN}${ctx.url('og.png')}`,
+    image: ogImage(ctx),
     offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
   };
   // NOTE: `</script>` で JSON が途切れないよう、`<` をエスケープする。
@@ -119,13 +124,16 @@ ${alternates}
 <meta property="og:title" content="${escapeHtml(parts.title)}">
 <meta property="og:description" content="${escapeHtml(parts.description)}">
 <meta property="og:url" content="${url(route.locale)}">
-<meta property="og:image" content="${ORIGIN}${ctx.url('og.png')}">
+<meta property="og:image" content="${ogImage(ctx)}">
+<meta property="og:image:width" content="1280">
+<meta property="og:image:height" content="640">
 <meta property="og:locale" content="${route.locale === 'ja' ? 'ja_JP' : 'en_US'}">
 <meta property="og:image:alt" content="${escapeHtml(m.meta.imageAlt)}">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="${escapeHtml(parts.title)}">
 <meta name="twitter:description" content="${escapeHtml(parts.description)}">
-<meta name="twitter:image" content="${ORIGIN}${ctx.url('og.png')}">
+<meta name="twitter:image" content="${ogImage(ctx)}">
+<meta name="twitter:image:alt" content="${escapeHtml(m.meta.imageAlt)}">
 ${route.page === 'home' ? structuredData(ctx, url(route.locale)) : ''}
 ${analyticsTag()}
 <script>${THEME_BOOT}</script>

@@ -1,6 +1,10 @@
 <script lang="ts">
+  import AiUse from '../components/landing/AiUse.svelte';
   import Bytes from '../components/landing/Bytes.svelte';
   import Cli from '../components/landing/Cli.svelte';
+  import Cta from '../components/landing/Cta.svelte';
+  import Different from '../components/landing/Different.svelte';
+  import Faq from '../components/landing/Faq.svelte';
   import Features from '../components/landing/Features.svelte';
   import Hero from '../components/landing/Hero.svelte';
   import Install from '../components/landing/Install.svelte';
@@ -23,15 +27,19 @@
 <main id="main" class="landing">
   <Hero {ctx} {data} />
   <Statement {ctx} />
-  <Speed {ctx} />
+  <Different {ctx} />
   <Tour {ctx} {data} />
-  <Themes {ctx} {data} />
+  <Speed {ctx} />
+  <AiUse {ctx} />
   <Typography {ctx} {data} />
+  <Themes {ctx} {data} />
+  <Cli {ctx} />
   <Bytes {ctx} {data} />
   <Security {ctx} />
   <Features {ctx} />
-  <Cli {ctx} />
   <Install {ctx} />
+  <Faq {ctx} />
+  <Cta {ctx} />
 </main>
 <SiteFooter {ctx} />
 <SearchPalette {ctx} />

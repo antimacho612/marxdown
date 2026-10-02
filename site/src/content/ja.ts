@@ -6,16 +6,18 @@
 export const ja = {
   meta: {
     siteName: 'Marxdown',
-    title: 'Marxdown — Markdown を見る・書くなら、これ。',
+    title: 'Marxdown — Windows 向けの軽快な Markdown ビューアー',
     description:
-      'ターミナルで marxdown README.md と入力した瞬間に読める、軽くて美しい Markdown ビューアー＆エディター。Windows 10 / 11 向け、無料のオープンソースです。',
+      'Marxdown は、Markdown を読むことを中心に設計した Windows 向けのビューアー／エディターです。.md をすぐに開いて快適に読み、必要になったらそのまま編集できます。無料のオープンソースです。',
     guideSuffix: 'Marxdown ガイド',
-    imageAlt: 'Marxdown のスクリーンショット。Markdown の文書が整った見た目で表示されている',
+    imageAlt:
+      'Marxdown のロゴと「Markdown を読むために、VS Code を開きたくない。」の文字。右に、設計書を表示している Marxdown の画面がある',
   },
 
   nav: {
     skip: '本文へ移動',
     features: '特徴',
+    faq: 'よくある質問',
     guide: 'ガイド',
     download: 'ダウンロード',
     github: 'GitHub',
@@ -29,51 +31,78 @@ export const ja = {
   hero: {
     badge: (version: string) => `v${version} を公開しました`,
     badgeLink: '変更履歴',
-    titleLines: ['Markdown を', '見る・書くなら、*これ。*'],
-    lead: 'ターミナルで {command} と入力した瞬間に読める、軽くて美しい Markdown ビューアー＆エディター。',
+    titleLines: ['Markdown を読むために、', '*VS Code を開きたくない。*'],
+    lead: 'Markdown を読むことを中心に設計した、Windows 向けのビューアー／エディター。{command} で開いて、必要になったらそのまま編集できます。',
     leadCommand: 'marxdown README.md',
     download: 'Windows 版をダウンロード',
-    downloadMeta: (version: string) => `v${version} · Windows 10 / 11（x64）· 無料`,
-    guide: '使い方を見る',
+    downloadMeta: (version: string) => `v${version} · Windows 10 / 11（x64）· 無料・オープンソース`,
+    github: 'GitHub を見る',
     replay: 'もう一度再生',
     terminalTitle: 'Windows PowerShell',
-    prompt: 'PS C:\\work\\search-api>',
-    commands: ['marxdown README.md', 'marxdown CHANGELOG.md'],
+    prompt: 'PS C:\\work\\sync\\docs>',
+    commands: ['marxdown architecture.md', 'marxdown research.md'],
   },
 
   statement: {
-    eyebrow: 'こんなときに',
+    eyebrow: 'こんなこと、ありませんか',
     // 強調する語は `*` で囲む。スクロールに合わせて前から順に明るくなる。
     lines: [
-      'LLM に書かせた*設計書*。リポジトリの *README*。*議事録*。',
-      'Markdown を「ちょっと開いて確認したい」場面は、1 日に何十回もあります。',
-      'そのたびに IDE の起動を待つ必要はありません。',
+      'AI が書いた*設計書*。リポジトリの *README*。*議事録*。',
+      'Markdown を「ちょっと読みたい」場面は、1 日に何十回もあります。',
+      'そのたびに、IDE が立ち上がるのを待っていませんか。',
     ],
-    closing: 'Marxdown は、開いて・読んで・少し直すためのアプリです。',
+    closing: 'Marxdown は、開いて・読んで・必要なら少し直すためのアプリです。',
+  },
+
+  different: {
+    eyebrow: 'VS Code との関係',
+    title: 'VS Code は素晴らしい。Marxdown は役割が違う。',
+    body: 'VS Code は強力な開発環境です。Marxdown は、開発環境までは要らない場面のためにあります。コードを書くのは VS Code、それについて書かれたものを読むのは Marxdown。そういう併用を想定しています。',
+    columns: [
+      {
+        name: 'VS Code',
+        role: 'コードを書くための開発環境',
+        points: [
+          'ワークスペースと拡張機能を読み込んで始まる',
+          'Markdown はソースとして開き、プレビューは別に開く',
+          '書く・動かす・直すための道具がそろっている',
+        ],
+      },
+      {
+        name: 'Marxdown',
+        role: 'Markdown を読むための場所',
+        points: [
+          'ファイル 1 つを、そのまま開く',
+          '開くと、読むための表示になる',
+          '直すときは、同じ Monaco エディターに切り替える',
+        ],
+      },
+    ],
   },
 
   speed: {
     eyebrow: '一瞬で開く',
     title: '開くたびに、待たされない。',
-    body: '起動後はタスクトレイで待機し、2 回目以降の marxdown は既存のウィンドウにタブで開きます。コマンドを打ったターミナルのプロンプトも、すぐに戻ります。',
+    body: 'フル IDE の初期化を待たずに、Markdown を開けます。一度起動するとタスクトレイで待機し、2 回目以降の marxdown は既存のウィンドウにタブで開きます。コマンドを打ったターミナルのプロンプトも、すぐに戻ります。',
     stats: [
-      { value: '600', unit: 'ms', label: '初回の起動の目標' },
-      { value: '120', unit: 'ms', label: '2 回目以降の目標' },
+      { value: '600', unit: 'ms', label: '初回の起動（目標）' },
+      { value: '120', unit: 'ms', label: '2 回目以降（目標）' },
       { value: '≈0', unit: '%', label: '待機中の CPU 使用率' },
     ],
+    note: '起動時間は、release ビルドで起動の各段階の中央値を計測して確かめている設計上の目標値です。PC の性能によって変わります。',
     tray: 'タスクトレイで待機中',
     tabNote: '既存のウィンドウにタブで開く',
   },
 
   tour: {
-    eyebrow: '読む・書く・探す',
-    title: '開いて、読んで、少し直す。',
+    eyebrow: '使う場面',
+    title: '読む。必要なら、そのまま直す。',
     steps: [
       {
         id: 'read',
         label: '読む',
-        title: '読むためのプレビュー',
-        body: '余白・行間・本文幅を整えたタイポグラフィで、長い文書も読みやすく表示します。表・コード・数式・図も、そのまま表示します。',
+        title: 'AI から長い設計書が届いた',
+        body: 'Marxdown で開けば、読むための表示になります。余白・行間・本文幅を整えた文字組みで、表・コード・数式・図もそのまま表示します。',
         chips: [
           '表',
           'シンタックスハイライト',
@@ -87,21 +116,21 @@ export const ja = {
       {
         id: 'write',
         label: '書く',
-        title: 'キー 1 つで、そのまま編集',
-        body: 'Preview・Edit・Split をキー 1 つで切り替えられます。エディターは VS Code と同じ Monaco です。書いた内容は、隣のプレビューにすぐ反映されます。',
+        title: '直したいところを見つけた',
+        body: 'キー 1 つで Split に切り替わり、その場で直せます。エディターは VS Code と同じ Monaco で、書いた内容は隣のプレビューにすぐ反映されます。',
         chips: [],
       },
       {
         id: 'format',
         label: '整える',
-        title: '書式も、表も、キーボードで',
-        body: '太字・リンク・見出し・リストはショートカットで付け外しできます。崩れた表の列幅は、Shift+Alt+F で揃います。',
+        title: '表の列がそろっていない',
+        body: '崩れた表の列幅は、Shift+Alt+F で揃います。太字・リンク・見出し・リストも、ショートカットで付け外しできます。',
         chips: [],
       },
       {
         id: 'find',
         label: '探す',
-        title: 'フォルダーごと開ける',
+        title: 'フォルダーごと目を通したい',
         body: 'marxdown docs/ で、フォルダー内のファイル一覧と一緒に開きます。Ctrl+P で名前の一部から探せて、Ctrl+Shift+P のコマンドパレットからはすべての操作を実行できます。',
         chips: [],
       },
@@ -115,6 +144,30 @@ export const ja = {
     },
     quickOpenPlaceholder: 'ファイル名を入力',
     quickOpenQuery: 'cache',
+  },
+
+  ai: {
+    eyebrow: 'AI 時代の Markdown',
+    title: 'AI が書いた Markdown を、読む場所に。',
+    body: 'AI に設計、調査、議事録、レビューを頼むと、Markdown が返ってくることが増えました。書く時間より、読む時間のほうが長くなっています。Marxdown は、そうして増えていく Markdown を「読む」ための場所として使えます。',
+    kinds: ['設計書', '調査メモ', '会議の要約', '実装計画', 'コードレビュー', 'プロジェクトのドキュメント'],
+    points: [
+      {
+        title: '出力を、そのまま読む',
+        body: 'コマンドの出力をパイプで渡すと、表やコードが整った文書として表示します。',
+        command: 'llm "設計案を出して" | marxdown -',
+      },
+      {
+        title: '書き込まれたフォルダーを見る',
+        body: 'エージェントがファイルを書き換えると、開いている文書も自動で再読み込みします。',
+        command: 'marxdown docs/',
+      },
+      {
+        title: '自分で書いていない文書も',
+        body: '文書に埋め込まれたスクリプトは実行しません。フォルダーの外のファイルは、許可しない限り読み込みません。',
+        command: '',
+      },
+    ],
   },
 
   themes: {
@@ -131,8 +184,8 @@ export const ja = {
 
   typography: {
     eyebrow: '読みやすさ',
-    title: '文字の大きさも、行間も、本文幅も。',
-    body: '本文とコードのフォント、文字サイズ、行間、本文幅、表の罫線を設定画面で調整できます。変更はすぐにプレビューへ反映されます。',
+    title: '何十分も読むから、文字組みにこだわる。',
+    body: 'Markdown は、一瞬見るだけではなく、何分、何十分と読むことがあります。だから、本文とコードのフォント、文字サイズ、行間、本文幅、表の罫線を調整できるようにしています。変更はすぐにプレビューへ反映されます。',
     fontSize: '文字サイズ',
     lineHeight: '行間',
     maxWidth: '本文幅',
@@ -177,7 +230,7 @@ export const ja = {
 
   features: {
     eyebrow: 'ほかにも',
-    title: 'Markdown のための機能を、ひととおり。',
+    title: 'あると助かる機能も、ひととおり。',
     items: [
       {
         icon: 'outline',
@@ -239,8 +292,9 @@ export const ja = {
 
   cli: {
     eyebrow: 'ターミナルから',
-    title: 'いつものターミナルが、入口になる。',
-    body: 'cmd.exe / PowerShell / Git Bash のどこから実行しても、プロンプトはすぐに戻ります。',
+    command: 'marxdown README.md',
+    title: 'ワークスペースも、プロジェクトの設定も要らない。',
+    body: 'いつものターミナルで打てば、すぐに読み始められます。cmd.exe / PowerShell / Git Bash のどこから実行しても、プロンプトはすぐに戻ります。',
     examples: [
       { command: 'marxdown README.md', description: 'ファイルを開く' },
       { command: 'marxdown README.md CHANGELOG.md', description: '複数のファイルをまとめて開く' },
@@ -254,37 +308,77 @@ export const ja = {
 
   install: {
     eyebrow: 'はじめる',
-    title: 'インストールは 3 ステップ。',
+    title: 'ダウンロードして、実行して、.md を開く。',
     steps: [
       {
         title: 'ダウンロード',
         body: 'Releases から Marxdown_<バージョン>_x64-setup.exe をダウンロードします。',
       },
       {
-        title: '実行する',
-        body: '管理者権限は不要です。%LOCALAPPDATA%\\Marxdown にインストールされます。',
+        title: 'インストール',
+        body: '実行するだけです。管理者権限は不要です。最後の確認で「はい」を選ぶと、marxdown コマンドが使えるようになります。',
       },
       {
-        title: 'コマンドを有効にする',
-        body: '最後の確認で「はい」を選ぶと、ターミナルから marxdown で開けるようになります。',
+        title: '.md を開く',
+        body: '.md をダブルクリックするか、ターミナルで marxdown README.md と入力します。',
       },
     ],
     smartScreen:
-      'インストーラーにはコード署名をしていないため、初回の実行時に SmartScreen の警告が表示されます。「詳細情報」→「実行」の順に選ぶと、インストールを続けられます。',
+      'インストーラーには現在コード署名をしていないため、SmartScreen の警告が表示されることがあります。「詳細情報」→「実行」の順に選ぶと、インストールを続けられます。',
     requirements:
       '動作環境: Windows 10 / 11（x64）。WebView2 ランタイムが必要です（Windows 11 には標準で入っています）。',
     more: 'インストールの詳しい手順',
   },
 
+  faq: {
+    eyebrow: 'よくある質問',
+    title: '気になりそうなこと。',
+    items: [
+      {
+        question: 'Marxdown はエディターですか？',
+        answer:
+          'はい、編集もできます。ただし、Markdown を読むことを中心に設計しています。開くと読むための表示になり、キー 1 つで Split や Edit に切り替えて、VS Code と同じ Monaco エディターで編集できます。',
+      },
+      {
+        question: 'VS Code で読むのと、何が違いますか？',
+        answer:
+          'VS Code は優れた開発環境で、Markdown のプレビューも備えています。Marxdown は、ワークスペースや拡張機能を読み込むほどではない場面で、Markdown をすぐに開いて読むためのアプリです。両方を使い分けることを想定しています。',
+      },
+      {
+        question: 'オフラインで使えますか？',
+        answer:
+          'はい。Mermaid の図や数式を含め、表示の処理はすべて手元で行います。インターネットに接続するのは、更新を確認するときと、文書の中にある https:// の画像を表示するときです。',
+      },
+      {
+        question: 'Markdown がどこかへアップロードされることはありますか？',
+        answer:
+          'ありません。アカウント登録も、利用状況の送信（テレメトリ）もありません。更新の確認では GitHub の Releases に問い合わせますが、開いているファイルの情報は含みません。この確認は設定で止められます。',
+      },
+      {
+        question: '無料ですか？',
+        answer: 'はい。MIT ライセンスのオープンソースで、仕事でも無料で使えます。',
+      },
+      {
+        question: '対応している OS は？',
+        answer: 'Windows 10 / 11（x64）です。macOS と Linux の版は、現在ありません。',
+      },
+      {
+        question: 'インストール時に SmartScreen の警告が出ます。',
+        answer:
+          'インストーラーに現在コード署名をしていないためです。「詳細情報」→「実行」の順に選ぶと続けられます。インストーラーは、公開しているソースコードから GitHub Actions でビルドしています。',
+      },
+    ],
+  },
+
   cta: {
-    title: 'Markdown を、もっと気持ちよく。',
-    body: '無料のオープンソースです。いますぐ試せます。',
+    title: 'まずは 1 つ、.md を開いてみる。',
+    body: '無料のオープンソースです。Windows 10 / 11 で、いますぐ試せます。',
     download: 'Windows 版をダウンロード',
     github: 'GitHub で見る',
   },
 
   footer: {
-    tagline: 'Markdown を見る・書くなら、これ。',
+    tagline: 'Markdown を読むために、VS Code を開きたくない。',
     product: 'プロダクト',
     guide: 'ガイド',
     community: 'コミュニティ',
