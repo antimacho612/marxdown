@@ -52,7 +52,7 @@ version = "0.38.2"
 # カスタムタイトルバーでは、最大化ボタンの位置を Windows へ自分で答える必要がある。
 # tao が同じ 0.61 を既に依存に持っているため、新しい依存ツリーは増えない。
 [target.'cfg(windows)'.dependencies.windows]
-version = "0.61"
+version = "0.62"
 features = [
   "Win32_Foundation",
   # `--help` の言語を OS の表示言語に合わせる（`src/cli.rs` / ADR-0026）。
