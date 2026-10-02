@@ -28,10 +28,11 @@ export const CACHE_DIR = fileURLToPath(new URL('../../node_modules/.vite-site', 
 /**
  * リポジトリの別の場所から、そのまま配信するファイル。
  *
- * SNS で共有したときの画像は、README と同じスクリーンショットを使う。複製して置くと、差し替え忘れが起きる。
+ * SNS で共有したときの画像は、GitHub の Social Preview と同じ画像を使う。複製して置くと、差し替え忘れが起きる。
  */
 const EXTRA_ASSETS: Record<string, string> = {
-  'og.png': fileURLToPath(new URL('../../assets/screenshot.png', import.meta.url)),
+  'og.png': fileURLToPath(new URL('../../assets/social-preview.ja.png', import.meta.url)),
+  'og.en.png': fileURLToPath(new URL('../../assets/social-preview.png', import.meta.url)),
 };
 
 /** サーバ側で実行する描画の入口。`root` からの絶対パスで指定する。 */

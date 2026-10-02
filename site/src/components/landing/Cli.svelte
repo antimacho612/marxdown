@@ -11,6 +11,7 @@
   <div class="container cli__inner">
     <div class="cli__copy">
       <p class="eyebrow eyebrow--gold">{t.eyebrow}</p>
+      <p class="cli__hero" data-reveal><span aria-hidden="true">&gt;</span> <code>{t.command}</code></p>
       <h2 class="title" id="cli-title" data-reveal>{t.title}</h2>
       <p class="lead" data-reveal style:--reveal-delay="80">{t.body}</p>
     </div>

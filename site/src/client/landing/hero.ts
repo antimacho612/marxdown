@@ -1,5 +1,5 @@
 /**
- * ヒーローの演出。ターミナルに `marxdown README.md` を打ち込むと、その瞬間にウィンドウが現れる。
+ * ヒーローの演出。ターミナルに `marxdown architecture.md` を打ち込むと、その瞬間にウィンドウが現れる。
  * 2 つ目のコマンドは、同じウィンドウにタブとして開く。
  */
 import { play, prefersReducedMotion, Timeline, typeInto, whileVisible } from '../motion';
@@ -50,7 +50,7 @@ export function initHero(): void {
     input.textContent = '';
     slot.setAttribute('data-waiting', '');
     slot.removeAttribute('data-launched');
-    win.only(['readme'], 'readme');
+    win.only(['architecture'], 'architecture');
     replay.hidden = true;
     stage.setAttribute('data-ready', '');
   };
@@ -89,7 +89,7 @@ export function initHero(): void {
       await typeInto(t, input, commands[1] ?? '');
       await t.wait(320);
       enter();
-      win.open('changelog', { flash: true });
+      win.open('research', { flash: true });
 
       await t.wait(1400);
       replay.hidden = false;
