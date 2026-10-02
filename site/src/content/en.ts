@@ -54,7 +54,7 @@ export const en: Messages = {
   different: {
     eyebrow: 'Marxdown and VS Code',
     title: 'VS Code is great. Marxdown is different.',
-    body: 'VS Code is a powerful development environment. Marxdown is for the moments when you don’t need one. Many people use both: VS Code for writing code, Marxdown for reading what is written about it.',
+    body: 'VS Code is a powerful development environment. Marxdown is for the moments when you don’t need one. The idea is to use both: VS Code for writing code, Marxdown for reading what is written about it.',
     columns: [
       {
         name: 'VS Code',
@@ -337,7 +337,7 @@ export const en: Messages = {
       {
         question: 'Why not just use VS Code?',
         answer:
-          'VS Code is a great development environment, and it has a Markdown preview. Marxdown is for quickly opening and reading Markdown when you don’t need a workspace and extensions. Many people use both.',
+          'VS Code is a great development environment, and it has a Markdown preview. Marxdown is for quickly opening and reading Markdown when you don’t need a workspace and extensions. It is designed to be used alongside VS Code.',
       },
       {
         question: 'Does it work offline?',

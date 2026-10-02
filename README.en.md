@@ -46,7 +46,7 @@ If you just want to open a Markdown file, read it, and maybe fix a typo, Marxdow
 - After the first launch it waits in the system tray, so the next `marxdown README.md` opens as a tab almost immediately
 - When you do want to edit, the editor is Monaco, the same editor VS Code uses
 
-Many people use both: VS Code for writing code, Marxdown for reading what is written about it.
+The idea is to use both: VS Code for writing code, Marxdown for reading what is written about it.
 
 ## Especially useful for AI-generated Markdown
 
@@ -249,7 +249,7 @@ To report a vulnerability, see [SECURITY.md](SECURITY.md).
 Marxdown is built against a startup budget: **600 ms** for a cold start and **120 ms** when it is already waiting in the tray.
 For you, that means opening a Markdown file without waiting for a full IDE to initialize, and every next file appearing as a tab right away.
 
-These are design targets checked with the startup benchmark (`pnpm bench:boot`, the median of the startup phases on a release build), not a guarantee for every PC.
+These are design targets checked with the startup benchmarks on a release build (`pnpm bench:boot` for a cold start and `scripts/bench-startup.mjs --warm` for the tray case, each reporting the median of the startup phases), not a guarantee for every PC.
 How to measure is described in [CONTRIBUTING.md](CONTRIBUTING.md#計測).
 
 ## Technical details
