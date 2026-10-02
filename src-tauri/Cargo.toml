@@ -46,7 +46,7 @@ tauri-plugin-single-instance = "2"
 # WARNING: wry が使っているバージョンに合わせる。
 # ずれると別の COM 型として扱われ、`ICoreWebView2_3` へのキャストが実行時に失敗する。
 [target.'cfg(windows)'.dependencies.webview2-com]
-version = "0.38.2"
+version = "0.39.1"
 
 # Snap Layouts（`src/snap_layouts.rs`）。
 # カスタムタイトルバーでは、最大化ボタンの位置を Windows へ自分で答える必要がある。
