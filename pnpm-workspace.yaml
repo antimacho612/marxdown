@@ -11,3 +11,8 @@ allowBuilds:
   # eslint-import-resolver-typescript が使う napi ネイティブ解決器。
   # `@/` エイリアスを解決できないと import-x/no-cycle が機能しない。
   unrs-resolver: true
+
+overrides:
+  # Mermaid 12 は katex ^0.16 を要求する。版が分かれると KaTeX が 2 部入り、math の枠（85 KB）を倍近く超える。
+  # Mermaid の呼び出し（`renderToString` の `throwOnError` / `displayMode` / `output`）は 0.18 でも同じ形で動く。
+  mermaid>katex: ^0.18.9
