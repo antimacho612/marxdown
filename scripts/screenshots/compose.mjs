@@ -3,7 +3,7 @@
  * `capture.mjs` で撮った画面から、SNS 用の画像と CLI の図を組み立てる。
  *
  * ```bash
- * node marketing/screenshots/compose.mjs
+ * node scripts/screenshots/compose.mjs
  * ```
  *
  * 書き出すもの。
