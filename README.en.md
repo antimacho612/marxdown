@@ -5,25 +5,16 @@
   <img src="assets/logo-light.svg" alt="Marxdown" width="320" />
 </picture>
 
-### The app for reading and writing Markdown.
+## Don't open VS Code just to read a Markdown file.
 
-A light and beautiful Markdown viewer & editor that shows your file the moment you type `marxdown README.md` in a terminal.
+Marxdown is a fast, reading-first Markdown viewer for Windows.<br />
+Open a `.md` file, read it comfortably, and edit it when you need to.
 
-[![CI](https://github.com/antimacho612/marxdown/actions/workflows/ci.yml/badge.svg)](https://github.com/antimacho612/marxdown/actions/workflows/ci.yml)
-[![Release](https://img.shields.io/github/v/release/antimacho612/marxdown?include_prereleases&sort=semver)](https://github.com/antimacho612/marxdown/releases)
-[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-![Platform](https://img.shields.io/badge/platform-Windows%2010%20%7C%2011-0078D4?logo=windows&logoColor=white)
-<br />
-![Tauri](https://img.shields.io/badge/Tauri-2-24C8DB?logo=tauri&logoColor=white)
-![Svelte](https://img.shields.io/badge/Svelte-5-FF3E00?logo=svelte&logoColor=white)
-![Rust](https://img.shields.io/badge/Rust-stable-000000?logo=rust&logoColor=white)
-
-[**Download**](https://github.com/antimacho612/marxdown/releases/latest) ·
+[**⬇ Download for Windows**](https://github.com/antimacho612/marxdown/releases/latest) ·
 [Website](https://antimacho612.github.io/marxdown/en/) ·
-[Features](#-features) ·
-[Installation](#-installation) ·
-[Usage](#-usage) ·
-[Contributing](CONTRIBUTING.md)
+[Guide](https://antimacho612.github.io/marxdown/en/guide/)
+
+Free and open source (MIT) · Windows 10 / 11 (x64)
 
 [日本語](README.md) | English
 
@@ -31,91 +22,160 @@ A light and beautiful Markdown viewer & editor that shows your file the moment y
 
 <br />
 
-![Split view. Markdown is edited in the editor on the left, and the preview on the right shows a table, code, math, and a Mermaid diagram](assets/screenshot.png)
+![Marxdown showing a design document: an architecture diagram, a comparison table, and code, with the outline on the right](assets/screenshots/window.en.png)
 
-## 💡 When to use it
+## Why Marxdown?
 
-Design documents written by an LLM, a repository's README, meeting notes.
-You want to "just open and check" a Markdown file dozens of times a day.
+Markdown is everywhere.
+READMEs. Design documents. Meeting notes. Research an AI wrote for you. Architecture decisions.
 
-You don't need to start an IDE and wait for its workspace and extensions to load every time.
-Marxdown is an app for **opening, reading, and making small edits**.
+And sometimes, opening a full IDE just to read one `.md` file feels like too much.
 
-## ✨ Features
+Marxdown is built for that moment.
+Open it. Read it. Edit it if you need to. Close it.
 
-### ⚡ Opens instantly
+## VS Code is great. Marxdown is different.
 
-- Built to open in under 600ms the first time, and under 120ms after that
-- After it starts, it waits in the system tray, and later `marxdown foo.md` calls open as **tabs** in the existing window
-- It uses almost no CPU while waiting
+VS Code is a powerful development environment.
+Marxdown is for the moments when you don't need one.
 
-### 📖 A preview made for reading
+If you just want to open a Markdown file, read it, and maybe fix a typo, Marxdown keeps that simple:
 
-- Typography with balanced margins, line height, and text width keeps long documents easy to read
-- Shows **tables, code (syntax highlighting), math (KaTeX), and diagrams (Mermaid)** as they are
-- Supports GitHub alerts (`> [!NOTE]`), task lists, and footnotes. Definition lists, highlights, superscript, subscript, and more can be enabled in Settings
-- Jump to headings from the Outline, and find text in the preview
-- Documents with `marp: true` are shown as [Marp](https://marp.app/) slides
+- It opens in a **reading view**, not in an editor tab with a preview on the side
+- There is no workspace to load, and no extensions to wait for
+- After the first launch it waits in the system tray, so the next `marxdown README.md` opens as a tab almost immediately
+- When you do want to edit, the editor is Monaco, the same editor VS Code uses
+
+Many people use both: VS Code for writing code, Marxdown for reading what is written about it.
+
+## Especially useful for AI-generated Markdown
+
+AI tools increasingly answer in Markdown:
+architecture documents, research notes, meeting summaries, implementation plans, code reviews, project documentation.
+
+You spend more time reading Markdown than writing it.
+Marxdown gives those documents a dedicated place to be read.
+
+```bash
+marxdown docs/                       # Open the folder your agent wrote into, with a file list
+llm "Draft a design" | marxdown -    # Read a command's output as a rendered document
+```
+
+Tables, code, math, and Mermaid diagrams are rendered as they are.
+And because AI output is Markdown you didn't write yourself, Marxdown never runs scripts embedded in a document (see [Privacy & security](#privacy--security)).
+
+## What it feels like
+
+<table>
+  <tr>
+    <td width="50%"><img src="assets/screenshots/reading.en.png" alt="A long design document in dark mode, with the outline on the right" /></td>
+    <td width="50%"><img src="assets/screenshots/split.en.png" alt="Split view: the Markdown source on the left and the preview on the right" /></td>
+  </tr>
+  <tr>
+    <td><b>Read.</b> Long documents with an outline, comfortable line length, and dark mode.</td>
+    <td><b>Edit when you need to.</b> One key switches to Split, and the preview follows as you type.</td>
+  </tr>
+  <tr>
+    <td width="50%"><img src="assets/screenshots/cli.en.png" alt="Running marxdown docs\architecture.md in PowerShell opens the document in Marxdown" /></td>
+    <td width="50%"><img src="assets/screenshots/typography.en.png" alt="The same document with a serif font, larger text, and a narrower text width" /></td>
+  </tr>
+  <tr>
+    <td><b>Open from your terminal.</b> The prompt comes back right away.</td>
+    <td><b>Make it yours.</b> Font, size, line height, and text width.</td>
+  </tr>
+</table>
+
+## Features
+
+### Read
+
+- **Opens in a reading view.** Typography with balanced margins, line height, and text width keeps long documents easy to read
+- **Renders what developers write.** Tables, syntax-highlighted code, math (KaTeX), Mermaid diagrams, GitHub alerts (`> [!NOTE]`), task lists, and footnotes
+- **Find your way around.** Jump to headings from the Outline, and search inside the preview
+
+### Open quickly
+
+- **Open Markdown from your terminal.** Run `marxdown README.md` and start reading. cmd.exe, PowerShell, and Git Bash all get their prompt back immediately
+- **Every next file opens as a tab.** After the first launch Marxdown waits in the system tray, using almost no CPU
+- **Double-click works too.** `.md` / `.markdown` files are associated with Marxdown, and folders get an "Open with Marxdown" menu
+
+### Edit when you need to
+
+- **One key from reading to writing.** Switch between Preview, Edit, and Split
+- **Saving changes only what you changed.** Line endings, the BOM, and the final newline stay as they were when opened
+- **Stays in sync.** When another app (or your AI agent) rewrites the file, Marxdown reloads it
+
+### Work with folders
+
+- **Open a whole folder.** `marxdown docs/` shows a file list next to the document
+- **Find files by name** with <kbd>Ctrl</kbd>+<kbd>P</kbd>, and run every action from the Command Palette (<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd>)
+
+### Make long documents comfortable to read
+
+Markdown is often read for minutes or hours, not seconds. So typography matters.
+
+- Text and code fonts, font size, line height, text width, and table borders
+- Light, dark, or follow Windows
+- **50 built-in color themes**, plus your own by dropping a CSS file into the `themes` folder
+
+<table>
+  <tr>
+    <td width="33%"><img src="assets/screenshots/themes/github.png" alt="GitHub theme" /></td>
+    <td width="33%"><img src="assets/screenshots/themes/tokyo-night.png" alt="Tokyo Night theme" /></td>
+    <td width="33%"><img src="assets/screenshots/themes/rose-pine.png" alt="Rosé Pine theme" /></td>
+  </tr>
+  <tr>
+    <td width="33%"><img src="assets/screenshots/themes/gruvbox.png" alt="Gruvbox theme" /></td>
+    <td width="33%"><img src="assets/screenshots/themes/flexoki.png" alt="Flexoki theme" /></td>
+    <td width="33%"><img src="assets/screenshots/themes/nord.png" alt="Nord theme" /></td>
+  </tr>
+</table>
+
+### Also included
+
 - Export the document you are viewing as HTML or PDF
+- Documents with `marp: true` are shown as [Marp](https://marp.app/) slides
+- Definition lists, highlights, superscript, subscript, and more can be enabled in Settings
+- English and Japanese UI (follows the Windows display language by default)
+- In-app update notifications
 
-### ✍️ Edit right there
+## How it compares
 
-- Switch between Preview, Edit, and **Split** (side by side) with a single key
-- The editor is Monaco, the same editor as VS Code
-- Saving **never changes a single byte you didn't edit**. Line endings, the BOM, and the final newline stay as they were when opened
-- When another app changes the file, it reloads automatically
+Every tool below is good at what it was built for. This table is about what each one is built around, not about which is better.
 
-### 🗂️ Open whole folders
+| | Marxdown | VS Code | Typora | Obsidian |
+| --- | --- | --- | --- | --- |
+| Built around | Reading Markdown files, with light editing | Writing and debugging code | Writing Markdown (WYSIWYG) | A personal knowledge base of linked notes |
+| Opens a single file as is | ✓ | ✓ | ✓ | Files live in a vault |
+| Editing style | Source editor (Monaco) with Preview / Split | Source editor with a preview pane | WYSIWYG | Live Preview, source, and Reading view |
+| Platforms | Windows only | Windows, macOS, Linux | Windows, macOS, Linux | Windows, macOS, Linux, mobile |
+| Price | Free, open source (MIT) | Free | Paid (one-time license, free trial) | Free (commercial license optional) |
 
-- `marxdown docs/` opens the folder with a file list (the Explorer)
-- Create, rename, copy, and move files to the Recycle Bin from the file list
-- `Ctrl+P` finds Markdown files in the folder by part of their name
-- Every action is available from the Command Palette (`Ctrl+Shift+P`)
+If you write long-form Markdown, Typora is a great fit. If you build a network of notes, Obsidian is. If you live in a codebase, VS Code is.
+Marxdown is for opening the file in front of you and reading it.
 
-### 🎨 Make it yours
+## Installation
 
-- Switch between light and dark, or follow the Windows setting
-- **50 built-in color themes**, plus your own themes by just adding a CSS file
-- Adjust the text and code fonts, font size, line height, and text width in Settings
-- The app is available in English and Japanese. By default it follows the display language of Windows
+1. Download `Marxdown_<version>_x64-setup.exe` from [**Releases**](https://github.com/antimacho612/marxdown/releases/latest)
+2. Run it. No administrator rights are needed (it installs to `%LOCALAPPDATA%\Marxdown`)
+3. At the end, choose **Yes** to "Make the marxdown command available from the terminal?"
 
-### 🛡️ Open files you didn't write, safely
-
-Marxdown is built on the assumption that you open Markdown you didn't write yourself.
-It never runs scripts embedded in a document, and following a link never navigates the app to another page.
-Files outside the folder of the opened file are not read unless you allow it.
-
-## 📦 Installation
+That's it. Double-click any `.md` file, or type `marxdown README.md`.
 
 > [!NOTE]
-> Currently only **Windows 10 / 11 (x64)** is available.
+> Windows may show a SmartScreen warning ("Windows protected your PC") because the installer is currently unsigned.
+> Choose "More info" and then "Run anyway" to continue.
 
-1. Download `Marxdown_<version>_x64-setup.exe` from [Releases](https://github.com/antimacho612/marxdown/releases/latest)
-2. Run the downloaded file. No administrator rights are needed (it installs to `%LOCALAPPDATA%\Marxdown`)
-3. When asked "Make the marxdown command available from the terminal?" at the end, choose **Yes**
-
-`.md` / `.markdown` files are associated with Marxdown, so you can also open them by double-clicking in File Explorer.
-
-When a new version is released, a notification appears in the app.
-Click "Update and Restart" to switch to the new version (see the [CHANGELOG](CHANGELOG.md) for what changed).
+When a new version is released, Marxdown tells you in the app, and "Update and Restart" installs it.
+See the [CHANGELOG](CHANGELOG.md) for what changed.
 
 <details>
-<summary>If "Windows protected your PC" appears</summary>
-
-<br />
-
-The installer is not code-signed, so SmartScreen shows a warning the first time you run it.
-Choose "More info" and then "Run anyway" to continue the installation.
-
-</details>
-
-<details>
-<summary>About the WebView2 Runtime</summary>
+<summary>WebView2 Runtime</summary>
 
 <br />
 
 It is included in Windows 11.
-On systems without it (some Windows 10 installations), it is downloaded during installation, so an internet connection is required.
+On systems without it (some Windows 10 installations), the installer downloads it, so an internet connection is required.
 
 </details>
 
@@ -124,24 +184,12 @@ On systems without it (some Windows 10 installations), it is downloaded during i
 
 <br />
 
-Add `/ADDTOPATH` to also add the command to PATH.
+`/S` installs without prompts. Add `/ADDTOPATH` to also add the command to PATH.
 When updating, the previous choice is kept.
 
 ```powershell
-.\Marxdown_0.1.1_x64-setup.exe /S /ADDTOPATH
+.\Marxdown_<version>_x64-setup.exe /S /ADDTOPATH
 ```
-
-</details>
-
-<details>
-<summary>About update checks</summary>
-
-<br />
-
-At startup and when the window comes to the front, Marxdown asks GitHub Releases for a new version, at most once a day.
-Only the request itself (such as your IP address) is sent. It contains no information about the files you open.
-You can turn it off with "Check for Updates Automatically" (`update.autoCheck`) in Settings.
-Even when it is off, you can check with "Check for Updates" in the Command Palette (`Ctrl+Shift+P`).
 
 </details>
 
@@ -156,30 +204,25 @@ To also delete your settings and recent file history, check "Delete the applicat
 
 </details>
 
-## 🚀 Usage
+## Command line
 
 ```bash
 marxdown README.md                 # Open a file
-marxdown README.md CHANGELOG.md    # Open several files at once
-marxdown docs/                     # Open a folder
+marxdown README.md CHANGELOG.md    # Open several files as tabs
+marxdown docs/                     # Open a folder with a file list
 marxdown -m split notes.md         # Open in a view mode: preview | edit | split
 llm "Draft a design" | marxdown -  # Open standard input as an untitled document
 marxdown --help
 ```
 
-The prompt returns immediately whether you run it from cmd.exe, PowerShell, or Git Bash.
-
-A document opened from standard input is not saved as a file yet. To keep it, save it with <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>S</kbd> (Save As).
-When piping from Windows PowerShell 5.1, non-ASCII characters are replaced with `?` (this is how PowerShell works). This does not happen in PowerShell 7.4 or later.
-
-You can also right-click a folder in File Explorer and choose "Open with Marxdown" (on Windows 11, it is under "Show more options").
+A document opened from standard input is not saved yet. Save it with <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>S</kbd> to keep it.
+When piping from Windows PowerShell 5.1, non-ASCII characters are replaced with `?` (this is how PowerShell works). PowerShell 7.4 and later are not affected.
 
 > [!TIP]
-> Closing the window with `✕` leaves Marxdown waiting in the system tray.
-> That is why the next `marxdown` opens instantly.
+> Closing the window with `✕` leaves Marxdown waiting in the system tray. That is why the next `marxdown` opens quickly.
 > To quit completely, press <kbd>Ctrl</kbd>+<kbd>Q</kbd> or choose "Quit" from the tray menu.
 
-### ⌨️ Main shortcuts
+### Main shortcuts
 
 | Keys | Action |
 | --- | --- |
@@ -190,13 +233,47 @@ You can also right-click a folder in File Explorer and choose "Open with Marxdow
 | <kbd>Ctrl</kbd>+<kbd>,</kbd> | Settings |
 | <kbd>Ctrl</kbd>+<kbd>Q</kbd> | Quit |
 
-See [Keyboard Shortcuts](docs/keybindings.en.md) for all shortcuts.
-The [guide](https://antimacho612.github.io/marxdown/en/guide/) lists the syntax and every setting.
+See [Keyboard Shortcuts](docs/keybindings.en.md) for the full list, and the [guide](https://antimacho612.github.io/marxdown/en/guide/) for the syntax and every setting.
 
-## 🛠️ Contributing
+## Privacy & security
+
+- **Your files stay on your PC.** Marxdown has no account and no telemetry, and it does not upload your documents anywhere
+- **Works offline.** Rendering, including Mermaid diagrams and math, runs locally. Images in a document that point to `https://` URLs are downloaded to display them, like in a browser
+- **Update check.** At startup and when the window comes to the front, at most once a day, Marxdown asks GitHub Releases whether a new version exists. The request contains nothing about your files. Turn it off with "Check for Updates Automatically" (`update.autoCheck`) in Settings
+- **Built for Markdown you didn't write.** Scripts in a document are never run, following a link never navigates the app away, and files outside the opened file's folder are not loaded unless you allow it
+
+To report a vulnerability, see [SECURITY.md](SECURITY.md).
+
+## Speed: what the numbers mean
+
+Marxdown is built against a startup budget: **600 ms** for a cold start and **120 ms** when it is already waiting in the tray.
+For you, that means opening a Markdown file without waiting for a full IDE to initialize, and every next file appearing as a tab right away.
+
+These are design targets checked with the startup benchmark (`pnpm bench:boot`, the median of the startup phases on a release build), not a guarantee for every PC.
+How to measure is described in [CONTRIBUTING.md](CONTRIBUTING.md#計測).
+
+## Technical details
+
+![Tauri](https://img.shields.io/badge/Tauri-2-24C8DB?logo=tauri&logoColor=white)
+![Svelte](https://img.shields.io/badge/Svelte-5-FF3E00?logo=svelte&logoColor=white)
+![Rust](https://img.shields.io/badge/Rust-stable-000000?logo=rust&logoColor=white)
+[![CI](https://github.com/antimacho612/marxdown/actions/workflows/ci.yml/badge.svg)](https://github.com/antimacho612/marxdown/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/antimacho612/marxdown?include_prereleases&sort=semver)](https://github.com/antimacho612/marxdown/releases)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
+- **App shell:** Tauri 2 (Rust) on WebView2. Single instance, system tray, file I/O that preserves encoding, line endings, and the BOM
+- **UI:** Svelte 5 and TypeScript
+- **Markdown pipeline:** markdown-it, sanitized with DOMPurify, under a strict Content Security Policy
+- **Editor:** Monaco, loaded only when you first edit
+- **Lazy loading:** the editor, Mermaid, KaTeX, and the syntax highlighter are loaded on demand, and the critical path has a bundle budget checked in CI
 
 Build steps, checks, measurements, and the code structure are in [CONTRIBUTING.md](CONTRIBUTING.md) (in Japanese).
 
-## 📄 License
+## Contributing
+
+Bug reports and feature requests are welcome in [Issues](https://github.com/antimacho612/marxdown/issues/new/choose).
+If you read Markdown every day, feedback on what gets in your way is especially helpful.
+
+## License
 
 [MIT](LICENSE)
