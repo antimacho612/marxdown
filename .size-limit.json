@@ -132,9 +132,9 @@
     "gzip": true
   },
   {
-    "name": "mermaid (図を含む文書で、図が画面に入るまでロードしない。予算の対象外)",
+    "name": "mermaid (図を含む文書で、図が画面に入るまでロードしない。予算の対象外。900 KB から引き上げた根拠は設計ドキュメントの性能予算にある)",
     "path": ["dist/assets/mermaid-*.js", "dist/assets/mermaid-*.css"],
-    "limit": "900 KB",
+    "limit": "1400 KB",
     "gzip": true
   },
   {
