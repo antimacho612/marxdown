@@ -164,7 +164,7 @@ export default tseslint.config(
   },
 
   {
-    files: ['scripts/**', 'marketing/**', '*.config.ts', '*.config.js', 'vitest.config.ts', 'vite.config.ts'],
+    files: ['scripts/**', '*.config.ts', '*.config.js', 'vitest.config.ts', 'vite.config.ts'],
     languageOptions: { globals: { ...globals.node } },
     rules: {
       'no-console': 'off',

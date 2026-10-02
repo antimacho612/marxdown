@@ -7,7 +7,7 @@
  *
  * ```bash
  * pnpm exec vite build && pnpm exec vite preview --port 4300 --strictPort
- * node marketing/screenshots/capture.mjs
+ * node scripts/screenshots/capture.mjs
  * ```
  *
  * NOTE: playwright-core は依存に入れていない。別の場所に入れ、その `index.mjs` のパスを `PLAYWRIGHT_CORE` で渡す。
