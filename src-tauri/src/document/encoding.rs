@@ -82,9 +82,9 @@ pub fn detect(bytes: &[u8]) -> Detected {
         };
     }
 
-    let mut detector = chardetng::EncodingDetector::new();
+    let mut detector = chardetng::EncodingDetector::new(chardetng::Iso2022JpDetection::Deny);
     detector.feed(bytes, true);
-    let codec = detector.guess(None, true);
+    let codec = detector.guess(None, chardetng::Utf8Detection::Allow);
     Detected {
         encoding: Encoding::from_codec(codec),
         bom: false,
