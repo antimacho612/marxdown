@@ -72,7 +72,7 @@ features = [
 version = "0.8"
 
 [dependencies.chardetng]
-version = "0.1"
+version = "1.0"
 
 [dependencies.dunce]
 version = "1"
