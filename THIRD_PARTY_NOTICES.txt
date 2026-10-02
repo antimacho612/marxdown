@@ -5416,7 +5416,7 @@ SOFTWARE.
 
 ================================================================================
 file-id 0.2.3 (MIT OR Apache-2.0) https://github.com/notify-rs/notify.git
-notify-debouncer-full 0.6.0 (MIT OR Apache-2.0) https://github.com/notify-rs/notify.git
+notify-debouncer-full 0.7.0 (MIT OR Apache-2.0) https://github.com/notify-rs/notify.git
 notify-types 2.1.0 (MIT OR Apache-2.0) https://github.com/notify-rs/notify.git
 
 Apache License
@@ -5623,7 +5623,7 @@ limitations under the License.
 
 ================================================================================
 file-id 0.2.3 (MIT OR Apache-2.0) https://github.com/notify-rs/notify.git
-notify-debouncer-full 0.6.0 (MIT OR Apache-2.0) https://github.com/notify-rs/notify.git
+notify-debouncer-full 0.7.0 (MIT OR Apache-2.0) https://github.com/notify-rs/notify.git
 notify-types 2.1.0 (MIT OR Apache-2.0) https://github.com/notify-rs/notify.git
 
 Copyright (c) 2023 Notify Contributors
