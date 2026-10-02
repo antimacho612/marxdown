@@ -33,6 +33,7 @@
           </div>
         {/each}
       </dl>
+      <p class="speed__note" data-reveal>{m.speed.note}</p>
     </div>
 
     <div class="speed__visual" data-scale-box data-reveal style:--reveal-delay="120">

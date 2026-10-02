@@ -9,7 +9,7 @@
  * ```bash
  * pnpm release bump 0.2.0                              # 版を上げ、CHANGELOG の Unreleased を 0.2.0 の節にする
  * node scripts/release.mjs check v0.2.0                # タグと版・CHANGELOG・公開鍵が揃っているか（CI 用）
- * node scripts/release.mjs notes 0.2.0                 # CHANGELOG の 0.2.0 の節を標準出力へ（Release の本文）
+ * node scripts/release.mjs notes 0.2.0                 # CHANGELOG の 0.2.0 の節から Release の本文を作り、標準出力へ
  * node scripts/release.mjs manifest 0.2.0 <dir> <out>  # updater が読む latest.json を書く（CI 用）
  * ```
  */
@@ -19,7 +19,9 @@ import { fileURLToPath } from 'node:url';
 
 import {
   buildManifest,
+  buildReleaseNotes,
   finalizeChangelog,
+  previousVersion,
   sectionBody,
   SEMVER,
   setCargoLockVersion,
@@ -98,9 +100,10 @@ function check(tag) {
 }
 
 function notes(version) {
-  const body = sectionBody(read(PATHS.changelog), requireVersion(version));
+  const changelog = read(PATHS.changelog);
+  const body = sectionBody(changelog, requireVersion(version));
   if (!body) throw new Error(`CHANGELOG.md に ${version} の節が無い。`);
-  process.stdout.write(`${body}\n`);
+  process.stdout.write(buildReleaseNotes({ version, body, previous: previousVersion(changelog, version) }));
 }
 
 function manifest(version, bundleDir, out) {

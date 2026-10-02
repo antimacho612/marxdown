@@ -18,3 +18,5 @@ export function buildManifest(input: {
   pub_date: string;
   platforms: Record<string, { signature: string; url: string }>;
 };
+export function previousVersion(text: string, version: string): string | null;
+export function buildReleaseNotes(input: { version: string; body: string; previous: string | null }): string;

@@ -114,3 +114,56 @@ export function buildManifest({ version, notes, signature, fileName, pubDate }) 
     },
   };
 }
+
+/** CHANGELOG で `version` の 1 つ前に確定した版。無ければ `null`。 */
+export function previousVersion(text, version) {
+  const versions = text
+    .matchAll(SECTION)
+    .map((m) => m[1])
+    .filter((v) => v !== 'Unreleased')
+    .toArray();
+  const index = versions.indexOf(version);
+  return index === -1 ? null : (versions[index + 1] ?? null);
+}
+
+/**
+ * GitHub の Release の本文。CHANGELOG の節を「What's new」に置き、ダウンロードと比較のリンクを足す。
+ *
+ * NOTE: 「Why it matters」は自動では書けないため、HTML コメントの雛形だけを置く。
+ * 書かずに公開しても、コメントは表示されない。
+ */
+export function buildReleaseNotes({ version, body, previous }) {
+  const fileName = `Marxdown_${version}_x64-setup.exe`;
+  const compare = previous
+    ? `[v${previous}...v${version}](${REPOSITORY}/compare/v${previous}...v${version})`
+    : `[v${version}](${REPOSITORY}/releases/tag/v${version})`;
+  return `<!--
+公開する前に、タイトルを「Marxdown v${version} — <この版で良くなったこと>」に変え、下の Why it matters を書く（CONTRIBUTING.md「リリース」）。
+-->
+
+## What's new
+
+${body}
+
+<!--
+## Why it matters
+
+利用者から見て何が良くなったのかを 1〜3 文で書く。
+-->
+
+## Download
+
+**Windows 10 / 11 (x64):** [${fileName}](${REPOSITORY}/releases/download/v${version}/${fileName})
+
+Already installed? Marxdown shows an update notification. Choose "Update and Restart".<br />
+インストール済みの場合は、アプリ内の通知から「更新して再起動」で更新できます。
+
+> [!NOTE]
+> Windows may show a SmartScreen warning because the installer is currently unsigned. Choose "More info" and then "Run anyway".<br />
+> インストーラーには現在コード署名をしていないため、SmartScreen の警告が表示されることがあります。「詳細情報」→「実行」で続けられます。
+
+## Full changelog
+
+[CHANGELOG.md](${REPOSITORY}/blob/main/CHANGELOG.md) · ${compare}
+`;
+}

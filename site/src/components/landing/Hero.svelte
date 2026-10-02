@@ -52,8 +52,13 @@
       >
         <Icon name="download" />{m.hero.download}
       </a>
-      <a class="button button--ghost" href={ctx.href('start')}>
-        {m.hero.guide}<Icon name="arrow" />
+      <a
+        class="button button--ghost"
+        href={LINKS.repository}
+        data-goatcounter-click="github-hero"
+        data-goatcounter-title="GitHub (hero)"
+      >
+        <Icon name="github" />{m.hero.github}
       </a>
     </div>
     <p class="hero__meta">{m.hero.downloadMeta(ctx.version)}</p>

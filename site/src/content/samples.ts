@@ -6,8 +6,10 @@
 import type { Locale } from '../routes';
 
 export interface Samples {
-  readme: string;
-  changelog: string;
+  /** ヒーローで最初に開く設計書。対応している記法を 1 画面に収める。 */
+  architecture: string;
+  /** ヒーローで 2 つ目のタブに開く、AI がまとめた調査メモ。 */
+  research: string;
   /** 読む・書く・探すの紹介と、配色の見本に使う設計メモ。 */
   design: string;
   /** Split で打ち込む 1 行。`design` の末尾のタスクリストに足す。 */
@@ -44,47 +46,67 @@ const TABLE_ALIGNED = [
 ];
 
 const JA: Samples = {
-  readme: `# search-api
+  architecture: `# 設計書: オフラインファーストの同期
 
-全文検索のインデックスを、書き込みから 1 秒以内に更新する検索 API です。
-
-> [!NOTE]
-> v2 から、インデックスの更新は非同期になりました。
+> [!TIP]
+> 決定: CRDT による複製を採用する。オフライン中の編集を失わない。
 
 ## 構成
 
-| コンポーネント | 役割 | 言語 |
-| --- | --- | --- |
-| \`indexer\` | 差分の取り込み | Rust |
-| \`query\` | 検索とランキング | Go |
-| \`console\` | 管理画面 | TypeScript |
-
-## 使い方
-
-\`\`\`bash
-curl "http://localhost:8080/search?q=markdown"
+\`\`\`mermaid
+flowchart LR
+  A[エディター] --> B[(ローカルの複製)]
+  B -- push --> C{{同期リレー}}
+  C -- pull --> B
+  C --> D[(Postgres)]
 \`\`\`
+
+## 方式の比較
+
+| 方式 | オフライン編集 | 統合の品質 | 工数 |
+| --- | :---: | --- | ---: |
+| 後勝ち | 一部 | 同時編集が失われる | 1 週間 |
+| サーバー側 OT | 不可 | 常時接続が必要 | 6 週間 |
+| CRDT の複製 | 可 | **テキストとリストは自動** | 4 週間 |
+
+## データモデル
+
+\`\`\`ts
+export function apply(state: DocState, change: Change): DocState {
+  if (state.seen.has(change.id)) return state; // 冪等
+  return change.ops.reduce(applyOp, state);
+}
+\`\`\`
+
+## 展開
+
+- [x] ローカルの複製をフラグ付きで配る
+- [ ] 1 チームで push / pull を有効にする
+- [ ] 同期時間と競合率を 2 週間計測する
 `,
 
-  changelog: `# 変更履歴
+  research: `# 調査: ローカルファーストのアーキテクチャ
 
-## [2.1.0] - 2026-09-20
+> [!NOTE]
+> AI アシスタントが 12 本の資料をもとにまとめた要約です。
 
-### 追加
+## 要点
 
-- 検索結果の該当箇所をハイライトする
-- \`lang=ja\` で日本語の形態素解析を使えるようにした
+1. 書き込みを先にローカルへ保存すると、通信の状態に関係なく操作が即座に終わる
+2. 競合の解決は、データ型ごとに選ぶのが現実的である
+3. 同期サーバーは「中継」に徹すると、障害時の影響が小さい
 
-### 修正
+## 比較
 
-- 空のクエリで 500 を返していた問題
-- インデックスの再構築中に、古い結果が混ざる問題
+| 方式 | 遅延 | オフライン | 実装の難しさ |
+| --- | ---: | :---: | --- |
+| サーバー中心 | 120ms | 不可 | 低 |
+| キャッシュ併用 | 40ms | 読み取りのみ | 中 |
+| ローカルファースト | **5ms** | 可 | 高 |
 
-## [2.0.0] - 2026-08-02
+## 推奨
 
-### 変更
-
-- インデックスの更新を非同期にした
+まずは **メモと TODO** だけをローカルファーストにし、効果を計測してから範囲を広げる。
 `,
 
   design: `# API レスポンスのキャッシュ戦略
@@ -175,47 +197,67 @@ flowchart LR
 };
 
 const EN: Samples = {
-  readme: `# search-api
+  architecture: `# Architecture: Offline-first Sync
 
-A search API that updates its full-text index within a second of every write.
+> [!TIP]
+> Decision: adopt CRDT replicas. Edits made offline are never lost.
 
-> [!NOTE]
-> Since v2, index updates are asynchronous.
+## Overview
 
-## Components
-
-| Component | Role | Language |
-| --- | --- | --- |
-| \`indexer\` | Ingests changes | Rust |
-| \`query\` | Search and ranking | Go |
-| \`console\` | Admin console | TypeScript |
-
-## Usage
-
-\`\`\`bash
-curl "http://localhost:8080/search?q=markdown"
+\`\`\`mermaid
+flowchart LR
+  A[Editor] --> B[(Local replica)]
+  B -- push --> C{{Sync relay}}
+  C -- pull --> B
+  C --> D[(Postgres)]
 \`\`\`
+
+## Options compared
+
+| Approach | Offline edits | Merge quality | Effort |
+| --- | :---: | --- | ---: |
+| Last write wins | Partial | Loses concurrent edits | 1 week |
+| Server-side OT | No | Needs a live connection | 6 weeks |
+| CRDT replicas | Yes | **Automatic for text and lists** | 4 weeks |
+
+## Data model
+
+\`\`\`ts
+export function apply(state: DocState, change: Change): DocState {
+  if (state.seen.has(change.id)) return state; // idempotent
+  return change.ops.reduce(applyOp, state);
+}
+\`\`\`
+
+## Rollout
+
+- [x] Ship local replicas behind a flag
+- [ ] Enable push and pull for one team
+- [ ] Measure sync time and conflict rate for two weeks
 `,
 
-  changelog: `# Changelog
+  research: `# Research: Local-first Architecture
 
-## [2.1.0] - 2026-09-20
+> [!NOTE]
+> Summary prepared by an AI assistant from 12 sources.
 
-### Added
+## Key findings
 
-- Highlight matches in search results
-- Japanese morphological analysis with \`lang=ja\`
+1. Writing locally first makes every action finish instantly, whatever the network does
+2. Conflict resolution is best chosen per data type
+3. A sync server that only relays changes limits the impact of outages
 
-### Fixed
+## Comparison
 
-- Empty queries returned 500
-- Stale results mixed in while rebuilding the index
+| Approach | Latency | Offline | Difficulty |
+| --- | ---: | :---: | --- |
+| Server-centric | 120ms | No | Low |
+| With a cache | 40ms | Read only | Medium |
+| Local-first | **5ms** | Yes | High |
 
-## [2.0.0] - 2026-08-02
+## Recommendation
 
-### Changed
-
-- Index updates are now asynchronous
+Start with **notes and to-dos** only, measure the effect, then widen the scope.
 `,
 
   design: `# Caching API responses

@@ -168,7 +168,7 @@ export default tseslint.config(
     languageOptions: { globals: { ...globals.node } },
     rules: {
       'no-console': 'off',
-      // 計測スクリプトは 1 回ずつ順番に実行しないと正式な計測にならないため。
+      // 計測スクリプトは 1 回ずつ順番に実行しないと正式な計測にならないため。撮影のスクリプトも 1 枚ずつ順番に撮る。
       'no-await-in-loop': 'off',
       'import-x/no-unassigned-import': 'off',
     },

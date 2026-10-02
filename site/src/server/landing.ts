@@ -197,7 +197,10 @@ export async function loadLanding(
   return {
     samples: s,
     bytes: toBytes(s.bytes, bytesEdit.from, bytesEdit.to),
-    hero: [await doc('readme', 'README.md', s.readme), await doc('changelog', 'CHANGELOG.md', s.changelog)],
+    hero: [
+      await doc('architecture', 'architecture.md', s.architecture),
+      await doc('research', 'research.md', s.research),
+    ],
     tour: {
       design,
       notes: await doc('notes', 'notes.md', notesSource, true),

@@ -4,16 +4,18 @@ import type { Messages } from './ja';
 export const en: Messages = {
   meta: {
     siteName: 'Marxdown',
-    title: 'Marxdown — The app for reading and writing Markdown',
+    title: 'Marxdown — A Fast Markdown Viewer for Windows',
     description:
-      'A light and beautiful Markdown viewer & editor that shows your file the moment you type marxdown README.md in a terminal. Free and open source, for Windows 10 / 11.',
+      'Marxdown is a fast, reading-first Markdown viewer and editor for Windows. Open Markdown files instantly, read comfortably, and edit when needed. Free and open source.',
     guideSuffix: 'Marxdown Guide',
-    imageAlt: 'Screenshot of Marxdown showing a Markdown document rendered cleanly',
+    imageAlt:
+      'The Marxdown logo and the words “Don’t open VS Code just to read a Markdown file.”, next to Marxdown showing a design document',
   },
 
   nav: {
     skip: 'Skip to content',
     features: 'Features',
+    faq: 'FAQ',
     guide: 'Guide',
     download: 'Download',
     github: 'GitHub',
@@ -27,50 +29,77 @@ export const en: Messages = {
   hero: {
     badge: (version: string) => `v${version} is out`,
     badgeLink: 'Changelog',
-    titleLines: ['The app for reading', 'and writing *Markdown.*'],
-    lead: 'A light and beautiful Markdown viewer & editor that shows your file the moment you type {command} in a terminal.',
+    titleLines: ['Don’t open VS Code', '*just to read a Markdown file.*'],
+    lead: 'A fast, reading-first Markdown viewer for Windows. Open it with {command}, read comfortably, and edit when you need to.',
     leadCommand: 'marxdown README.md',
     download: 'Download for Windows',
-    downloadMeta: (version: string) => `v${version} · Windows 10 / 11 (x64) · Free`,
-    guide: 'Read the guide',
+    downloadMeta: (version: string) => `v${version} · Windows 10 / 11 (x64) · Free and open source`,
+    github: 'View on GitHub',
     replay: 'Replay',
     terminalTitle: 'Windows PowerShell',
-    prompt: 'PS C:\\work\\search-api>',
-    commands: ['marxdown README.md', 'marxdown CHANGELOG.md'],
+    prompt: 'PS C:\\work\\sync\\docs>',
+    commands: ['marxdown architecture.md', 'marxdown research.md'],
   },
 
   statement: {
-    eyebrow: 'When to use it',
+    eyebrow: 'Sound familiar?',
     lines: [
-      '*Design docs* written by an LLM. A repository’s *README*. *Meeting notes*.',
-      'You want to “just open and check” a Markdown file dozens of times a day.',
-      'You shouldn’t have to wait for an IDE every time.',
+      '*Design docs* written by an AI. A repository’s *README*. *Meeting notes*.',
+      'You want to “just read” a Markdown file dozens of times a day.',
+      'And every time, you wait for an IDE to start.',
     ],
-    closing: 'Marxdown is an app for opening, reading, and making small edits.',
+    closing: 'Marxdown is an app for opening, reading, and making a small fix when you need to.',
+  },
+
+  different: {
+    eyebrow: 'Marxdown and VS Code',
+    title: 'VS Code is great. Marxdown is different.',
+    body: 'VS Code is a powerful development environment. Marxdown is for the moments when you don’t need one. The idea is to use both: VS Code for writing code, Marxdown for reading what is written about it.',
+    columns: [
+      {
+        name: 'VS Code',
+        role: 'A development environment for code',
+        points: [
+          'Starts by loading a workspace and extensions',
+          'Opens Markdown as source, with the preview opened separately',
+          'Has every tool for writing, running, and fixing code',
+        ],
+      },
+      {
+        name: 'Marxdown',
+        role: 'A place to read Markdown',
+        points: [
+          'Opens a single file as it is',
+          'Opens in a view made for reading',
+          'Switches to the same Monaco editor when you want to fix something',
+        ],
+      },
+    ],
   },
 
   speed: {
-    eyebrow: 'Opens instantly',
+    eyebrow: 'Opens quickly',
     title: 'No waiting, every time you open.',
-    body: 'After it starts, Marxdown waits in the system tray, and later marxdown calls open as tabs in the existing window. The prompt in your terminal comes back right away, too.',
+    body: 'Open a Markdown file without waiting for a full IDE to initialize. After the first launch Marxdown waits in the system tray, and later marxdown calls open as tabs in the existing window. The prompt in your terminal comes back right away, too.',
     stats: [
-      { value: '600', unit: 'ms', label: 'Target for the first launch' },
-      { value: '120', unit: 'ms', label: 'Target after that' },
+      { value: '600', unit: 'ms', label: 'First launch (target)' },
+      { value: '120', unit: 'ms', label: 'After that (target)' },
       { value: '≈0', unit: '%', label: 'CPU usage while waiting' },
     ],
+    note: 'Startup times are design targets, checked as the median of each startup phase on a release build. Actual times depend on your PC.',
     tray: 'Waiting in the system tray',
     tabNote: 'Opens as a tab in the existing window',
   },
 
   tour: {
-    eyebrow: 'Read · Write · Find',
-    title: 'Open it. Read it. Make a small fix.',
+    eyebrow: 'How you’ll use it',
+    title: 'Read it. Fix it if you need to.',
     steps: [
       {
         id: 'read',
         label: 'Read',
-        title: 'A preview made for reading',
-        body: 'Typography with balanced margins, line height, and text width keeps long documents easy to read. Tables, code, math, and diagrams are shown as they are.',
+        title: 'An AI just sent you a long design doc',
+        body: 'Open it in Marxdown and it is ready to read. Typography with balanced margins, line height, and text width keeps long documents easy on the eyes, and tables, code, math, and diagrams are shown as they are.',
         chips: [
           'Tables',
           'Syntax highlighting',
@@ -84,21 +113,21 @@ export const en: Messages = {
       {
         id: 'write',
         label: 'Write',
-        title: 'Edit right there, with a single key',
-        body: 'Switch between Preview, Edit, and Split with a single key. The editor is Monaco, the same editor as VS Code. What you type shows up in the preview next to it right away.',
+        title: 'You notice something that needs fixing',
+        body: 'One key switches to Split, and you fix it right there. The editor is Monaco, the same editor as VS Code, and what you type shows up in the preview next to it.',
         chips: [],
       },
       {
         id: 'format',
         label: 'Format',
-        title: 'Formatting and tables, from the keyboard',
-        body: 'Toggle bold, links, headings, and lists with shortcuts. A messy table lines up its columns with Shift+Alt+F.',
+        title: 'A table’s columns don’t line up',
+        body: 'Shift+Alt+F lines up a messy table. Bold, links, headings, and lists can be toggled with shortcuts, too.',
         chips: [],
       },
       {
         id: 'find',
         label: 'Find',
-        title: 'Open whole folders',
+        title: 'You want to look through a whole folder',
         body: 'marxdown docs/ opens the folder with a file list. Find files by part of their name with Ctrl+P, and run every action from the Command Palette with Ctrl+Shift+P.',
         chips: [],
       },
@@ -112,6 +141,37 @@ export const en: Messages = {
     },
     quickOpenPlaceholder: 'Type a file name',
     quickOpenQuery: 'cache',
+  },
+
+  ai: {
+    eyebrow: 'Markdown in the age of AI',
+    title: 'A place to read the Markdown AI writes for you.',
+    body: 'Ask an AI for a design, research, meeting notes, or a review, and you increasingly get Markdown back. You spend more time reading Markdown than writing it. Marxdown gives those documents a dedicated place to be read.',
+    kinds: [
+      'Architecture documents',
+      'Research notes',
+      'Meeting summaries',
+      'Implementation plans',
+      'Code reviews',
+      'Project documentation',
+    ],
+    points: [
+      {
+        title: 'Read the output as it is',
+        body: 'Pipe a command’s output into Marxdown and read it as a document, with tables and code rendered.',
+        command: 'llm "Draft a design" | marxdown -',
+      },
+      {
+        title: 'Watch the folder your agent writes into',
+        body: 'When an agent rewrites a file, the open document reloads automatically.',
+        command: 'marxdown docs/',
+      },
+      {
+        title: 'Safe for documents you didn’t write',
+        body: 'Scripts in a document never run, and files outside the folder are not loaded unless you allow it.',
+        command: '',
+      },
+    ],
   },
 
   themes: {
@@ -128,8 +188,8 @@ export const en: Messages = {
 
   typography: {
     eyebrow: 'Readability',
-    title: 'Font size, line height, and text width. All yours.',
-    body: 'Adjust the text and code fonts, font size, line height, text width, and table borders in Settings. Changes show up in the preview right away.',
+    title: 'Typography matters when you read for an hour.',
+    body: 'Markdown is often read for minutes or hours, not seconds. So you can adjust the text and code fonts, font size, line height, text width, and table borders. Changes show up in the preview right away.',
     fontSize: 'Font size',
     lineHeight: 'Line height',
     maxWidth: 'Text width',
@@ -174,7 +234,7 @@ export const en: Messages = {
 
   features: {
     eyebrow: 'And more',
-    title: 'Everything you need for Markdown.',
+    title: 'The small things that help, too.',
     items: [
       {
         icon: 'outline',
@@ -231,8 +291,9 @@ export const en: Messages = {
 
   cli: {
     eyebrow: 'From the terminal',
-    title: 'Your terminal is the front door.',
-    body: 'Whether you run it from cmd.exe, PowerShell, or Git Bash, the prompt comes back right away.',
+    command: 'marxdown README.md',
+    title: 'No workspace. No project setup. Just read.',
+    body: 'Type it in the terminal you already have open and start reading. Whether you run it from cmd.exe, PowerShell, or Git Bash, the prompt comes back right away.',
     examples: [
       { command: 'marxdown README.md', description: 'Open a file' },
       { command: 'marxdown README.md CHANGELOG.md', description: 'Open several files at once' },
@@ -246,30 +307,73 @@ export const en: Messages = {
 
   install: {
     eyebrow: 'Get started',
-    title: 'Installation takes three steps.',
+    title: 'Download. Install. Open a .md file.',
     steps: [
       { title: 'Download', body: 'Download Marxdown_<version>_x64-setup.exe from Releases.' },
-      { title: 'Run it', body: 'No administrator rights needed. It installs to %LOCALAPPDATA%\\Marxdown.' },
       {
-        title: 'Enable the command',
-        body: 'Choose “Yes” at the last prompt, and you can open files with marxdown from your terminal.',
+        title: 'Install',
+        body: 'Just run it. No administrator rights needed. Choose “Yes” at the last prompt to enable the marxdown command.',
+      },
+      {
+        title: 'Open a .md file',
+        body: 'Double-click any .md file, or type marxdown README.md in your terminal.',
       },
     ],
     smartScreen:
-      'The installer is not code-signed, so SmartScreen shows a warning the first time you run it. Choose “More info” and then “Run anyway” to continue.',
+      'Windows may show a SmartScreen warning because the installer is currently unsigned. Choose “More info” and then “Run anyway” to continue.',
     requirements: 'Requirements: Windows 10 / 11 (x64). The WebView2 Runtime is required (it comes with Windows 11).',
     more: 'Detailed installation steps',
   },
 
+  faq: {
+    eyebrow: 'FAQ',
+    title: 'Questions you might have.',
+    items: [
+      {
+        question: 'Is Marxdown an editor?',
+        answer:
+          'Yes, but it is designed around reading Markdown first. It opens in a reading view, and one key switches to Split or Edit, where you edit with Monaco, the same editor VS Code uses.',
+      },
+      {
+        question: 'Why not just use VS Code?',
+        answer:
+          'VS Code is a great development environment, and it has a Markdown preview. Marxdown is for quickly opening and reading Markdown when you don’t need a workspace and extensions. It is designed to be used alongside VS Code.',
+      },
+      {
+        question: 'Does it work offline?',
+        answer:
+          'Yes. All rendering, including Mermaid diagrams and math, happens on your PC. Marxdown connects to the internet only to check for updates and to load https:// images that a document contains.',
+      },
+      {
+        question: 'Is my Markdown uploaded anywhere?',
+        answer:
+          'No. There is no account and no telemetry. The update check asks GitHub Releases for the latest version and contains nothing about your files. You can turn it off in Settings.',
+      },
+      {
+        question: 'Is Marxdown free?',
+        answer: 'Yes. It is open source under the MIT license, and free for work, too.',
+      },
+      {
+        question: 'What platforms are supported?',
+        answer: 'Windows 10 and 11 (x64). There are no macOS or Linux versions at the moment.',
+      },
+      {
+        question: 'Why does SmartScreen warn me when I install it?',
+        answer:
+          'Because the installer is currently not code-signed. Choose “More info” and then “Run anyway” to continue. The installer is built by GitHub Actions from the public source code.',
+      },
+    ],
+  },
+
   cta: {
-    title: 'Make Markdown feel better.',
-    body: 'Free and open source. Try it right now.',
+    title: 'Open one .md file and see.',
+    body: 'Free and open source. Try it on Windows 10 / 11 right now.',
     download: 'Download for Windows',
     github: 'View on GitHub',
   },
 
   footer: {
-    tagline: 'The app for reading and writing Markdown.',
+    tagline: 'Don’t open VS Code just to read a Markdown file.',
     product: 'Product',
     guide: 'Guide',
     community: 'Community',

@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest';
 
 import {
   buildManifest,
+  buildReleaseNotes,
   finalizeChangelog,
+  previousVersion,
   sectionBody,
   setCargoLockVersion,
   setCargoTomlVersion,
@@ -121,5 +123,33 @@ describe('buildManifest', () => {
       signature: 'sig',
       url: `${REPO}/releases/download/v0.2.0/Marxdown_0.2.0_x64-setup.exe`,
     });
+  });
+});
+
+describe('buildReleaseNotes', () => {
+  it("CHANGELOG の節を What's new に置き、インストーラと 1 つ前の版との比較を指す", () => {
+    const first = finalizeChangelog(FIRST, '0.1.0', '2026-10-01');
+    const changelog = finalizeChangelog(
+      first.replace('## [Unreleased]\n', '## [Unreleased]\n\n### 修正\n\n- 何かを直した\n'),
+      '0.2.0',
+      '2026-11-01',
+    );
+    expect(previousVersion(changelog, '0.2.0')).toBe('0.1.0');
+
+    const body = sectionBody(changelog, '0.2.0') ?? '';
+    const out = buildReleaseNotes({ version: '0.2.0', body, previous: previousVersion(changelog, '0.2.0') });
+
+    expect(out).toContain("## What's new\n\n### 修正\n\n- 何かを直した");
+    expect(out).toContain(`${REPO}/releases/download/v0.2.0/Marxdown_0.2.0_x64-setup.exe`);
+    expect(out).toContain(`${REPO}/compare/v0.1.0...v0.2.0`);
+  });
+
+  it('最初の版は比較の代わりにタグを指す', () => {
+    const changelog = finalizeChangelog(FIRST, '0.1.0', '2026-10-01');
+    expect(previousVersion(changelog, '0.1.0')).toBeNull();
+
+    const out = buildReleaseNotes({ version: '0.1.0', body: '- 自動更新', previous: null });
+    expect(out).toContain(`[v0.1.0](${REPO}/releases/tag/v0.1.0)`);
+    expect(out).not.toContain('/compare/');
   });
 });
