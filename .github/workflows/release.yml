@@ -82,7 +82,7 @@ jobs:
 
           gh release create "$GITHUB_REF_NAME" \
             --draft "${prerelease[@]}" \
-            --title "Marxdown $version" \
+            --title "Marxdown v$version" \
             --notes-file notes.md \
             "$bundle/Marxdown_${version}_x64-setup.exe" \
             "$bundle/Marxdown_${version}_x64-setup.exe.sig" \

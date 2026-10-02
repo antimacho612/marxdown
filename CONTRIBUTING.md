@@ -196,6 +196,12 @@ git push origin v0.2.0
 `main` に無いコミットにタグを打つと、`release.yml` の最初の検査で止まる。
 タグを push すると [`release.yml`](.github/workflows/release.yml) がビルドし、**下書きの Release** を作る。
 下書きのインストーラを手元で入れて確かめてから、GitHub で公開する。
+
+下書きの本文は `release.mjs notes` が CHANGELOG の節から作り、「What's new」「Download」「Full changelog」の順に並ぶ。
+公開する前に、次の 2 つを手で書く。
+
+- タイトルを `Marxdown v0.2.0 — <この版で良くなったこと>` にする（例: `Marxdown v0.3.0 — Better Markdown reading on Windows`）
+- 本文の HTML コメントにある「Why it matters」を、利用者から見た価値として 1〜3 文で書き、コメントを外す
 公開した時点で `releases/latest/download/latest.json` が新しい版を指し、インストール済みのアプリに更新の通知が出る。
 
 > [!WARNING]
