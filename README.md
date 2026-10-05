@@ -7,14 +7,15 @@
 
 ## Markdown を読むために、VS Code を開きたくない。
 
-Marxdown は、Markdown を快適に読むことを中心に設計した Windows 向けの Markdown ビューアー／エディターです。<br />
+Marxdown は、Markdown を快適に読むことを中心に設計した Windows 向けの Markdown ビューアー／エディターです（macOS / Linux 版はプレビュー）。<br />
 `.md` を開いて読む。必要になったら、そのまま編集する。
 
 [**⬇ Windows 版をダウンロード**](https://github.com/antimacho612/marxdown/releases/latest) ·
+[macOS / Linux 版（プレビュー）](#macos--linux-preview) ·
 [Web サイト](https://antimacho612.github.io/marxdown/) ·
 [ガイド](https://antimacho612.github.io/marxdown/guide/)
 
-無料・オープンソース（MIT）· Windows 10 / 11（x64）
+無料・オープンソース（MIT）· Windows 10 / 11（x64）· macOS 14 以降 / Linux（プレビュー）
 
 日本語 | [English](README.en.md)
 
@@ -137,7 +138,7 @@ Markdown は、一瞬見るだけではなく、何分、何十分と読むこ�
 - 表示している文書を HTML / PDF として書き出せます
 - `marp: true` を書いた文書は、[Marp](https://marp.app/) のスライドとして表示します
 - 定義リスト、マーカー、上付き・下付き文字などは設定で有効にできます
-- 画面の表示は日本語と英語に対応しています（既定では Windows の表示言語に合わせます）
+- 画面の表示は日本語と英語に対応しています（既定では OS の表示言語に合わせます）
 - 新しいバージョンが出ると、アプリ内でお知らせします
 
 ## ほかのツールとの違い
@@ -149,13 +150,15 @@ Markdown は、一瞬見るだけではなく、何分、何十分と読むこ�
 | 中心にあるもの | Markdown ファイルを読むこと（と、ちょっとした編集） | コードを書いてデバッグすること | Markdown を書くこと（WYSIWYG） | リンクでつながるノートの知識ベース |
 | ファイル 1 つをそのまま開く | ✓ | ✓ | ✓ | ファイルは保管庫（Vault）に置く |
 | 編集の方式 | ソースのエディター（Monaco）と Preview / Split | ソースのエディターとプレビューの区画 | WYSIWYG | ライブプレビュー・ソース・閲覧の表示 |
-| 対応 OS | Windows のみ | Windows・macOS・Linux | Windows・macOS・Linux | Windows・macOS・Linux・モバイル |
+| 対応 OS | Windows（macOS・Linux はプレビュー） | Windows・macOS・Linux | Windows・macOS・Linux | Windows・macOS・Linux・モバイル |
 | 価格 | 無料・オープンソース（MIT） | 無料 | 有料（買い切り。試用期間あり） | 無料（商用ライセンスは任意） |
 
 長い文章を書くなら Typora、ノートのつながりを育てるなら Obsidian、コードベースの中で暮らすなら VS Code が合っています。
 Marxdown は、目の前のファイルを開いて読むためのアプリです。
 
 ## インストール
+
+### Windows
 
 1. [**Releases**](https://github.com/antimacho612/marxdown/releases/latest) から `Marxdown_<バージョン>_x64-setup.exe` をダウンロードします
 2. 実行します。管理者権限は不要です（`%LOCALAPPDATA%\Marxdown` にインストールされます）
@@ -205,6 +208,66 @@ Windows 11 には標準で入っています。
 
 </details>
 
+<a id="macos--linux-preview"></a>
+
+### macOS / Linux 版（プレビュー）
+
+macOS 版と Linux 版はプレビューです。
+[Releases](https://github.com/antimacho612/marxdown/releases) のプレリリース（`v0.4.0-beta.1` のような版）にだけ置いています。
+自動では更新されません。新しい版は Releases から入れ直してください。
+不具合は [Issue](https://github.com/antimacho612/marxdown/issues) で知らせてください。
+
+<details>
+<summary>macOS（14 以降）</summary>
+
+<br />
+
+1. Apple シリコンの Mac は `Marxdown_<バージョン>_aarch64.dmg` を、Intel の Mac は `Marxdown_<バージョン>_x64.dmg` をダウンロードします
+2. 開いて、Marxdown を「アプリケーション」へドラッグします
+3. 署名していないため、初回の起動は Gatekeeper が止めます。macOS 15 以降は、一度開こうとした後に「システム設定 > プライバシーとセキュリティ」の「このまま開く」を選びます。macOS 14 は、Finder で Marxdown を右クリックして「開く」を選びます
+4. ターミナルから使うときは、`marxdown` のリンクを置きます
+
+```bash
+sudo ln -sf /Applications/Marxdown.app/Contents/MacOS/marxdown /usr/local/bin/marxdown
+```
+
+`.md` をダブルクリックで開くには、Finder で `.md` の「情報を見る」から「このアプリケーションで開く」を Marxdown にし、「すべてを変更」を選びます。
+
+</details>
+
+<details>
+<summary>Linux（x86_64）</summary>
+
+<br />
+
+`.deb`（Ubuntu / Debian）は、そのまま `marxdown` コマンドとファイルマネージャーの「別のアプリケーションで開く」に入ります。
+
+```bash
+sudo apt install ./Marxdown_<バージョン>_amd64.deb
+xdg-mime default Marxdown.desktop text/markdown   # .md の既定のアプリにする場合
+```
+
+`.AppImage` は実行権を付けて起動します。`libfuse2`（Ubuntu 24.04 では `libfuse2t64`）が要ります。
+ターミナルから使うときは、`~/.local/bin` などへリンクを置きます。
+
+```bash
+chmod +x Marxdown_<バージョン>_amd64.AppImage
+ln -sf "$PWD/Marxdown_<バージョン>_amd64.AppImage" ~/.local/bin/marxdown
+```
+
+</details>
+
+既知の制約は次のとおりです。
+
+- **自動で更新されません。** 新しい版は Releases から入れ直してください
+- **macOS の初回の起動を Gatekeeper が止めます。** 上の手順で開けます
+- **macOS では、`✕` でウィンドウを閉じても Dock に残ります。** Dock のアイコンで戻り、<kbd>⌘</kbd>+<kbd>Q</kbd> で終了します。ショートカットの <kbd>Ctrl</kbd> は <kbd>⌘</kbd> に読み替えます（付け替えたキーは [キーボードショートカット](docs/keybindings.md) にあります）
+- **macOS の PDF の書き出しは、印刷ダイアログの「PDF として保存」で行います**
+- **Linux のタスクトレイは、トレイを表示できるデスクトップ環境（KDE Plasma など）でだけ使えます。** 拡張機能を入れていない GNOME では、`✕` で終了します
+- **Wayland では、ウィンドウの位置を復元できず、タブを別のウィンドウへドラッグして移せません。** コマンドパレットの「メインウィンドウに戻す」は使えます
+- **Snap Layouts、タブを引き出している間の表示、フォルダーの右クリックメニューは Windows だけの機能です**
+- **macOS で「書類」や「デスクトップ」を初めて開くと、OS の確認が出ます**
+
 ## コマンドライン
 
 ```bash
@@ -234,6 +297,7 @@ Windows PowerShell 5.1 からパイプで渡すと、ASCII 以外の文字が `?
 | <kbd>Ctrl</kbd>+<kbd>,</kbd> | 設定 |
 | <kbd>Ctrl</kbd>+<kbd>Q</kbd> | 終了 |
 
+macOS では <kbd>Ctrl</kbd> を <kbd>⌘</kbd> に読み替えます。
 すべてのショートカットは [キーボードショートカット](docs/keybindings.md)、記法と設定の一覧は [ガイド](https://antimacho612.github.io/marxdown/guide/) にあります。
 
 ## プライバシーとセキュリティ

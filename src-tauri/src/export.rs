@@ -75,15 +75,16 @@ pub async fn export_html(
 /// 呼び出したウィンドウの表示内容を PDF に書き出す。保存先のパスを返し、取り消されたら `None`。
 ///
 /// 印刷用の CSS（`@media print`）で何を印刷させるかは、呼ぶ前にフロントが整えておく。
-/// Windows 以外では `InvalidArgument` を返す。フロントは `window.print()` で代用する。
+/// macOS では `InvalidArgument` を返す。
+/// フロントは印刷ダイアログ（[`print_dialog`]）で代用する（M10 §4.9 の段階 1）。
 #[tauri::command]
 pub async fn export_pdf(
     window: WebviewWindow,
     suggested: Option<String>,
 ) -> CoreResult<Option<String>> {
-    if !cfg!(windows) {
+    if cfg!(target_os = "macos") {
         return Err(CoreError::InvalidArgument(
-            "PDF への直接の書き出しは Windows でのみ使える".into(),
+            "PDF への直接の書き出しは macOS では使えない".into(),
         ));
     }
     let Some(path) = pick(&window, suggested.as_deref(), "PDF", "pdf").await? else {
@@ -148,9 +149,64 @@ async fn print_to_pdf(window: &WebviewWindow, path: &Path) -> CoreResult<()> {
     }
 }
 
-#[cfg(not(windows))]
+/// Linux。
+/// WebKitGTK の印刷操作に「ファイルへ出力」の設定を渡し、ダイアログを出さずに書き出す（M10 §4.9）。
+#[cfg(all(unix, not(target_os = "macos")))]
+async fn print_to_pdf(window: &WebviewWindow, path: &Path) -> CoreResult<()> {
+    let (tx, mut rx) = tauri::async_runtime::channel::<Result<(), String>>(1);
+    let uri = tauri::Url::from_file_path(path)
+        .map_err(|()| CoreError::InvalidArgument(path.display().to_string()))?
+        .to_string();
+
+    window
+        .with_webview(move |webview| {
+            use webkit2gtk::PrintOperationExt;
+
+            let settings = gtk::PrintSettings::new();
+            // GTK の「ファイルへ出力」のプリンターが `output-uri` へ書く。
+            settings.set_printer("Print to File");
+            settings.set("output-file-format", Some("pdf"));
+            settings.set("output-uri", Some(&uri));
+            let setup = gtk::PageSetup::new();
+            setup.set_paper_size_and_default_margins(&gtk::PaperSize::new(Some("iso_a4")));
+
+            let operation = webkit2gtk::PrintOperation::new(&webview.inner());
+            operation.set_print_settings(&settings);
+            operation.set_page_setup(&setup);
+            // 失敗したときは `failed` の後に `finished` も届く。
+            // 先に届いた方を結果にする。
+            let failed = tx.clone();
+            operation.connect_failed(move |_, error| {
+                let _ = failed.try_send(Err(error.to_string()));
+            });
+            operation.connect_finished(move |_| {
+                let _ = tx.try_send(Ok(()));
+            });
+            operation.print();
+        })
+        .map_err(|e| CoreError::Io(e.to_string()))?;
+
+    match rx.recv().await {
+        Some(Ok(())) => Ok(()),
+        Some(Err(message)) => Err(CoreError::Io(message)),
+        None => Err(CoreError::Io("PDF の書き出しが完了しなかった".into())),
+    }
+}
+
+/// macOS は [`export_pdf`] がここへ来る前に `InvalidArgument` を返す。
+#[cfg(target_os = "macos")]
 async fn print_to_pdf(_window: &WebviewWindow, _path: &Path) -> CoreResult<()> {
     Ok(())
+}
+
+/// 印刷ダイアログを出す（macOS の PDF の書き出し / M10 §4.9 の段階 1）。
+///
+/// WKWebView ではページの `window.print()` が何もしないため、ネイティブの印刷操作を呼ぶ。
+/// ダイアログはウィンドウのシートとして開き、閉じるのを待たずに戻る。
+/// 印刷用の要素は、フロントが次の書き出しまで残しておく（`features/export/lazy/print.ts`）。
+#[tauri::command]
+pub fn print_dialog(window: WebviewWindow) -> CoreResult<()> {
+    window.print().map_err(|e| CoreError::Io(e.to_string()))
 }
 
 /// 表示中の画像を data URI にする（HTML の書き出しで 1 ファイルに収めるため）。

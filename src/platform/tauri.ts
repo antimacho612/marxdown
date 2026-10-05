@@ -232,6 +232,10 @@ export const tauriPlatform: Platform = {
     return invoke<string | null>('export_pdf', { suggested });
   },
 
+  printDialog() {
+    return invoke<void>('print_dialog');
+  },
+
   inlineImage(src) {
     // `convertFileSrc` の逆。パスは URL のパス部分に 1 つのセグメントとしてエンコードされている。
     const path = decodeURIComponent(new URL(src).pathname.slice(1));
@@ -400,7 +404,7 @@ export const tauriPlatform: Platform = {
   },
 
   ready() {
-    return invoke<void>('ready');
+    return invoke<string[]>('ready');
   },
 
   reportTrace(marks: TraceMark[]) {

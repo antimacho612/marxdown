@@ -82,9 +82,10 @@ pub fn detect(bytes: &[u8]) -> Detected {
         };
     }
 
-    let mut detector = chardetng::EncodingDetector::new();
+    // NOTE: chardetng 0.1 の `new()` は ISO-2022-JP を常に候補に含めていた。1.0 で明示が必要になったため、同じ挙動になるよう `Allow` を渡す。
+    let mut detector = chardetng::EncodingDetector::new(chardetng::Iso2022JpDetection::Allow);
     detector.feed(bytes, true);
-    let codec = detector.guess(None, true);
+    let codec = detector.guess(None, chardetng::Utf8Detection::Allow);
     Detected {
         encoding: Encoding::from_codec(codec),
         bom: false,

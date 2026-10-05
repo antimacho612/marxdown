@@ -40,7 +40,20 @@ const TRAY_RECENT_SHOWN: usize = 5;
 /// `ready()` の後に呼ぶ。
 /// OS 側の UI であり、本文表示には関与しない。
 /// ここでアイコンを構築するぶんだけ T3→T8 が伸びるが、それによる利点はない。
+///
+/// macOS では作らない。
+/// Dock のアイコンが常駐の印である（ADR-0028 §3.4）。
+/// Linux ではトレイを出せる環境（[`detect`]）でだけ作る。
 pub fn install<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
+    if cfg!(target_os = "macos") {
+        return Ok(());
+    }
+    if !app
+        .try_state::<AppState>()
+        .is_some_and(|state| state.has_residency())
+    {
+        return Ok(());
+    }
     // 既に存在するなら作り直さない。`ready` は再読み込みで 2 回発火することがある。
     if app.tray_by_id(TRAY_ID).is_some() {
         return Ok(());
@@ -71,6 +84,28 @@ pub fn install<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
         let _ = tray.set_icon(Some(icon));
     }
     Ok(())
+}
+
+/// トレイを出せる環境か（ADR-0028 §3.4 / M10 §4.4）。
+///
+/// トレイは StatusNotifierItem で描かれ、受け手（`org.kde.StatusNotifierWatcher`）がセッションバスにいるときだけ表示される。
+/// GNOME は拡張機能を入れないと受け手がいない。
+/// 受け手がいないままアイコンを作っても表示されず、`✕` で隠したウィンドウを戻す手段が無くなる。
+///
+/// 起動時に 1 回だけ調べる。
+/// 監視はしない（アイドル時のタイマーを持たない）。
+#[cfg(all(unix, not(target_os = "macos")))]
+pub fn detect() -> bool {
+    let Ok(connection) = zbus::blocking::Connection::session() else {
+        return false;
+    };
+    let Ok(bus) = zbus::blocking::fdo::DBusProxy::new(&connection) else {
+        return false;
+    };
+    let Ok(name) = zbus::names::BusName::try_from("org.kde.StatusNotifierWatcher") else {
+        return false;
+    };
+    bus.name_has_owner(name).unwrap_or(false)
 }
 
 /// 最近開いたファイルが変わったらメニューを組み直す。

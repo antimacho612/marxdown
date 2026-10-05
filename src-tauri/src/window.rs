@@ -7,9 +7,13 @@
 //! 位置とサイズを `WebviewWindowBuilder` に直接渡せるため、既定位置に表示してから復元先へ移動する際のちらつきが発生しない。
 //! `visible: false` から本文ごと表示する設計とも整合する。
 //!
-//! タイトルバーは自前で描く。
+//! タイトルバーは OS ごとに形が違う（M10 §4.5）。
+//! Windows は自前で描く。
 //! `decorations(false)` にして、`─ □ ✕` もファイル名も Svelte 側が描く。
 //! OS 標準のタイトルバーとタブが二段になることを避け、縦 30px を本文に割り当てるためである。
+//! macOS は OS のタイトルバーを透明にしてタブの行を重ね、信号機ボタンだけを OS に描かせる。
+//! Linux は OS のタイトルバーを使う。
+//! Wayland と全 WM で成立する形を先に取る。
 //!
 //! Windows で何が失われるかは、tao の実装を読んで確認してある（tao 0.35.3）。
 //! リサイズ縁は失われない（`to_window_styles()` は装飾の有無に関わらず `WS_SIZEBOX` を付け、縁の当たり判定は tao が `WM_NCHITTEST` で自前に返す）。
@@ -64,41 +68,37 @@ pub fn create(
 ) -> tauri::Result<WebviewWindow> {
     let script = crate::bootstrap::to_init_script(bootstrap);
 
-    let mut builder = WebviewWindowBuilder::new(app, label, WebviewUrl::default())
-        .title("Marxdown")
-        .min_inner_size(480.0, 360.0)
-        .visible(false) // 描画準備が整うまで見せない
-        // カスタムタイトルバー。失われるものと残るものはモジュール冒頭に記載。
-        .decorations(false)
-        // `decorations(false)` とセットでなければならない。
-        // tao はこのフラグがあるときだけ `WM_NCCALCSIZE` で DWM のフレーム分を内側に残し、影と Windows 11 の角丸を有効にする。
-        // 付けないと影の無い平らな矩形になり、アプリではなくオーバーレイのように見える。
-        .shadow(true)
-        // ドラッグ＆ドロップはネイティブのハンドラに任せる（F-OPEN-08）。
-        //
-        // `disable_drag_drop_handler()` を呼んで HTML5 のドロップイベントで扱うと、WebView の `DataTransfer` がファイルの絶対パスを渡さない。
-        // パスが無いと最近開いたファイルにも記録できず、相対パスの画像も解決できない（F-VIEW-08 / N-SEC-05）。
-        // Tauri のドラッグ＆ドロップイベントは実パスを渡す。
-        .initialization_script(&script)
-        // ナビゲーション禁止（N-SEC-04 / ADR-0006 の多層防御 Layer 2）。
-        //
-        // フロントはリンククリックをすべて `preventDefault()` するが、それは JS が期待どおり動作している場合に限られる。
-        // ここで塞いでおくと、ハンドラの登録前・例外で停止した後・想定外の遷移経路のいずれでも、アプリのシェルが差し替わって復帰できなくなることがない。
-        // 許可するのはアプリ自身のページだけで、同じオリジンでも別のパスは通さない。
-        // `./other.md` のようなリンクを開いたときに、遷移先が 404 のシェルになるのではなく、そもそも遷移が発生しないようにする。
-        .on_navigation(|url| {
-            let own_host = matches!(
-                url.host_str(),
-                Some("tauri.localhost") | Some("localhost") | None
-            );
-            let own_page = matches!(url.path(), "" | "/" | "/index.html");
+    let mut builder = title_bar(
+        WebviewWindowBuilder::new(app, label, WebviewUrl::default())
+            .title("Marxdown")
+            .min_inner_size(480.0, 360.0)
+            .visible(false), // 描画準備が整うまで見せない
+    )
+    // ドラッグ＆ドロップはネイティブのハンドラに任せる（F-OPEN-08）。
+    //
+    // `disable_drag_drop_handler()` を呼んで HTML5 のドロップイベントで扱うと、WebView の `DataTransfer` がファイルの絶対パスを渡さない。
+    // パスが無いと最近開いたファイルにも記録できず、相対パスの画像も解決できない（F-VIEW-08 / N-SEC-05）。
+    // Tauri のドラッグ＆ドロップイベントは実パスを渡す。
+    .initialization_script(&script)
+    // ナビゲーション禁止（N-SEC-04 / ADR-0006 の多層防御 Layer 2）。
+    //
+    // フロントはリンククリックをすべて `preventDefault()` するが、それは JS が期待どおり動作している場合に限られる。
+    // ここで塞いでおくと、ハンドラの登録前・例外で停止した後・想定外の遷移経路のいずれでも、アプリのシェルが差し替わって復帰できなくなることがない。
+    // 許可するのはアプリ自身のページだけで、同じオリジンでも別のパスは通さない。
+    // `./other.md` のようなリンクを開いたときに、遷移先が 404 のシェルになるのではなく、そもそも遷移が発生しないようにする。
+    .on_navigation(|url| {
+        let own_host = matches!(
+            url.host_str(),
+            Some("tauri.localhost") | Some("localhost") | None
+        );
+        let own_page = matches!(url.path(), "" | "/" | "/index.html");
 
-            if own_host && own_page {
-                return true;
-            }
-            eprintln!("[marxdown] ナビゲーションを拒否: {url}");
-            false
-        });
+        if own_host && own_page {
+            return true;
+        }
+        eprintln!("[marxdown] ナビゲーションを拒否: {url}");
+        false
+    });
 
     let restore = restore.filter(|s| is_on_some_monitor(app, s));
     // T2c: ウィンドウ状態の復元判定が終わった時点。
@@ -139,6 +139,41 @@ pub fn create(
         spawn_show_fallback(app.clone(), label.to_string());
     }
     Ok(window)
+}
+
+/// カスタムタイトルバー（Windows）。
+/// 失われるものと残るものはモジュール冒頭に記載。
+#[cfg(windows)]
+fn title_bar<'a>(
+    builder: WebviewWindowBuilder<'a, tauri::Wry, tauri::AppHandle>,
+) -> WebviewWindowBuilder<'a, tauri::Wry, tauri::AppHandle> {
+    builder
+        .decorations(false)
+        // `decorations(false)` とセットでなければならない。
+        // tao はこのフラグがあるときだけ `WM_NCCALCSIZE` で DWM のフレーム分を内側に残し、影と Windows 11 の角丸を有効にする。
+        // 付けないと影の無い平らな矩形になり、アプリではなくオーバーレイのように見える。
+        .shadow(true)
+}
+
+/// OS のタイトルバーを透明にし、タブの行を信号機ボタンに重ねる（macOS）。
+///
+/// 信号機ボタンの分の余白はフロントが取る（`platform-ui/macos.css`）。
+#[cfg(target_os = "macos")]
+fn title_bar<'a>(
+    builder: WebviewWindowBuilder<'a, tauri::Wry, tauri::AppHandle>,
+) -> WebviewWindowBuilder<'a, tauri::Wry, tauri::AppHandle> {
+    builder
+        .title_bar_style(tauri::TitleBarStyle::Overlay)
+        .hidden_title(true)
+}
+
+/// OS のタイトルバーを使う（Linux）。
+/// CSD を選べる設定は持たない（M10 §6）。
+#[cfg(all(unix, not(target_os = "macos")))]
+fn title_bar<'a>(
+    builder: WebviewWindowBuilder<'a, tauri::Wry, tauri::AppHandle>,
+) -> WebviewWindowBuilder<'a, tauri::Wry, tauri::AppHandle> {
+    builder
 }
 
 /// 復元しようとしている矩形が、現在つながっているモニタのどれかと十分に重なるか。

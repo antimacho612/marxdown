@@ -41,6 +41,9 @@ pub fn write(path: &Path, bytes: &[u8]) -> CoreResult<()> {
         // 引き継ぎに失敗しても保存自体は続行する（読み取り専用属性の付け替え等）
         let _ = fs::set_permissions(&tmp, perms);
     }
+    // 権限と同じ扱いで、失敗しても保存は続ける。
+    #[cfg(target_os = "macos")]
+    copy_extended_attributes(path, &tmp);
 
     match fs::rename(&tmp, path) {
         Ok(()) => Ok(()),
@@ -49,6 +52,32 @@ pub fn write(path: &Path, bytes: &[u8]) -> CoreResult<()> {
             Err(e.into())
         }
     }
+}
+
+/// 元のファイルの拡張属性（Finder のタグ・ラベルなど）を一時ファイルへ写す（M10 §4.7）。
+///
+/// `rename` で置き換えると、拡張属性は一時ファイルのもの（空）になる。
+/// 元のファイルが無い（新規作成）ときは何もしない。
+#[cfg(target_os = "macos")]
+fn copy_extended_attributes(from: &Path, to: &Path) {
+    use std::os::unix::ffi::OsStrExt;
+
+    let (Ok(from), Ok(to)) = (
+        std::ffi::CString::new(from.as_os_str().as_bytes()),
+        std::ffi::CString::new(to.as_os_str().as_bytes()),
+    ) else {
+        return;
+    };
+    // SAFETY: 2 つのパスは NUL 終端の文字列で、呼び出しの間生きている。
+    // 状態は渡さない。
+    let _ = unsafe {
+        libc::copyfile(
+            from.as_ptr(),
+            to.as_ptr(),
+            std::ptr::null_mut(),
+            libc::COPYFILE_XATTR,
+        )
+    };
 }
 
 /// 同一ディレクトリ内で衝突しない一時ファイル名を作る。

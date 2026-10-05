@@ -1,0 +1,17 @@
+/*
+ * Linux の差分（M10 §4.5 / §4.13）。
+ *
+ * タイトルバーは OS が描く（`src-tauri/src/window.rs`）。
+ * `─ □ ✕` は描かない。
+ * 詳細度は Svelte のスコープ付きの規則（`.mx-caption.svelte-*`）より高くしてある。
+ */
+html .mx-titlebar .mx-caption {
+  display: none;
+}
+
+/* 既定のフォント。Segoe UI と Cascadia Code は入っていないため、配布で広く使われるフォントを並べる。 */
+:root {
+  --mx-font-ui: system-ui, 'Noto Sans CJK JP', sans-serif;
+  --mx-font-content-stack: system-ui, 'Noto Sans CJK JP', sans-serif;
+  --mx-font-code-stack: 'Noto Sans Mono', 'DejaVu Sans Mono', 'Noto Sans CJK JP', monospace;
+}

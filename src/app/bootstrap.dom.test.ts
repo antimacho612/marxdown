@@ -50,6 +50,7 @@ const BROKEN = { path: 'C:\\conf\\settings.json', message: 'expected `,`' };
 function bootstrapWith(patch: Partial<Bootstrap>): Bootstrap {
   return {
     version: 1,
+    platform: 'windows',
     role: 'main',
     transfer: null,
     document: null,

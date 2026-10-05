@@ -98,3 +98,18 @@ Marxdown のショートカットの一覧です。
 | <kbd>Ctrl</kbd>+クリック / <kbd>Shift</kbd>+クリック | 選択に加える / 範囲で選ぶ（2 件以上を選んでいるとき） |
 | <kbd>Shift</kbd>+<kbd>F10</kbd> / アプリケーションキー | メニューを開く |
 | 文字キー | その文字で始まる次の項目へ移動する |
+
+## macOS（プレビュー）
+
+macOS では <kbd>Ctrl</kbd> を <kbd>⌘</kbd>、<kbd>Alt</kbd> を <kbd>⌥</kbd> と読み替えます。
+OS の操作と重なるキーは、次のとおり付け替えています。
+
+| キー | 動作 |
+| --- | --- |
+| <kbd>⌘</kbd>+<kbd>⌥</kbd>+<kbd>F</kbd> | 置換（<kbd>Ctrl</kbd>+<kbd>H</kbd> の代わり。<kbd>⌘</kbd>+<kbd>H</kbd> は OS の「隠す」） |
+| <kbd>⌘</kbd>+<kbd>[</kbd> / <kbd>⌘</kbd>+<kbd>]</kbd> | 戻る / 進む（<kbd>Alt</kbd>+<kbd>←</kbd> / <kbd>Alt</kbd>+<kbd>→</kbd> の代わり。<kbd>⌥</kbd>+<kbd>←</kbd> は単語単位の移動） |
+| <kbd>⌃</kbd>+<kbd>Tab</kbd> / <kbd>⌘</kbd>+<kbd>⇧</kbd>+<kbd>]</kbd> | 次のタブ（<kbd>⌘</kbd>+<kbd>Tab</kbd> は OS のアプリの切り替え） |
+| <kbd>⌃</kbd>+<kbd>⇧</kbd>+<kbd>Tab</kbd> / <kbd>⌘</kbd>+<kbd>⇧</kbd>+<kbd>[</kbd> | 前のタブ |
+| <kbd>⌃</kbd>+<kbd>⌘</kbd>+<kbd>F</kbd> | フルスクリーン（OS の機能） |
+
+<kbd>⇧</kbd>+<kbd>⌥</kbd>+<kbd>R</kbd> は Finder で表示します。

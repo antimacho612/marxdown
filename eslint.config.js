@@ -217,6 +217,9 @@ export default tseslint.config(
       'src/features/editor/lazy/monaco.ts',
       // Monaco の日本語化も同じ理由で副作用インポートになる。
       'src/features/editor/lazy/nls.ts',
+      // OS 別の CSS（ADR-0028 §3.3）
+      'src/platform-ui/macos.ts',
+      'src/platform-ui/linux.ts',
       // KaTeX の CSS
       'src/features/preview/lazy/math.ts',
       'src/features/preview/lazy/mermaid.ts',

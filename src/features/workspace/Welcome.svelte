@@ -103,6 +103,11 @@
     z-index: 5;
     display: grid;
     /*
+     * 列幅を明示する。auto だと列が最近開いたファイルのパス（nowrap）の max-content まで広がり、
+     * パネルが 30rem でも器を超えて横スクロールが出る。
+     */
+    grid-template-columns: minmax(0, 30rem);
+    /*
      * `safe` を外さないこと。
      * 中身が器より広いとき、素の `center` は左右へ均等にはみ出し、先頭側へはスクロールできなくなる（スクロールは末尾側にしか伸びない）。
      */
@@ -121,7 +126,7 @@
     display: flex;
     flex-direction: column;
     gap: var(--mx-space-3);
-    width: min(30rem, 100%);
+    width: 100%;
     padding: var(--mx-space-10) var(--mx-space-6);
   }
 

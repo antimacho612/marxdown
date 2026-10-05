@@ -31,6 +31,7 @@ let setPanes: ReturnType<typeof vi.fn>;
 function bootstrapWith(panes: Panes): Bootstrap {
   return {
     version: 1,
+    platform: 'windows',
     role: 'main',
     transfer: null,
     document: null,

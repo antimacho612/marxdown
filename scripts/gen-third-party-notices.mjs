@@ -6,7 +6,7 @@
  * 対象は、実際に配布物へ入るものだけである。
  *
  * - npm: `vite build` がバンドルに入れたパッケージ（vite.config.ts の `recordBundledPackages` が記録する）
- * - Rust: Windows 向けの `marxdown.exe` にリンクされるクレート。proc-macro とビルド時だけの依存は除く
+ * - Rust: 配布している 4 つのターゲットのどれかにリンクされるクレート。proc-macro とビルド時だけの依存は除く
  * - Rust の標準ライブラリ
  *
  * パッケージにライセンス文が入っていないときは、`scripts/license-texts/` の本文に `package.json` / `Cargo.toml` の作者を当てはめる。
@@ -27,8 +27,13 @@ const OUTPUT = join(ROOT, 'THIRD_PARTY_NOTICES.txt');
 const BUNDLED_PACKAGES = join(ROOT, 'node_modules', '.tmp', 'bundled-packages.json');
 const LICENSE_TEXTS = join(ROOT, 'scripts', 'license-texts');
 
-/** 配布しているのは Windows 版だけである（`bundle.targets: ["nsis"]`）。 */
-const TARGET = 'x86_64-pc-windows-msvc';
+/**
+ * 配布しているターゲット（ADR-0028 §3.7）。
+ *
+ * 一覧は 1 枚のまま全 OS に同梱するため、ターゲットごとの依存の和集合を載せる。
+ * 含みすぎる側は問題にならない。
+ */
+const TARGETS = ['x86_64-pc-windows-msvc', 'aarch64-apple-darwin', 'x86_64-apple-darwin', 'x86_64-unknown-linux-gnu'];
 
 const LICENSE_FILE = /^(?:licen[cs]e|copying|notice|unlicense|third[-_]?party[-_]?notices)(?:[-_.].*)?$/i;
 /** `license.js` のようなソースは本文ではない。 */
@@ -84,7 +89,28 @@ function npmComponents() {
 
 /** @returns {Component[]} */
 function rustComponents() {
-  const json = execFileSync('cargo', ['metadata', '--format-version', '1', '--locked', '--filter-platform', TARGET], {
+  const linked = new Map();
+  for (const target of TARGETS) {
+    for (const p of linkedCrates(target)) linked.set(p.id, p);
+  }
+  // Windows を先に辿る。
+  // 並びは Windows の分を保ったまま、他のターゲットだけにある分を後ろに足す。
+  return linked
+    .values()
+    .map((p) => ({
+      name: p.name,
+      version: p.version,
+      license: p.license ?? '',
+      authors: p.authors.map((a) => a.replace(/\s*<[^>]*>/, '')),
+      repository: p.repository ?? '',
+      texts: licenseTexts(dirname(p.manifest_path)),
+    }))
+    .toArray();
+}
+
+/** `target` 向けのバイナリにリンクされるクレートのメタデータ。 */
+function linkedCrates(target) {
+  const json = execFileSync('cargo', ['metadata', '--format-version', '1', '--locked', '--filter-platform', target], {
     cwd: join(ROOT, 'src-tauri'),
     encoding: 'utf8',
     maxBuffer: 64 * 1024 * 1024,
@@ -108,17 +134,7 @@ function rustComponents() {
   }
   linked.delete(metadata.resolve.root);
 
-  return [...linked]
-    .map((id) => packages.get(id))
-    .filter((p) => !isProcMacro(p))
-    .map((p) => ({
-      name: p.name,
-      version: p.version,
-      license: p.license ?? '',
-      authors: p.authors.map((a) => a.replace(/\s*<[^>]*>/, '')),
-      repository: p.repository ?? '',
-      texts: licenseTexts(dirname(p.manifest_path)),
-    }));
+  return [...linked].map((id) => packages.get(id)).filter((p) => !isProcMacro(p));
 }
 
 /**

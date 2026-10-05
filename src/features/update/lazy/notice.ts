@@ -14,14 +14,29 @@ export async function notifyAvailable(info: UpdateInfo): Promise<void> {
   if (documentStore.notice === null) showAvailable(info);
 }
 
+/** 新しい版を手で入れるときに開くページ。 */
+const RELEASES_URL = 'https://github.com/antimacho612/marxdown/releases';
+
 /**
  * 手動の確認（コマンドパレットの「更新を確認」）。
  *
  * 利用者が求めた確認であるため、結果は必ず伝える。
  * 新しい版が無いことは済んだことの報告としてステータスバーへ、失敗は通知バーへ出す。
+ *
+ * NOTE: macOS / Linux はプレビューの間、updater を使わない（ADR-0028 §3.8 / M10 §4.10 の案 1）。
+ * 確認する代わりに Releases の一覧へ誘導する。
+ * 卒業の版でこの分岐を外す（`src-tauri/src/update.rs` の `ENABLED` と同時に）。
  */
 export async function checkForUpdates(): Promise<void> {
   await loadUpdateMessages();
+  if (getPlatform().getBootstrap()?.platform !== 'windows') {
+    documentStore.notice = {
+      level: 'info',
+      message: tUpdate.manual,
+      actions: [{ label: tUpdate.openReleases, run: () => void getPlatform().openExternal(RELEASES_URL) }],
+    };
+    return;
+  }
   try {
     const info = await getPlatform().checkUpdate();
     if (info) {

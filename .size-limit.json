@@ -26,6 +26,38 @@
     "gzip": true
   },
   {
+    "name": "critical path macOS ja (Windows の critical path に OS 別チャンクを足したもの — ADR-0028 §3.3)",
+    "path": [
+      "dist/assets/main-*.js",
+      "dist/assets/shared-*.js",
+      "dist/assets/pipeline-*.js",
+      "dist/assets/i18n-ja-core-*.js",
+      "dist/assets/index-*.css",
+      "dist/assets/workspace-*.css",
+      "dist/assets/platform-macos-*.js",
+      "dist/assets/macos-*.css",
+      "dist/assets/platform-shared-*.js"
+    ],
+    "limit": "150 KB",
+    "gzip": true
+  },
+  {
+    "name": "critical path Linux ja (Windows の critical path に OS 別チャンクを足したもの — ADR-0028 §3.3)",
+    "path": [
+      "dist/assets/main-*.js",
+      "dist/assets/shared-*.js",
+      "dist/assets/pipeline-*.js",
+      "dist/assets/i18n-ja-core-*.js",
+      "dist/assets/index-*.css",
+      "dist/assets/workspace-*.css",
+      "dist/assets/platform-linux-*.js",
+      "dist/assets/linux-*.css",
+      "dist/assets/platform-shared-*.js"
+    ],
+    "limit": "150 KB",
+    "gzip": true
+  },
+  {
     "name": "editor (Monaco / 予算の対象外。上限は回帰検知の番人 — ADR-0009)",
     "path": ["dist/assets/editor-*.js", "dist/assets/editor-*.css"],
     "limit": "850 KB",
@@ -132,9 +164,9 @@
     "gzip": true
   },
   {
-    "name": "mermaid (図を含む文書で、図が画面に入るまでロードしない。予算の対象外)",
+    "name": "mermaid (図を含む文書で、図が画面に入るまでロードしない。予算の対象外。900 KB から引き上げた根拠は設計ドキュメントの性能予算にある)",
     "path": ["dist/assets/mermaid-*.js", "dist/assets/mermaid-*.css"],
-    "limit": "900 KB",
+    "limit": "1400 KB",
     "gzip": true
   },
   {
