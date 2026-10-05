@@ -151,7 +151,24 @@ pub fn guard_termination(app: &AppHandle) {
     };
     if !added.as_bool() {
         eprintln!("[marxdown] Dock からの終了を確認へ通せなかった");
+        return;
     }
+    // NOTE: デリゲートが応答するメソッドは、設定した時点で AppKit に覚えられていることがある。
+    // 足したメソッドを確実に呼ばせるため、同じデリゲートを設定し直す。
+    // ここは `applicationDidFinishLaunching:` の中であり、その場で設定し直すと配信中の通知が重なりうる。
+    // イベントループの次の周回で行う。
+    let handle = app.clone();
+    std::thread::spawn(move || {
+        let _ = handle.run_on_main_thread(|| {
+            let Some(mtm) = MainThreadMarker::new() else {
+                return;
+            };
+            let ns_app = NSApplication::sharedApplication(mtm);
+            if let Some(delegate) = ns_app.delegate() {
+                ns_app.setDelegate(Some(&delegate));
+            }
+        });
+    });
 }
 
 /// `NSTerminateCancel`
@@ -177,7 +194,10 @@ extern "C-unwind" fn should_terminate(
         crate::close::save_window_state(app);
         return TERMINATE_NOW;
     }
-    crate::close::request_quit(app);
+    // AppKit の終了処理の中でダイアログを開かない。
+    // 止めたことを返してから、別のスレッドで確認を出す。
+    let app = app.clone();
+    std::thread::spawn(move || crate::close::request_quit(&app));
     TERMINATE_CANCEL
 }
 
