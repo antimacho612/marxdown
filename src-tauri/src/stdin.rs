@@ -6,6 +6,9 @@
 //!
 //! 一時ファイルは読んだ直後に消す。
 //! そのため `--stdin-file` には一時ディレクトリ直下のファイルしか渡せないようにしてある（ADR-0006）。
+//!
+//! 置き場所は利用者ごとの場所にする。
+//! Linux の `std::env::temp_dir()` は全利用者に見える `/tmp` であり、他の利用者が先に同じ名前のディレクトリを作っておける（M10 §4.3）。
 
 use std::io::Read;
 use std::path::{Path, PathBuf};
@@ -18,8 +21,64 @@ use crate::error::{CoreError, CoreResult};
 const STALE_AFTER: Duration = Duration::from_secs(24 * 60 * 60);
 
 /// 一時ファイルの置き場所。
+///
+/// Windows（`%TEMP%`）と macOS（`$TMPDIR`）の一時ディレクトリは利用者ごとにある。
+#[cfg(not(all(unix, not(target_os = "macos"))))]
 fn spool_dir() -> PathBuf {
     std::env::temp_dir().join("marxdown-stdin")
+}
+
+/// 一時ファイルの置き場所（Linux）。
+///
+/// `XDG_RUNTIME_DIR` は利用者ごとに `0700` で用意される。
+/// 無い環境では `~/.cache` の下に置く。
+#[cfg(all(unix, not(target_os = "macos")))]
+fn spool_dir() -> PathBuf {
+    let absolute = |key: &str| {
+        std::env::var_os(key)
+            .map(PathBuf::from)
+            .filter(|p| p.is_absolute())
+    };
+    if let Some(runtime) = absolute("XDG_RUNTIME_DIR") {
+        return runtime.join("marxdown-stdin");
+    }
+    absolute("XDG_CACHE_HOME")
+        .or_else(|| absolute("HOME").map(|home| home.join(".cache")))
+        .unwrap_or_else(std::env::temp_dir)
+        .join("marxdown-stdin")
+}
+
+/// 置き場所を作る。
+/// Unix では自分だけが読み書きできることを確かめる。
+///
+/// 他の利用者が作っておいたディレクトリへ書くと、標準入力の内容がその利用者に読まれる。
+fn prepare_spool(dir: &Path) -> CoreResult<()> {
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::{DirBuilderExt, MetadataExt};
+
+        match std::fs::DirBuilder::new()
+            .recursive(true)
+            .mode(0o700)
+            .create(dir)
+        {
+            Ok(()) => {}
+            Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => {}
+            Err(e) => return Err(e.into()),
+        }
+        let meta = std::fs::symlink_metadata(dir)?;
+        // SAFETY: 引数を取らず、失敗しない。
+        let uid = unsafe { libc::getuid() };
+        if !meta.is_dir() || meta.uid() != uid || meta.mode() & 0o077 != 0 {
+            return Err(CoreError::OutOfScope(dir.display().to_string()));
+        }
+        Ok(())
+    }
+    #[cfg(not(unix))]
+    {
+        std::fs::create_dir_all(dir)?;
+        Ok(())
+    }
 }
 
 /// `-` を受けたプロセスの処理。stdin を書き出して起動し直し、終了コードを返す。
@@ -44,24 +103,7 @@ pub fn run(argv: &[String]) -> i32 {
         }
     };
 
-    let exe = match std::env::current_exe() {
-        Ok(exe) => exe,
-        Err(e) => {
-            eprintln!("marxdown: {}: {e}", crate::i18n::text().launch_failed);
-            let _ = std::fs::remove_file(&file);
-            return 1;
-        }
-    };
-
-    // 標準入出力は引き継がない。
-    // 引き継ぐと、起動し直したプロセスがシムのパイプを握り続け、シェルが返らないことがある。
-    let spawned = std::process::Command::new(exe)
-        .args(relaunch_args(argv, &file))
-        .stdin(std::process::Stdio::null())
-        .stdout(std::process::Stdio::null())
-        .stderr(std::process::Stdio::null())
-        .spawn();
-    match spawned {
+    match crate::detach::spawn_self(&relaunch_args(argv, &file)) {
         Ok(_) => 0,
         Err(e) => {
             eprintln!("marxdown: {}: {e}", crate::i18n::text().launch_failed);
@@ -105,7 +147,7 @@ fn spool(reader: impl Read) -> CoreResult<PathBuf> {
     }
 
     let dir = spool_dir();
-    std::fs::create_dir_all(&dir)?;
+    prepare_spool(&dir)?;
     sweep(&dir, SystemTime::now());
 
     let nanos = SystemTime::now()
@@ -264,6 +306,22 @@ mod tests {
         ));
         assert!(file.exists());
         std::fs::remove_dir_all(&dir).ok();
+    }
+
+    /// 他の利用者が読めるディレクトリには書かない。
+    #[cfg(unix)]
+    #[test]
+    fn the_spool_must_be_private() {
+        use std::os::unix::fs::PermissionsExt;
+
+        let dir = temp_dir("private").join("spool");
+        prepare_spool(&dir).unwrap();
+        let mode = std::fs::metadata(&dir).unwrap().permissions().mode();
+        assert_eq!(mode & 0o777, 0o700, "自分だけが読み書きできる形で作る");
+
+        std::fs::set_permissions(&dir, std::fs::Permissions::from_mode(0o755)).unwrap();
+        assert!(matches!(prepare_spool(&dir), Err(CoreError::OutOfScope(_))));
+        std::fs::remove_dir_all(dir.parent().unwrap()).ok();
     }
 
     #[test]

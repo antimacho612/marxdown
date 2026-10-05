@@ -1,5 +1,6 @@
 // `tests/release.test.ts` から型付きで読むための宣言。実装は `release-lib.mjs`。
 
+export function isPrerelease(version: string): boolean;
 export function finalizeChangelog(text: string, version: string, date: string): string;
 export function sectionBody(text: string, version: string): string | null;
 export function rewriteLinks(text: string): string;
@@ -18,5 +19,6 @@ export function buildManifest(input: {
   pub_date: string;
   platforms: Record<string, { signature: string; url: string }>;
 };
+export function latestVersion(text: string): string | null;
 export function previousVersion(text: string, version: string): string | null;
 export function buildReleaseNotes(input: { version: string; body: string; previous: string | null }): string;

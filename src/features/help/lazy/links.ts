@@ -24,13 +24,14 @@ export function bugReportUrl(info: AppInfo | null): string {
   if (info) {
     params.set('version', info.version);
     params.set('os', info.os);
-    // WebView2 の版を書く欄は無い。表示の不具合では原因の切り分けに要るため、自由記述の欄に入れておく。
-    if (info.webview !== null) params.set('extra', `WebView2: ${info.webview}`);
+    // WebView の版を書く欄は無い。
+    // 表示の不具合では原因の切り分けに要るため、自由記述の欄に入れておく。
+    if (info.webview !== null) params.set('extra', `WebView: ${info.webview}`);
   }
   return `${REPOSITORY_URL}/issues/new?${params.toString()}`;
 }
 
 /** 「情報をコピー」で書き出す文字列。不具合の報告にそのまま貼れる形にする。 */
 export function describeInfo(info: AppInfo, unknown: string): string {
-  return [`Marxdown: ${info.version}`, `OS: ${info.os}`, `WebView2: ${info.webview ?? unknown}`].join('\n');
+  return [`Marxdown: ${info.version}`, `OS: ${info.os}`, `WebView: ${info.webview ?? unknown}`].join('\n');
 }

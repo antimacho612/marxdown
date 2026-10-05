@@ -74,13 +74,32 @@ function dispatch(event: KeyboardEvent): void {
 }
 
 /**
+ * OS ごとのキーの判定と表記（ADR-0028 §3.3）。
+ *
+ * macOS の差分（`Cmd` を主修飾子にする・`Option` を含むキーを `code` で判定する・表記を `⌘` にする）は OS 別のチャンク（`platform-ui/macos.ts`）が登録する。
+ * 登録が無ければ Windows と Linux の規則で判定する。
+ */
+export interface KeyProfile {
+  combo(event: KeyboardEvent): string;
+  split(shortcut: string): string[];
+}
+
+let profile: KeyProfile | undefined;
+
+/** OS 別のチャンクが起動時に 1 回だけ呼ぶ。 */
+export function setKeyProfile(next: KeyProfile): void {
+  profile = next;
+}
+
+/**
  * イベントを `Ctrl+Shift+P` 形式に変換する。
  *
- * `metaKey` を Ctrl と同一視しているのは、Windows を第一優先としたまま macOS でも動作させるためである。
- * macOS 固有の割り当ては macOS ビルド（F-OS-07）で扱う。
+ * `metaKey` も Ctrl と同一視する。
+ * macOS では OS 別のチャンクが `Cmd` だけを Ctrl とする判定に差し替える（`setKeyProfile`）。
  * ウィジェット内のキー（ファイルツリーの `F2` など / `features/workspace/lazy/tree-keys.ts`）も同じ表記で判定する。
  */
 export function comboOf(event: KeyboardEvent): string {
+  if (profile) return profile.combo(event);
   const key = canonicalKey(event.key);
   const parts: string[] = [];
   if (event.ctrlKey || event.metaKey) parts.push('Ctrl');
@@ -104,7 +123,7 @@ function canonicalCombo(combo: string): string {
  * - 英字 1 文字は大文字に揃える（Shift の有無で `p` / `P` が変わるため）
  * - テンキーと Shift 経由の `+` は `=` に統一する（`Ctrl+=` の実体は拡大操作）
  */
-function canonicalKey(key: string): string {
+export function canonicalKey(key: string): string {
   if (key === '+') return '=';
   if (key.length === 1) return key.toUpperCase();
   return key;
@@ -121,5 +140,5 @@ export function resetShortcuts(): void {
  * メニューとコマンドパレットで表示を揃えるため、両方がここを通る（`+` の実キーは `=` に正規化済みなので安全に分割できる）。
  */
 export function splitShortcutKeys(shortcut: string): string[] {
-  return shortcut.split('+');
+  return profile ? profile.split(shortcut) : shortcut.split('+');
 }

@@ -23,13 +23,10 @@
   "bundle": {
     "active": true,
     "publisher": "antimacho612",
-    "targets": ["nsis"],
     "icon": ["icons/32x32.png", "icons/128x128.png", "icons/128x128@2x.png", "icons/icon.icns", "icons/icon.ico"],
     "copyright": "© 2026 antimacho612",
     "license": "MIT",
     "resources": {
-      "windows/bin/marxdown.cmd": "bin/marxdown.cmd",
-      "windows/bin/marxdown": "bin/marxdown",
       "../LICENSE": "LICENSE.txt",
       "../THIRD_PARTY_NOTICES.txt": "THIRD_PARTY_NOTICES.txt"
     },
@@ -40,26 +37,12 @@
         "description": "Markdown ドキュメント",
         "role": "Editor"
       }
-    ],
-    "windows": {
-      "webviewInstallMode": {
-        "type": "downloadBootstrapper",
-        "silent": true
-      },
-      "nsis": {
-        "installMode": "currentUser",
-        "languages": ["English", "Japanese"],
-        "installerHooks": "windows/installer-hooks.nsh"
-      }
-    }
+    ]
   },
   "plugins": {
     "updater": {
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEM5NzI1Q0RDMEM3NTIzNjYKUldSbUkzVU0zRnh5eVl2OUlaTFdUWnQrd08wSHZ2a1N6Zy80MHF2Wm4vL2tSdG1seUNnQW5EZVgK",
-      "endpoints": ["https://github.com/antimacho612/marxdown/releases/latest/download/latest.json"],
-      "windows": {
-        "installMode": "passive"
-      }
+      "endpoints": ["https://github.com/antimacho612/marxdown/releases/latest/download/latest.json"]
     }
   }
 }

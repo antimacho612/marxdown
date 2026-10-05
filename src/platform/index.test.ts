@@ -40,6 +40,7 @@ describe('getPlatform', () => {
       'pickSavePath',
       'exportHtml',
       'exportPdf',
+      'printDialog',
       'inlineImage',
       'setDirty',
       'confirmDiscard',

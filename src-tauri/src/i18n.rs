@@ -52,7 +52,13 @@ pub fn os_is_japanese() -> bool {
 }
 
 /// OS の表示言語が日本語か。
-#[cfg(not(windows))]
+#[cfg(target_os = "macos")]
+pub fn os_is_japanese() -> bool {
+    crate::macos::prefers_japanese()
+}
+
+/// OS の表示言語が日本語か。
+#[cfg(all(unix, not(target_os = "macos")))]
 pub fn os_is_japanese() -> bool {
     ["LC_ALL", "LC_MESSAGES", "LANG"]
         .iter()
@@ -81,6 +87,23 @@ pub struct Text {
     pub tray_open: &'static str,
     pub tray_quit: &'static str,
     pub tray_recent: &'static str,
+    /// macOS のアプリのメニュー（`macos.rs`）。
+    /// 項目の名前は macOS の標準の訳語に合わせる。
+    pub menu_quit: &'static str,
+    pub menu_hide: &'static str,
+    pub menu_hide_others: &'static str,
+    pub menu_show_all: &'static str,
+    pub menu_edit: &'static str,
+    pub menu_undo: &'static str,
+    pub menu_redo: &'static str,
+    pub menu_cut: &'static str,
+    pub menu_copy: &'static str,
+    pub menu_paste: &'static str,
+    pub menu_select_all: &'static str,
+    pub menu_window: &'static str,
+    pub menu_minimize: &'static str,
+    pub menu_zoom: &'static str,
+    pub menu_fullscreen: &'static str,
     /// ファイル選択ダイアログの絞り込み。
     pub all_files: &'static str,
     /// `themes/README.css` の雛形。全体を 1 つのコメントにする（`themes.rs`）。
@@ -100,16 +123,31 @@ const JA: Text = Text {
     save: "保存する",
     discard: "保存しない",
     cancel: "キャンセル",
-    tray_intro: "ウィンドウを閉じても、Marxdown はタスクトレイで動作し続けます。次に開くときにすぐ表示されます。\n\n\
-                 この動作は、設定の「閉じるときにタスクトレイに格納する」で変更できます。",
-    tray_intro_stash: "タスクトレイに格納",
+    tray_intro: TRAY_INTRO_JA,
+    tray_intro_stash: TRAY_INTRO_STASH_JA,
     tray_intro_quit: "終了",
     tray_open: "Marxdown を開く",
     tray_quit: "終了",
     tray_recent: "最近開いたファイル",
+    menu_quit: "Marxdown を終了",
+    menu_hide: "Marxdown を隠す",
+    menu_hide_others: "ほかを隠す",
+    menu_show_all: "すべてを表示",
+    menu_edit: "編集",
+    menu_undo: "取り消す",
+    menu_redo: "やり直す",
+    menu_cut: "カット",
+    menu_copy: "コピー",
+    menu_paste: "ペースト",
+    menu_select_all: "すべてを選択",
+    menu_window: "ウインドウ",
+    menu_minimize: "しまう",
+    menu_zoom: "拡大／縮小",
+    menu_fullscreen: "フルスクリーンにする",
     all_files: "すべてのファイル",
     themes_template: THEMES_TEMPLATE_JA,
-    stdin_needs_pipe: "- を指定したときは、パイプで内容を渡してください（例: cat a.md | marxdown -）",
+    stdin_needs_pipe:
+        "- を指定したときは、パイプで内容を渡してください（例: cat a.md | marxdown -）",
     stdin_read_failed: "標準入力を読み込めませんでした",
     launch_failed: "Marxdown を起動できませんでした",
     help: crate::cli::HELP_JA,
@@ -131,6 +169,21 @@ const EN: Text = Text {
     tray_open: "Open Marxdown",
     tray_quit: "Quit",
     tray_recent: "Recent Files",
+    menu_quit: "Quit Marxdown",
+    menu_hide: "Hide Marxdown",
+    menu_hide_others: "Hide Others",
+    menu_show_all: "Show All",
+    menu_edit: "Edit",
+    menu_undo: "Undo",
+    menu_redo: "Redo",
+    menu_cut: "Cut",
+    menu_copy: "Copy",
+    menu_paste: "Paste",
+    menu_select_all: "Select All",
+    menu_window: "Window",
+    menu_minimize: "Minimize",
+    menu_zoom: "Zoom",
+    menu_fullscreen: "Enter Full Screen",
     all_files: "All Files",
     themes_template: THEMES_TEMPLATE_EN,
     stdin_needs_pipe: "when using -, pipe the content in (e.g. cat a.md | marxdown -)",
@@ -138,6 +191,19 @@ const EN: Text = Text {
     launch_failed: "could not start Marxdown",
     help: crate::cli::HELP_EN,
 };
+
+/// 初めて `✕` を押したときの説明（日本語）。
+/// Linux ではトレイを「システムトレイ」と呼ぶ（M10 §4.13）。
+#[cfg(not(all(unix, not(target_os = "macos"))))]
+const TRAY_INTRO_JA: &str = "ウィンドウを閉じても、Marxdown はタスクトレイで動作し続けます。次に開くときにすぐ表示されます。\n\n\
+                             この動作は、設定の「閉じるときにタスクトレイに格納する」で変更できます。";
+#[cfg(all(unix, not(target_os = "macos")))]
+const TRAY_INTRO_JA: &str = "ウィンドウを閉じても、Marxdown はシステムトレイで動作し続けます。次に開くときにすぐ表示されます。\n\n\
+                             この動作は、設定の「閉じるときにタスクトレイに格納する」で変更できます。";
+#[cfg(not(all(unix, not(target_os = "macos"))))]
+const TRAY_INTRO_STASH_JA: &str = "タスクトレイに格納";
+#[cfg(all(unix, not(target_os = "macos")))]
+const TRAY_INTRO_STASH_JA: &str = "システムトレイに格納";
 
 const THEMES_TEMPLATE_JA: &str = "/*
  * Marxdown の配色ファイル

@@ -90,8 +90,8 @@ jobs:
         working-directory: src-tauri
         run: cargo test
 
-  # macOS / Linux はビルドできる状態を保つだけで、配布はしない（F-OS-07 / N-CMP-04）。
-  # Windows 専用のコードが他のプラットフォームのビルドを壊していないかを、コンパイルとテストで確かめる。
+  # macOS / Linux のコンパイルとテスト（ADR-0028）。
+  # OS ごとの分岐（`cfg`）が他のプラットフォームのビルドを壊していないかを、毎回確かめる。
   rust-other-platforms:
     name: Rust Core (${{ matrix.os }})
     strategy:
@@ -124,3 +124,55 @@ jobs:
       - name: テスト
         working-directory: src-tauri
         run: cargo test
+
+  # 配布物を作れるか（M10 §4.11）。
+  # macOS のランナーは単価が高いため、手動実行と版上げの PR（`release/*`）のときだけ走らせる。
+  # 作るだけで、署名も公開もしない。
+  bundle:
+    name: 配布物 (${{ matrix.os }})
+    if: github.event_name == 'workflow_dispatch' || startsWith(github.head_ref, 'release/')
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            bundles: dmg
+          - os: ubuntu-22.04
+            bundles: deb,appimage
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: 依存ライブラリ (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev libxdo-dev libssl-dev patchelf
+
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: ビルド
+        env:
+          APPIMAGE_EXTRACT_AND_RUN: 1
+        run: pnpm tauri build --bundles ${{ matrix.bundles }}
+
+      - uses: actions/upload-artifact@v5
+        with:
+          name: bundle-${{ matrix.os }}
+          path: |
+            src-tauri/target/release/bundle/dmg/*.dmg
+            src-tauri/target/release/bundle/deb/*.deb
+            src-tauri/target/release/bundle/appimage/*.AppImage
+          if-no-files-found: error

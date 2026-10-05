@@ -231,6 +231,21 @@ export default defineConfig(({ mode }) => ({
            * `main` と共有しているモジュール（`open.ts` / `zoom.ts` など）まで menu チャンク側へ移動し、`main` がそれを静的 import する形になって、遅延どころか起動時に読み込まれるチャンクになる。
            * 名前を固定しているのは size-limit から名指しするため。
            */
+          /*
+           * OS 別の差分（ADR-0028 §3.3）。
+           * 起動時にその OS の 1 枚だけを読む。
+           *
+           * size-limit から OS ごとに名指しできるよう、名前を固定する。
+           */
+          const platformUi = /[\\/]src[\\/]platform-ui[\\/](macos|linux)\.ts$/.exec(chunk.facadeModuleId ?? '');
+          if (platformUi) return `assets/platform-${platformUi[1]}-[hash].js`;
+          // 2 つの OS が共有する部分。
+          // 入口を持たないため、名前を付けないと `shared-*`（critical path）として数えられる。
+          const platformModules = chunk.moduleIds ?? [];
+          const isPlatformShared =
+            platformModules.length > 0 && platformModules.every((id) => /[\\/]src[\\/]platform-ui[\\/]/.test(id));
+          if (isPlatformShared) return 'assets/platform-shared-[hash].js';
+
           const isMenu = /[\\/]src[\\/]features[\\/]menu[\\/]/.test(chunk.facadeModuleId ?? '');
           if (isMenu) return 'assets/menu-[hash].js';
 

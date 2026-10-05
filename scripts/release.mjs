@@ -21,6 +21,8 @@ import {
   buildManifest,
   buildReleaseNotes,
   finalizeChangelog,
+  isPrerelease,
+  latestVersion,
   previousVersion,
   sectionBody,
   SEMVER,
@@ -57,7 +59,10 @@ function requireVersion(version) {
 function bump(version) {
   requireVersion(version);
 
-  writeFileSync(PATHS.changelog, finalizeChangelog(read(PATHS.changelog), version, today()));
+  // pre-release では Unreleased を確定させない（`isPrerelease`）。
+  if (!isPrerelease(version)) {
+    writeFileSync(PATHS.changelog, finalizeChangelog(read(PATHS.changelog), version, today()));
+  }
   writeFileSync(PATHS.packageJson, setPackageJsonVersion(read(PATHS.packageJson), version));
   writeFileSync(PATHS.cargoToml, setCargoTomlVersion(read(PATHS.cargoToml), version));
   writeFileSync(PATHS.cargoLock, setCargoLockVersion(read(PATHS.cargoLock), version));
@@ -89,7 +94,8 @@ function check(tag) {
   // 公開鍵が空のまま配ると、その版の updater はどの署名も検証できず、以後の更新を受け取れなくなる。
   if (!conf.plugins?.updater?.pubkey) errors.push('tauri.conf.json の plugins.updater.pubkey が空である');
 
-  if (!sectionBody(read(PATHS.changelog), version)) errors.push(`CHANGELOG.md に ${version} の節が無いか、空である`);
+  const section = isPrerelease(version) ? 'Unreleased' : version;
+  if (!sectionBody(read(PATHS.changelog), section)) errors.push(`CHANGELOG.md に ${section} の節が無いか、空である`);
 
   if (errors.length > 0) {
     console.error(`タグ ${tag} と一致しない:\n${errors.map((e) => `  - ${e}`).join('\n')}`);
@@ -101,9 +107,12 @@ function check(tag) {
 
 function notes(version) {
   const changelog = read(PATHS.changelog);
-  const body = sectionBody(changelog, requireVersion(version));
-  if (!body) throw new Error(`CHANGELOG.md に ${version} の節が無い。`);
-  process.stdout.write(buildReleaseNotes({ version, body, previous: previousVersion(changelog, version) }));
+  const prerelease = isPrerelease(requireVersion(version));
+  const section = prerelease ? 'Unreleased' : version;
+  const body = sectionBody(changelog, section);
+  if (!body) throw new Error(`CHANGELOG.md に ${section} の節が無い。`);
+  const previous = prerelease ? latestVersion(changelog) : previousVersion(changelog, version);
+  process.stdout.write(buildReleaseNotes({ version, body, previous }));
 }
 
 function manifest(version, bundleDir, out) {
@@ -117,7 +126,7 @@ function manifest(version, bundleDir, out) {
   // 署名の無い latest.json を公開すると、利用者の updater が検証に失敗し続ける。
   const signature = read(join(bundleDir, `${fileName}.sig`)).trim();
 
-  const notesText = sectionBody(read(PATHS.changelog), version) ?? '';
+  const notesText = sectionBody(read(PATHS.changelog), isPrerelease(version) ? 'Unreleased' : version) ?? '';
   const data = buildManifest({ version, notes: notesText, signature, fileName, pubDate: new Date().toISOString() });
   writeFileSync(out, `${JSON.stringify(data, null, 2)}\n`);
   console.log(`${out} を書き出した（${fileName}）。`);

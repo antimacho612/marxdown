@@ -1,6 +1,6 @@
 [package]
 name = "marxdown"
-version = "0.3.0"
+version = "0.4.0-beta.1"
 description = "Markdown を見る・書くなら、これ。"
 authors = ["antimacho612"]
 license = "MIT"
@@ -33,10 +33,35 @@ serde_json = "1"
 # イベント駆動であり、アイドル時のポーリングを増やさないことが採用の前提。
 notify = "8"
 notify-debouncer-full = "0.7"
+
 # 自動更新（F-OS-06 / ADR-0024）。`dialog` と同じく Rust 側だけに入れ、JS の `@tauri-apps/plugin-updater` は入れない。
-# TLS は OS のもの（Windows では SChannel）を使う。rustls より配布物が小さく、社内のプロキシが差し込むルート証明書も OS の証明書ストアから信頼される。
-# `zip` を外しているのは、配布している NSIS の updater 成果物が展開を要しないためである。macOS / Linux を配布するときは戻す（OQ-45）。
+# TLS は OS のもの（Windows は SChannel、macOS は Secure Transport）を使う。rustls より配布物が小さく、社内のプロキシが差し込むルート証明書も OS の証明書ストアから信頼される。
+# `zip` は要らない。NSIS の成果物は展開せず、macOS の `.app.tar.gz` は `zip` に関係なく展開される（M10 §4.10）。
+[target.'cfg(not(all(unix, not(target_os = "macos"))))'.dependencies]
 tauri-plugin-updater = { version = "2", default-features = false, features = ["native-tls", "system-proxy"] }
+
+# Linux の `native-tls` は OpenSSL を動的に読み、配布先の `libssl` の版に依存する。Linux だけ rustls にする（M10 §4.10）。
+[target.'cfg(all(unix, not(target_os = "macos")))'.dependencies]
+tauri-plugin-updater = { version = "2", default-features = false, features = ["rustls-tls", "system-proxy"] }
+# タスクトレイを出せる環境かの判定（`tray.rs` / ADR-0028 §3.4）。single-instance プラグインと同じ版である。
+zbus = "5"
+# PDF の書き出し（`export.rs` / F-VIEW-18）。Tauri と同じ版である。
+gtk = "0.18"
+webkit2gtk = "2.0"
+
+# 自分自身を端末から切り離す `setsid`（`detach.rs`）と、macOS の拡張属性の引き継ぎ（`document/atomic.rs`）。
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"
+
+# ゴミ箱（F-NAV-11 / ADR-0020 §3.3）。Windows は `SHFileOperationW` を直接呼ぶ。
+[target.'cfg(not(windows))'.dependencies]
+trash = "5.2"
+
+# Finder からの起動・Dock・アプリのメニュー・表示言語・OS の版（`macos.rs`）。tao と同じ版である。
+[target.'cfg(target_os = "macos")'.dependencies]
+objc2 = "0.6"
+objc2-foundation = "0.3"
+objc2-app-kit = "0.3"
 
 # 単一インスタンス化と argv 転送（ADR-0004 / F-OPEN-05）
 [target.'cfg(any(target_os = "windows", target_os = "macos", all(unix, not(target_os = "macos"))))'.dependencies]

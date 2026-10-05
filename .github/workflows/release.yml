@@ -3,6 +3,9 @@ name: Release
 # `v*` のタグから配布物を作り、下書きの Release に載せる。
 # 公開は人が行う。
 # updater は `releases/latest` を見ており、下書きのあいだは利用者に届かない。
+#
+# macOS / Linux はプレビューの間、pre-release（版に `-` を含むタグ）にだけ載せる（ADR-0028 §3.8）。
+# 安定版のタグでは Windows だけを作り、`latest.json` にも Windows の分しか載らない。
 
 on:
   push:
@@ -16,9 +19,11 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  release:
-    name: Windows
-    runs-on: windows-latest
+  check:
+    name: 版の確認
+    runs-on: ubuntu-latest
+    outputs:
+      prerelease: ${{ steps.kind.outputs.prerelease }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -26,8 +31,31 @@ jobs:
 
       # タグは main のコミットにだけ打つ。develop で確かめてから main へ取り込む運用のため。
       - name: タグが main にあるか
-        shell: bash
         run: git merge-base --is-ancestor "$GITHUB_SHA" origin/main
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+
+      # タグと package.json / Cargo.toml / Cargo.lock / CHANGELOG / 公開鍵のずれは、ビルドする前に止める。
+      - name: 版の番号
+        run: node scripts/release.mjs check "$GITHUB_REF_NAME"
+
+      - name: pre-release か
+        id: kind
+        run: |
+          if [[ "$GITHUB_REF_NAME" == *-* ]]; then
+            echo "prerelease=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "prerelease=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  windows:
+    name: Windows
+    needs: check
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
 
       - uses: pnpm/action-setup@v6
       - uses: actions/setup-node@v7
@@ -42,11 +70,6 @@ jobs:
           workspaces: src-tauri
 
       - run: pnpm install --frozen-lockfile
-
-      # タグと package.json / Cargo.toml / Cargo.lock / CHANGELOG / 公開鍵のずれは、ビルドする前に止める。
-      - name: 版の番号
-        shell: bash
-        run: node scripts/release.mjs check "$GITHUB_REF_NAME"
 
       - name: テスト
         run: pnpm exec vitest run
@@ -67,23 +90,145 @@ jobs:
       - name: バンドル予算
         run: pnpm exec size-limit
 
-      - name: Release の下書き
+      - name: latest.json
         shell: bash
-        env:
-          GH_TOKEN: ${{ github.token }}
         run: |
           version="${GITHUB_REF_NAME#v}"
           bundle=src-tauri/target/release/bundle/nsis
           node scripts/release.mjs manifest "$version" "$bundle" latest.json
+          mkdir -p out
+          cp "$bundle/Marxdown_${version}_x64-setup.exe" "$bundle/Marxdown_${version}_x64-setup.exe.sig" latest.json out/
+
+      - uses: actions/upload-artifact@v5
+        with:
+          name: windows
+          path: out/*
+          if-no-files-found: error
+
+  # macOS はプレビューの間、updater を使わない（M10 §4.10 の案 1）。
+  # 署名鍵を渡さず、updater の成果物も作らない。
+  macos:
+    name: macOS (${{ matrix.arch }})
+    needs: check
+    if: needs.check.outputs.prerelease == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: aarch64-apple-darwin
+            arch: aarch64
+          - target: x86_64-apple-darwin
+            arch: x64
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+          key: ${{ matrix.target }}
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: ビルド
+        run: pnpm tauri build --target ${{ matrix.target }} --bundles dmg
+
+      - uses: actions/upload-artifact@v5
+        with:
+          name: macos-${{ matrix.arch }}
+          path: src-tauri/target/${{ matrix.target }}/release/bundle/dmg/*.dmg
+          if-no-files-found: error
+
+  # 古い glibc の環境でも AppImage が動くよう、配布する中で最も古い LTS で作る（M10 §4.11）。
+  linux:
+    name: Linux
+    needs: check
+    if: needs.check.outputs.prerelease == 'true'
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v7
+
+      # Tauri が Linux で要求するシステムライブラリ（WebKitGTK、トレイ、ダイアログ）。
+      # CONTRIBUTING の一覧と揃える。
+      - name: 依存ライブラリ
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev libxdo-dev libssl-dev patchelf
+
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - run: pnpm install --frozen-lockfile
+
+      # linuxdeploy は AppImage であり、ランナーに FUSE が無くても展開して動かす。
+      - name: ビルド
+        env:
+          APPIMAGE_EXTRACT_AND_RUN: 1
+        run: pnpm tauri build --bundles deb,appimage
+
+      - uses: actions/upload-artifact@v5
+        with:
+          name: linux
+          path: |
+            src-tauri/target/release/bundle/deb/*.deb
+            src-tauri/target/release/bundle/appimage/*.AppImage
+          if-no-files-found: error
+
+  release:
+    name: Release の下書き
+    needs: [check, windows, macos, linux]
+    # pre-release でないタグでは macOS / Linux のジョブが飛ばされる。
+    # 飛ばされたことは失敗ではない。
+    if: >-
+      always() &&
+      needs.windows.result == 'success' &&
+      contains(fromJSON('["success", "skipped"]'), needs.macos.result) &&
+      contains(fromJSON('["success", "skipped"]'), needs.linux.result)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+
+      - uses: actions/download-artifact@v5
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: Release の下書き
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PRERELEASE: ${{ needs.check.outputs.prerelease }}
+        run: |
+          version="${GITHUB_REF_NAME#v}"
           node scripts/release.mjs notes "$version" > notes.md
 
           prerelease=()
-          if [[ "$version" == *-* ]]; then prerelease=(--prerelease); fi
+          if [[ "$PRERELEASE" == "true" ]]; then prerelease=(--prerelease); fi
 
           gh release create "$GITHUB_REF_NAME" \
             --draft "${prerelease[@]}" \
             --title "Marxdown v$version" \
             --notes-file notes.md \
-            "$bundle/Marxdown_${version}_x64-setup.exe" \
-            "$bundle/Marxdown_${version}_x64-setup.exe.sig" \
-            latest.json
+            artifacts/*

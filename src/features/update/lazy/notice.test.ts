@@ -56,6 +56,26 @@ describe('手動の確認', () => {
   });
 });
 
+describe('プレビューの OS（ADR-0028 §3.8）', () => {
+  it('確認せず、Releases の一覧へ誘導する', async () => {
+    const bootstrap = original.getBootstrap();
+    const checkUpdate = vi.fn(() => Promise.resolve(INFO));
+    const openExternal = vi.fn(() => Promise.resolve());
+    usePlatform({
+      getBootstrap: () => (bootstrap ? { ...bootstrap, platform: 'macos' } : null),
+      checkUpdate,
+      openExternal,
+    });
+
+    await checkForUpdates();
+
+    expect(checkUpdate).not.toHaveBeenCalled();
+    expect(documentStore.notice?.message).toBe(tUpdate.manual);
+    documentStore.notice?.actions?.[0]?.run();
+    expect(openExternal).toHaveBeenCalledWith('https://github.com/antimacho612/marxdown/releases');
+  });
+});
+
 describe('適用', () => {
   async function pressInstall(refusal: () => Promise<InstallRefusal>): Promise<void> {
     const installUpdate = vi.fn(refusal);

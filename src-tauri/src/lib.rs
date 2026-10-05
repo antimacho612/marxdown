@@ -15,6 +15,7 @@ mod bootstrap;
 pub mod cli;
 pub mod close;
 pub mod commands;
+mod detach;
 pub mod dir;
 mod document;
 /// タブのドラッグ中にカーソルへ追従する表示。Windows 以外では空になる（ファイル冒頭の `#![cfg(windows)]`）。
@@ -24,6 +25,8 @@ mod export;
 pub mod fsops;
 pub mod glob;
 pub mod i18n;
+#[cfg(target_os = "macos")]
+mod macos;
 pub mod marp_themes;
 pub mod path_env;
 pub mod scope;
@@ -285,6 +288,12 @@ pub fn run() {
         let argv: Vec<String> = std::env::args().skip(1).collect();
         std::process::exit(stdin::run(&argv));
     }
+    // CLI から起動したときにシェルをつかまない（`detach.rs` / M10 §4.3）。
+    // Windows ではシムがこの役を担う。
+    #[cfg(unix)]
+    if detach::should_detach(&args) {
+        std::process::exit(detach::run());
+    }
 
     // `--gc-probe`: メモリ計測で強制 GC を使うための経路。
     // 閉じた文書のメモリが解放されるかを確かめるには強制 GC の後で測る必要があるが、既定の WebView2 に `gc()` は無い。
@@ -329,6 +338,12 @@ pub fn run() {
 
     // ログイン時の自動起動（ADR-0022）。トレイに格納できない設定では、見えないプロセスが残るだけになる。
     if args.background && !settings_data.values.window_close_to_tray {
+        return;
+    }
+    // トレイを出せない Linux も同じである（ADR-0028 §3.4）。
+    // 登録した後に環境が変わったときだけここへ来る。
+    #[cfg(all(unix, not(target_os = "macos")))]
+    if args.background && !tray::detect() {
         return;
     }
 
@@ -385,21 +400,6 @@ pub fn run() {
             themes: themes_dir,
         },
     );
-
-    // 標準入力は、未保存のタブをサテライトへ移すときと同じ受け渡し箱で渡す（ADR-0016 §3.4）。
-    // パスを持たない文書は `read_document` で読み直せないため、本文ごと預ける必要がある。
-    if let Some(file) = stdin_file {
-        match stdin::take(&file) {
-            Ok(transfer) => payload.transfer = Some(state.stash_transfer(transfer)),
-            Err(e) => {
-                payload.document_error = Some(bootstrap::BootstrapError {
-                    path: "-".to_owned(),
-                    kind: e.kind().to_string(),
-                    message: e.to_string(),
-                });
-            }
-        }
-    }
 
     let mut builder = tauri::Builder::default();
 
@@ -459,6 +459,15 @@ pub fn run() {
                 }
             }
         }));
+    }
+
+    // アプリのメニュー（M10 §4.4 / §4.6）。
+    // Tauri の既定のメニューは `Cmd+W` と終了の確認を奪う（`macos.rs`）。
+    #[cfg(target_os = "macos")]
+    {
+        builder = builder
+            .menu(macos::menu)
+            .on_menu_event(macos::on_menu_event);
     }
 
     builder
@@ -533,6 +542,7 @@ pub fn run() {
             commands::open_bundled_file,
             export::export_html,
             export::export_pdf,
+            export::print_dialog,
             export::inline_image,
         ])
         .setup(move |app| {
@@ -540,6 +550,40 @@ pub fn run() {
             // T2→T3 が伸びたときに、WebView2 と自分たちが追加した処理のどちらが原因かを切り分けられるようにする。
             let state = app.state::<state::AppState>();
             state.trace.mark("T2b", None);
+
+            // 標準入力は、未保存のタブをサテライトへ移すときと同じ受け渡し箱で渡す（ADR-0016 §3.4）。
+            // パスを持たない文書は `read_document` で読み直せないため、本文ごと預ける必要がある。
+            //
+            // `setup` で読むのは、ここへ来るのが単一インスタンスの 1 つ目だけだからである。
+            // 2 つ目は argv を転送してプラグインの初期化の中で終わる（`tauri_plugin_single_instance`）。
+            // それより前に読むと 2 つ目が一時ファイルを消してしまい、転送先が読めない。
+            if let Some(file) = stdin_file {
+                match stdin::take(&file) {
+                    Ok(transfer) => payload.transfer = Some(state.stash_transfer(transfer)),
+                    Err(e) => {
+                        payload.document_error = Some(bootstrap::BootstrapError {
+                            path: "-".to_owned(),
+                            kind: e.kind().to_string(),
+                            message: e.to_string(),
+                        });
+                    }
+                }
+            }
+
+            // Finder から起動したときのファイルは、argv ではなく `RunEvent::Opened` で、この `setup` より前に届く（`macos.rs`）。
+            // 引数で開いたときと同じ起動にする。
+            // 前回のタブは復元しない。
+            #[cfg(target_os = "macos")]
+            let payload = {
+                let opened = state.take_launch_opens();
+                if opened.is_empty() {
+                    payload
+                } else {
+                    launch_payload(&state, opened)
+                }
+            };
+            #[cfg(target_os = "macos")]
+            macos::guard_termination(app.handle());
 
             // bootstrap で開いた初期ドキュメントは IPC（read_document）を経由しないため、ここで改めて Tauri 本体の asset プロトコルスコープに登録しないと最初に開いたファイルの相対パス画像が 403 になる。
             for root in state.asset_roots() {
@@ -657,6 +701,49 @@ pub fn run() {
                 }
             }
         })
-        .run(context)
-        .expect("error while running tauri application");
+        .build(context)
+        .expect("error while building tauri application")
+        .run(|_app, _event| {
+            #[cfg(target_os = "macos")]
+            match _event {
+                tauri::RunEvent::Opened { urls } => macos::on_opened(_app, urls),
+                tauri::RunEvent::Reopen {
+                    has_visible_windows,
+                    ..
+                } => macos::on_reopen(_app, has_visible_windows),
+                _ => {}
+            }
+        });
+}
+
+/// Finder から開かれたファイルで、起動時の初期ペイロードを作り直す（macOS）。
+///
+/// 作り直すのは主ウィンドウを作る前だけで、読み込むのは引数で開いたときと同じ 1 枚である。
+/// 開いたファイルの親ディレクトリは、アセットの許可スコープにも入れる（`open_satellite` と同じ）。
+#[cfg(target_os = "macos")]
+fn launch_payload(state: &state::AppState, paths: Vec<String>) -> bootstrap::Bootstrap {
+    let args = cli::CliArgs {
+        paths: paths.iter().map(std::path::PathBuf::from).collect(),
+        ..state.args.clone()
+    };
+    let store = state.store_snapshot();
+    let settings = state.settings_snapshot();
+    let preview_theme = themes::find(state.themes_dir(), &settings.values.preview_theme);
+    let payload = bootstrap::build(&args, &state.trace, &store, &settings, preview_theme);
+
+    let roots = payload
+        .document
+        .as_ref()
+        .and_then(|d| Path::new(&d.meta.path).parent().map(Path::to_path_buf))
+        .into_iter()
+        .chain(
+            payload
+                .workspace_root
+                .as_ref()
+                .map(std::path::PathBuf::from),
+        );
+    for root in roots {
+        state.allow_asset_root(root);
+    }
+    payload
 }

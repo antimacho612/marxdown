@@ -1,0 +1,24 @@
+/*
+ * macOS の差分（M10 §4.5 / §4.13）。
+ *
+ * タイトルバーは透明で、OS の信号機ボタンがタブの行の左に重なる（`src-tauri/src/window.rs`）。
+ * その分の余白を取り、`─ □ ✕` は描かない。
+ * 詳細度は Svelte のスコープ付きの規則（`.mx-titlebar.svelte-*`）より高くしてある。
+ */
+html .mx-titlebar {
+  padding-inline-start: 78px;
+}
+
+html .mx-titlebar .mx-caption {
+  display: none;
+}
+
+/*
+ * 既定のフォント。
+ * コードのスタックが `monospace` まで落ちると Courier になるため、SF Mono と Menlo を先に置く。
+ */
+:root {
+  --mx-font-ui: system-ui, -apple-system, 'Hiragino Sans', sans-serif;
+  --mx-font-content-stack: system-ui, -apple-system, 'Hiragino Sans', sans-serif;
+  --mx-font-code-stack: 'SF Mono', Menlo, 'Hiragino Sans', monospace;
+}

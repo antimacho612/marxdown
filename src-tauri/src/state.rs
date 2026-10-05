@@ -5,7 +5,7 @@
 
 use std::collections::HashMap;
 use std::path::PathBuf;
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::Mutex;
 use std::time::Instant;
 
@@ -101,6 +101,23 @@ pub struct AppState {
     /// 外部からのドロップをファイルツリーへ取り込むとき、コピー元はこの中にあるものに限る。
     /// フロントが渡すパスを信用すると、許可範囲の外のファイルを配下へ複製して読めるようになる。
     drops: Mutex<HashMap<String, Vec<PathBuf>>>,
+    /// `✕` でウィンドウを隠しても戻す手段があるか（ADR-0028 §3.4）。
+    ///
+    /// Windows はタスクトレイ、macOS は Dock が戻す手段になる。
+    /// Linux はトレイを出せる環境でだけ立てる（`tray::detect`）。
+    /// 判定が済むまでは立てない。
+    /// 戻す手段の無いまま隠すと、見えないプロセスが残る。
+    residency: AtomicBool,
+    /// 主ウィンドウが `ready` を送る前に届いた「開く」要求（macOS の `RunEvent::Opened`）。
+    ///
+    /// `ready` より前に送ったイベントは、フロントが購読する前に失われる。
+    /// `None` になった後（`ready` の後）は待たせずに転送する。
+    opened: Mutex<Option<Vec<String>>>,
+    /// 終了の確認ダイアログを出しているか。
+    ///
+    /// macOS では `Cmd+Q` がアプリのメニューとフロントの両方から届きうる。
+    /// 同じ確認を 2 枚重ねない。
+    asking_quit: AtomicBool,
 }
 
 impl AppState {
@@ -142,7 +159,69 @@ impl AppState {
             transfer: Mutex::new(None),
             transfer_counter: AtomicU64::new(1),
             drops: Mutex::new(HashMap::new()),
+            residency: AtomicBool::new(cfg!(any(windows, target_os = "macos"))),
+            opened: Mutex::new(Some(Vec::new())),
+            asking_quit: AtomicBool::new(false),
         }
+    }
+
+    /// `✕` でウィンドウを隠しても戻す手段があるかを記録する（Linux のトレイの判定）。
+    pub fn set_residency(&self, available: bool) {
+        self.residency.store(available, Ordering::SeqCst);
+    }
+
+    /// `✕` でウィンドウを隠しても戻す手段があるか。
+    pub fn has_residency(&self) -> bool {
+        self.residency.load(Ordering::SeqCst)
+    }
+
+    /// 外から届いた「開く」要求を、主ウィンドウの `ready` まで預ける。
+    ///
+    /// 既に `ready` の後なら預けずに `paths` をそのまま返す。
+    /// 呼び出し側がすぐに転送する。
+    pub fn defer_open(&self, paths: Vec<String>) -> Option<Vec<String>> {
+        let Ok(mut opened) = self.opened.lock() else {
+            return Some(paths);
+        };
+        match opened.as_mut() {
+            Some(queue) => {
+                queue.extend(paths);
+                None
+            }
+            None => Some(paths),
+        }
+    }
+
+    /// 主ウィンドウを作る前に届いた「開く」要求を引き取る。
+    ///
+    /// 引き取った分は起動時の引数と同じ扱いになり、`ready` での転送には残らない。
+    pub fn take_launch_opens(&self) -> Vec<String> {
+        self.opened
+            .lock()
+            .ok()
+            .and_then(|mut opened| opened.as_mut().map(std::mem::take))
+            .unwrap_or_default()
+    }
+
+    /// 主ウィンドウの `ready` で呼ぶ。
+    /// 預かっていた要求を返し、以後は預からない。
+    pub fn finish_deferred_opens(&self) -> Vec<String> {
+        self.opened
+            .lock()
+            .ok()
+            .and_then(|mut opened| opened.take())
+            .unwrap_or_default()
+    }
+
+    /// 終了の確認を始めてよいか。
+    /// 既に確認を出していれば `false` を返す。
+    pub fn begin_quit_prompt(&self) -> bool {
+        !self.asking_quit.swap(true, Ordering::SeqCst)
+    }
+
+    /// 終了の確認ダイアログが閉じた。
+    pub fn end_quit_prompt(&self) {
+        self.asking_quit.store(false, Ordering::SeqCst);
     }
 
     /// 移す本文を預かる。引き取りに使う ID を返す（F-OPEN-06 / ADR-0016 §3.4）。
@@ -260,11 +339,15 @@ impl AppState {
     ///
     /// ディスクを読み直さないのは、外部エディターでの編集をファイル監視が既に取り込んでいるためである。
     /// `✕` を押すたびにファイル I/O を行うのは、得られる結果に対してコストが高い。
+    ///
+    /// 戻す手段が無い環境（トレイを出せない Linux）では、設定にかかわらず `false` になる（ADR-0028 §3.4）。
     pub fn closes_to_tray(&self) -> bool {
-        self.settings
-            .lock()
-            .map(|s| s.values.window_close_to_tray)
-            .unwrap_or(true)
+        self.has_residency()
+            && self
+                .settings
+                .lock()
+                .map(|s| s.values.window_close_to_tray)
+                .unwrap_or(true)
     }
 
     /// 新しい版を自動で確認するか（設定 `update.autoCheck` / ADR-0024）。メモリ上の設定を見る。
@@ -564,6 +647,54 @@ mod tests {
                 ..ConfigPaths::default()
             },
         )
+    }
+
+    /// macOS の Finder から届いた「開く」要求の行き先（M10 §4.3）。
+    /// 主ウィンドウを作る前の分は起動時の引数になり、`ready` の前の分は `ready` で返し、その後は預からない。
+    #[test]
+    fn opens_are_deferred_until_ready_and_then_forwarded() {
+        let d = temp_dir("opened");
+        let state = state_with_settings(&d.join("settings.json"));
+
+        assert!(state.defer_open(vec!["a.md".into()]).is_none());
+        assert_eq!(state.take_launch_opens(), vec!["a.md".to_owned()]);
+
+        assert!(state.defer_open(vec!["b.md".into()]).is_none());
+        assert_eq!(state.finish_deferred_opens(), vec!["b.md".to_owned()]);
+
+        assert_eq!(
+            state.defer_open(vec!["c.md".into()]),
+            Some(vec!["c.md".to_owned()]),
+            "ready の後は預からずに返す"
+        );
+        assert!(state.finish_deferred_opens().is_empty());
+        std::fs::remove_dir_all(&d).ok();
+    }
+
+    /// `Cmd+Q` がアプリのメニューとフロントの両方から届いても、確認は 1 枚だけ出す。
+    #[test]
+    fn only_one_quit_prompt_is_shown_at_a_time() {
+        let d = temp_dir("quit-prompt");
+        let state = state_with_settings(&d.join("settings.json"));
+
+        assert!(state.begin_quit_prompt());
+        assert!(!state.begin_quit_prompt());
+        state.end_quit_prompt();
+        assert!(state.begin_quit_prompt());
+        std::fs::remove_dir_all(&d).ok();
+    }
+
+    /// 戻す手段が無い環境では、設定にかかわらず `✕` は終了の意味になる（ADR-0028 §3.4）。
+    #[test]
+    fn closing_to_tray_needs_a_way_back() {
+        let d = temp_dir("residency");
+        let state = state_with_settings(&d.join("settings.json"));
+
+        state.set_residency(true);
+        assert!(state.closes_to_tray(), "既定の設定は格納する");
+        state.set_residency(false);
+        assert!(!state.closes_to_tray());
+        std::fs::remove_dir_all(&d).ok();
     }
 
     /// ユーザーが直している最中に設定 UI がファイルの内容を丸ごと消さない。

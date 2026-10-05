@@ -1,0 +1,28 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "bundle": {
+    "targets": ["nsis"],
+    "resources": {
+      "windows/bin/marxdown.cmd": "bin/marxdown.cmd",
+      "windows/bin/marxdown": "bin/marxdown"
+    },
+    "windows": {
+      "webviewInstallMode": {
+        "type": "downloadBootstrapper",
+        "silent": true
+      },
+      "nsis": {
+        "installMode": "currentUser",
+        "languages": ["English", "Japanese"],
+        "installerHooks": "windows/installer-hooks.nsh"
+      }
+    }
+  },
+  "plugins": {
+    "updater": {
+      "windows": {
+        "installMode": "passive"
+      }
+    }
+  }
+}

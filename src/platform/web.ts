@@ -249,6 +249,7 @@ function initialBootstrap(): Bootstrap {
 
   return {
     version: 1,
+    platform: browserPlatform(params),
     role,
     transfer: null,
     document: empty
@@ -289,6 +290,21 @@ function initialBootstrap(): Bootstrap {
     // 後から適用する形にすると、dev:web でだけ既定の配色で 1 フレーム描かれる経路が再現しなくなる。
     previewTheme: previewThemeNow(state),
   };
+}
+
+/**
+ * dev:web の OS。
+ * `?platform=macos` で他の OS の見た目とキーを再現できる（M10 §4.14）。
+ *
+ * 指定が無ければブラウザが動いている OS に合わせる。
+ */
+function browserPlatform(params: URLSearchParams): Bootstrap['platform'] {
+  const requested = params.get('platform');
+  if (requested === 'windows' || requested === 'macos' || requested === 'linux') return requested;
+  const agent = navigator.userAgent;
+  if (agent.includes('Mac')) return 'macos';
+  if (agent.includes('Linux')) return 'linux';
+  return 'windows';
 }
 
 /**
@@ -646,9 +662,13 @@ export const webPlatform: Platform = {
     return name;
   },
 
-  /** ブラウザには PDF を直接書き出す手段が無い。呼び出し側が `window.print()` で代用する。 */
+  /** ブラウザには PDF を直接書き出す手段が無い。呼び出し側が `printDialog` で代用する。 */
   async exportPdf() {
     throw { kind: 'invalid-argument', message: 'dev:web では PDF を直接書き出せない' } satisfies CoreError;
+  },
+
+  async printDialog() {
+    globalThis.print();
   },
 
   /** dev:web の画像は元から data URI か外部の URL である。 */
@@ -810,7 +830,8 @@ export const webPlatform: Platform = {
   },
 
   async ready() {
-    // ブラウザにはウィンドウの表示制御が無い
+    // ブラウザにはウィンドウの表示制御も、OS から届く「開く」要求も無い
+    return [];
   },
 
   async reportTrace(marks) {

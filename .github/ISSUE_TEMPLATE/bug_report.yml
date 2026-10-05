@@ -36,8 +36,9 @@ body:
   - type: input
     id: os
     attributes:
-      label: Windows のバージョン
-      placeholder: Windows 11 24H2
+      label: OS のバージョン
+      description: Linux では、デスクトップ環境（GNOME / KDE など）と X11 / Wayland の別も書いてください。
+      placeholder: Windows 11 24H2 / macOS 15.1 / Ubuntu 24.04 (GNOME / Wayland)
     validations:
       required: true
   - type: textarea

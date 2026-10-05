@@ -20,12 +20,25 @@ export interface LazyMessages<T> {
   readonly load: () => Promise<void>;
 }
 
+let rewrite: ((messages: object) => void) | undefined;
+
+/**
+ * OS で変わる語（「エクスプローラーで表示」→ Finder など）の差し替えを登録する（ADR-0028 §3.3）。
+ *
+ * OS 別のチャンクが起動時に 1 回だけ呼び、読み込み済みの文言にもその場で適用する。
+ * 以後に読み込まれる遅延チャンクの文言には、読み込んだ時点で適用される。
+ */
+export function setMessageRewrite(next: (messages: object) => void): void {
+  rewrite = next;
+}
+
 /** 言語ごとの読み込み関数から、表示言語の文言を 1 回だけ読み込む `LazyMessages` を作る。 */
 export function lazyMessages<T extends object>(loaders: Record<Locale, () => Promise<T>>): LazyMessages<T> {
   const messages = {} as T;
   let loading: Promise<void> | undefined;
   async function load(): Promise<void> {
     Object.assign(messages, await loaders[getLocale()]());
+    rewrite?.(messages);
   }
   return { messages, load: () => (loading ??= load()) };
 }

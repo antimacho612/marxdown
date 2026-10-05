@@ -37,6 +37,9 @@ const WINDOWS_RESERVED: [&str; 22] = [
 ///
 /// パスの区切りを含む名前を通すと、フロントが指定した任意の階層へ書き込めることになる。
 /// 使えない理由はフロントでも入力中に示すが、判定の最終的な基準はここである。
+///
+/// Windows の規則は全 OS で適用する（M10 §4.7）。
+/// Windows の利用者とファイルを交換したときに名前で困らないためで、フロントの規則とも揃う。
 pub fn validate_name(name: &str) -> CoreResult<()> {
     let invalid = |reason: &str| Err(CoreError::InvalidArgument(format!("{reason}: {name}")));
 
@@ -52,21 +55,19 @@ pub fn validate_name(name: &str) -> CoreResult<()> {
     {
         return invalid("使えない文字を含む");
     }
-    if cfg!(windows) {
-        if name.chars().any(|c| WINDOWS_FORBIDDEN.contains(&c)) {
-            return invalid("使えない文字を含む");
-        }
-        // 末尾の `.` と空白は Windows が黙って落とすため、指定した名前と違うファイルができる。
-        if name.ends_with('.') || name.ends_with(' ') {
-            return invalid("末尾に . または空白がある");
-        }
-        let stem = name.split('.').next().unwrap_or(name).trim_end();
-        if WINDOWS_RESERVED
-            .iter()
-            .any(|reserved| stem.eq_ignore_ascii_case(reserved))
-        {
-            return invalid("予約された名前");
-        }
+    if name.chars().any(|c| WINDOWS_FORBIDDEN.contains(&c)) {
+        return invalid("使えない文字を含む");
+    }
+    // 末尾の `.` と空白は Windows が黙って落とすため、指定した名前と違うファイルができる。
+    if name.ends_with('.') || name.ends_with(' ') {
+        return invalid("末尾に . または空白がある");
+    }
+    let stem = name.split('.').next().unwrap_or(name).trim_end();
+    if WINDOWS_RESERVED
+        .iter()
+        .any(|reserved| stem.eq_ignore_ascii_case(reserved))
+    {
+        return invalid("予約された名前");
     }
     Ok(())
 }
@@ -193,7 +194,8 @@ pub fn rename(roots: &[PathBuf], path: &Path, new_name: &str) -> CoreResult<Move
         return Ok(moved);
     }
 
-    let case_only = cfg!(windows)
+    // Windows と macOS（既定の APFS）は大文字小文字を区別しないため、変更後の名前が「既にある」と判定される（M10 §4.7）。
+    let case_only = cfg!(any(windows, target_os = "macos"))
         && source
             .file_name()
             .is_some_and(|old| old.to_string_lossy().eq_ignore_ascii_case(new_name));
@@ -448,10 +450,24 @@ fn move_to_trash(targets: &[PathBuf], owner: Option<isize>) -> CoreResult<()> {
     Ok(())
 }
 
+/// macOS / Linux（M10 §4.7）。
+///
+/// macOS は `NSFileManager` を使う。
+/// Finder に頼む方法は「戻す」が使えるが、初回に Finder の操作の許可を求めるダイアログが出る。
+/// Linux は freedesktop のゴミ箱の仕様に従う。
+/// ゴミ箱に入らない項目を OS に完全削除を確認させる仕組み（`FOF_WANTNUKEWARNING`）は無く、失敗として返す。
 #[cfg(not(windows))]
-fn move_to_trash(_targets: &[PathBuf], _owner: Option<isize>) -> CoreResult<()> {
-    // TODO: macOS / Linux を配布するときに実装する（OQ-45）。
-    Err(CoreError::Io("この OS ではゴミ箱へ移せない".into()))
+fn move_to_trash(targets: &[PathBuf], _owner: Option<isize>) -> CoreResult<()> {
+    #[allow(unused_mut)]
+    let mut context = trash::TrashContext::default();
+    #[cfg(target_os = "macos")]
+    {
+        use trash::macos::{DeleteMethod, TrashContextExtMacos};
+        context.set_delete_method(DeleteMethod::NsFileManager);
+    }
+    context
+        .delete_all(targets)
+        .map_err(|e| CoreError::Io(e.to_string()))
 }
 
 /// `path` が `from` かその配下なら、`to` へ付け替えたパスを返す。
@@ -491,7 +507,7 @@ mod tests {
         assert!(validate_name(".env").is_ok());
     }
 
-    #[cfg(windows)]
+    /// Windows の規則は全 OS で適用する（M10 §4.7）。
     #[test]
     fn windows_specific_names_are_rejected() {
         assert!(validate_name(r"a\b").is_err());

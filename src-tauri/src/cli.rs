@@ -68,6 +68,12 @@ pub struct CliArgs {
     /// 利用者が指定するものではない。
     /// 読んだ後に消すため、一時ディレクトリ直下のファイル以外は `stdin::take` が拒否する。
     pub stdin_file: Option<PathBuf>,
+    /// `--foreground`。
+    /// 端末からの切り離し（`detach.rs`）を行わない。
+    ///
+    /// 切り離して起動し直したプロセスに付ける。
+    /// 利用者が指定するものではないため、ヘルプには載せない。
+    pub foreground: bool,
     /// `--background`。ウィンドウを表示せずにトレイへ格納した状態で起動する（ADR-0022）。
     ///
     /// ログイン時の自動起動（`autostart.rs`）が `Run` に書く値に付ける。
@@ -168,6 +174,7 @@ pub fn parse(argv: &[String], cwd: &Path) -> CliArgs {
             "--exit-after-trace" => args.exit_after_trace = true,
             "--gc-probe" => args.gc_probe = true,
             "--background" => args.background = true,
+            "--foreground" => args.foreground = true,
             "--add-to-path" => args.path_op = Some(PathOp::Add),
             "--remove-from-path" => args.path_op = Some(PathOp::Remove),
             "-m" | "--mode" => {
@@ -195,8 +202,12 @@ pub fn parse(argv: &[String], cwd: &Path) -> CliArgs {
                     args.bench_input = Some(resolve(cwd, &v));
                 }
             }
-            // WebView2 / Tauri 自身が受け取るフラグは通知せずに無視する
-            other if other.starts_with("--webview") || other.starts_with("--wv2") => {}
+            // WebView2 / Tauri 自身が受け取るフラグは通知せずに無視する。
+            // `-psn_<番号>` は古い macOS が Finder からの起動で付ける（M10 §4.3）。
+            other
+                if other.starts_with("--webview")
+                    || other.starts_with("--wv2")
+                    || other.starts_with("-psn_") => {}
             other if other.starts_with('-') && other.len() > 1 => {
                 args.unknown.push(other.to_string());
             }
@@ -366,6 +377,25 @@ mod tests {
         assert!(a.unknown.is_empty());
 
         assert_eq!(args(&["--remove-from-path"]).path_op, Some(PathOp::Remove));
+    }
+
+    /// 切り離して起動し直したプロセスだけが付ける。
+    /// 付けたときだけ有効になり、パスとしては扱わない。
+    #[test]
+    fn the_foreground_flag_is_opt_in() {
+        assert!(!args(&["a.md"]).foreground);
+        let a = args(&["--foreground", "a.md"]);
+        assert!(a.foreground);
+        assert_eq!(a.paths, vec![cwd().join("a.md")]);
+        assert!(a.unknown.is_empty());
+    }
+
+    /// Finder からの起動で古い macOS が付ける引数は、通知バーに出さない。
+    #[test]
+    fn the_process_serial_number_is_ignored() {
+        let a = args(&["-psn_0_12345", "a.md"]);
+        assert!(a.unknown.is_empty());
+        assert_eq!(a.paths, vec![cwd().join("a.md")]);
     }
 
     #[test]

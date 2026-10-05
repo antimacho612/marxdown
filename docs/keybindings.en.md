@@ -98,3 +98,18 @@ Other editing actions (undo, moving lines, multiple cursors, and so on) are the 
 | <kbd>Ctrl</kbd>+click / <kbd>Shift</kbd>+click | Add to the selection / select a range (when two or more items are selected) |
 | <kbd>Shift</kbd>+<kbd>F10</kbd> / Menu key | Open the menu |
 | Letter keys | Move to the next item starting with that letter |
+
+## macOS (preview)
+
+On macOS, read <kbd>Ctrl</kbd> as <kbd>⌘</kbd> and <kbd>Alt</kbd> as <kbd>⌥</kbd>.
+Keys that conflict with the OS are remapped as follows.
+
+| Keys | Action |
+| --- | --- |
+| <kbd>⌘</kbd>+<kbd>⌥</kbd>+<kbd>F</kbd> | Replace (instead of <kbd>Ctrl</kbd>+<kbd>H</kbd>; <kbd>⌘</kbd>+<kbd>H</kbd> hides the app) |
+| <kbd>⌘</kbd>+<kbd>[</kbd> / <kbd>⌘</kbd>+<kbd>]</kbd> | Back / Forward (instead of <kbd>Alt</kbd>+<kbd>←</kbd> / <kbd>Alt</kbd>+<kbd>→</kbd>; <kbd>⌥</kbd>+<kbd>←</kbd> moves by word) |
+| <kbd>⌃</kbd>+<kbd>Tab</kbd> / <kbd>⌘</kbd>+<kbd>⇧</kbd>+<kbd>]</kbd> | Next tab (<kbd>⌘</kbd>+<kbd>Tab</kbd> switches apps) |
+| <kbd>⌃</kbd>+<kbd>⇧</kbd>+<kbd>Tab</kbd> / <kbd>⌘</kbd>+<kbd>⇧</kbd>+<kbd>[</kbd> | Previous tab |
+| <kbd>⌃</kbd>+<kbd>⌘</kbd>+<kbd>F</kbd> | Full screen (an OS feature) |
+
+<kbd>⇧</kbd>+<kbd>⌥</kbd>+<kbd>R</kbd> reveals the item in Finder.

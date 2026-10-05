@@ -25,6 +25,15 @@ export type ViewMode = 'preview' | 'edit' | 'split';
 export type WindowRole = 'main' | 'satellite';
 
 /**
+ * 動いている OS（ADR-0028 §3.3）。
+ * `src-tauri/src/bootstrap.rs` の `Platform` と対応する。
+ *
+ * 分岐は OS 別のチャンク（`platform-ui/`）に閉じる。
+ * 共通の側で見るのは、どのチャンクを読むかだけである。
+ */
+export type OsPlatform = 'windows' | 'macos' | 'linux';
+
+/**
  * 未保存のまま別の文書へ移るかの答え（`src-tauri/src/commands.rs` の `DiscardChoice`）。
  *
  * 綴りは Rust 側の serde に合わせる。
@@ -274,6 +283,7 @@ export interface RecentEntry {
 /** `window.__MARXDOWN_BOOTSTRAP__` の中身。 */
 export interface Bootstrap {
   version: number;
+  platform: OsPlatform;
   /** このウィンドウの役割（F-OPEN-06）。シェルの描き分けと、前回のタブを覚えるかどうかが変わる。 */
   role: WindowRole;
   /**
@@ -617,9 +627,18 @@ export interface Platform {
   /**
    * 表示中のウィンドウを PDF に書き出す（F-VIEW-18）。何を印刷させるかは、呼ぶ前に `@media print` で整えておく。
    *
-   * WebView2 の `PrintToPdf` を使うため、Windows 以外では `invalid-argument` で失敗する（`src-tauri/src/export.rs`）。
+   * Windows は WebView2 の `PrintToPdf`、Linux は WebKitGTK の印刷操作で書き出す。
+   * macOS では `invalid-argument` で失敗する。
+   * 呼び出し側は `printDialog` で代用する（`src-tauri/src/export.rs`）。
    */
   exportPdf(suggested: string | null): Promise<string | null>;
+  /**
+   * 印刷ダイアログを出す（macOS の PDF の書き出し / M10 §4.9 の段階 1）。
+   *
+   * ダイアログが閉じるのを待たずに戻る。
+   * 印刷が終わるまで、印刷させる要素を残しておくこと。
+   */
+  printDialog(): Promise<void>;
   /**
    * 表示中のローカル画像を data URI にする（HTML の書き出しで 1 ファイルに収めるため）。
    *
@@ -835,8 +854,14 @@ export interface Platform {
    * 最大化ボタンだけ反応しない状態を避けるため、Rust 側が出入りを通知する。
    */
   onMaximizeHoverChanged(handler: (hovered: boolean) => void): () => void;
-  /** 描画準備完了。ウィンドウを表示させる。 */
-  ready(): Promise<void>;
+  /**
+   * 描画準備完了。
+   * ウィンドウを表示させる。
+   *
+   * 主ウィンドウでは、表示までに OS から届いた「開く」要求（macOS の Finder）のパスを返す。
+   * 開く要求の購読（`onOpenRequest`）はこの後に始まるため、その前に届いた分はここで受け取る。
+   */
+  ready(): Promise<string[]>;
   reportTrace(marks: TraceMark[]): Promise<void>;
   /**
    * ウォーム起動の完了報告。argv 転送を受けてから本文が読める状態になるまでの経過ミリ秒を返す。
