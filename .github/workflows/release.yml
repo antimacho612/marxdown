@@ -185,12 +185,17 @@ jobs:
           APPIMAGE_EXTRACT_AND_RUN: 1
         run: pnpm tauri build --bundles deb,appimage
 
+      # NOTE: upload-artifact に複数のパスを渡すと共通の親（`bundle/`）からの相対で格納され、`deb/` と `appimage/` が残る。
+      # Release の下書きで `artifacts/*` にディレクトリが渡って失敗するため、1 つのディレクトリに集める（v0.4.0-beta.1 で発生）。
+      - name: 配布物を集める
+        run: |
+          mkdir -p out
+          cp src-tauri/target/release/bundle/deb/*.deb src-tauri/target/release/bundle/appimage/*.AppImage out/
+
       - uses: actions/upload-artifact@v5
         with:
           name: linux
-          path: |
-            src-tauri/target/release/bundle/deb/*.deb
-            src-tauri/target/release/bundle/appimage/*.AppImage
+          path: out/*
           if-no-files-found: error
 
   release:
