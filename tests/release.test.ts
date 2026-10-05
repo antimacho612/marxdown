@@ -4,6 +4,8 @@ import {
   buildManifest,
   buildReleaseNotes,
   finalizeChangelog,
+  isPrerelease,
+  latestVersion,
   previousVersion,
   sectionBody,
   setCargoLockVersion,
@@ -151,5 +153,23 @@ describe('buildReleaseNotes', () => {
     const out = buildReleaseNotes({ version: '0.1.0', body: '- 自動更新', previous: null });
     expect(out).toContain(`[v0.1.0](${REPO}/releases/tag/v0.1.0)`);
     expect(out).not.toContain('/compare/');
+  });
+});
+
+describe('pre-release（ADR-0028 §3.8）', () => {
+  it('Unreleased を確定させないため、比較の起点は最後に確定した版になる', () => {
+    const changelog = finalizeChangelog(FIRST, '0.1.0', '2026-10-01');
+    expect(isPrerelease('0.2.0-beta.1')).toBe(true);
+    expect(isPrerelease('0.2.0')).toBe(false);
+    expect(latestVersion(changelog)).toBe('0.1.0');
+  });
+
+  it('macOS / Linux の配布物を並べ、プレビューであることを書く', () => {
+    const out = buildReleaseNotes({ version: '0.2.0-beta.1', body: '- macOS', previous: '0.1.0' });
+
+    expect(out).toContain('[!IMPORTANT]');
+    expect(out).toContain(`${REPO}/releases/download/v0.2.0-beta.1/Marxdown_0.2.0-beta.1_aarch64.dmg`);
+    expect(out).toContain(`${REPO}/releases/download/v0.2.0-beta.1/Marxdown_0.2.0-beta.1_amd64.AppImage`);
+    expect(out).toContain(`${REPO}/compare/v0.1.0...v0.2.0-beta.1`);
   });
 });

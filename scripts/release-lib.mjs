@@ -4,6 +4,17 @@
 export const REPOSITORY = 'https://github.com/antimacho612/marxdown';
 
 export const SEMVER = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/;
+
+/**
+ * pre-release の版か（`1.5.0-beta.1`）。
+ *
+ * macOS / Linux のプレビューは pre-release にだけ載せる（ADR-0028 §3.8）。
+ * pre-release では CHANGELOG の Unreleased を確定させない。
+ * 確定させると、その項目が次の安定版の本文から抜ける。
+ */
+export function isPrerelease(version) {
+  return version.includes('-');
+}
 const UNRELEASED = '## [Unreleased]';
 /** 節の見出し。`## [0.2.0] - 2026-10-01` と `## [Unreleased]` の両方に合う。 */
 const SECTION = /^## \[([^\]]+)\]/gm;
@@ -115,6 +126,16 @@ export function buildManifest({ version, notes, signature, fileName, pubDate }) 
   };
 }
 
+/** CHANGELOG で最後に確定した版。無ければ `null`。pre-release の比較の起点になる。 */
+export function latestVersion(text) {
+  return (
+    text
+      .matchAll(SECTION)
+      .map((m) => m[1])
+      .find((v) => v !== 'Unreleased') ?? null
+  );
+}
+
 /** CHANGELOG で `version` の 1 つ前に確定した版。無ければ `null`。 */
 export function previousVersion(text, version) {
   const versions = text
@@ -137,6 +158,7 @@ export function buildReleaseNotes({ version, body, previous }) {
   const compare = previous
     ? `[v${previous}...v${version}](${REPOSITORY}/compare/v${previous}...v${version})`
     : `[v${version}](${REPOSITORY}/releases/tag/v${version})`;
+  if (isPrerelease(version)) return buildPreviewNotes({ version, body, compare });
   return `<!--
 公開する前に、タイトルを「Marxdown v${version} — <この版で良くなったこと>」に変え、下の Why it matters を書く（CONTRIBUTING.md「リリース」）。
 -->
@@ -165,5 +187,47 @@ Already installed? Marxdown shows an update notification. Choose "Update and Res
 ## Full changelog
 
 [CHANGELOG.md](${REPOSITORY}/blob/main/CHANGELOG.md) · ${compare}
+`;
+}
+
+/**
+ * pre-release の本文。
+ * macOS / Linux のプレビュー（ADR-0028 §3.8）の配布物を並べる。
+ *
+ * 既知の制約は README の節へ誘導する。
+ * 設計ドキュメントは公開していない。
+ */
+function buildPreviewNotes({ version, body, compare }) {
+  const asset = (name) => `[${name}](${REPOSITORY}/releases/download/v${version}/${name})`;
+  return `<!--
+公開する前に、タイトルを「Marxdown v${version} — <この版で試してほしいこと>」に変える（CONTRIBUTING.md「リリース」）。
+-->
+
+> [!IMPORTANT]
+> This is a pre-release. macOS and Linux builds are previews. They do not update automatically; download new versions from Releases.<br />
+> これはプレリリースです。macOS と Linux はプレビュー版で、自動では更新されません。新しい版は Releases から入れてください。<br />
+> Known limitations / 既知の制約: [README](${REPOSITORY}#macos--linux-preview)
+
+## What's new
+
+${body}
+
+## Download
+
+| OS | File |
+| --- | --- |
+| Windows 10 / 11 (x64) | ${asset(`Marxdown_${version}_x64-setup.exe`)} |
+| macOS 14+ (Apple silicon) | ${asset(`Marxdown_${version}_aarch64.dmg`)} |
+| macOS 14+ (Intel) | ${asset(`Marxdown_${version}_x64.dmg`)} |
+| Linux (x86_64, .deb) | ${asset(`Marxdown_${version}_amd64.deb`)} |
+| Linux (x86_64, AppImage) | ${asset(`Marxdown_${version}_amd64.AppImage`)} |
+
+> [!NOTE]
+> The builds are unsigned. On macOS, Gatekeeper blocks the first launch; see the README for how to open it. The AppImage needs \`libfuse2\`.<br />
+> 署名していないため、macOS では初回の起動を Gatekeeper が止めます。開き方は README にあります。AppImage には \`libfuse2\` が要ります。
+
+## Full changelog
+
+[CHANGELOG.md](${REPOSITORY}/blob/develop/CHANGELOG.md) · ${compare}
 `;
 }
