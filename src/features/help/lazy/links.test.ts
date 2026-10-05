@@ -19,7 +19,7 @@ function fieldIds(template: string): string[] {
 const INFO = { version: '1.2.3', os: 'Windows 11 24H2 (26100.4061)', webview: '131.0.2903.70' };
 
 describe('不具合報告の URL (F-OS-09)', () => {
-  it('バージョン・OS・WebView2 の版で欄を埋める', () => {
+  it('バージョン・OS・WebView の版で欄を埋める', () => {
     const url = new URL(bugReportUrl(INFO));
 
     expect(url.origin + url.pathname).toBe('https://github.com/antimacho612/marxdown/issues/new');
@@ -27,7 +27,7 @@ describe('不具合報告の URL (F-OS-09)', () => {
       template: 'bug_report.yml',
       version: '1.2.3',
       os: 'Windows 11 24H2 (26100.4061)',
-      extra: 'WebView2: 131.0.2903.70',
+      extra: 'WebView: 131.0.2903.70',
     });
   });
 
@@ -35,7 +35,7 @@ describe('不具合報告の URL (F-OS-09)', () => {
     expect(bugReportUrl(null)).toBe('https://github.com/antimacho612/marxdown/issues/new?template=bug_report.yml');
   });
 
-  it('WebView2 の版が無ければ自由記述の欄を埋めない', () => {
+  it('WebView の版が無ければ自由記述の欄を埋めない', () => {
     const url = new URL(bugReportUrl({ ...INFO, webview: null }));
     expect(url.searchParams.has('extra')).toBe(false);
   });
@@ -63,7 +63,7 @@ describe('Marxdown について', () => {
 
   it('コピーする情報は 1 行に 1 項目', () => {
     expect(describeInfo({ ...INFO, webview: null }, '不明')).toBe(
-      'Marxdown: 1.2.3\nOS: Windows 11 24H2 (26100.4061)\nWebView2: 不明',
+      'Marxdown: 1.2.3\nOS: Windows 11 24H2 (26100.4061)\nWebView: 不明',
     );
   });
 });

@@ -8,4 +8,6 @@ export const jaUpdate = {
   upToDate: 'Marxdown は最新です',
   checkFailed: '更新を確認できませんでした。ネットワークの接続を確認してください',
   installFailed: '更新できませんでした。時間をおいてもう一度お試しください',
+  manual: 'この OS のプレビュー版は自動で更新されません。新しい版は Releases から入れてください',
+  openReleases: 'Releases を開く',
 };

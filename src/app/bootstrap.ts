@@ -210,7 +210,7 @@ export async function startup(renderShell: () => void): Promise<void> {
 
   // 最初に表示されるフレームが既に本文である状態を作る。
   if (isTracing()) await platform.reportTrace(drain());
-  await platform.ready();
+  const openedBeforeReady = await platform.ready();
 
   // 以降はウィンドウの表示後に実行する。
   // いずれも Rust 側への購読（IPC）を伴い、本文が読める時点に間に合っている必要がない。
@@ -224,6 +224,9 @@ export async function startup(renderShell: () => void): Promise<void> {
   // 本文が読める時点（T8）を、ファイル 20 枚の読み込みの後ろへ動かさない。
   // 遅れた場合の最悪の結果は、起動直後の一瞬だけタブが 1 枚に見えることである。
   void openRemainingTabs(bootstrap);
+  // 表示までに OS から届いた「開く」要求（macOS の Finder / ADR-0028）。
+  // 購読は次の行で始まるため、それより前の分を受け取る。
+  if (openedBeforeReady.length > 0) void openPathsInTabs(openedBeforeReady);
 
   installOpenRequestHandler();
   // 別のウィンドウから移されてくるタブ（OQ-43）。受け取る処理は遅延チャンクにあり、初めて届いたときに読み込む。

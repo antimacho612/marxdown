@@ -10,4 +10,6 @@ export const enUpdate = {
   upToDate: 'Marxdown is up to date',
   checkFailed: 'Could not check for updates. Check your network connection',
   installFailed: 'Could not update. Try again later',
+  manual: 'The preview for this OS does not update automatically. Get new versions from Releases',
+  openReleases: 'Open Releases',
 } satisfies UpdateMessages;

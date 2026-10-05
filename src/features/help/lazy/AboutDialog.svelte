@@ -89,7 +89,7 @@
     <dd>{field('version')}</dd>
     <dt>OS</dt>
     <dd>{field('os')}</dd>
-    <dt>WebView2</dt>
+    <dt>WebView</dt>
     <dd>{field('webview')}</dd>
   </dl>
 

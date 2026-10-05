@@ -1,7 +1,7 @@
 /**
  * PDF の書き出し（F-VIEW-18）。
  *
- * 描いた本文を印刷専用の要素に入れてウィンドウに置き、`@media print` でそれ以外を隠してから WebView2 の `PrintToPdf` を呼ぶ。
+ * 描いた本文を印刷専用の要素に入れてウィンドウに置き、`@media print` でそれ以外を隠してから書き出す（Windows は WebView2 の `PrintToPdf`、Linux は WebKitGTK の印刷操作）。
  * 画面の `#mx-preview` は使わない。印刷のあいだも画面の見た目を変えないためである。
  * 配色は常に明るい既定配色にする。
  */
@@ -30,17 +30,23 @@ const PRINT_CSS = `
 }
 `;
 
+/** 印刷ダイアログに渡したまま残している印刷用の要素の片付け。次の書き出しの前に呼ぶ。 */
+let pendingCleanup: (() => void) | null = null;
+
 /**
  * 描いた本文を PDF に書き出す。保存先のパスを返し、取り消されたら `null`。
  *
  * `body` の子は印刷用の要素へ移される。
- * WebView2 が無い環境（Windows 以外 / dev:web）では印刷ダイアログを出し、`null` を返す。
+ * 直接書き出せない環境（macOS / dev:web）では印刷ダイアログを出し、`null` を返す。
  */
 export async function printToPdf(
   body: HTMLElement,
   surface: HTMLElement,
   suggested: string | null,
 ): Promise<string | null> {
+  pendingCleanup?.();
+  pendingCleanup = null;
+
   const host = document.createElement('div');
   host.id = HOST_ID;
   // 表の見た目などの属性は写す。配色（`data-mx-theme`）と倍率は写さない。
@@ -57,6 +63,11 @@ export async function printToPdf(
   document.head.append(style);
   document.body.append(host);
 
+  const cleanup = (): void => {
+    host.remove();
+    style.remove();
+  };
+  let printing = false;
   try {
     // 読み込み途中の画像は空白で印刷される。
     await Promise.all([...host.querySelectorAll('img')].map((img) => settle(img)));
@@ -64,12 +75,16 @@ export async function printToPdf(
       return await getPlatform().exportPdf(suggested);
     } catch (e) {
       if (!isUnsupported(e)) throw e;
-      globalThis.print();
+      // 印刷ダイアログは閉じるのを待たずに戻る（macOS）。
+      // 印刷が終わる前に片付けると、別の内容が印刷される。
+      // 画面では `@media screen` で隠れているため、次の書き出しまで残す。
+      printing = true;
+      pendingCleanup = cleanup;
+      await getPlatform().printDialog();
       return null;
     }
   } finally {
-    host.remove();
-    style.remove();
+    if (!printing) cleanup();
   }
 }
 
