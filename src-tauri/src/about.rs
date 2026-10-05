@@ -1,6 +1,6 @@
 //! ヘルプメニューが使う、アプリ自身の情報（F-OS-09 / ADR-0027）。
 //!
-//! バージョン・OS・WebView2 の版を返すことと、インストーラに同梱したライセンス文を既定アプリで開くことだけを持つ。
+//! バージョン・OS・WebView の版を返すことと、インストーラに同梱したライセンス文を既定アプリで開くことだけを持つ。
 //! 画面に出す文言と、不具合報告の URL の組み立てはフロントにある。
 
 use serde::{Deserialize, Serialize};
@@ -16,7 +16,8 @@ pub struct AppInfo {
     pub version: String,
     /// OS の名前と版。取れなかった部分は省く。
     pub os: String,
-    /// WebView2 の版。取れなければ `None`。
+    /// WebView の版（WebView2 / WKWebView / WebKitGTK）。
+    /// 取れなければ `None`。
     pub webview: Option<String>,
 }
 
@@ -71,9 +72,45 @@ fn os_version() -> String {
     windows_version::read().map_or_else(|| "Windows".to_string(), |v| v.describe())
 }
 
-#[cfg(not(windows))]
+#[cfg(target_os = "macos")]
 fn os_version() -> String {
-    std::env::consts::OS.to_string()
+    crate::macos::os_version()
+}
+
+/// 配布の名前（`/etc/os-release` の `PRETTY_NAME`）と、デスクトップ環境・ディスプレイサーバー。
+///
+/// 後ろの 2 つはトレイの有無と、Wayland で成立しない機能（ADR-0028 §4）の切り分けに要る（M10 §4.8）。
+#[cfg(all(unix, not(target_os = "macos")))]
+fn os_version() -> String {
+    let name = std::fs::read_to_string("/etc/os-release")
+        .ok()
+        .and_then(|text| linux_pretty_name(&text))
+        .unwrap_or_else(|| "Linux".to_owned());
+    let session = ["XDG_CURRENT_DESKTOP", "XDG_SESSION_TYPE"]
+        .iter()
+        .filter_map(|key| std::env::var(key).ok().filter(|v| !v.is_empty()))
+        .collect::<Vec<_>>();
+    if session.is_empty() {
+        name
+    } else {
+        format!("{name} ({})", session.join(" / "))
+    }
+}
+
+/// `os-release` の `PRETTY_NAME`。
+/// 値は引用符で囲まれていることがある。
+#[cfg_attr(not(all(unix, not(target_os = "macos"))), allow(dead_code))]
+fn linux_pretty_name(text: &str) -> Option<String> {
+    let value = text
+        .lines()
+        .find_map(|line| line.strip_prefix("PRETTY_NAME="))?
+        .trim();
+    let unquoted = value
+        .strip_prefix('"')
+        .and_then(|v| v.strip_suffix('"'))
+        .or_else(|| value.strip_prefix('\'').and_then(|v| v.strip_suffix('\'')))
+        .unwrap_or(value);
+    (!unquoted.is_empty()).then(|| unquoted.to_owned())
 }
 
 #[cfg(any(windows, test))]
@@ -170,7 +207,22 @@ mod windows_version {
 
 #[cfg(test)]
 mod tests {
+    use super::linux_pretty_name;
     use super::windows_version::Version;
+
+    #[test]
+    fn reads_the_pretty_name_of_the_distribution() {
+        let text = "NAME=\"Ubuntu\"\nPRETTY_NAME=\"Ubuntu 24.04.4 LTS\"\nID=ubuntu\n";
+        assert_eq!(
+            linux_pretty_name(text).as_deref(),
+            Some("Ubuntu 24.04.4 LTS")
+        );
+        assert_eq!(
+            linux_pretty_name("PRETTY_NAME=Arch\n").as_deref(),
+            Some("Arch")
+        );
+        assert_eq!(linux_pretty_name("ID=x\n"), None);
+    }
 
     #[test]
     fn names_windows_11_by_build_number() {

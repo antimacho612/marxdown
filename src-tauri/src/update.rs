@@ -24,6 +24,14 @@ const CHECK_INTERVAL_SECS: u64 = 24 * 60 * 60;
 
 const RELEASES_URL: &str = "https://github.com/antimacho612/marxdown/releases/tag";
 
+/// updater を使う OS か（ADR-0028 §3.8）。
+///
+/// NOTE: macOS / Linux はプレビューの間、手動で更新する（M10 §4.10 の案 1）。
+/// 安定版の `latest.json` に darwin / linux のキーが無く、確認すると `TargetsNotFound` で失敗し続けるためである。
+/// 手動の確認はフロントが Releases の一覧へ誘導する（`features/update/lazy/notice.ts`）。
+/// 卒業の版で `true` にする。
+pub const ENABLED: bool = cfg!(windows);
+
 /// フロントへ渡す、見つかった版の情報。
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -116,7 +124,7 @@ pub fn on_focus<R: Runtime>(app: &AppHandle<R>) {
 fn check_if_due<R: Runtime>(app: &AppHandle<R>) {
     // 開発ビルドは自分より新しい公開版を毎回見つけてしまい、通知が作業の邪魔になる。
     // 手動の確認（`check_update`）は開発ビルドでも使える。
-    if cfg!(debug_assertions) {
+    if cfg!(debug_assertions) || !ENABLED {
         return;
     }
     let (Some(state), Some(updates)) = (app.try_state::<AppState>(), app.try_state::<Updates>())
@@ -158,6 +166,9 @@ fn check_if_due<R: Runtime>(app: &AppHandle<R>) {
 pub async fn check<R: Runtime>(
     app: &AppHandle<R>,
 ) -> Result<Option<UpdateInfo>, tauri_plugin_updater::Error> {
+    if !ENABLED {
+        return Err(tauri_plugin_updater::Error::UnsupportedOs);
+    }
     // 更新後は引数なしで起動し直す（ADR-0024 §3.6）。
     // updater の既定は、更新前のプロセスが起動したときの引数を `/ARGS` で引き継ぐ。
     // `marxdown foo.md` で起動して常駐していた場合に `foo.md` だけが開き、前回のタブが復元されない。

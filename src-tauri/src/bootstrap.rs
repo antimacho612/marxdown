@@ -24,6 +24,11 @@ use crate::themes::UserTheme;
 #[serde(rename_all = "camelCase")]
 pub struct Bootstrap {
     pub version: u32,
+    /// 動いている OS（ADR-0028 §3.3）。
+    /// フロントは OS 別のチャンクを読むかをこれで決める。
+    ///
+    /// IPC で問い合わせると、最初のフレームに間に合わない。
+    pub platform: Platform,
     /// このウィンドウの役割（F-OPEN-06）。フロントはこれでシェルの描き分けを決める。
     pub role: WindowRole,
     /// 引き取るべき本文の ID（F-OPEN-06 / ADR-0016 §3.4）。
@@ -92,6 +97,30 @@ pub struct Bootstrap {
     /// ここに載せるのは、暗い配色を選んでいるときに既定の配色で初回フレームが描かれるのを防ぐためである。
     /// 載せるのは 1 枚だけである。全件を載せると、起動のたびに 100 枚ぶんの CSS を初期化スクリプトへ書き出すことになる。
     pub preview_theme: Option<UserTheme>,
+}
+
+/// 動いている OS。
+/// 対応するフロント側の型は `src/platform/types.ts` の `OsPlatform`。
+///
+/// Linux 以外の Unix（BSD）も `linux` として扱う。
+/// どちらも GTK と WebKitGTK で動き、Rust の分岐（`cfg(all(unix, not(target_os = "macos")))`）とも揃う。
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub enum Platform {
+    Windows,
+    Macos,
+    Linux,
+}
+
+impl Platform {
+    /// このビルドの OS。
+    pub const CURRENT: Self = if cfg!(windows) {
+        Self::Windows
+    } else if cfg!(target_os = "macos") {
+        Self::Macos
+    } else {
+        Self::Linux
+    };
 }
 
 /// ウィンドウの役割（F-OPEN-06）。対応するフロント側の型は `src/platform/types.ts` の `WindowRole`。
@@ -194,6 +223,7 @@ pub fn build(
 
     Bootstrap {
         version: 1,
+        platform: Platform::CURRENT,
         // 起動時の 1 枚目を既定にする。サテライトでは `crate::open_satellite` が置き換える。
         role: WindowRole::Main,
         transfer: None,

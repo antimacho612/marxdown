@@ -169,6 +169,14 @@ fn ask_then_quit<R: Runtime>(app: AppHandle<R>) {
     // ラベルで判定しないと、どちらのボタンを押しても `_` に該当して何も起きない。
     let text = crate::i18n::text();
 
+    // 同じ確認を重ねない。
+    // macOS の `Cmd+Q` はアプリのメニューとフロントの両方から届きうる（`macos.rs`）。
+    if let Some(state) = app.try_state::<AppState>() {
+        if !state.begin_quit_prompt() {
+            return;
+        }
+    }
+
     // 保存を依頼する先。ダーティなウィンドウのうちの 1 枚。
     let target = app
         .try_state::<AppState>()
@@ -185,19 +193,26 @@ fn ask_then_quit<R: Runtime>(app: AppHandle<R>) {
             text.quit_without_saving.to_string(),
             text.cancel.to_string(),
         ))
-        .show_with_result(move |result| match result {
-            MessageDialogResult::Custom(label) if label == text.save_and_quit => {
-                // ダーティなウィンドウが前面にあるとは限らない。保存の前に見せる。
-                if let Some(window) = handle.get_webview_window(&target) {
-                    let _ = window.set_focus();
+        .show_with_result(move |result| {
+            if let Some(state) = handle.try_state::<AppState>() {
+                state.end_quit_prompt();
+            }
+            match result {
+                MessageDialogResult::Custom(label) if label == text.save_and_quit => {
+                    // ダーティなウィンドウが前面にあるとは限らない。
+                    // 保存の前に見せる。
+                    if let Some(window) = handle.get_webview_window(&target) {
+                        let _ = window.set_focus();
+                    }
+                    let _ = handle.emit_to(target.as_str(), crate::EVENT_SAVE_AND_QUIT, ());
                 }
-                let _ = handle.emit_to(target.as_str(), crate::EVENT_SAVE_AND_QUIT, ());
+                MessageDialogResult::Custom(label) if label == text.quit_without_saving => {
+                    quit(&handle)
+                }
+                // キャンセル / ダイアログを閉じた場合は何もしない。
+                // 既定は終了しない側にする（N-REL-01）。
+                _ => {}
             }
-            MessageDialogResult::Custom(label) if label == text.quit_without_saving => {
-                quit(&handle)
-            }
-            // キャンセル / ダイアログを閉じた場合は何もしない。既定は終了しない側にする（N-REL-01）。
-            _ => {}
         });
 }
 
@@ -226,10 +241,14 @@ pub fn on_close_requested<R: Runtime>(app: &AppHandle<R>, label: &str) -> bool {
         //
         // UX 仕様は「モーダルはデータ消失の可能性がある場面だけ」としており、これはその例外にあたる。
         // 生涯 1 回であることが許容の条件そのものなので、フラグは `state.json` に永続化する。
-        let first_time = app
-            .try_state::<AppState>()
-            .map(|s| !s.tray_intro_shown())
-            .unwrap_or(false);
+        //
+        // macOS では説明しない。
+        // ウィンドウを閉じてもアプリが Dock に残るのは OS の慣習である（ADR-0028 §3.4）。
+        let first_time = !cfg!(target_os = "macos")
+            && app
+                .try_state::<AppState>()
+                .map(|s| !s.tray_intro_shown())
+                .unwrap_or(false);
 
         if first_time {
             ask_then_stash(app.clone(), label.to_owned());
