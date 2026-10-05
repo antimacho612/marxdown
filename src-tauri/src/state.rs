@@ -649,6 +649,54 @@ mod tests {
         )
     }
 
+    /// macOS の Finder から届いた「開く」要求の行き先（M10 §4.3）。
+    /// 主ウィンドウを作る前の分は起動時の引数になり、`ready` の前の分は `ready` で返し、その後は預からない。
+    #[test]
+    fn opens_are_deferred_until_ready_and_then_forwarded() {
+        let d = temp_dir("opened");
+        let state = state_with_settings(&d.join("settings.json"));
+
+        assert!(state.defer_open(vec!["a.md".into()]).is_none());
+        assert_eq!(state.take_launch_opens(), vec!["a.md".to_owned()]);
+
+        assert!(state.defer_open(vec!["b.md".into()]).is_none());
+        assert_eq!(state.finish_deferred_opens(), vec!["b.md".to_owned()]);
+
+        assert_eq!(
+            state.defer_open(vec!["c.md".into()]),
+            Some(vec!["c.md".to_owned()]),
+            "ready の後は預からずに返す"
+        );
+        assert!(state.finish_deferred_opens().is_empty());
+        std::fs::remove_dir_all(&d).ok();
+    }
+
+    /// `Cmd+Q` がアプリのメニューとフロントの両方から届いても、確認は 1 枚だけ出す。
+    #[test]
+    fn only_one_quit_prompt_is_shown_at_a_time() {
+        let d = temp_dir("quit-prompt");
+        let state = state_with_settings(&d.join("settings.json"));
+
+        assert!(state.begin_quit_prompt());
+        assert!(!state.begin_quit_prompt());
+        state.end_quit_prompt();
+        assert!(state.begin_quit_prompt());
+        std::fs::remove_dir_all(&d).ok();
+    }
+
+    /// 戻す手段が無い環境では、設定にかかわらず `✕` は終了の意味になる（ADR-0028 §3.4）。
+    #[test]
+    fn closing_to_tray_needs_a_way_back() {
+        let d = temp_dir("residency");
+        let state = state_with_settings(&d.join("settings.json"));
+
+        state.set_residency(true);
+        assert!(state.closes_to_tray(), "既定の設定は格納する");
+        state.set_residency(false);
+        assert!(!state.closes_to_tray());
+        std::fs::remove_dir_all(&d).ok();
+    }
+
     /// ユーザーが直している最中に設定 UI がファイルの内容を丸ごと消さない。
     #[test]
     fn writing_is_refused_while_the_settings_file_is_broken() {
