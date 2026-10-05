@@ -238,7 +238,8 @@ pnpm release bump 0.4.0-beta.1   # 版の番号だけを上げる。CHANGELOG �
 確定させると、その項目が安定版の Release の本文から抜けるためである。
 
 macOS と Linux のジョブは時間がかかる。
-タグを打つ前に、CI を `workflow_dispatch` で実行し、`配布物` のジョブ（`dmg` / `deb` / `AppImage`）が通ることを確かめておく。
+版上げの PR（`release/*` → `develop`）では、CI の `配布物` のジョブが `dmg` / `deb` / `AppImage` を作る。
+これが通ってからタグを打つ。
 
 > [!WARNING]
 > 公開した Release を後から差し替えない。

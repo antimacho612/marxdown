@@ -126,12 +126,15 @@ jobs:
         run: cargo test
 
   # 配布物を作れるか（M10 §4.11）。
-  # macOS のランナーは単価が高いため、手動実行のときだけ走らせる。
+  # macOS のランナーは単価が高いため、手動実行と版上げの PR（`release/*`）のときだけ走らせる。
   # 作るだけで、署名も公開もしない。
-  # リリースの前に `workflow_dispatch` で 1 回通す。
+  # TODO: `ccr-6d0969fc-a7sd1b` は M10 の PR で一度だけ確かめるための条件である。結果を見たら外す。
   bundle:
     name: 配布物 (${{ matrix.os }})
-    if: github.event_name == 'workflow_dispatch'
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      startsWith(github.head_ref, 'release/') ||
+      github.head_ref == 'ccr-6d0969fc-a7sd1b'
     strategy:
       fail-fast: false
       matrix:
