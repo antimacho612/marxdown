@@ -37,6 +37,13 @@ PR を出す前に、[テンプレート](.github/pull_request_template.md) の�
 - Node 24
 - pnpm 12（npm / yarn ではない）
 - Rust stable 1.80+
+- macOS: Xcode Command Line Tools（`xcode-select --install`）
+- Linux: Tauri が要求するシステムライブラリ（CI の `rust-other-platforms` と同じ一覧）
+
+```bash
+# Ubuntu / Debian
+sudo apt install libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev libxdo-dev libssl-dev patchelf
+```
 
 ```bash
 pnpm install
@@ -135,7 +142,7 @@ marxdown --trace-startup nul README.md         # 計測はするが書き出さ�
 pnpm build
 ```
 
-`src-tauri/target/release/marxdown.exe` と、CLI シム（`src-tauri/target/release/bin/`）が出来る。
+Windows では `src-tauri/target/release/marxdown.exe` と、CLI シム（`src-tauri/target/release/bin/`）が出来る。
 インストーラは `src-tauri/target/release/bundle/nsis/` に出来る。
 **PATH に通すのは `bin` のほうである。**
 
@@ -161,6 +168,17 @@ $bin = Resolve-Path .\src-tauri\target\release\bin
 > インストーラを入れると、ビルドのたびに再インストールが要る。
 > `pnpm build` の出力をそのまま指しておけば、ビルドし直すだけで次の起動から新しい版になる。
 > インストール版と両方を PATH に入れると、先に書かれているほうが使われる。
+
+macOS と Linux にシムは無い。
+本体が自分自身を端末から切り離して起動し直すため、実行ファイルをそのまま PATH に通してよい（`src-tauri/src/detach.rs`）。
+配布物は `src-tauri/target/release/bundle/` の `dmg`（macOS）、`deb` と `appimage`（Linux）に出来る。
+
+```bash
+# macOS
+sudo ln -sf "$PWD/src-tauri/target/release/bundle/macos/Marxdown.app/Contents/MacOS/marxdown" /usr/local/bin/marxdown
+# Linux
+ln -sf "$PWD/src-tauri/target/release/marxdown" ~/.local/bin/marxdown
+```
 
 2 回目以降の `marxdown foo.md` は新しいプロセスを立てず、常駐しているプロセスにパスを転送する（単一インスタンス / ADR-0004）。
 ここが速さの中心なので、ドッグフーディングではウィンドウを閉じずに置いておくのが本来の使い方。
@@ -203,6 +221,24 @@ git push origin v0.2.0
 - タイトルを `Marxdown v0.2.0 — <この版で良くなったこと>` にする（例: `Marxdown v0.3.0 — Better Markdown reading on Windows`）
 - 本文の HTML コメントにある「Why it matters」を、利用者から見た価値として 1〜3 文で書き、コメントを外す
 公開した時点で `releases/latest/download/latest.json` が新しい版を指し、インストール済みのアプリに更新の通知が出る。
+
+### プレリリース（macOS / Linux のプレビュー）
+
+版に `-` を含むタグ（`v0.4.0-beta.1` など）はプレリリースになる（ADR-0028 §3.8）。
+Windows に加えて macOS（Apple シリコン / Intel の `dmg`）と Linux（`deb` / `AppImage`）を作り、下書きに `--prerelease` を付ける。
+安定版のタグでは Windows だけを作り、`latest.json` にも Windows の分しか載らない。
+プレリリースは `releases/latest` に現れないため、安定版の利用者の updater には届かない。
+
+```bash
+pnpm release bump 0.4.0-beta.1   # 版の番号だけを上げる。CHANGELOG の Unreleased は確定させない
+```
+
+プレリリースでは CHANGELOG の Unreleased を確定させない。
+本文は Unreleased から作り、次の安定版を出すときにそのまま確定させる。
+確定させると、その項目が安定版の Release の本文から抜けるためである。
+
+macOS と Linux のジョブは時間がかかる。
+タグを打つ前に、CI を `workflow_dispatch` で実行し、`配布物` のジョブ（`dmg` / `deb` / `AppImage`）が通ることを確かめておく。
 
 > [!WARNING]
 > 公開した Release を後から差し替えない。

@@ -7,14 +7,15 @@
 
 ## Don't open VS Code just to read a Markdown file.
 
-Marxdown is a fast, reading-first Markdown viewer for Windows.<br />
+Marxdown is a fast, reading-first Markdown viewer for Windows (macOS and Linux builds are in preview).<br />
 Open a `.md` file, read it comfortably, and edit it when you need to.
 
 [**⬇ Download for Windows**](https://github.com/antimacho612/marxdown/releases/latest) ·
+[macOS / Linux preview](#macos--linux-preview) ·
 [Website](https://antimacho612.github.io/marxdown/en/) ·
 [Guide](https://antimacho612.github.io/marxdown/en/guide/)
 
-Free and open source (MIT) · Windows 10 / 11 (x64)
+Free and open source (MIT) · Windows 10 / 11 (x64) · macOS 14+ / Linux (preview)
 
 [日本語](README.md) | English
 
@@ -136,7 +137,7 @@ Markdown is often read for minutes or hours, not seconds. So typography matters.
 - Export the document you are viewing as HTML or PDF
 - Documents with `marp: true` are shown as [Marp](https://marp.app/) slides
 - Definition lists, highlights, superscript, subscript, and more can be enabled in Settings
-- English and Japanese UI (follows the Windows display language by default)
+- English and Japanese UI (follows the OS display language by default)
 - In-app update notifications
 
 ## How it compares
@@ -148,13 +149,15 @@ Every tool below is good at what it was built for. This table is about what each
 | Built around | Reading Markdown files, with light editing | Writing and debugging code | Writing Markdown (WYSIWYG) | A personal knowledge base of linked notes |
 | Opens a single file as is | ✓ | ✓ | ✓ | Files live in a vault |
 | Editing style | Source editor (Monaco) with Preview / Split | Source editor with a preview pane | WYSIWYG | Live Preview, source, and Reading view |
-| Platforms | Windows only | Windows, macOS, Linux | Windows, macOS, Linux | Windows, macOS, Linux, mobile |
+| Platforms | Windows (macOS and Linux in preview) | Windows, macOS, Linux | Windows, macOS, Linux | Windows, macOS, Linux, mobile |
 | Price | Free, open source (MIT) | Free | Paid (one-time license, free trial) | Free (commercial license optional) |
 
 If you write long-form Markdown, Typora is a great fit. If you build a network of notes, Obsidian is. If you live in a codebase, VS Code is.
 Marxdown is for opening the file in front of you and reading it.
 
 ## Installation
+
+### Windows
 
 1. Download `Marxdown_<version>_x64-setup.exe` from [**Releases**](https://github.com/antimacho612/marxdown/releases/latest)
 2. Run it. No administrator rights are needed (it installs to `%LOCALAPPDATA%\Marxdown`)
@@ -204,6 +207,64 @@ To also delete your settings and recent file history, check "Delete the applicat
 
 </details>
 
+### macOS / Linux preview
+
+The macOS and Linux builds are previews.
+They are attached only to pre-releases on [Releases](https://github.com/antimacho612/marxdown/releases) (versions like `v0.4.0-beta.1`).
+They do not update automatically. Download new versions from Releases.
+Please report problems on [Issues](https://github.com/antimacho612/marxdown/issues).
+
+<details>
+<summary>macOS (14 or later)</summary>
+
+<br />
+
+1. Download `Marxdown_<version>_aarch64.dmg` for Apple silicon, or `Marxdown_<version>_x64.dmg` for Intel
+2. Open it and drag Marxdown to Applications
+3. The app is unsigned, so Gatekeeper blocks the first launch. On macOS 15 or later, try to open it once, then choose "Open Anyway" in System Settings > Privacy & Security. On macOS 14, right-click Marxdown in Finder and choose "Open"
+4. To use it from the terminal, link the `marxdown` command
+
+```bash
+sudo ln -sf /Applications/Marxdown.app/Contents/MacOS/marxdown /usr/local/bin/marxdown
+```
+
+To open `.md` files by double-clicking, choose Marxdown in "Open with" under Get Info for a `.md` file, then choose "Change All".
+
+</details>
+
+<details>
+<summary>Linux (x86_64)</summary>
+
+<br />
+
+The `.deb` (Ubuntu / Debian) installs the `marxdown` command and adds Marxdown to "Open With" in your file manager.
+
+```bash
+sudo apt install ./Marxdown_<version>_amd64.deb
+xdg-mime default Marxdown.desktop text/markdown   # to make it the default app for .md
+```
+
+Make the `.AppImage` executable and run it. It needs `libfuse2` (`libfuse2t64` on Ubuntu 24.04).
+To use it from the terminal, link it into `~/.local/bin` or similar.
+
+```bash
+chmod +x Marxdown_<version>_amd64.AppImage
+ln -sf "$PWD/Marxdown_<version>_amd64.AppImage" ~/.local/bin/marxdown
+```
+
+</details>
+
+Known limitations:
+
+- **No automatic updates.** Download new versions from Releases
+- **Gatekeeper blocks the first launch on macOS.** Follow the steps above
+- **On macOS, closing the window with `✕` keeps Marxdown in the Dock.** Click the Dock icon to bring it back, and press <kbd>⌘</kbd>+<kbd>Q</kbd> to quit. Read <kbd>Ctrl</kbd> in shortcuts as <kbd>⌘</kbd> (remapped keys are in [Keyboard Shortcuts](docs/keybindings.en.md))
+- **On macOS, export PDF with "Save as PDF" in the print dialog**
+- **On Linux, the tray icon is available only in desktop environments that can show it (such as KDE Plasma).** On GNOME without an extension, `✕` quits
+- **On Wayland, the window position is not restored, and tabs cannot be dragged into another window.** "Move to Main Window" in the Command Palette still works
+- **Snap Layouts, the preview while dragging a tab out, and the folder context menu are Windows-only**
+- **On macOS, the OS asks for permission the first time you open Documents or Desktop**
+
 ## Command line
 
 ```bash
@@ -233,6 +294,7 @@ When piping from Windows PowerShell 5.1, non-ASCII characters are replaced with 
 | <kbd>Ctrl</kbd>+<kbd>,</kbd> | Settings |
 | <kbd>Ctrl</kbd>+<kbd>Q</kbd> | Quit |
 
+On macOS, read <kbd>Ctrl</kbd> as <kbd>⌘</kbd>.
 See [Keyboard Shortcuts](docs/keybindings.en.md) for the full list, and the [guide](https://antimacho612.github.io/marxdown/en/guide/) for the syntax and every setting.
 
 ## Privacy & security
