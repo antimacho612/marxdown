@@ -54,17 +54,21 @@
   .mx-settings__sample-heading {
     display: block;
     font-size: 1.25em;
+    color: var(--mx-color-heading, inherit);
   }
 
   .mx-settings__sample-body {
     margin: var(--mx-space-2) 0 0;
   }
 
-  /* 本文の見本に含めるコード。面の配色が変わったことを確認する手掛かりになる。 */
+  /*
+   * 本文の見本に含めるコード。面の配色が変わったことを確認する手掛かりになる。
+   * 背景は `preview.css` のインラインコードと同じ混ぜ方にする。
+   */
   .mx-settings__sample-code-chip {
     padding: 0 0.3em;
     border-radius: var(--mx-radius-sm);
-    background: var(--mx-color-bg-subtle);
+    background: color-mix(in srgb, var(--mx-color-code-builtin) 14%, var(--mx-color-bg));
     color: var(--mx-color-code-builtin);
     font-family: var(--mx-font-code);
     font-size: 0.9em;

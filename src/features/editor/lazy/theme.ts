@@ -132,7 +132,7 @@ function tokenRules(): monaco.editor.ITokenThemeRule[] {
     { token: 'strong.md', fontStyle: 'bold' },
     { token: 'emphasis.md', fontStyle: 'italic' },
     // インラインコード
-    { token: 'variable.md', foreground: readColor('--mx-color-code-builtin', '#0e7490') },
+    { token: 'variable.md', foreground: readColor('--mx-color-code-builtin', '#09728e') },
     // フェンスの中身
     { token: 'variable.source.md', foreground: readColor('--mx-color-code-comment', '#6b7280') },
     // フェンス記号 / 4 字下げのコード
