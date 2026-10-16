@@ -103,10 +103,6 @@ export interface ThemeSummary {
  *
  * `--mx-color-selection` は accent から導出する。
  * 50 枚ぶんを手で書くと、accent と整合しない値が混入する余地だけが増える。
- *
- * `--mx-color-heading` はプレビューの見出しと箇条書きの記号の色で、keyword から導出する。
- * accent は多くの配色で青系に寄っており、見出しまで accent にすると配色どうしの差が出ない。
- * 既定の配色はこの変数を持たず、プレビューは無彩色の見出しのまま描かれる。
  */
 export function declarations(preset: Preset): string {
   const lines: string[] = [];
@@ -118,6 +114,5 @@ export function declarations(preset: Preset): string {
   }
 
   lines.push(`--mx-color-selection:color-mix(in srgb,var(--mx-color-accent) 32%,transparent);`);
-  lines.push(`--mx-color-heading:var(--mx-color-code-keyword);`);
   return lines.join('');
 }

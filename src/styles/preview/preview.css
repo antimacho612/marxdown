@@ -57,8 +57,6 @@
 
 .mx-preview :is(h1, h2, h3, h4, h5, h6) {
   font-weight: 650;
-  /* `--mx-color-heading` は組み込みの配色だけが持つ（`theme/lazy/preset.ts` の `declarations`）。 */
-  color: var(--mx-color-heading, inherit);
   line-height: 1.3;
   letter-spacing: -0.01em;
   scroll-margin-top: var(--mx-space-6);
@@ -73,23 +71,19 @@
  * 段落どうしの間隔（24px）より見出しと本文の間隔を小さくして初めて、見出しが下の段落に結びつく。
  * h1 と h2 は罫線が区切りの一部を担うため、比を 3:1 に留めてある。
  */
-.mx-content :is(h1, h2) {
-  --mx-heading-rule: color-mix(in srgb, var(--mx-color-heading, var(--mx-color-border)) 35%, var(--mx-color-border));
-}
-
 .mx-content h1 {
   font-size: 1.9em;
   font-weight: 700;
   margin: 0 0 var(--mx-space-6);
   padding-bottom: var(--mx-space-3);
-  border-bottom: 1px solid var(--mx-heading-rule);
+  border-bottom: 1px solid var(--mx-color-border);
 }
 
 .mx-content h2 {
   font-size: 1.45em;
   margin: var(--mx-space-12) 0 var(--mx-space-4);
   padding-bottom: var(--mx-space-2);
-  border-bottom: 1px solid var(--mx-heading-rule);
+  border-bottom: 1px solid var(--mx-color-border);
 }
 
 .mx-content h3 {
@@ -140,10 +134,9 @@
 /*
  * 中黒と番号は本文より一段淡くする。
  * 本文と同じ濃さだと、箇条書きが 1 行ごとに同じ強さの点を打つことになり、本文より先に目に入る。
- * 配色が見出しの色を持つ場合は、エディターと同じく見出しと同じ色にする。
  */
 .mx-preview :is(ul, ol) > li::marker {
-  color: var(--mx-color-heading, var(--mx-color-fg-subtle));
+  color: var(--mx-color-fg-subtle);
 }
 
 /*
@@ -187,7 +180,7 @@
  *
  * 背景は文字色を地色に混ぜて作る。
  * `--mx-color-bg-subtle` は多くの配色で地色との差が小さく、背景が地色に溶けて印として読み取れない。
- * 文字と背景のコントラストは `tokens.contrast.test.ts` と `presets.contrast.test.ts` が検証する。
+ * 既定の配色での文字と背景のコントラストは `tokens.contrast.test.ts` が検証する。
  */
 .mx-preview :not(pre) > code {
   padding: 0.15em 0.35em;

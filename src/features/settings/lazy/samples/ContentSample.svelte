@@ -54,7 +54,6 @@
   .mx-settings__sample-heading {
     display: block;
     font-size: 1.25em;
-    color: var(--mx-color-heading, inherit);
   }
 
   .mx-settings__sample-body {
