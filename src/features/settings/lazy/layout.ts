@@ -409,6 +409,13 @@ export function buildLayout() {
         },
         {
           kind: 'field',
+          key: 'editor.pasteImage.directory',
+          widget: 'text',
+          label: tSettings.editor.pasteImageDirectory.label,
+          description: tSettings.editor.pasteImageDirectory.description,
+        },
+        {
+          kind: 'field',
           key: 'editor.cursorStyle',
           widget: 'select',
           label: tSettings.editor.cursorStyle,

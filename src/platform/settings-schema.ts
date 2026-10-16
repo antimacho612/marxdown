@@ -127,6 +127,11 @@ export const SETTINGS_SCHEMA = defineSettingsSchema({
   'editor.lineNumbers': { kind: 'enum', values: ['off', 'on', 'relative', 'interval'], default: 'on' },
   'editor.minimap.enabled': { kind: 'boolean', default: false },
   'editor.padding.top': { kind: 'number', default: 12, min: 0, max: 100 },
+  /**
+   * 貼り付けた画像の保存先。文書のあるディレクトリからの相対パスで、`${documentFileName}` と `${documentBaseName}` を展開する。
+   * 外へ出る指定は Rust 側が保存の時点で拒否する（`src-tauri/src/asset.rs`）。
+   */
+  'editor.pasteImage.directory': { kind: 'string', default: '${documentFileName}.assets' },
   'editor.renderControlCharacters': { kind: 'boolean', default: true },
   'editor.renderLineHighlight': { kind: 'enum', values: ['none', 'gutter', 'line', 'all'], default: 'line' },
   'editor.renderWhitespace': {

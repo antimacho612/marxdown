@@ -13,6 +13,7 @@
   "editor.lineNumbers": "on",
   "editor.minimap.enabled": false,
   "editor.padding.top": 12.0,
+  "editor.pasteImage.directory": "${documentFileName}.assets",
   "editor.renderControlCharacters": true,
   "editor.renderLineHighlight": "line",
   "editor.renderWhitespace": "none",
