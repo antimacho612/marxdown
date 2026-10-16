@@ -85,7 +85,7 @@ describe('リンククリックの分岐', () => {
     expect(spies.openExternal).toHaveBeenCalledWith('mailto:a@example.com');
   });
 
-  it('相対パスの Markdown はアプリ内で開く (F-VIEW-05)', () => {
+  it('相対パスの Markdown はアプリ内の新しいタブで開く (F-VIEW-05)', () => {
     click('<a href="./other.md">other</a>');
 
     expect(openPathSpy).toHaveBeenCalledWith('C:\\work\\docs\\./other.md', {});
@@ -108,7 +108,18 @@ describe('リンククリックの分岐', () => {
     expect(openPathSpy).toHaveBeenCalledWith('C:\\work\\docs\\./other.md', { anchor: 'section' });
   });
 
-  /** ブラウザの慣習に合わせた導線（F-OPEN-06）。既定の「同じタブで開く」は変えない。 */
+  it('開いている文書そのものへのリンクは、新しいタブにせずその場で見出しへ移動する', () => {
+    container.innerHTML = '<a href="C:\\work\\docs\\index.md#section">self</a><h2 id="section">見出し</h2>';
+    const target = container.querySelector('h2') as HTMLElement;
+    target.scrollIntoView = vi.fn();
+
+    container.querySelector('a')?.click();
+
+    expect(target.scrollIntoView).toHaveBeenCalled();
+    expect(openPathSpy).not.toHaveBeenCalled();
+  });
+
+  /** ブラウザの慣習に合わせた導線（F-OPEN-06）。 */
   it('Shift+Click は別ウィンドウで開く (F-OPEN-06)', () => {
     container.innerHTML = '<a href="./other.md">other</a>';
     container.querySelector('a')?.dispatchEvent(new MouseEvent('click', { bubbles: true, shiftKey: true }));
