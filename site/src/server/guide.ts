@@ -24,7 +24,7 @@ export interface RenderedExample {
   /** コピー用の元の文字列。 */
   raw: string;
   html: string;
-  frontMatter: string | null;
+  frontMatterHtml: string | null;
   setting?: string;
   note?: string;
 }
@@ -70,7 +70,7 @@ async function renderSyntax(locale: Locale, imageUrl: string): Promise<RenderedS
     for (const example of section.examples) {
       const raw = sourceOf(example, locale);
       const rendered = example.note
-        ? { html: await renderSlides(raw), frontMatter: null }
+        ? { html: await renderSlides(raw), frontMatterHtml: null }
         : await renderDocument(raw, example.setting ? { syntax: [example.setting] } : {});
       examples.push({
         id: example.id,
@@ -79,7 +79,7 @@ async function renderSyntax(locale: Locale, imageUrl: string): Promise<RenderedS
         source: highlightSource(raw),
         raw,
         html: rendered.html.replaceAll(SAMPLE_IMAGE, `src="${imageUrl}"`),
-        frontMatter: rendered.frontMatter,
+        frontMatterHtml: rendered.frontMatterHtml,
         ...(example.setting && { setting: `markdown.${example.setting}` }),
         ...(example.note && { note: example.note[locale] }),
       });

@@ -40,6 +40,7 @@
   "preview.codeFontFamily": "",
   "preview.fontFamily": "",
   "preview.fontSize": 16.0,
+  "preview.frontMatter": "table",
   "preview.lineHeight": 1.75,
   "preview.maxWidth": 72.0,
   "preview.softBreak": false,

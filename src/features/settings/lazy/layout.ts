@@ -215,6 +215,14 @@ export function buildLayout() {
         },
         {
           kind: 'field',
+          key: 'preview.frontMatter',
+          widget: 'select',
+          label: tSettings.frontMatter.label,
+          description: tSettings.frontMatter.description,
+          labels: tSettings.frontMatter.options,
+        },
+        {
+          kind: 'field',
           key: 'preview.tableStyle',
           widget: 'select',
           label: tSettings.tableStyle.label,

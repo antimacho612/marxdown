@@ -74,6 +74,7 @@ pub const KEY_OUTLINE_MAX_DEPTH: &str = "outline.maxDepth";
 pub const KEY_PREVIEW_CODE_FONT_FAMILY: &str = "preview.codeFontFamily";
 pub const KEY_PREVIEW_FONT_FAMILY: &str = "preview.fontFamily";
 pub const KEY_PREVIEW_FONT_SIZE: &str = "preview.fontSize";
+pub const KEY_PREVIEW_FRONT_MATTER: &str = "preview.frontMatter";
 pub const KEY_PREVIEW_LINE_HEIGHT: &str = "preview.lineHeight";
 pub const KEY_PREVIEW_MAX_WIDTH: &str = "preview.maxWidth";
 pub const KEY_PREVIEW_SOFT_BREAK: &str = "preview.softBreak";
@@ -182,6 +183,17 @@ pub enum TableStyle {
     Lines,
     Grid,
     Zebra,
+}
+
+/// Front Matter の見せ方（F-VIEW-09）。
+/// 既定の `Table` はキーと値の表にする。表にできない内容はフロントエンドが `Code` と同じく YAML のまま見せる。
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum FrontMatterStyle {
+    #[default]
+    Table,
+    Code,
+    Hidden,
 }
 
 /// 折り返し（VS Code `editor.wordWrap`）。
@@ -394,6 +406,9 @@ pub struct Settings {
     pub preview_font_family: String,
     #[serde(rename = "preview.fontSize")]
     pub preview_font_size: f64,
+    /// Front Matter の見せ方（F-VIEW-09）。
+    #[serde(rename = "preview.frontMatter")]
+    pub preview_front_matter: FrontMatterStyle,
     #[serde(rename = "preview.lineHeight")]
     pub preview_line_height: f64,
     /// 本文幅。単位は `ch`。
@@ -496,6 +511,7 @@ impl Default for Settings {
             preview_code_font_family: String::new(),
             preview_font_family: String::new(),
             preview_font_size: DEFAULT_FONT_SIZE,
+            preview_front_matter: FrontMatterStyle::default(),
             preview_line_height: DEFAULT_LINE_HEIGHT,
             preview_max_width: DEFAULT_MAX_WIDTH,
             // CommonMark 準拠。改行を <br> にしない。
@@ -621,6 +637,8 @@ impl Settings {
                 .unwrap_or(d.preview_font_family),
             preview_font_size: take_number(&mut map, KEY_PREVIEW_FONT_SIZE, FONT_SIZE_RANGE)
                 .unwrap_or(d.preview_font_size),
+            preview_front_matter: take(&mut map, KEY_PREVIEW_FRONT_MATTER)
+                .unwrap_or(d.preview_front_matter),
             preview_line_height: take_number(&mut map, KEY_PREVIEW_LINE_HEIGHT, LINE_HEIGHT_RANGE)
                 .unwrap_or(d.preview_line_height),
             preview_max_width: take_number(&mut map, KEY_PREVIEW_MAX_WIDTH, MAX_WIDTH_RANGE)

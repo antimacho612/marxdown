@@ -11,6 +11,7 @@ import { dirOf } from '@/lib/path';
 import { refreshOutline, refreshSearch } from '@/lib/refresh';
 import { mark } from '@/lib/trace';
 import type { MarkdownParser, ParseOptions } from '@/markdown/parser';
+import type { FrontMatterStyle } from '@/markdown/protocol';
 import { getPlatform, type DocumentPayload, type Encoding } from '@/platform';
 
 import { markClean } from './dirty';
@@ -55,6 +56,12 @@ export interface OpenerConfig {
    */
   syntax: () => readonly string[];
   /**
+   * Front Matter の見せ方（`preview.frontMatter`）。
+   *
+   * `softBreak` と同じ理由で、値ではなく読む関数として受ける。省略時は表にする。
+   */
+  frontMatter?: () => FrontMatterStyle;
+  /**
    * Marp の自作テーマの参照先（`marp.themes` / ADR-0023 §3.4）。
    *
    * `softBreak` と同じ理由で、値ではなく読む関数として受ける。省略時は参照しない。
@@ -96,6 +103,7 @@ export function getParseOptions(): ParseOptions {
   return {
     breaks: config?.softBreak() ?? false,
     syntax: config?.syntax() ?? [],
+    frontMatter: config?.frontMatter?.() ?? 'table',
     marpThemes: () => loadMarpThemes(config?.marpThemes?.() ?? []),
   };
 }
@@ -198,6 +206,7 @@ export async function openDocument(payload: StoredPayload, options: OpenOptions 
   const parsing = opener.parser.parse(payload.content, {
     breaks: opener.softBreak(),
     syntax: opener.syntax(),
+    frontMatter: opener.frontMatter?.() ?? 'table',
     // 開くたびにテーマのファイルを読み直す。外部で編集したテーマは開き直しと再読み込み（F5）で反映される。
     marpThemes: () => loadMarpThemes(opener.marpThemes?.() ?? [], true),
   });
@@ -234,7 +243,7 @@ export async function openDocument(payload: StoredPayload, options: OpenOptions 
     if (!container) throw new Error(`${PREVIEW_SELECTOR} が見つからない`);
 
     const marp = parsed.marp ? await paintMarp(container, parsed.marp, dirOf(payload.path ?? '')) : null;
-    const result = marp ?? paint(container, parsed.chunks, parsed.frontMatter, parsed.blocks);
+    const result = marp ?? paint(container, parsed.chunks, parsed.frontMatterHtml, parsed.blocks);
     if (options.resetScroll === true) container.scrollTop = 0;
     else if (options.restoreScroll !== undefined) container.scrollTop = options.restoreScroll;
 

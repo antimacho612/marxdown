@@ -22,6 +22,7 @@ import { tablePlugin } from './plugins/table';
 import { taskListPlugin } from './plugins/task-list';
 import { LINE_HEAD } from './protocol';
 
+export { frontMatterCodeHtml } from './plugins/front-matter';
 export { loadSyntax, SYNTAX_NAMES, type SyntaxName } from './plugins/syntax';
 export { extractOutline } from './plugins/line-map';
 export { mathPlugin } from './plugins/math';

@@ -221,7 +221,7 @@ async function renderOnce(): Promise<void> {
         if (container.scrollTop !== scrollTop) container.scrollTop = scrollTop;
         if (notice) documentStore.notice = { level: 'warning', message: notice };
       } else {
-        patch(container, parsed.blocks, parsed.frontMatter);
+        patch(container, parsed.blocks, parsed.frontMatterHtml);
       }
     }
 

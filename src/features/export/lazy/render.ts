@@ -37,11 +37,10 @@ export async function render(options: RenderOptions): Promise<HTMLElement | null
   const root = document.createElement('div');
 
   // `preview/paint.ts` と同じ構造にする。本文幅の規則が `.mx-content` を基準にしている。
-  if (parsed.frontMatter !== null) {
-    const pre = document.createElement('pre');
-    pre.className = 'mx-front-matter';
-    pre.textContent = parsed.frontMatter;
-    root.append(pre);
+  if (parsed.frontMatterHtml !== null) {
+    const frontMatter = document.createElement('template');
+    frontMatter.innerHTML = sanitize(parsed.frontMatterHtml);
+    root.append(frontMatter.content);
   }
   const content = document.createElement('div');
   content.className = 'mx-content';

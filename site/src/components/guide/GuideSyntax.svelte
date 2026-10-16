@@ -55,7 +55,7 @@
                 <p class="syntax-pane__note">{example.note}</p>
               {:else}
                 <div class="mx-preview syntax-preview">
-                  {#if example.frontMatter !== null}<pre class="mx-front-matter">{example.frontMatter}</pre>{/if}
+                  {#if example.frontMatterHtml !== null}{@html example.frontMatterHtml}{/if}
                   <div class="mx-content">{@html example.html}</div>
                 </div>
               {/if}

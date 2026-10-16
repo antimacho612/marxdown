@@ -64,6 +64,15 @@ export const jaSettings = {
     description:
       '段落の中の改行を、そのまま改行として表示します。オフにすると、空行で区切るまでは 1 行につながります。',
   },
+  frontMatter: {
+    label: 'Front Matter',
+    description: '文書の先頭の --- で囲んだ YAML の見せ方を選びます。',
+    options: {
+      table: '表',
+      code: 'YAML のまま',
+      hidden: '表示しない',
+    },
+  },
   tableStyle: {
     label: '表の罫線',
     description: '表の罫線の引き方を選びます。列が多い表は、格子や縞模様にすると行を目で追いやすくなります。',
