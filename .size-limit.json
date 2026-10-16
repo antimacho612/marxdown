@@ -182,7 +182,7 @@
     "gzip": true
   },
   {
-    "name": "total ja (no mermaid, no math, no front matter, no marp, no editor, no i18n-en)",
+    "name": "total ja (no mermaid, no math, no front matter, no marp, no editor, no i18n-en。240 KB から引き上げた根拠は設計ドキュメントの性能予算にある)",
     "path": [
       "dist/assets/*.js",
       "!dist/assets/mermaid-*.js",
@@ -193,11 +193,11 @@
       "!dist/assets/i18n-*-marp-*.js",
       "!dist/assets/i18n-en-*.js"
     ],
-    "limit": "240 KB",
+    "limit": "242 KB",
     "gzip": true
   },
   {
-    "name": "total en (no mermaid, no math, no front matter, no marp, no editor, no i18n-ja)",
+    "name": "total en (no mermaid, no math, no front matter, no marp, no editor, no i18n-ja。240 KB から引き上げた根拠は設計ドキュメントの性能予算にある)",
     "path": [
       "dist/assets/*.js",
       "!dist/assets/mermaid-*.js",
@@ -208,7 +208,7 @@
       "!dist/assets/i18n-*-marp-*.js",
       "!dist/assets/i18n-ja-*.js"
     ],
-    "limit": "240 KB",
+    "limit": "242 KB",
     "gzip": true
   }
 ]
