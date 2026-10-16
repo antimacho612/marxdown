@@ -19,7 +19,14 @@ export interface ParseResult {
    */
   blocks: string[];
   outline: OutlineItem[];
+  /** Front Matter の生テキスト。 */
   frontMatter: string | null;
+  /**
+   * プレビューに入れる Front Matter の HTML（`preview.frontMatter` に従う）。サニタイズしていない。
+   *
+   * Front Matter が無いとき、表示しない設定のとき、Marp の文書のときは `null`。
+   */
+  frontMatterHtml: string | null;
   /** パース所要時間（ms）。起動計測とベンチに使う。 */
   parseMs: number;
   /** 文字数と読了時間。本文を持っている側で数える。 */
@@ -63,6 +70,13 @@ export interface MarpThemeProblem {
   path: string;
   kind: 'not-absolute' | 'missing' | 'not-css' | 'too-large' | 'too-many' | 'unreadable' | 'no-theme-name';
 }
+
+/**
+ * Front Matter の見せ方（`preview.frontMatter`）。
+ *
+ * `table` で表にできない内容（YAML として読めない、最上位がマッピングでない）は `code` と同じく YAML のまま見せる。
+ */
+export type FrontMatterStyle = 'table' | 'code' | 'hidden';
 
 /** 段階的描画の既定値。最初のチャンクがおよそ 1 画面分になるように選ぶ。 */
 export const DEFAULT_FIRST_CHUNK_BLOCKS = 40;

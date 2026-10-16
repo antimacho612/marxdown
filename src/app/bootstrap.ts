@@ -120,6 +120,7 @@ export async function startup(renderShell: () => void): Promise<void> {
     parser: createParser(),
     softBreak: () => settingsStore.values['preview.softBreak'],
     syntax: () => enabledSyntax(settingsStore.values),
+    frontMatter: () => settingsStore.values['preview.frontMatter'],
     marpThemes: () => settingsStore.values['marp.themes'],
     ...workspaceOpenerHooks(),
   });
@@ -241,7 +242,7 @@ export async function startup(renderShell: () => void): Promise<void> {
   installEntryWatch();
   installSettingsWatch();
   installWindowState();
-  // パースの結果そのものを変える設定（`preview.softBreak` と `markdown.*`）に追従して本文を再描画する。
+  // パースの結果そのものを変える設定（`preview.softBreak` / `preview.frontMatter` / `markdown.*`）に追従して本文を再描画する。
   installSoftBreakRerender();
   // タブの変化を `state.json` へ書き続ける。
   // 復元より後に張る。復元そのものを 1 枚ずつ書き戻すことに意味がない。

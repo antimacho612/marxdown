@@ -8,7 +8,13 @@
  *
  * `pipeline` を動的 import にしているのは遅延のためではなく、`main` チャンクの予算計測を実態に合わせるためである（size-limit のクリティカルパスに名指しで入っている）。
  */
-import { DEFAULT_CHUNK_BLOCKS, DEFAULT_FIRST_CHUNK_BLOCKS, type MarpThemeSet, type ParseResult } from './protocol';
+import {
+  DEFAULT_CHUNK_BLOCKS,
+  DEFAULT_FIRST_CHUNK_BLOCKS,
+  type FrontMatterStyle,
+  type MarpThemeSet,
+  type ParseResult,
+} from './protocol';
 
 /** チャンク分割の指定。省略時は `protocol.ts` の既定値を使う。 */
 export interface ParseOptions {
@@ -22,6 +28,8 @@ export interface ParseOptions {
    * 描画の前にここで読み込みを待つ。既定（空）では読み込むものが無く、往復も発生しない。
    */
   syntax?: readonly string[];
+  /** Front Matter の見せ方（`preview.frontMatter`）。省略時は `table`。 */
+  frontMatter?: FrontMatterStyle;
   /**
    * Marp の自作テーマ（`marp.themes`）を読む関数。Marp の文書を描くときだけ呼ぶ。
    *
@@ -53,7 +61,15 @@ export function createParser(): MarkdownParser {
   return {
     async parse(text, options = {}) {
       const id = nextId++;
-      const { renderChunks, resetMarkdownIt, loadSyntax, marpFrontMatter, mathPlugin, extractOutline } = await pipeline;
+      const {
+        renderChunks,
+        resetMarkdownIt,
+        loadSyntax,
+        marpFrontMatter,
+        frontMatterCodeHtml,
+        mathPlugin,
+        extractOutline,
+      } = await pipeline;
       const { measure } = await textStats;
 
       const frontMatter = marpFrontMatter(text);
@@ -68,6 +84,7 @@ export function createParser(): MarkdownParser {
           blocks: [],
           outline: rendered.outline,
           frontMatter,
+          frontMatterHtml: null,
           parseMs: performance.now() - started,
           textStats: measure(text),
           marp: rendered,
@@ -93,6 +110,7 @@ export function createParser(): MarkdownParser {
         { breaks: options.breaks ?? false, syntax: names },
       );
       const parseMs = performance.now() - started;
+      const style = options.frontMatter ?? 'table';
 
       return {
         id,
@@ -100,10 +118,31 @@ export function createParser(): MarkdownParser {
         blocks: result.blocks,
         outline: result.outline,
         frontMatter: result.frontMatter,
+        frontMatterHtml: await frontMatterHtml(result.frontMatter, style, frontMatterCodeHtml),
         parseMs,
         textStats: measure(text),
       };
     },
     dispose() {},
   };
+}
+
+/**
+ * Front Matter の HTML を作る。
+ *
+ * 表にするときだけ js-yaml を含む遅延チャンクを読み込む。
+ * Front Matter の無い文書と `code` / `hidden` では読み込まない。
+ */
+async function frontMatterHtml(
+  source: string | null,
+  style: FrontMatterStyle,
+  codeHtml: (source: string) => string,
+): Promise<string | null> {
+  if (source === null || style === 'hidden') return null;
+  if (style === 'table') {
+    const { frontMatterTableHtml } = await import('./front-matter-table');
+    const table = frontMatterTableHtml(source);
+    if (table !== null) return table;
+  }
+  return codeHtml(source);
 }

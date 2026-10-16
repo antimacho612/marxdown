@@ -124,6 +124,9 @@ importers:
       highlight.js:
         specifier: ^11.12.0
         version: 11.12.0
+      js-yaml:
+        specifier: ^5.4.2
+        version: 5.4.2
       katex:
         specifier: ^0.18.9
         version: 0.18.9

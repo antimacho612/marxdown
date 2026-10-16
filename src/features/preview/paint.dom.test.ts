@@ -1,6 +1,8 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { frontMatterCodeHtml } from '@/markdown/plugins/front-matter';
+
 import { cancelPaint, paint } from './paint';
 
 function container(): HTMLElement {
@@ -111,7 +113,7 @@ describe('段階的描画', () => {
 describe('Front Matter (F-VIEW-09)', () => {
   it('本文の前に置く', () => {
     const el = container();
-    paint(el, ['<p>body</p>'], 'title: x');
+    paint(el, ['<p>body</p>'], frontMatterCodeHtml('title: x'));
     expect(el.firstElementChild?.className).toBe('mx-front-matter');
     expect(el.firstElementChild?.textContent).toBe('title: x');
   });
@@ -124,9 +126,15 @@ describe('Front Matter (F-VIEW-09)', () => {
 
   it('中身は HTML として解釈しない', () => {
     const el = container();
-    paint(el, ['<p>body</p>'], '<script>alert(1)</script>');
+    paint(el, ['<p>body</p>'], frontMatterCodeHtml('<script>alert(1)</script>'));
     expect(el.querySelector('script')).toBeNull();
     expect(el.querySelector('.mx-front-matter')?.textContent).toContain('<script>');
+  });
+
+  it('サニタイズを通す', () => {
+    const el = container();
+    paint(el, ['<p>body</p>'], '<div class="mx-front-matter"><img src="x" onerror="alert(1)"></div>');
+    expect(el.querySelector('img')?.hasAttribute('onerror')).toBe(false);
   });
 });
 

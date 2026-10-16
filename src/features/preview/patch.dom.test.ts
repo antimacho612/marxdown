@@ -6,6 +6,8 @@
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { frontMatterCodeHtml } from '@/markdown/plugins/front-matter';
+
 import { paint, patch } from './paint';
 
 let el: HTMLElement;
@@ -93,16 +95,36 @@ describe('patch', () => {
   });
 
   it('Front Matter の変化を反映する', () => {
-    painted(['<p data-line="3">a</p>\n'], 'title: x');
+    painted(['<p data-line="3">a</p>\n'], frontMatterCodeHtml('title: x'));
 
-    patch(el, ['<p data-line="3">a</p>\n'], 'title: y');
+    patch(el, ['<p data-line="3">a</p>\n'], frontMatterCodeHtml('title: y'));
     expect(el.querySelector('.mx-front-matter')?.textContent).toBe('title: y');
 
     patch(el, ['<p data-line="0">a</p>\n'], null);
     expect(el.querySelector('.mx-front-matter')).toBeNull();
 
-    patch(el, ['<p data-line="3">a</p>\n'], 'title: z');
+    patch(el, ['<p data-line="3">a</p>\n'], frontMatterCodeHtml('title: z'));
     expect(el.firstElementChild?.className).toBe('mx-front-matter');
+  });
+
+  it('Front Matter が変わっていなければ要素を残す', () => {
+    painted(['<p data-line="3">a</p>\n'], frontMatterCodeHtml('title: x'));
+    const before = el.querySelector('.mx-front-matter');
+    // ハイライトで中身が書き換わった状態でも、元の HTML で比べる。
+    before?.querySelector('code')?.replaceChildren('highlighted');
+
+    patch(el, ['<p data-line="3">b</p>\n'], frontMatterCodeHtml('title: x'));
+
+    expect(el.querySelector('.mx-front-matter')).toBe(before);
+  });
+
+  it('Front Matter の見せ方が変わったら作り直す', () => {
+    painted(['<p data-line="3">a</p>\n'], frontMatterCodeHtml('title: x'));
+
+    patch(el, ['<p data-line="3">a</p>\n'], '<div class="mx-front-matter"><table></table></div>');
+
+    expect(el.querySelectorAll('.mx-front-matter')).toHaveLength(1);
+    expect(el.querySelector('.mx-front-matter table')).not.toBeNull();
   });
 
   it('サニタイズを通す', () => {

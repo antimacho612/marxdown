@@ -62,7 +62,7 @@ export function cancelPaint(): void {
 export function paint(
   container: HTMLElement,
   chunks: string[],
-  frontMatter: string | null = null,
+  frontMatterHtml: string | null = null,
   blocks: readonly string[] | null = null,
 ): PaintResult {
   // 前の描画を先に停止する。
@@ -72,7 +72,7 @@ export function paint(
   painted = blocks === null ? null : { container, blocks };
 
   // Front Matter は本文と一緒にスクロールするため、プレビューの中に挿入する（F-VIEW-09）。
-  if (frontMatter !== null) container.append(frontMatterElement(frontMatter));
+  if (frontMatterHtml !== null) container.append(frontMatterFragment(frontMatterHtml));
 
   const first = chunks[0];
   if (first === undefined) {
@@ -145,16 +145,16 @@ export function paint(
 export function patch(
   container: HTMLElement,
   blocks: readonly string[],
-  frontMatter: string | null,
+  frontMatterHtml: string | null,
 ): 'patched' | 'repainted' {
   if (tryPatch(container, blocks)) {
-    syncFrontMatter(container, frontMatter);
+    syncFrontMatter(container, frontMatterHtml);
     painted = { container, blocks };
     return 'patched';
   }
 
   const scrollTop = container.scrollTop;
-  paint(container, blocks.length === 0 ? [] : [blocks.join('')], frontMatter, blocks);
+  paint(container, blocks.length === 0 ? [] : [blocks.join('')], frontMatterHtml, blocks);
   // NOTE: 同じタスク内で中身を入れ直すため、通常はレイアウトの時点で高さが戻っており位置は切り詰められない。
   // 保たれなかった場合に備えて、変わっていれば設定し直す。
   if (container.scrollTop !== scrollTop) container.scrollTop = scrollTop;
@@ -306,24 +306,31 @@ function closedFragment(html: string): DocumentFragment | null {
   return fragment;
 }
 
-/** Front Matter の表示を差分で合わせる。 */
-function syncFrontMatter(container: HTMLElement, frontMatter: string | null): void {
+/**
+ * Front Matter の要素と、それを作った HTML。
+ *
+ * 要素の中身はハイライトで書き換わるため、変わったかどうかは要素ではなく元の HTML で比べる。
+ */
+const frontMatterSources = new WeakMap<Element, string>();
+
+/**
+ * Front Matter の表示を差分で合わせる。
+ *
+ * 変わっていなければ要素を残す。作り直すと、ハイライトをやり直すまで色の無い状態が見える。
+ */
+function syncFrontMatter(container: HTMLElement, frontMatterHtml: string | null): void {
   const current = container.querySelector<HTMLElement>(':scope > .mx-front-matter');
-  if (frontMatter === null) {
-    current?.remove();
-  } else if (current) {
-    if (current.textContent !== frontMatter) current.textContent = frontMatter;
-  } else {
-    container.prepend(frontMatterElement(frontMatter));
-  }
+  if (current && frontMatterSources.get(current) === frontMatterHtml) return;
+  current?.remove();
+  if (frontMatterHtml !== null) container.prepend(frontMatterFragment(frontMatterHtml));
 }
 
-/** `textContent` で入れるため、内容がどのような文字列でもここから HTML として解釈されることはない。 */
-function frontMatterElement(frontMatter: string): HTMLElement {
-  const pre = document.createElement('pre');
-  pre.className = 'mx-front-matter';
-  pre.textContent = frontMatter;
-  return pre;
+/** 本文と同じくサニタイズしてから入れる。 */
+function frontMatterFragment(frontMatterHtml: string): DocumentFragment {
+  const fragment = toFragment(frontMatterHtml);
+  const element = fragment.firstElementChild;
+  if (element) frontMatterSources.set(element, frontMatterHtml);
+  return fragment;
 }
 
 /**

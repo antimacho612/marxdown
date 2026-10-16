@@ -37,6 +37,7 @@ function parsed(): ParseResult {
     blocks,
     outline: headings,
     frontMatter: null,
+    frontMatterHtml: null,
     parseMs: 0.5,
     textStats: { chars: 1, words: 1, readingMinutes: 1 },
   };
@@ -112,7 +113,7 @@ beforeEach(async () => {
   // ファイルを開いた直後の状態。`open.ts` と同じく段階的描画で全段落が入っている。
   texts = Array.from({ length: BLOCKS }, (_, index) => `段落 ${index}`);
   const initial = parsed();
-  await paint(container, initial.chunks, initial.frontMatter, initial.blocks).done;
+  await paint(container, initial.chunks, initial.frontMatterHtml, initial.blocks).done;
   container.scrollTop = 700;
   history = [];
   headings = [];

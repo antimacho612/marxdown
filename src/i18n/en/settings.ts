@@ -69,6 +69,15 @@ export const enSettings = {
     description:
       'Shows line breaks inside a paragraph as they are. When off, lines are joined until a blank line separates them.',
   },
+  frontMatter: {
+    label: 'Front Matter',
+    description: 'How the YAML fenced with --- at the top of a document is shown.',
+    options: {
+      table: 'Table',
+      code: 'YAML',
+      hidden: 'Hidden',
+    },
+  },
   tableStyle: {
     label: 'Table Borders',
     description:

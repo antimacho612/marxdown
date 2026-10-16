@@ -2,8 +2,8 @@
  * Front Matter の分離（F-VIEW-09）。
  *
  * 先頭の `---` で囲まれたブロックを本文から切り離す。
- * 行うのは分離だけで、YAML の解釈はしない。
- * 内容を構造として扱う機能は無く、YAML パーサをクリティカルパスに載せる理由がない。
+ * ここで行うのは分離と、YAML のまま見せるときの HTML の生成だけで、YAML の解釈はしない。
+ * 表として見せるときの解釈は遅延チャンク（`markdown/front-matter-table.ts`）が行い、YAML パーサをクリティカルパスに載せない。
  */
 
 /** Front Matter と本文を分離した結果。 */
@@ -48,3 +48,19 @@ export function splitFrontMatter(text: string): SplitDocument {
   // LLM の出力が途中で切れている場合に、本文全体が失われるほうが影響が大きい。
   return { frontMatter: null, body: text, bodyStartLine: 0 };
 }
+
+/**
+ * Front Matter を YAML のコードブロックとして見せる HTML（`preview.frontMatter` が `code`）。
+ *
+ * `language-yaml` を付けるので、本文のコードブロックと同じ経路でハイライトとコピーボタンが付く。
+ */
+export function frontMatterCodeHtml(source: string): string {
+  return `<pre class="mx-front-matter"><code class="language-yaml">${escapeHtml(source)}</code></pre>`;
+}
+
+/** テキストを HTML の本文・属性値として埋め込める形にする。 */
+export function escapeHtml(text: string): string {
+  return text.replaceAll(/[&<>"]/g, (char) => HTML_ESCAPES[char] ?? char);
+}
+
+const HTML_ESCAPES: Record<string, string> = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' };
