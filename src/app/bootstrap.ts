@@ -35,6 +35,7 @@ import { installUpdateNotice } from '@/features/update';
 import { initSplit, initWindowRole, isSatellite, viewStore } from '@/features/view';
 import {
   installEntryWatch,
+  openPathInNewTab,
   openPathInSatellite,
   openPathsInTabs,
   receiveTabLazily,
@@ -335,7 +336,7 @@ function installLinks(): void {
   // 逆向きの呼び出しはここで接続する（`configureHistory` と同じ形）。
   installLinkHandler(container, {
     currentPath: () => documentStore.meta?.path ?? '',
-    open: (path, anchor) => void openPath(path, anchor === undefined ? {} : { anchor }),
+    open: (path, anchor) => void openPathInNewTab(path, anchor === undefined ? {} : { anchor }),
     openInNewWindow: (path) => void openPathInSatellite(path),
     notify: (notice) => {
       documentStore.notice = notice;

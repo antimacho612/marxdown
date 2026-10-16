@@ -1,6 +1,6 @@
 /**
  * 本文中のリンククリックの分岐（F-VIEW-05, 06, 07 / N-SEC-04）。
- * `#anchor` はページ内スクロール、`./x.md` はアプリ内で開く、他のローカルパスは確認の上で既定アプリ、`http(s)`/`mailto` は既定ブラウザ・メーラー、未知のスキームは何もしない。
+ * `#anchor` はページ内スクロール、`./x.md` はアプリ内の新しいタブで開く、他のローカルパスは確認の上で既定アプリ、`http(s)`/`mailto` は既定ブラウザ・メーラー、未知のスキームは何もしない。
  * 許可リスト方式であり、中心ユースケースが信頼できない Markdown を開くことのため、「危険なものを除外する」方式だと未知のスキームで安全性の欠陥が生じる（ADR-0006）。
  *
  * どの分岐でも必ず `preventDefault()` する。
@@ -27,7 +27,12 @@ const SCHEME = /^([a-z][a-z0-9+.-]*):/i;
 export interface LinkTargets {
   /** いま開いているファイルのパス。相対リンクの基点。無題なら空文字。 */
   currentPath: () => string;
-  /** Markdown をアプリ内で開く。 */
+  /**
+   * Markdown をアプリ内の新しいタブで開く。
+   *
+   * 既に開いているファイルならそのタブへ切り替える。
+   * リンクを辿るたびに元の文書が置き換わると、読んでいた位置へ戻るのに履歴を辿る必要があるため、元の文書はタブとして残す。
+   */
   open: (path: string, anchor: string | undefined) => void;
   /**
    * Markdown を別ウィンドウで開く（F-OPEN-06 / `Shift+Click`）。
@@ -72,9 +77,6 @@ export function installLinkHandler(container: HTMLElement, next: LinkTargets): (
     if (href === null || href === '') return;
 
     // `Shift+Click` は別ウィンドウ（F-OPEN-06）。ブラウザの慣習に合わせてある。
-    //
-    // `Ctrl+Click`（新しいタブ）は割り当てない。リンクを新しいタブで開くかどうかは未決である（OQ-41）。
-    // ここで先に決めてしまうと、未決のまま既定の振る舞いが 1 つ増える。
     handle(href, container, event.shiftKey);
   };
 
@@ -108,6 +110,11 @@ function handle(href: string, container: HTMLElement, newWindow = false): void {
     // `./other.md#section` の `#` 以降はパスの一部ではない。
     // 付けたまま渡すと Rust 側で not-found になるため、開いた後のスクロール先として別に渡す（相互にリンクされた文書群では、節を指定するリンクが頻繁に現れる）。
     const [path, anchor] = splitFragment(resolved);
+    // 開いている文書そのものへのリンクは、新しいタブにせずその場で移動する。
+    if (!newWindow && path === targets?.currentPath()) {
+      if (anchor !== undefined) scrollToAnchor(container, anchor);
+      return;
+    }
     // 相対パスの正規化は Rust 側（`read_document` の canonicalize）に任せる。
     if (newWindow) targets?.openInNewWindow(path);
     else targets?.open(path, anchor);
