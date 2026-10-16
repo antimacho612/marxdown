@@ -175,11 +175,17 @@
   font-variant-ligatures: var(--mx-font-ligatures-code);
 }
 
-/* インラインコードは「面」ではなく「印」。本文のリズムを乱さない量にとどめる。 */
+/*
+ * インラインコードは「面」ではなく「印」。本文のリズムを乱さない量にとどめる。
+ *
+ * 背景は文字色を地色に混ぜて作る。
+ * `--mx-color-bg-subtle` は多くの配色で地色との差が小さく、背景が地色に溶けて印として読み取れない。
+ * 既定の配色での文字と背景のコントラストは `tokens.contrast.test.ts` が検証する。
+ */
 .mx-preview :not(pre) > code {
   padding: 0.15em 0.35em;
   border-radius: var(--mx-radius-sm);
-  background: var(--mx-color-bg-subtle);
+  background: color-mix(in srgb, var(--mx-color-code-builtin) 14%, var(--mx-color-bg));
   color: var(--mx-color-code-builtin);
 }
 

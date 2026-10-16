@@ -77,7 +77,7 @@ export function imageLink(relativePath: string): MarkdownEdit {
 /**
  * 画像を保存してリンクを挿入する（F-EDIT-13）。
  *
- * 保存先は `<ファイル名>.assets/` に固定である（`src-tauri/src/asset.rs`）。
+ * 保存先は `editor.pasteImage.directory` の設定で決まり、Rust 側が読む（`src-tauri/src/asset.rs`）。
  * 無題の文書には基点が無いため、保存せずに知らせて終わる。
  * ここで「保存ダイアログを出す」形にすると、貼り付けという 1 動作の途中で保存の判断を求めることになる。
  */

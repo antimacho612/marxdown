@@ -185,6 +185,11 @@ export const jaSettings = {
         '日本語のように単語の間に空白を入れない言語で、単語の区切りを判定するための言語を指定します。単語単位の移動と、ダブルクリックでの選択に使います。カンマで区切って複数指定できます。空欄にすると、区切り文字だけで判定します。',
       placeholder: '例: ja, zh-CN',
     },
+    pasteImageDirectory: {
+      label: '貼り付けた画像の保存先',
+      description:
+        '画像を貼り付けたときの保存先フォルダーを、文書のあるフォルダーからの相対パスで指定します。${documentFileName} は文書のファイル名に、${documentBaseName} は拡張子を除いたファイル名に置き換わります。空欄にすると、文書と同じフォルダーに保存します。文書のあるフォルダーの外は指定できません。',
+    },
     cursorStyle: 'カーソルの形',
     cursorStyleOptions: {
       line: '縦線',

@@ -38,6 +38,8 @@ pub const KEY_EDITOR_LINE_HEIGHT: &str = "editor.lineHeight";
 pub const KEY_EDITOR_LINE_NUMBERS: &str = "editor.lineNumbers";
 pub const KEY_EDITOR_MINIMAP_ENABLED: &str = "editor.minimap.enabled";
 pub const KEY_EDITOR_PADDING_TOP: &str = "editor.padding.top";
+/// 貼り付けた画像の保存先（`crate::asset`）。
+pub const KEY_EDITOR_PASTE_IMAGE_DIRECTORY: &str = "editor.pasteImage.directory";
 pub const KEY_EDITOR_RENDER_CONTROL_CHARACTERS: &str = "editor.renderControlCharacters";
 pub const KEY_EDITOR_RENDER_LINE_HIGHLIGHT: &str = "editor.renderLineHighlight";
 pub const KEY_EDITOR_RENDER_WHITESPACE: &str = "editor.renderWhitespace";
@@ -102,6 +104,11 @@ pub const DEFAULT_EDITOR_LINE_HEIGHT: f64 = 1.6;
 /// 1 行目がウィンドウの縁に貼り付かないだけの余白。
 pub const DEFAULT_EDITOR_PADDING_TOP: f64 = 12.0;
 pub const DEFAULT_EDITOR_TAB_SIZE: f64 = 2.0;
+/// 貼り付けた画像の保存先の既定。`spec.md` なら `spec.md.assets/` になる。
+///
+/// 拡張子を除いた `${documentBaseName}.assets` にしない。
+/// `spec.md` と `spec.txt` を同じディレクトリに置いている場合に、保存先が衝突する。
+pub const DEFAULT_EDITOR_PASTE_IMAGE_DIRECTORY: &str = "${documentFileName}.assets";
 /// VS Code の `editor.wordSeparators` の既定値と同じ（Monaco も同じ値を使う）。
 pub const DEFAULT_EDITOR_WORD_SEPARATORS: &str = r#"`~!@#$%^&*()-=+[{]}\|;:'",.<>/?"#;
 pub const DEFAULT_EDITOR_WORD_WRAP_COLUMN: f64 = 80.0;
@@ -328,6 +335,13 @@ pub struct Settings {
     pub editor_minimap_enabled: bool,
     #[serde(rename = "editor.padding.top")]
     pub editor_padding_top: f64,
+    /// 貼り付けた画像の保存先。文書のあるディレクトリからの相対パスで、`${documentFileName}` と `${documentBaseName}` を展開する。
+    ///
+    /// 読む時点では検証しない。
+    /// 外へ出る指定は保存の時点で拒否する（`crate::asset::save`）。
+    /// 読む時点で既定に戻すと、指定とは別の場所へ黙って保存される。
+    #[serde(rename = "editor.pasteImage.directory")]
+    pub editor_paste_image_directory: String,
     #[serde(rename = "editor.renderControlCharacters")]
     pub editor_render_control_characters: bool,
     #[serde(rename = "editor.renderLineHighlight")]
@@ -476,6 +490,7 @@ impl Default for Settings {
             editor_line_numbers: LineNumbers::default(),
             editor_minimap_enabled: false,
             editor_padding_top: DEFAULT_EDITOR_PADDING_TOP,
+            editor_paste_image_directory: DEFAULT_EDITOR_PASTE_IMAGE_DIRECTORY.to_owned(),
             editor_render_control_characters: true,
             editor_render_line_highlight: RenderLineHighlight::default(),
             editor_render_whitespace: RenderWhitespace::default(),
@@ -580,6 +595,8 @@ impl Settings {
                 .unwrap_or(d.editor_minimap_enabled),
             editor_padding_top: take_int(&mut map, KEY_EDITOR_PADDING_TOP, PADDING_TOP_RANGE)
                 .unwrap_or(d.editor_padding_top),
+            editor_paste_image_directory: take(&mut map, KEY_EDITOR_PASTE_IMAGE_DIRECTORY)
+                .unwrap_or(d.editor_paste_image_directory),
             editor_render_control_characters: take(&mut map, KEY_EDITOR_RENDER_CONTROL_CHARACTERS)
                 .unwrap_or(d.editor_render_control_characters),
             editor_render_line_highlight: take(&mut map, KEY_EDITOR_RENDER_LINE_HIGHLIGHT)

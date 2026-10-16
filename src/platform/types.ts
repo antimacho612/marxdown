@@ -481,7 +481,7 @@ export interface Platform {
   /**
    * 貼り付けた画像を保存する（F-EDIT-13）。
    *
-   * 保存先は `<ファイル名>.assets/` に固定で、こちらからは場所を渡さない（`src-tauri/src/asset.rs`）。
+   * 保存先は Rust 側が `editor.pasteImage.directory` の設定から決め、こちらからは場所を渡さない（`src-tauri/src/asset.rs`）。
    * 返るのはドキュメントから見た相対パスで、そのまま `![](...)` に書ける形をしている。
    *
    * `documentPath` は開いているファイルの絶対パスである。

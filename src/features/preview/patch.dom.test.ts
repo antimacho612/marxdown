@@ -154,16 +154,18 @@ describe('patch', () => {
       expect(tops().map((e) => e.textContent)).toEqual(['a', 'B']);
     });
 
-    it('差し替える部分だけをパースすると要素の構造が変わる', () => {
-      painted(['<p data-line="0">a</p>\n', '<p data-line="2">b</p>\n']);
+    it('差し替える部分が閉じていない生の HTML で終わり、後ろに残す要素がある', () => {
+      painted(['<p data-line="0">a</p>\n', '<p data-line="2">b</p>\n', '<p data-line="4">c</p>\n']);
 
-      // 閉じていない `<div>` が後続のブロックを取り込み、トップレベルの要素の数が合わなくなる。
-      const result = patch(el, ['<p data-line="0">A</p>\n<div>\n', '<p data-line="2">B</p>\n'], null);
+      // 閉じていない `<div>` は、全体をパースすると後続のブロックを取り込む。部分だけを入れると構造が変わる。
+      const result = patch(
+        el,
+        ['<p data-line="0">A</p>\n<div>\n', '<p data-line="2">b</p>\n', '<p data-line="4">c</p>\n'],
+        null,
+      );
 
       expect(result).toBe('repainted');
-      expect(el.querySelector('.mx-content > div > p')?.textContent).toBe('B');
-      // DOM と blocks の対応が取れないため、次も描画し直す。
-      expect(patch(el, ['<p data-line="0">A</p>\n<div>\n', '<p data-line="2">C</p>\n'], null)).toBe('repainted');
+      expect([...el.querySelectorAll('.mx-content > div > p')].map((p) => p.textContent)).toEqual(['b', 'c']);
     });
 
     it('空の文書になった', () => {
@@ -172,6 +174,126 @@ describe('patch', () => {
       expect(patch(el, [], null)).toBe('repainted');
       expect(el.querySelector('.mx-content')).toBeNull();
     });
+  });
+
+  describe('生の HTML が複数のブロックを包む (#148 / #159)', () => {
+    /** `<div align="center">` から `</div>` までが 1 つの要素になり、DOM のトップレベルの数と `blocks` の数が一致しない。 */
+    const WRAPPED = [
+      '<div align="center">\n',
+      '<h2 data-line="2">title</h2>\n',
+      '<p data-line="4">lead</p>\n</div>\n',
+      '<p data-line="8">a</p>\n',
+      '<p data-line="10">b</p>\n',
+    ];
+
+    it('包んでいる要素の外を編集しても、包んでいる要素は作り直さない', () => {
+      painted(WRAPPED);
+      const [wrapper, a] = tops();
+
+      const result = patch(el, [...WRAPPED.slice(0, 4), '<p data-line="10">B</p>\n'], null);
+
+      expect(result).toBe('patched');
+      const after = tops();
+      expect(after[0]).toBe(wrapper);
+      expect(after[1]).toBe(a);
+      expect(after[2]?.textContent).toBe('B');
+    });
+
+    it('包んでいる要素より後で行が増えても、data-line を書き換えて残す', () => {
+      painted(WRAPPED);
+      const [wrapper, a, b] = tops();
+
+      patch(el, [...WRAPPED.slice(0, 3), '<p data-line="8">a\nx</p>\n', '<p data-line="11">b</p>\n'], null);
+
+      const after = tops();
+      expect(after[0]).toBe(wrapper);
+      expect(after[1]).not.toBe(a);
+      expect(after[2]).toBe(b);
+      expect(after[2]?.getAttribute('data-line')).toBe('11');
+    });
+
+    it('包んでいる要素より前で行が増えると、中の data-line まで書き換える', () => {
+      // 先頭以外の生の HTML は直前のブロックに連結される（`markdown/pipeline.ts` の `renderChunks`）。
+      painted([
+        '<p data-line="0">x</p>\n',
+        '<p data-line="2">y</p>\n<div align="center">\n',
+        '<h2 data-line="4">title</h2>\n',
+        '<p data-line="6">lead</p>\n</div>\n',
+      ]);
+      const [, y, wrapper] = tops();
+
+      const result = patch(
+        el,
+        [
+          '<p data-line="0">x\nz</p>\n',
+          '<p data-line="3">y</p>\n<div align="center">\n',
+          '<h2 data-line="5">title</h2>\n',
+          '<p data-line="7">lead</p>\n</div>\n',
+        ],
+        null,
+      );
+
+      expect(result).toBe('patched');
+      const after = tops();
+      expect(after[1]).toBe(y);
+      expect(after[1]?.getAttribute('data-line')).toBe('3');
+      expect(after[2]).toBe(wrapper);
+      expect([...(wrapper?.querySelectorAll('[data-line]') ?? [])].map((e) => e.getAttribute('data-line'))).toEqual([
+        '5',
+        '7',
+      ]);
+    });
+
+    it('包んでいる要素の中を編集すると、包んでいる要素ごと差し替える', () => {
+      painted(WRAPPED);
+      const [wrapper, a] = tops();
+
+      const result = patch(el, [WRAPPED[0] ?? '', '<h2 data-line="2">TITLE</h2>\n', ...WRAPPED.slice(2)], null);
+
+      expect(result).toBe('patched');
+      const after = tops();
+      expect(after).toHaveLength(3);
+      expect(after[0]).not.toBe(wrapper);
+      expect(after[0]?.querySelector('h2')?.textContent).toBe('TITLE');
+      expect(after[1]).toBe(a);
+    });
+
+    it('閉じていない要素が末尾まで包んでいても、差分で反映する', () => {
+      const open = [
+        '<p data-line="0">a</p>\n',
+        '<p data-line="2">b</p>\n<div>\n',
+        '<p data-line="4">c</p>\n',
+        '<p data-line="6">d</p>\n',
+      ];
+      painted(open);
+      const [a] = tops();
+
+      const result = patch(el, [...open.slice(0, 3), '<p data-line="6">D</p>\n'], null);
+
+      expect(result).toBe('patched');
+      expect(tops()[0]).toBe(a);
+      expect([...el.querySelectorAll('.mx-content > div > p')].map((p) => p.textContent)).toEqual(['c', 'D']);
+    });
+
+    it('閉じていない要素の後ろへ足したブロックは、その要素の中に入る', () => {
+      const open = ['<p data-line="0">a</p>\n', '<p data-line="2">b</p>\n<div>\n'];
+      painted(open);
+
+      patch(el, [...open, '<p data-line="4">c</p>\n'], null);
+
+      expect(el.querySelector('.mx-content > div > p')?.textContent).toBe('c');
+    });
+  });
+
+  it('先頭のブロックが DOM に何も残さなくても差分で反映する', () => {
+    painted(['<!-- note -->\n', '<p data-line="2">a</p>\n', '<p data-line="4">b</p>\n']);
+    const [a] = tops();
+
+    const result = patch(el, ['<!-- note -->\n', '<p data-line="2">a</p>\n', '<p data-line="4">B</p>\n'], null);
+
+    expect(result).toBe('patched');
+    expect(tops()[0]).toBe(a);
+    expect(tops().map((e) => e.textContent)).toEqual(['a', 'B']);
   });
 
   it('描き直した後は再び差分で反映できる', () => {
