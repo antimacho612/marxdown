@@ -193,6 +193,32 @@ describe.each([
   });
 });
 
+/** インラインコードの背景で文字色を混ぜる比率。`preview.css` の宣言から読む。 */
+const CHIP = /background: color-mix\(in srgb, var\(--mx-color-code-builtin\) (\d+)%, var\(--mx-color-bg\)\);/u.exec(
+  PREVIEW,
+)?.[1];
+
+/** `color-mix(in srgb, a p, b)` と同じ計算。sRGB の符号化された値をそのまま線形に補間する。 */
+function mix(a: string, b: string, ratio: number): string {
+  const read = (hex: string): number[] => [1, 3, 5].map((index) => Number.parseInt(hex.slice(index, index + 2), 16));
+  const right = read(b);
+  const channels = read(a).map((value, index) => Math.round(value * ratio + right[index]! * (1 - ratio)));
+  return `#${channels.map((value) => value.toString(16).padStart(2, '0')).join('')}`;
+}
+
+describe.each([
+  ['ライト', LIGHT],
+  ['ダーク', DARK],
+])('%s テーマのインラインコード', (_name, theme) => {
+  it('code-builtin on インラインコードの背景が 4.5:1 以上', () => {
+    expect(CHIP, 'preview.css からインラインコードの背景の比率を読めない').toBeDefined();
+    const builtin = theme.get('code-builtin')!;
+    const chip = mix(builtin, theme.get('bg')!, Number(CHIP) / 100);
+    const ratio = contrast(builtin, chip);
+    expect(ratio, `${builtin} on ${chip} = ${ratio.toFixed(2)}:1`).toBeGreaterThanOrEqual(TEXT_MIN);
+  });
+});
+
 describe('テーマの宣言', () => {
   it('OS 追従（@media）が data-theme="dark" と同じ値を宣言する', () => {
     // 片方だけ直すと「OS はダーク / アプリは未指定」の経路だけが古い色のまま残る。
