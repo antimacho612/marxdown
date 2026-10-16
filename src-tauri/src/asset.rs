@@ -1,10 +1,11 @@
 //! 貼り付けた画像の保存（F-EDIT-13 / N-SEC-05）。
 //!
-//! 保存先は開いているファイルの隣に作る `<ファイル名>.assets/` に限る。
-//! 場所を選ばせない代わりに、どこに置かれるかを操作の前に判断できる（Design Brief Principle 3）。
+//! 保存先は `editor.pasteImage.directory` の設定で決まり、既定は開いているファイルの隣の `<ファイル名>.assets/` である。
+//! 設定できるのは文書のあるディレクトリからの相対パスだけで、その配下から出る指定は拒否する。
+//! 貼り付けのたびに場所を選ばせない代わりに、どこに置かれるかを操作の前に判断できる（Design Brief Principle 3）。
 //!
-//! 書き込みを許すディレクトリは 1 つだけであり、フロントから場所を受け取らない。
-//! 受け取る形にすると、そこがスコープ検証の対象になる。
+//! 保存先はフロントから受け取らず、Rust 側が持つ設定から読む。
+//! 受け取る形にすると、IPC の引数がスコープ検証の対象になる。
 //! 検証すべきものを増やさないほうが、防御としては確実である（ADR-0006）。
 
 use std::fs;
@@ -23,11 +24,10 @@ const ALLOWED: [&str; 5] = ["png", "jpg", "jpeg", "gif", "webp"];
 /// 1 枚あたりの上限。クリップボードの中身は際限なく大きくなりうる。
 const MAX_BYTES: usize = 20 * 1024 * 1024;
 
-/// 保存先ディレクトリの接尾辞。`spec.md` なら `spec.md.assets/` になる。
-///
-/// 拡張子を除いて `spec.assets/` にしない。
-/// `spec.md` と `spec.txt` を同じディレクトリに置いている場合に、保存先が衝突する。
-const SUFFIX: &str = ".assets";
+/// 保存先の指定の中で、開いているファイルの名前（`spec.md`）に置き換わる変数。綴りは VS Code の `markdown.copyFiles.destination` と同じ。
+const VAR_FILE_NAME: &str = "${documentFileName}";
+/// 開いているファイルの名前から最後の拡張子を除いたもの（`spec`）に置き換わる変数。
+const VAR_BASE_NAME: &str = "${documentBaseName}";
 
 /// 保存した結果。
 pub struct SavedAsset {
@@ -67,6 +67,45 @@ fn unique_name(dir: &Path, stamp: &str, extension: &str) -> CoreResult<PathBuf> 
     Err(CoreError::Io("保存先の名前を決められない".into()))
 }
 
+/// 保存先の指定を展開し、文書のディレクトリからの相対パスにする。区切りは `/` に揃える。
+///
+/// 空文字と `.` は文書と同じディレクトリを表し、空の文字列を返す。
+/// 絶対パス・ドライブ名・`..` を含む指定は拒否する。
+/// 展開した後に検査するのは、変数に入るファイル名の側にも `..` になりうる名前があるためである。
+fn expand_directory(template: &str, file_name: &str, base_name: &str) -> CoreResult<String> {
+    if template.contains('\0') {
+        return Err(CoreError::InvalidArgument("保存先に NUL が含まれる".into()));
+    }
+    if template.starts_with(['/', '\\']) {
+        return Err(CoreError::InvalidArgument(format!(
+            "保存先は相対パスで指定する: {template}"
+        )));
+    }
+    let expanded = template
+        .replace(VAR_FILE_NAME, file_name)
+        .replace(VAR_BASE_NAME, base_name);
+
+    let mut parts = Vec::new();
+    for part in expanded.split(['/', '\\']).map(str::trim) {
+        match part {
+            "" | "." => {}
+            ".." => {
+                return Err(CoreError::InvalidArgument(format!(
+                    "保存先に .. は使えない: {template}"
+                )))
+            }
+            // `C:` のようなドライブ名と、NTFS の代替データストリーム（`a:b`）を一緒に拒否する。
+            _ if part.contains(':') => {
+                return Err(CoreError::InvalidArgument(format!(
+                    "保存先に : は使えない: {template}"
+                )))
+            }
+            _ => parts.push(part),
+        }
+    }
+    Ok(parts.join("/"))
+}
+
 /// ファイル名の先頭に置く時刻。
 ///
 /// 日付の形（`20260909-2245`）にはしない。カレンダー計算は std に無く、ファイル名を読みやすくするためだけに依存を 1 つ増やすことになる。
@@ -79,15 +118,21 @@ fn timestamp() -> String {
     format!("paste-{seconds}")
 }
 
-/// 画像を `<ファイル名>.assets/` へ保存する（F-EDIT-13）。
+/// 画像を `directory` の指す場所へ保存する（F-EDIT-13）。
 ///
 /// `document_path` は開いているファイルの絶対パスである。
+/// `directory` は `editor.pasteImage.directory` の値で、`expand_directory` の規則で文書のディレクトリからの相対パスに展開する。
 /// 無題の文書には基点が無いため、呼び出し側がここへ来る前に拒否する（`features/editor/lazy/paste.ts`）。
 ///
 /// 保存先ディレクトリは必要なら作る。
 /// 作った後に canonicalize して、ドキュメントの親ディレクトリの配下にあることを確かめる。
 /// 親が symlink である場合に、解決先が別の木へ出ていないことを見るためである。
-pub fn save(document_path: &str, extension: &str, data: &[u8]) -> CoreResult<SavedAsset> {
+pub fn save(
+    document_path: &str,
+    directory: &str,
+    extension: &str,
+    data: &[u8],
+) -> CoreResult<SavedAsset> {
     if data.is_empty() {
         return Err(CoreError::InvalidArgument("空の画像".into()));
     }
@@ -113,8 +158,12 @@ pub fn save(document_path: &str, extension: &str, data: &[u8]) -> CoreResult<Sav
         .ok_or_else(|| CoreError::InvalidArgument("ファイル名が無い".into()))?
         .to_string_lossy()
         .to_string();
+    let base_name = document
+        .file_stem()
+        .map(|stem| stem.to_string_lossy().to_string())
+        .unwrap_or_else(|| name.clone());
 
-    let dir_name = format!("{name}{SUFFIX}");
+    let dir_name = expand_directory(directory, &name, &base_name)?;
     let dir = parent.join(&dir_name);
     fs::create_dir_all(&dir).map_err(|e| CoreError::Io(e.to_string()))?;
 
@@ -136,7 +185,11 @@ pub fn save(document_path: &str, extension: &str, data: &[u8]) -> CoreResult<Sav
 
     Ok(SavedAsset {
         // 区切りは `/` に揃える。Markdown のリンクとして書くものであり、Windows の `\` はエスケープと衝突する。
-        relative: format!("{dir_name}/{file_name}"),
+        relative: if dir_name.is_empty() {
+            file_name
+        } else {
+            format!("{dir_name}/{file_name}")
+        },
         absolute: target,
     })
 }
@@ -144,6 +197,7 @@ pub fn save(document_path: &str, extension: &str, data: &[u8]) -> CoreResult<Sav
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::settings::DEFAULT_EDITOR_PASTE_IMAGE_DIRECTORY as DEFAULT;
 
     /// 1 件ごとに独立したディレクトリを作る（`bootstrap.rs` と同じ形）。
     fn temp_dir(tag: &str) -> PathBuf {
@@ -163,7 +217,7 @@ mod tests {
     #[test]
     fn saves_next_to_the_document() {
         let document = temp_document("next-to");
-        let saved = save(&document.to_string_lossy(), "png", &[1, 2, 3]).expect("保存");
+        let saved = save(&document.to_string_lossy(), DEFAULT, "png", &[1, 2, 3]).expect("保存");
 
         assert!(saved.relative.starts_with("spec.md.assets/"));
         assert!(saved.relative.ends_with(".png"));
@@ -174,7 +228,7 @@ mod tests {
     #[test]
     fn the_relative_path_uses_forward_slashes() {
         let document = temp_document("slashes");
-        let saved = save(&document.to_string_lossy(), "png", &[1]).expect("保存");
+        let saved = save(&document.to_string_lossy(), DEFAULT, "png", &[1]).expect("保存");
         assert!(!saved.relative.contains('\\'));
     }
 
@@ -182,8 +236,8 @@ mod tests {
     #[test]
     fn does_not_overwrite_an_existing_file() {
         let document = temp_document("overwrite");
-        let first = save(&document.to_string_lossy(), "png", &[1]).expect("1 枚目");
-        let second = save(&document.to_string_lossy(), "png", &[2]).expect("2 枚目");
+        let first = save(&document.to_string_lossy(), DEFAULT, "png", &[1]).expect("1 枚目");
+        let second = save(&document.to_string_lossy(), DEFAULT, "png", &[2]).expect("2 枚目");
 
         assert_ne!(first.relative, second.relative);
         assert_eq!(fs::read(&first.absolute).expect("読み込み"), vec![1]);
@@ -194,32 +248,32 @@ mod tests {
     fn rejects_an_extension_outside_the_list() {
         let document = temp_document("extension");
         // `svg` は中身が実行可能なマークアップであるため通さない。
-        assert!(save(&document.to_string_lossy(), "svg", &[1]).is_err());
-        assert!(save(&document.to_string_lossy(), "exe", &[1]).is_err());
+        assert!(save(&document.to_string_lossy(), DEFAULT, "svg", &[1]).is_err());
+        assert!(save(&document.to_string_lossy(), DEFAULT, "exe", &[1]).is_err());
     }
 
     #[test]
     fn accepts_an_extension_with_a_dot_and_uppercase() {
         let document = temp_document("uppercase");
-        assert!(save(&document.to_string_lossy(), ".PNG", &[1]).is_ok());
+        assert!(save(&document.to_string_lossy(), DEFAULT, ".PNG", &[1]).is_ok());
     }
 
     #[test]
     fn rejects_an_empty_image() {
         let document = temp_document("empty");
-        assert!(save(&document.to_string_lossy(), "png", &[]).is_err());
+        assert!(save(&document.to_string_lossy(), DEFAULT, "png", &[]).is_err());
     }
 
     #[test]
     fn rejects_an_image_over_the_limit() {
         let document = temp_document("too-large");
         let data = vec![0_u8; MAX_BYTES + 1];
-        assert!(save(&document.to_string_lossy(), "png", &data).is_err());
+        assert!(save(&document.to_string_lossy(), DEFAULT, "png", &data).is_err());
     }
 
     #[test]
     fn rejects_a_document_that_does_not_exist() {
-        assert!(save("/does/not/exist.md", "png", &[1]).is_err());
+        assert!(save("/does/not/exist.md", DEFAULT, "png", &[1]).is_err());
     }
 
     /// 拡張子を除かない。`spec.md` と `spec.txt` の保存先が衝突する。
@@ -231,10 +285,77 @@ mod tests {
         fs::write(&md, "a").expect("書き込み");
         fs::write(&txt, "a").expect("書き込み");
 
-        let from_md = save(&md.to_string_lossy(), "png", &[1]).expect("md");
-        let from_txt = save(&txt.to_string_lossy(), "png", &[2]).expect("txt");
+        let from_md = save(&md.to_string_lossy(), DEFAULT, "png", &[1]).expect("md");
+        let from_txt = save(&txt.to_string_lossy(), DEFAULT, "png", &[2]).expect("txt");
 
         assert!(from_md.relative.starts_with("spec.md.assets/"));
         assert!(from_txt.relative.starts_with("spec.txt.assets/"));
+    }
+
+    #[test]
+    fn the_directory_follows_the_setting() {
+        let document = temp_document("custom");
+        let saved = save(
+            &document.to_string_lossy(),
+            "images/${documentBaseName}",
+            "png",
+            &[1],
+        )
+        .expect("保存");
+
+        assert!(saved.relative.starts_with("images/spec/"));
+        assert!(saved
+            .absolute
+            .starts_with(dunce::canonicalize(document.parent().unwrap()).unwrap()));
+    }
+
+    /// 空文字は文書と同じディレクトリを表す。
+    #[test]
+    fn an_empty_directory_saves_next_to_the_document() {
+        let document = temp_document("same-dir");
+        let saved = save(&document.to_string_lossy(), "", "png", &[1]).expect("保存");
+
+        assert!(!saved.relative.contains('/'));
+        assert_eq!(
+            saved.absolute.parent(),
+            dunce::canonicalize(document.parent().unwrap())
+                .ok()
+                .as_deref()
+        );
+    }
+
+    #[test]
+    fn backslashes_and_dots_are_normalized() {
+        assert_eq!(
+            expand_directory(r"./assets\${documentFileName}/", "a.md", "a").unwrap(),
+            "assets/a.md"
+        );
+        assert_eq!(expand_directory(".", "a.md", "a").unwrap(), "");
+    }
+
+    /// 文書のディレクトリの外へ出る指定は、書き込む前に拒否する。
+    #[test]
+    fn a_directory_outside_the_document_is_rejected() {
+        for template in [
+            "../images",
+            "a/../../b",
+            "/tmp/images",
+            r"\\server\share",
+            "C:/images",
+            "C:images",
+        ] {
+            assert!(
+                expand_directory(template, "a.md", "a").is_err(),
+                "{template}"
+            );
+        }
+        let document = temp_document("escape");
+        assert!(save(&document.to_string_lossy(), "../images", "png", &[1]).is_err());
+    }
+
+    /// 変数に入るファイル名が `..` になる場合も、展開した後の検査で止める。
+    #[test]
+    fn a_variable_that_expands_to_dot_dot_is_rejected() {
+        assert!(expand_directory("${documentBaseName}", "...", "..").is_err());
     }
 }

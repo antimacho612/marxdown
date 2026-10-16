@@ -431,11 +431,19 @@ export const webPlatform: Platform = {
    * `dev:web` にはディスクが無い。
    *
    * 保存したふりをして相対パスだけ返す。挿入される Markdown の形と、無題の文書を拒否する経路は確認できる。
+   * 保存先の設定は展開するが、文書のディレクトリの外を指す指定の拒否は再現しない。
    * 実際に書けているかどうかは Rust 側のテスト（`src-tauri/src/asset.rs`）が見る。
    */
   async writeAsset(documentPath, extension) {
     const name = documentPath.split('/').pop() ?? 'untitled.md';
-    return `${name}.assets/paste-${String(Date.now())}.${extension}`;
+    const dir = loadState()
+      .settings['editor.pasteImage.directory'].replaceAll('${documentFileName}', name)
+      .replaceAll('${documentBaseName}', name.replace(/\.[^.]*$/u, ''))
+      .split(/[/\\]/u)
+      .filter((part) => part !== '' && part !== '.')
+      .join('/');
+    const file = `paste-${String(Date.now())}.${extension}`;
+    return dir === '' ? file : `${dir}/${file}`;
   },
 
   /** 仮想 FS にはスコープが無い。許可するものも無いので、そのまま返す。 */
