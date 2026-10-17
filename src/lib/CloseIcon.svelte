@@ -19,13 +19,6 @@
 </script>
 
 <svg viewBox="0 0 12 12" width={size} height={size} aria-hidden="true" focusable="false">
-  <!-- NOTE: viewBox に従って線幅まで縮むと、size={10} では約 1px になりかすれて見える。線幅は size によらず 1.25px に固定する。 -->
-  <path
-    d="M3 3l6 6M9 3l-6 6"
-    fill="none"
-    stroke="currentColor"
-    stroke-width="1.25"
-    stroke-linecap="round"
-    vector-effect="non-scaling-stroke"
-  />
+  <!-- NOTE: 端点を 3〜9 にしていたときは実寸 6px 未満になり、ウィンドウの閉じるボタン（9px）と並べると判別しにくかった。 -->
+  <path d="M2 2l8 8M10 2l-8 8" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" />
 </svg>
