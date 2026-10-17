@@ -201,8 +201,10 @@ Release の本文と、アプリの更新通知から開く「変更内容」は
 
 ```bash
 git switch -c release/v0.2.0 develop
-pnpm release bump 0.2.0      # 版を上げ、CHANGELOG の Unreleased を 0.2.0 の節にする
+pnpm release bump 0.2.0      # 版を上げ、CHANGELOG の Unreleased を 0.2.0 の節にし、release-notes/0.2.0.md の雛形を置く
+# release-notes/0.2.0.md に Release の英語の本文を書く（下記）
 git diff                     # package.json / Cargo.toml / Cargo.lock / CHANGELOG.md を確かめる
+git add release-notes/0.2.0.md
 git commit -am "chore(release): v0.2.0"
 git push -u origin release/v0.2.0
 # release/v0.2.0 → develop の PR をマージし、続けて develop → main の PR をマージする
@@ -215,11 +217,32 @@ git push origin v0.2.0
 タグを push すると [`release.yml`](.github/workflows/release.yml) がビルドし、**下書きの Release** を作る。
 下書きのインストーラを手元で入れて確かめてから、GitHub で公開する。
 
-下書きの本文は `release.mjs notes` が CHANGELOG の節から作り、「What's new」「Download」「Full changelog」の順に並ぶ。
-公開する前に、次の 2 つを手で書く。
+下書きのタイトルと本文は `release.mjs title` / `release.mjs notes` が作る。
+英語の本文は CHANGELOG から作れないため、版上げの PR の中で `release-notes/<版>.md` に書く。
+書いておけば、下書きはそのまま公開できる形になる。
 
-- タイトルを `Marxdown v0.2.0 — <この版で良くなったこと>` にする（例: `Marxdown v0.3.0 — Better Markdown reading on Windows`）
-- 本文の HTML コメントにある「Why it matters」を、利用者から見た価値として 1〜3 文で書き、コメントを外す
+```markdown
+---
+title: Cleaner tables and task lists in long documents
+---
+
+## What's new
+
+- **Wide tables are centered.** A table wider than the text width used to stick to the left edge of the preview. It is now centered.
+
+## Why it matters
+
+Design documents and AI-generated plans are full of comparison tables and to-do lists.
+```
+
+- `title` は Release のタイトルの `Marxdown v0.2.0 — ` に続く部分になる
+- Why it matters には、利用者から見て何が良くなったのかを 1〜3 文で書く
+- 本文は「紹介の 1 行」「What's new」「Why it matters」「Download」「変更内容（日本語）」「Full changelog」の順に並ぶ。変更内容（日本語）は CHANGELOG の節である
+- Download には、直近に公開した pre-release（macOS / Linux のプレビュー）へのリンクが入る
+- 安定版でこのファイルが無いか、雛形のままだと、`release.mjs check` がタグの段階で止める
+- pre-release はこのファイルを使わない。公開する前にタイトルを `Marxdown v0.4.0-beta.1 — <この版で試してほしいこと>` に変える
+
+例は [`release-notes/0.4.0.md`](release-notes/0.4.0.md) にある。
 公開した時点で `releases/latest/download/latest.json` が新しい版を指し、インストール済みのアプリに更新の通知が出る。
 
 ### プレリリース（macOS / Linux のプレビュー）
