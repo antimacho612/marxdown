@@ -227,13 +227,22 @@ jobs:
           PRERELEASE: ${{ needs.check.outputs.prerelease }}
         run: |
           version="${GITHUB_REF_NAME#v}"
-          node scripts/release.mjs notes "$version" > notes.md
 
+          # 安定版には Windows の配布物しか載らないため、直近に公開した pre-release（macOS / Linux のプレビュー）へ誘導する。
           prerelease=()
-          if [[ "$PRERELEASE" == "true" ]]; then prerelease=(--prerelease); fi
+          preview=()
+          if [[ "$PRERELEASE" == "true" ]]; then
+            prerelease=(--prerelease)
+          else
+            tag=$(gh api "repos/$GITHUB_REPOSITORY/releases" --jq '[.[] | select(.prerelease and (.draft | not))][0].tag_name // empty')
+            if [[ -n "$tag" ]]; then preview=(--preview "$tag"); fi
+          fi
+
+          node scripts/release.mjs notes "$version" "${preview[@]}" > notes.md
+          title=$(node scripts/release.mjs title "$version")
 
           gh release create "$GITHUB_REF_NAME" \
             --draft "${prerelease[@]}" \
-            --title "Marxdown v$version" \
+            --title "$title" \
             --notes-file notes.md \
             artifacts/*

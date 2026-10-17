@@ -6,7 +6,10 @@ import {
   finalizeChangelog,
   isPrerelease,
   latestVersion,
+  parseHighlights,
   previousVersion,
+  releaseNotesTemplate,
+  releaseTitle,
   sectionBody,
   setCargoLockVersion,
   setCargoTomlVersion,
@@ -153,6 +156,59 @@ describe('buildReleaseNotes', () => {
     const out = buildReleaseNotes({ version: '0.1.0', body: '- 自動更新', previous: null });
     expect(out).toContain(`[v0.1.0](${REPO}/releases/tag/v0.1.0)`);
     expect(out).not.toContain('/compare/');
+  });
+});
+
+describe('release-notes/<版>.md', () => {
+  const HIGHLIGHTS = `---
+title: Cleaner tables
+---
+
+<!-- 書き方の説明 -->
+
+## What's new
+
+- **Tables are centered.** Wide tables no longer stick to the left.
+
+## Why it matters
+
+Long documents look tidy.
+`;
+
+  it('Front Matter の title と、HTML コメントを除いた本文を読む', () => {
+    const highlights = parseHighlights(HIGHLIGHTS);
+
+    expect(highlights.title).toBe('Cleaner tables');
+    expect(highlights.body.startsWith("## What's new\n\n- **Tables are centered.**")).toBe(true);
+    expect(highlights.body).not.toContain('<!--');
+    expect(releaseTitle('0.3.0', highlights)).toBe('Marxdown v0.3.0 — Cleaner tables');
+    expect(releaseTitle('0.3.0', null)).toBe('Marxdown v0.3.0');
+  });
+
+  it('雛形のままでは失敗する', () => {
+    expect(() => parseHighlights(releaseNotesTemplate('0.3.0'))).toThrow('title');
+    const titled = releaseNotesTemplate('0.3.0').replace('title:', 'title: Cleaner tables');
+    expect(() => parseHighlights(titled)).toThrow("What's new");
+  });
+
+  it('あれば英語の本文に続けて CHANGELOG の節を日本語の変更内容に置き、雛形のコメントを残さない', () => {
+    const out = buildReleaseNotes({
+      version: '0.3.0',
+      body: '### 修正\n\n- 表を中央に置いた',
+      previous: '0.2.0',
+      highlights: parseHighlights(HIGHLIGHTS),
+    });
+
+    expect(out.indexOf("## What's new")).toBeLessThan(out.indexOf('## Download'));
+    expect(out).toContain('## 変更内容（日本語）\n\n### 修正\n\n- 表を中央に置いた');
+    expect(out).toContain('Long documents look tidy.');
+    expect(out).not.toContain('<!--');
+  });
+
+  it('プレビューの pre-release を渡すと、Download からそちらへ誘導する', () => {
+    const out = buildReleaseNotes({ version: '0.3.0', body: '- 修正', previous: '0.2.0', preview: 'v0.3.0-beta.1' });
+    expect(out).toContain(`[v0.3.0-beta.1](${REPO}/releases/tag/v0.3.0-beta.1)`);
+    expect(out.indexOf('v0.3.0-beta.1')).toBeLessThan(out.indexOf('## Full changelog'));
   });
 });
 
