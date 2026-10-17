@@ -337,7 +337,7 @@ HTML5 の drag イベントは使えない。
         aria-label={t.tab.close(name)}
         onclick={() => void closeTab(tab.id)}
       >
-        <CloseIcon size={10} />
+        <CloseIcon />
       </button>
     </div>
   {/each}
@@ -357,6 +357,7 @@ HTML5 の drag イベントは使えない。
 <style>
   .mx-tabs {
     display: flex;
+    align-self: stretch;
     align-items: stretch;
     min-width: 0;
     overflow-x: auto;
@@ -381,7 +382,7 @@ HTML5 の drag イベントは使えない。
 
   .mx-tab {
     display: flex;
-    align-items: center;
+    align-items: stretch;
     max-width: 14rem;
     border-right: 1px solid var(--mx-color-border-subtle);
     color: var(--mx-color-fg-muted);
@@ -405,13 +406,14 @@ HTML5 の drag イベントは使えない。
     touch-action: none;
     align-items: center;
     gap: var(--mx-space-1);
+    /* NOTE: ファイル名の幅は小数になるため、整数に切り上げる。切り上げないと後ろの × が横に半端な位置へずれ、かすれて見える。 */
+    width: calc-size(fit-content, round(up, size, 1px));
     min-width: 0;
     padding: 0 var(--mx-space-1) 0 var(--mx-space-2);
     border: 0;
     background: none;
     color: inherit;
     font: inherit;
-    line-height: var(--mx-titlebar-height);
     cursor: pointer;
   }
 
@@ -448,9 +450,13 @@ HTML5 の drag イベントは使えない。
   /*
    * 閉じるボタンは常に置く。
    * ホバーしたときだけ現れる形にすると、押せる位置が事前に分からず、タブの幅も変わる。
+   *
+   * NOTE: 上下の余白は、ボタンの高さを偶数にして × を整数の座標に置くための値である。
+   * 高さが奇数だと × が半ピクセルずれ、線がかすれて見える。
+   * 下の 2px は、ホバー時の背景が選択中のタブの下線を覆わないようにするためでもある。
    */
   .mx-tab__close {
-    margin-bottom: 2px;
+    margin-block: 1px 2px;
     display: flex;
     align-items: center;
     align-self: stretch;

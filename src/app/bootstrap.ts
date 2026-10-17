@@ -35,6 +35,7 @@ import { installUpdateNotice } from '@/features/update';
 import { initSplit, initWindowRole, isSatellite, viewStore } from '@/features/view';
 import {
   installEntryWatch,
+  openPathInNewTab,
   openPathInSatellite,
   openPathsInTabs,
   receiveTabLazily,
@@ -120,6 +121,7 @@ export async function startup(renderShell: () => void): Promise<void> {
     parser: createParser(),
     softBreak: () => settingsStore.values['preview.softBreak'],
     syntax: () => enabledSyntax(settingsStore.values),
+    frontMatter: () => settingsStore.values['preview.frontMatter'],
     marpThemes: () => settingsStore.values['marp.themes'],
     ...workspaceOpenerHooks(),
   });
@@ -241,7 +243,7 @@ export async function startup(renderShell: () => void): Promise<void> {
   installEntryWatch();
   installSettingsWatch();
   installWindowState();
-  // パースの結果そのものを変える設定（`preview.softBreak` と `markdown.*`）に追従して本文を再描画する。
+  // パースの結果そのものを変える設定（`preview.softBreak` / `preview.frontMatter` / `markdown.*`）に追従して本文を再描画する。
   installSoftBreakRerender();
   // タブの変化を `state.json` へ書き続ける。
   // 復元より後に張る。復元そのものを 1 枚ずつ書き戻すことに意味がない。
@@ -334,7 +336,7 @@ function installLinks(): void {
   // 逆向きの呼び出しはここで接続する（`configureHistory` と同じ形）。
   installLinkHandler(container, {
     currentPath: () => documentStore.meta?.path ?? '',
-    open: (path, anchor) => void openPath(path, anchor === undefined ? {} : { anchor }),
+    open: (path, anchor) => void openPathInNewTab(path, anchor === undefined ? {} : { anchor }),
     openInNewWindow: (path) => void openPathInSatellite(path),
     notify: (notice) => {
       documentStore.notice = notice;

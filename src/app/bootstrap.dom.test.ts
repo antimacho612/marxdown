@@ -36,6 +36,7 @@ vi.mock('@/markdown/parser', () => ({
         blocks: [`<p>${String(text.length)}</p>`],
         outline: [],
         frontMatter: null,
+        frontMatterHtml: null,
         parseMs: 0.1,
         textStats: { chars: text.length, words: 1, readingMinutes: 1 },
       }),

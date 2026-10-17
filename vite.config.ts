@@ -393,6 +393,21 @@ export default defineConfig(({ mode }) => ({
           if (isKatexOnly) return 'assets/math-[hash].js';
 
           /*
+           * Front Matter の表（`markdown/front-matter-table.ts` と js-yaml）。名前付けだけである。
+           *
+           * js-yaml は Marpit も使う。
+           * NOTE: Marpit は CJS 版（`js-yaml.cjs.js`）を読むため、現在は ESM 版を読むこちらと共有されず、marp チャンクに別の複製が入る。
+           * 共有されるようになると Rollup が js-yaml だけのチャンクへ切り出し、そのチャンクは facade を持たないため、名前を付けないと下の `shared-*`（critical path）として数えられる。
+           */
+          const isFrontMatterTable =
+            modules.length > 0 &&
+            modules.every(
+              (id) =>
+                id.includes('node_modules/js-yaml/') || /[\\/]src[\\/]markdown[\\/]front-matter-table\.ts$/.test(id),
+            );
+          if (isFrontMatterTable) return 'assets/front-matter-[hash].js';
+
+          /*
            * Mermaid の依存グラフ。ここも名前付けだけである。
            *
            * Mermaid は cytoscape / d3 / dagre / roughjs など 100 枚近いチャンクに分かれ、そのほとんどが facade を持たない。

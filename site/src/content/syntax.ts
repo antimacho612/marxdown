@@ -246,8 +246,8 @@ export const SYNTAX: SyntaxSection[] = [
         id: 'front-matter',
         title: { ja: 'Front Matter', en: 'Front matter' },
         body: {
-          ja: '先頭の --- で囲んだ YAML は、本文とは分けて表示します。',
-          en: 'YAML fenced with --- at the top is shown apart from the body.',
+          ja: '先頭の --- で囲んだ YAML は、本文とは分けて表で表示します。設定の「Front Matter」で、YAML のままの表示や非表示にも切り替えられます。',
+          en: 'YAML fenced with --- at the top is shown as a table, apart from the body. Use “Front Matter” in Settings to show it as YAML or hide it.',
         },
         source: {
           ja: '---\ntitle: 設計メモ\ntags: [cache, api]\n---\n\n# 設計メモ',

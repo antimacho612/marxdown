@@ -129,10 +129,11 @@ function tokenRules(): monaco.editor.ITokenThemeRule[] {
     { token: 'keyword.md', foreground: structure, fontStyle: 'bold' },
     // 引用（`>`）と HTML コメント
     { token: 'comment.md', foreground: readColor('--mx-color-fg-muted', '#60646c') },
-    { token: 'strong.md', fontStyle: 'bold' },
-    { token: 'emphasis.md', fontStyle: 'italic' },
+    // 強調はプレビューのコードブロック（`.hljs-strong`）と同じ色にする。斜体の強調は編集面で未使用の色を割り当てて区別する。
+    { token: 'strong.md', foreground: readColor('--mx-color-code-keyword', '#7c3aed'), fontStyle: 'bold' },
+    { token: 'emphasis.md', foreground: readColor('--mx-color-code-number', '#b45309'), fontStyle: 'italic' },
     // インラインコード
-    { token: 'variable.md', foreground: readColor('--mx-color-code-builtin', '#0e7490') },
+    { token: 'variable.md', foreground: readColor('--mx-color-code-builtin', '#09728e') },
     // フェンスの中身
     { token: 'variable.source.md', foreground: readColor('--mx-color-code-comment', '#6b7280') },
     // フェンス記号 / 4 字下げのコード

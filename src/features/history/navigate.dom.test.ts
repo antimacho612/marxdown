@@ -34,6 +34,7 @@ function fakeParser(): MarkdownParser {
         blocks: [`<h1>${text.length}</h1>`],
         outline: [],
         frontMatter: null,
+        frontMatterHtml: null,
         parseMs: 0.1,
         textStats: { chars: text.length, words: 1, readingMinutes: 1 },
       }),

@@ -9,7 +9,8 @@ import hljs from 'highlight.js';
 import { JSDOM } from 'jsdom';
 import { renderToString } from 'katex';
 
-import { loadSyntax, render, resetMarkdownIt, type SyntaxName } from '@/markdown/pipeline';
+import { frontMatterTableHtml } from '@/markdown/front-matter-table';
+import { frontMatterCodeHtml, loadSyntax, render, resetMarkdownIt, type SyntaxName } from '@/markdown/pipeline';
 import type { OutlineItem } from '@/markdown/plugins/line-map';
 
 export interface MarkdownOptions {
@@ -31,7 +32,8 @@ const LANGUAGE_CLASS = /(?:^|\s)language-([\w+#-]+)/;
 export interface RenderedMarkdown {
   html: string;
   outline: OutlineItem[];
-  frontMatter: string | null;
+  /** Front Matter の HTML。アプリの既定（`preview.frontMatter` が `table`）と同じく表にする。 */
+  frontMatterHtml: string | null;
 }
 
 /** Markdown を、アプリのプレビューと同じ HTML にする。見出しの一覧と Front Matter も返す。 */
@@ -42,7 +44,10 @@ export async function renderDocument(source: string, options: MarkdownOptions = 
     resetMarkdownIt();
   }
   const result = render(source, { syntax });
-  return { html: enhance(result.html), outline: result.outline, frontMatter: result.frontMatter };
+  const { frontMatter } = result;
+  const frontMatterHtml =
+    frontMatter === null ? null : (frontMatterTableHtml(frontMatter) ?? frontMatterCodeHtml(frontMatter));
+  return { html: enhance(result.html), outline: result.outline, frontMatterHtml };
 }
 
 /** Markdown を、アプリのプレビューと同じ HTML にする。 */

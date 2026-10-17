@@ -35,6 +35,7 @@ function fakeParser(): MarkdownParser {
         blocks: [`<p>${text.length}</p>`],
         outline: [{ level: 1, text: 'hello', slug: 'hello', line: 0 }],
         frontMatter: null,
+        frontMatterHtml: null,
         parseMs: 0.5,
         textStats: { chars: text.length, words: 2, readingMinutes: 1 },
       }),
@@ -214,6 +215,7 @@ describe('configureOpener', () => {
       blocks: ['<p>x</p>'],
       outline: [],
       frontMatter: null,
+      frontMatterHtml: null,
       parseMs: 0.1,
       textStats: { chars: 1, words: 1, readingMinutes: 1 },
     });

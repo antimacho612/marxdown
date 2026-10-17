@@ -215,6 +215,14 @@ export function buildLayout() {
         },
         {
           kind: 'field',
+          key: 'preview.frontMatter',
+          widget: 'select',
+          label: tSettings.frontMatter.label,
+          description: tSettings.frontMatter.description,
+          labels: tSettings.frontMatter.options,
+        },
+        {
+          kind: 'field',
           key: 'preview.tableStyle',
           widget: 'select',
           label: tSettings.tableStyle.label,
@@ -406,6 +414,13 @@ export function buildLayout() {
           placeholder: tSettings.editor.wordSegmenterLocales.placeholder,
           label: tSettings.editor.wordSegmenterLocales.label,
           description: tSettings.editor.wordSegmenterLocales.description,
+        },
+        {
+          kind: 'field',
+          key: 'editor.pasteImage.directory',
+          widget: 'text',
+          label: tSettings.editor.pasteImageDirectory.label,
+          description: tSettings.editor.pasteImageDirectory.description,
         },
         {
           kind: 'field',

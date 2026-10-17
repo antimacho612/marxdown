@@ -213,8 +213,11 @@ export async function openUntitledTab(): Promise<boolean> {
  * 読み直しは外部変更を反映することにもなる。監視は表示中の文書にしか登録されていないため（N-PERF-05）、背後のタブは古くなりうる。
  *
  * 読み直せなかったタブ（外部で削除・リネームされたファイル）は取り除く（`dropUnopenable`）。
+ *
+ * `anchor` を渡すと、前回のスクロール位置ではなくその見出しへ移動する（`./other.md#section` のリンク）。
+ * 既にアクティブなタブでは何もしない。同じ文書の中の移動はリンクの側で行う（`preview/links.ts`）。
  */
-export async function activateTab(id: number): Promise<boolean> {
+export async function activateTab(id: number, options: { anchor?: string } = {}): Promise<boolean> {
   if (tabsStore.activeId === id) return true;
 
   const target = tabsStore.tabs.find((tab) => tab.id === id);
@@ -230,6 +233,8 @@ export async function activateTab(id: number): Promise<boolean> {
   // 退避してあった値は開く前に読む。
   // 開く途中で `adoptOpened` がこのタブを「開いた直後の状態」に戻すため、後から読むと消えている。
   const { text: held, textDirty, eolOverride, scrollTop } = target;
+  // 位置の復元と見出しへの移動は同時に指定できない（`OpenOptions.anchor`）。
+  const landing = options.anchor === undefined ? { restoreScroll: scrollTop } : { anchor: options.anchor };
 
   // 開く前の表示。開けなかったときに、表示が切り替わったかどうかを見分けるために持つ。
   const shown = documentStore.meta;
@@ -238,14 +243,14 @@ export async function activateTab(id: number): Promise<boolean> {
     held === null && target.meta.path !== null
       ? await openPath(target.meta.path, {
           resetScroll: false,
-          restoreScroll: scrollTop,
+          ...landing,
           remember: false,
           // 破棄するものは無い。切り替え元はタブとして残る（`OpenOptions.confirm`）。
           confirm: false,
         })
       : await openDocument(
           { ...target.meta, content: held ?? '' },
-          { resetScroll: false, restoreScroll: scrollTop, remember: false },
+          { resetScroll: false, ...landing, remember: false },
         );
 
   if (opened === null) {
@@ -345,10 +350,11 @@ export async function reopenClosedTab(): Promise<boolean> {
 }
 
 /**
- * パスを新しいタブで開く（argv 転送 / D&D / タブの復元）。
+ * パスを新しいタブで開く（argv 転送 / D&D / タブの復元 / プレビューのリンク）。
  *
  * 既に開いているファイルなら、そのタブへ切り替えるだけで開き直さない。
  * 同じファイルが 2 枚並ぶと、片方で編集して片方を保存したときにどちらが正しいのか決められなくなる。
+ * 正規化されていないパス（リンクの `./x.md` など）は読み込むまで同じファイルだと判定できないため、開いた後にもう一度確かめる（`dropDuplicate`）。
  *
  * 先にタブの枠を作ってから開く。
  * 読み込みの失敗・通知・履歴からの除去は `openPath` に集約されているため（`document/open.ts`）、ここで先に読んで枠を作る形にすると、その経路を迂回することになる。
@@ -356,10 +362,11 @@ export async function reopenClosedTab(): Promise<boolean> {
  */
 export async function openPathInNewTab(
   path: string,
-  options: { scrollTop?: number; index?: number; remember?: boolean } = {},
+  options: { scrollTop?: number; index?: number; remember?: boolean; anchor?: string } = {},
 ): Promise<boolean> {
+  const landing = options.anchor === undefined ? {} : { anchor: options.anchor };
   const existing = tabsStore.tabs.find((tab) => tabMeta(tab).path === path);
-  if (existing !== undefined) return activateTab(existing.id);
+  if (existing !== undefined) return activateTab(existing.id, landing);
 
   const previousId = tabsStore.activeId;
   stashActive();
@@ -384,13 +391,34 @@ export async function openPathInNewTab(
     // 復元では最近開いたファイルに記録し直さない。
     // 起動しただけで一覧が前回のタブで埋まると、「最後に開いた順」の意味が失われる。
     ...(options.remember === false && { remember: false }),
+    ...landing,
   });
-  if (opened !== null) return true;
+  if (opened !== null) return dropDuplicate(tab, landing);
 
   // 開けなかった。表示は変わっていない（`openPath` は読み込みに失敗した時点で戻る）ので、枠を破棄して元へ戻す。
   tabsStore.tabs = tabsStore.tabs.filter((entry) => entry.id !== tab.id);
   restoreActive(previousId);
   return false;
+}
+
+/**
+ * 開いたファイルが既に別のタブで開いていれば、開いたばかりのタブを破棄してそちらへ切り替える。
+ *
+ * パスの正規化は Rust 側が行うため（`lib/path.ts`）、同じファイルかどうかは読み込んだ後の `documentStore.meta` でしか判定できない。
+ * 切り替え先は読み直しになる。破棄したタブの表示を流用すると、切り替え先に退避してある未保存の本文が失われる。
+ */
+async function dropDuplicate(opened: Tab, landing: { anchor?: string }): Promise<boolean> {
+  // 別の開く処理と重なると、`documentStore.meta` がまだこのタブの内容になっていないことがある（`tabMeta`）。
+  if (tabsStore.loadedId !== opened.id) return true;
+  const path = documentStore.meta?.path ?? null;
+  const duplicate = tabsStore.tabs.find((tab) => tab.id !== opened.id && tabMeta(tab).path === path);
+  if (path === null || duplicate === undefined) return true;
+
+  tabsStore.tabs = tabsStore.tabs.filter((tab) => tab.id !== opened.id);
+  disposeDocumentText(opened.id);
+  dropHistory(opened.id);
+  tabsStore.activeId = null;
+  return activateTab(duplicate.id, landing);
 }
 
 /**

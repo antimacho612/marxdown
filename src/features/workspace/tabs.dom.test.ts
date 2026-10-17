@@ -45,6 +45,7 @@ function fakeParser(): MarkdownParser {
         blocks: [`<p>${text.length}</p>`],
         outline: [],
         frontMatter: null,
+        frontMatterHtml: null,
         parseMs: 0.1,
         textStats: { chars: text.length, words: 1, readingMinutes: 1 },
       }),
@@ -251,6 +252,24 @@ describe('入口', () => {
 
     expect(tabsStore.tabs).toHaveLength(2);
     expect(tabsStore.active?.meta.path).toBe('C:/work/a.md');
+  });
+
+  /** リンクの `./x.md` は読み込むまで正規化されない（Rust 側の canonicalize）。 */
+  it('正規化前のパスでも、読み込んだ結果が開いているファイルなら新しいタブを残さない', async () => {
+    const platform = getPlatform();
+    setPlatform({
+      ...platform,
+      readDocument: (path: string) => platform.readDocument(path.replace('/./', '/')),
+    } as Platform);
+    await openPath('C:/work/a.md');
+    const first = tabsStore.activeId;
+    await openPathInNewTab('C:/work/b.md');
+
+    expect(await openPathInNewTab('C:/work/./a.md')).toBe(true);
+
+    expect(tabsStore.tabs.map((tab) => tab.meta.path)).toEqual(['C:/work/a.md', 'C:/work/b.md']);
+    expect(tabsStore.activeId).toBe(first);
+    expect(documentStore.meta?.path).toBe('C:/work/a.md');
   });
 
   it('開けなかったら枠を残さず、表示中のタブも変えない', async () => {

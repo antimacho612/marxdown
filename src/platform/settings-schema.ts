@@ -127,6 +127,11 @@ export const SETTINGS_SCHEMA = defineSettingsSchema({
   'editor.lineNumbers': { kind: 'enum', values: ['off', 'on', 'relative', 'interval'], default: 'on' },
   'editor.minimap.enabled': { kind: 'boolean', default: false },
   'editor.padding.top': { kind: 'number', default: 12, min: 0, max: 100 },
+  /**
+   * 貼り付けた画像の保存先。文書のあるディレクトリからの相対パスで、`${documentFileName}` と `${documentBaseName}` を展開する。
+   * 外へ出る指定は Rust 側が保存の時点で拒否する（`src-tauri/src/asset.rs`）。
+   */
+  'editor.pasteImage.directory': { kind: 'string', default: '${documentFileName}.assets' },
   'editor.renderControlCharacters': { kind: 'boolean', default: true },
   'editor.renderLineHighlight': { kind: 'enum', values: ['none', 'gutter', 'line', 'all'], default: 'line' },
   'editor.renderWhitespace': {
@@ -212,6 +217,12 @@ export const SETTINGS_SCHEMA = defineSettingsSchema({
    * 16px / 1.75 は読むための値で、書く面では行が離れすぎる。
    */
   'preview.fontSize': { kind: 'number', default: 16, min: 8, max: 72 },
+  /**
+   * Front Matter の見せ方（F-VIEW-09）。綴りは `markdown/protocol.ts` の `FrontMatterStyle` と揃える。
+   *
+   * 既定の `table` はキーと値の表にする。表にできない内容は `code` と同じく YAML のまま見せる。
+   */
+  'preview.frontMatter': { kind: 'enum', values: ['table', 'code', 'hidden'], default: 'table' },
   'preview.lineHeight': { kind: 'number', default: 1.75, min: 1, max: 3 },
   /**
    * 本文幅。単位は `ch`。
@@ -294,6 +305,7 @@ export type BooleanKey = { [K in keyof Schema]: Schema[K] extends { kind: 'boole
 /** 個々の設定値の型。UI 側が `Settings` のキーを覚えずに済むよう、別名を切ってある。 */
 export type Theme = Settings['theme'];
 export type TableStyle = Settings['preview.tableStyle'];
+export type FrontMatterStyle = Settings['preview.frontMatter'];
 export type WordWrap = Settings['editor.wordWrap'];
 export type LineNumbers = Settings['editor.lineNumbers'];
 export type RenderWhitespace = Settings['editor.renderWhitespace'];

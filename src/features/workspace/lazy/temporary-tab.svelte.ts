@@ -47,10 +47,12 @@ async function replace(path: string): Promise<boolean> {
 
   watchEdits();
   const index = tabsStore.tabs.findIndex((tab) => tab.temporary);
+  const before = new Set(tabsStore.tabs.map((tab) => tab.id));
   if (!(await openPathInNewTab(path, index === -1 ? {} : { index }))) return false;
 
+  // 開いた結果が既存のタブと同じファイルだった場合は、そちらへ切り替わっている（`openPathInNewTab`）。既存のタブは仮タブにしない。
   const opened = tabsStore.active;
-  if (opened === null) return true;
+  if (opened === null || before.has(opened.id)) return true;
   opened.temporary = true;
   // 続けてクリックされると、開き終わる前に次の置き換えが始まる。1 件に限らず、自分以外の仮タブをすべて閉じる。
   const stale = tabsStore.tabs.filter((tab) => tab.temporary && tab.id !== opened.id);

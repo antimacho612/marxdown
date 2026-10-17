@@ -69,6 +69,15 @@ export const enSettings = {
     description:
       'Shows line breaks inside a paragraph as they are. When off, lines are joined until a blank line separates them.',
   },
+  frontMatter: {
+    label: 'Front Matter',
+    description: 'How the YAML fenced with --- at the top of a document is shown.',
+    options: {
+      table: 'Table',
+      code: 'YAML',
+      hidden: 'Hidden',
+    },
+  },
   tableStyle: {
     label: 'Table Borders',
     description:
@@ -188,6 +197,11 @@ export const enSettings = {
       description:
         'Languages used to find word boundaries in text without spaces between words, such as Japanese. Used when moving by word and when selecting with a double-click. Separate multiple languages with commas. When empty, only the word separators are used.',
       placeholder: 'e.g. ja, zh-CN',
+    },
+    pasteImageDirectory: {
+      label: 'Pasted Image Folder',
+      description:
+        "The folder where pasted images are saved, relative to the document's folder. ${documentFileName} is replaced with the document's file name, and ${documentBaseName} with the file name without its extension. Leave it empty to save next to the document. Folders outside the document's folder cannot be used.",
     },
     cursorStyle: 'Cursor Style',
     cursorStyleOptions: {

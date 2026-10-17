@@ -175,11 +175,17 @@
   font-variant-ligatures: var(--mx-font-ligatures-code);
 }
 
-/* インラインコードは「面」ではなく「印」。本文のリズムを乱さない量にとどめる。 */
+/*
+ * インラインコードは「面」ではなく「印」。本文のリズムを乱さない量にとどめる。
+ *
+ * 背景は文字色を地色に混ぜて作る。
+ * `--mx-color-bg-subtle` は多くの配色で地色との差が小さく、背景が地色に溶けて印として読み取れない。
+ * 既定の配色での文字と背景のコントラストは `tokens.contrast.test.ts` が検証する。
+ */
 .mx-preview :not(pre) > code {
   padding: 0.15em 0.35em;
   border-radius: var(--mx-radius-sm);
-  background: var(--mx-color-bg-subtle);
+  background: color-mix(in srgb, var(--mx-color-code-builtin) 14%, var(--mx-color-bg));
   color: var(--mx-color-code-builtin);
 }
 
@@ -651,6 +657,7 @@
   cursor: not-allowed;
 }
 
+/* Front Matter（F-VIEW-09）。見せ方は `preview.frontMatter` で、表と YAML のどちらも同じ面の上に置く。 */
 .mx-front-matter {
   max-width: var(--mx-content-width);
   margin: 0 auto var(--mx-space-6);
@@ -660,11 +667,113 @@
   border-radius: var(--mx-radius);
   background: var(--mx-color-bg-subtle);
   color: var(--mx-color-fg-muted);
-  font-family: var(--mx-font-code);
-  font-size: 0.8em;
   line-height: 1.6;
-  white-space: pre-wrap;
   user-select: text;
+}
+
+/* NOTE: 文字を小さくするのは中身だけにする。面の側で小さくすると `ch` も縮み、面の幅が本文幅より狭くなる。 */
+.mx-front-matter > table {
+  font-size: 0.85em;
+}
+
+pre.mx-front-matter {
+  font-family: inherit;
+}
+
+/*
+ * 本文のコードブロックと違い、横スクロールさせずに折り返す。Front Matter の値は 1 行が長い文になりやすい。
+ * `block` にするのは、行の高さを `pre` 側の文字サイズではなくこの要素の文字サイズで決めるためである。
+ */
+.mx-preview .mx-front-matter > code {
+  display: block;
+  font-size: 0.8em;
+  white-space: pre-wrap;
+}
+
+/*
+ * 表（`table`）。キーと値を 1 行ずつ並べる。
+ *
+ * `.mx-preview :is(th, td)` の規則と `preview.tableStyle` の規則がそのまま当たるため、ここで打ち消す。
+ * Front Matter は本文の表ではなく文書の情報であり、本文の表と同じ強さの罫線は要らない。
+ */
+.mx-front-matter table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.mx-preview .mx-front-matter :is(th, td) {
+  max-width: none;
+  padding: var(--mx-space-1) var(--mx-space-3) var(--mx-space-1) 0;
+  border: 0;
+  border-bottom: 1px solid var(--mx-color-border-subtle);
+  white-space: pre-wrap;
+}
+
+.mx-preview .mx-front-matter :is(th, td):last-child {
+  padding-inline-end: 0;
+}
+
+.mx-preview .mx-front-matter tr:last-child > :is(th, td) {
+  border-bottom: 0;
+}
+
+/* キーの列は中身の幅に揃える。値の列に残りの幅を渡す。 */
+.mx-preview .mx-front-matter th {
+  width: 1%;
+  font-family: var(--mx-font-code);
+  font-weight: 400;
+  white-space: nowrap;
+}
+
+.mx-preview .mx-front-matter td {
+  color: var(--mx-color-fg);
+}
+
+.mx-preview .mx-front-matter tbody > tr:hover,
+.mx-preview[data-mx-table-style='zebra'] .mx-front-matter tbody > tr:nth-child(even) {
+  background-color: transparent;
+}
+
+/* 入れ子のマッピング。外側の行の罫線と重ならないよう、上下の余白を詰める。 */
+.mx-preview .mx-front-matter td > table {
+  margin-block: calc(-1 * var(--mx-space-1));
+}
+
+/* 文字列だけの配列（`tags: [a, b]`）。 */
+.mx-preview .mx-front-matter-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--mx-space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.mx-preview .mx-front-matter-tags > li {
+  margin: 0;
+  padding: 0 var(--mx-space-2);
+  border: 1px solid var(--mx-color-border-subtle);
+  border-radius: var(--mx-radius-sm);
+  background: var(--mx-color-bg);
+  white-space: nowrap;
+}
+
+/* それ以外の配列。項目ごとに左の線でまとまりを示す。 */
+.mx-preview .mx-front-matter-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.mx-preview .mx-front-matter-list > li {
+  margin: var(--mx-space-1) 0;
+  padding-inline-start: var(--mx-space-3);
+  border-inline-start: 2px solid var(--mx-color-border);
+}
+
+.mx-front-matter-empty {
+  color: var(--mx-color-fg-subtle);
+  font-family: var(--mx-font-code);
 }
 
 /*
