@@ -284,6 +284,8 @@
 
 {#if loading && entries.length === 0 && creating === null}
   <p class="mx-tree__note">{t.tree.loading}</p>
+{:else if depth > 0 && loaded.length === 0 && creating === null}
+  <!-- 空の枝は何も描かない。開閉の状態はシェブロンの向きで伝わる。 -->
 {:else if entries.length === 0 && creating === null}
   <!-- 空のフォルダと、絞り込んだ結果 0 件になった状態を書き分ける。前者では条件を緩めても何も増えない。 -->
   <p class="mx-tree__note">{loaded.length === 0 ? t.tree.empty : t.tree.noMatch}</p>
