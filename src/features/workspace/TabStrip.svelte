@@ -337,7 +337,7 @@ HTML5 の drag イベントは使えない。
         aria-label={t.tab.close(name)}
         onclick={() => void closeTab(tab.id)}
       >
-        <CloseIcon size={10} />
+        <CloseIcon />
       </button>
     </div>
   {/each}
