@@ -458,8 +458,7 @@ HTML5 の drag イベントは使えない。
     border: 0;
     border-radius: var(--mx-radius-sm);
     background: none;
-    /* NOTE: 10px の斜線は fg-subtle だと WebView2 でかすれて見えるため、一段濃い色にする。 */
-    color: var(--mx-color-fg-muted);
+    color: var(--mx-color-fg-subtle);
     font: inherit;
     cursor: pointer;
 
