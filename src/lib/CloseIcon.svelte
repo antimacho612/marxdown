@@ -19,5 +19,13 @@
 </script>
 
 <svg viewBox="0 0 12 12" width={size} height={size} aria-hidden="true" focusable="false">
-  <path d="M3 3l6 6M9 3l-6 6" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" />
+  <!-- NOTE: viewBox に従って線幅まで縮むと、size={10} では約 1px になりかすれて見える。線幅は size によらず 1.25px に固定する。 -->
+  <path
+    d="M3 3l6 6M9 3l-6 6"
+    fill="none"
+    stroke="currentColor"
+    stroke-width="1.25"
+    stroke-linecap="round"
+    vector-effect="non-scaling-stroke"
+  />
 </svg>
