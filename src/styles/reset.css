@@ -1,8 +1,12 @@
 /** 最小限のリセット。ライブラリは使わない。 */
 
-*,
-*::before,
-*::after {
+/*
+ * NOTE: Monaco の CSS は content-box を前提に寸法を書いているため、エディターの中には適用しない（#265）。
+ * 適用すると、Find ウィジェットのボタンが 22px から 16px に縮み、閉じるボタンだけ上下位置がずれる。
+ */
+:where(:not(#mx-editor *)),
+:where(:not(#mx-editor *))::before,
+:where(:not(#mx-editor *))::after {
   box-sizing: border-box;
 }
 
