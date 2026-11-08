@@ -106,7 +106,7 @@ settings:
   excludeLinksFromLockfile: false
 
 overrides:
-  mermaid>katex: ^0.18.9
+  mermaid>katex: ^0.19.1
 
 importers:
 
@@ -3637,10 +3637,6 @@ packages:
 
   katex@0.17.0:
     resolution: {integrity: sha512-Vdw0ATsQ9V+LuegM/BTwQqV/6cTl5lbGcIrU+BCgLxyf6bo38ybOr372tuSIxir3CN720flu1meYR6XzNMwQnw==}
-    hasBin: true
-
-  katex@0.18.9:
-    resolution: {integrity: sha512-8ad9RyoKsb/g8/yLFE+KAlP+DhbCTRUNi/V9XGsxn0R+trJJltNwzcDNo0q/DEkOy5fQUQTAQyCXCYSE+OakTQ==}
     hasBin: true
 
   katex@0.19.1:
@@ -8455,10 +8451,6 @@ snapshots:
     dependencies:
       commander: 8.3.0
 
-  katex@0.18.9:
-    dependencies:
-      commander: 15.0.0
-
   katex@0.19.1:
     dependencies:
       commander: 15.0.0
@@ -8734,7 +8726,7 @@ snapshots:
       dompurify: 3.4.17
       elkjs: 0.12.1
       es-toolkit: 1.51.0
-      katex: 0.18.9
+      katex: 0.19.1
       khroma: 2.1.0
       marked: 16.4.2
       roughjs: 4.6.6
