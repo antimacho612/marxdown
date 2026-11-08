@@ -163,6 +163,21 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
+      # HACK: Tauri のバンドラは AppImage の道具を github.com の Releases から匿名で取得するが、ランナーからは 504 で失敗し続けた（v0.4.1-beta.1 で発生）。
+      # 認証付きの API で先に取得し、バンドラのキャッシュに置く。名前とコミットは Tauri CLI の `linuxdeploy.rs` に合わせる。
+      # 合わなくなってもバンドラが自分で取得し直すだけで、ビルドは壊れない。
+      - name: AppImage の道具を先に取得する
+        if: runner.os == 'Linux'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          dir="$HOME/.cache/tauri"
+          mkdir -p "$dir"
+          gh release download apprun-old -R tauri-apps/binary-releases -p AppRun-x86_64 -O "$dir/AppRun-x86_64" --clobber
+          gh release download linuxdeploy-07333c6 -R tauri-apps/binary-releases -p linuxdeploy-x86_64.AppImage -O "$dir/linuxdeploy-07333c6-x86_64.AppImage" --clobber
+          gh release download continuous -R linuxdeploy/linuxdeploy-plugin-appimage -p linuxdeploy-plugin-appimage-x86_64.AppImage -O "$dir/linuxdeploy-plugin-appimage.AppImage" --clobber
+          chmod +x "$dir"/*
+
       - name: ビルド
         env:
           APPIMAGE_EXTRACT_AND_RUN: 1
