@@ -8,12 +8,20 @@
  * Monaco はレイアウトと OS のテーマを問い合わせるため、jsdom に無いものを最小限だけ用意する。
  * 実際の描画は不要である。検証するのは「モデルの版が基準に戻ったら dirty が外れるか」だけである。
  */
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { documentStore, markClean, resetDocumentText, setDocumentText } from '@/features/document';
 
 import { mountEditor } from './editor';
 import { monaco } from './monaco';
+
+// NOTE: `mountEditor` は配色カタログの読み込みを待たずに始める。
+// 読み込みがテスト終了後に完了すると、jsdom の破棄後に `document` を参照して未処理の reject になり、CI が不定期に失敗する。
+// このテストは配色を検証しないため、読み込み自体を行わせない。
+vi.mock('./palette', () => ({
+  installEditorPalette: () => Promise.resolve(),
+  applyEditorPalette: () => {},
+}));
 
 function type(editor: monaco.editor.IStandaloneCodeEditor, text: string): void {
   const model = editor.getModel();
