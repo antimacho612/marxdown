@@ -25,7 +25,7 @@ jobs:
     outputs:
       prerelease: ${{ steps.kind.outputs.prerelease }}
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v7.0.1
         with:
           fetch-depth: 0
 
@@ -33,7 +33,7 @@ jobs:
       - name: タグが main にあるか
         run: git merge-base --is-ancestor "$GITHUB_SHA" origin/main
 
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@v7.1.0
         with:
           node-version: 24
 
@@ -55,17 +55,17 @@ jobs:
     needs: check
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v7.0.1
 
-      - uses: pnpm/action-setup@v6
-      - uses: actions/setup-node@v7
+      - uses: pnpm/action-setup@v6.1.1
+      - uses: actions/setup-node@v7.1.0
         with:
           node-version: 24
           cache: pnpm
 
       - uses: dtolnay/rust-toolchain@stable
 
-      - uses: Swatinem/rust-cache@v2
+      - uses: Swatinem/rust-cache@v2.9.3
         with:
           workspaces: src-tauri
 
@@ -99,7 +99,7 @@ jobs:
           mkdir -p out
           cp "$bundle/Marxdown_${version}_x64-setup.exe" "$bundle/Marxdown_${version}_x64-setup.exe.sig" latest.json out/
 
-      - uses: actions/upload-artifact@v5
+      - uses: actions/upload-artifact@v7.0.2
         with:
           name: windows
           path: out/*
@@ -121,10 +121,10 @@ jobs:
             arch: x64
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v7.0.1
 
-      - uses: pnpm/action-setup@v6
-      - uses: actions/setup-node@v7
+      - uses: pnpm/action-setup@v6.1.1
+      - uses: actions/setup-node@v7.1.0
         with:
           node-version: 24
           cache: pnpm
@@ -133,7 +133,7 @@ jobs:
         with:
           targets: ${{ matrix.target }}
 
-      - uses: Swatinem/rust-cache@v2
+      - uses: Swatinem/rust-cache@v2.9.3
         with:
           workspaces: src-tauri
           key: ${{ matrix.target }}
@@ -143,7 +143,7 @@ jobs:
       - name: ビルド
         run: pnpm tauri build --target ${{ matrix.target }} --bundles dmg
 
-      - uses: actions/upload-artifact@v5
+      - uses: actions/upload-artifact@v7.0.2
         with:
           name: macos-${{ matrix.arch }}
           path: src-tauri/target/${{ matrix.target }}/release/bundle/dmg/*.dmg
@@ -156,7 +156,7 @@ jobs:
     if: needs.check.outputs.prerelease == 'true'
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v7.0.1
 
       # Tauri が Linux で要求するシステムライブラリ（WebKitGTK、トレイ、ダイアログ）。
       # CONTRIBUTING の一覧と揃える。
@@ -165,19 +165,33 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev libxdo-dev libssl-dev patchelf
 
-      - uses: pnpm/action-setup@v6
-      - uses: actions/setup-node@v7
+      - uses: pnpm/action-setup@v6.1.1
+      - uses: actions/setup-node@v7.1.0
         with:
           node-version: 24
           cache: pnpm
 
       - uses: dtolnay/rust-toolchain@stable
 
-      - uses: Swatinem/rust-cache@v2
+      - uses: Swatinem/rust-cache@v2.9.3
         with:
           workspaces: src-tauri
 
       - run: pnpm install --frozen-lockfile
+
+      # HACK: Tauri のバンドラは AppImage の道具を github.com の Releases から匿名で取得するが、ランナーからは 504 で失敗し続けた（v0.4.1-beta.1 で発生）。
+      # 認証付きの API で先に取得し、バンドラのキャッシュに置く。名前とコミットは Tauri CLI の `linuxdeploy.rs` に合わせる。
+      # 合わなくなってもバンドラが自分で取得し直すだけで、ビルドは壊れない。
+      - name: AppImage の道具を先に取得する
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          dir="$HOME/.cache/tauri"
+          mkdir -p "$dir"
+          gh release download apprun-old -R tauri-apps/binary-releases -p AppRun-x86_64 -O "$dir/AppRun-x86_64" --clobber
+          gh release download linuxdeploy-07333c6 -R tauri-apps/binary-releases -p linuxdeploy-x86_64.AppImage -O "$dir/linuxdeploy-07333c6-x86_64.AppImage" --clobber
+          gh release download continuous -R linuxdeploy/linuxdeploy-plugin-appimage -p linuxdeploy-plugin-appimage-x86_64.AppImage -O "$dir/linuxdeploy-plugin-appimage.AppImage" --clobber
+          chmod +x "$dir"/*
 
       # linuxdeploy は AppImage であり、ランナーに FUSE が無くても展開して動かす。
       - name: ビルド
@@ -192,7 +206,7 @@ jobs:
           mkdir -p out
           cp src-tauri/target/release/bundle/deb/*.deb src-tauri/target/release/bundle/appimage/*.AppImage out/
 
-      - uses: actions/upload-artifact@v5
+      - uses: actions/upload-artifact@v7.0.2
         with:
           name: linux
           path: out/*
@@ -210,13 +224,13 @@ jobs:
       contains(fromJSON('["success", "skipped"]'), needs.linux.result)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v7.0.1
 
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@v7.1.0
         with:
           node-version: 24
 
-      - uses: actions/download-artifact@v5
+      - uses: actions/download-artifact@v8.0.2
         with:
           path: artifacts
           merge-multiple: true
@@ -227,13 +241,22 @@ jobs:
           PRERELEASE: ${{ needs.check.outputs.prerelease }}
         run: |
           version="${GITHUB_REF_NAME#v}"
-          node scripts/release.mjs notes "$version" > notes.md
 
+          # 安定版には Windows の配布物しか載らないため、直近に公開した pre-release（macOS / Linux のプレビュー）へ誘導する。
           prerelease=()
-          if [[ "$PRERELEASE" == "true" ]]; then prerelease=(--prerelease); fi
+          preview=()
+          if [[ "$PRERELEASE" == "true" ]]; then
+            prerelease=(--prerelease)
+          else
+            tag=$(gh api "repos/$GITHUB_REPOSITORY/releases" --jq '[.[] | select(.prerelease and (.draft | not))][0].tag_name // empty')
+            if [[ -n "$tag" ]]; then preview=(--preview "$tag"); fi
+          fi
+
+          node scripts/release.mjs notes "$version" "${preview[@]}" > notes.md
+          title=$(node scripts/release.mjs title "$version")
 
           gh release create "$GITHUB_REF_NAME" \
             --draft "${prerelease[@]}" \
-            --title "Marxdown v$version" \
+            --title "$title" \
             --notes-file notes.md \
             artifacts/*

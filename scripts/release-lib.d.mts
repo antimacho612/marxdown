@@ -21,4 +21,17 @@ export function buildManifest(input: {
 };
 export function latestVersion(text: string): string | null;
 export function previousVersion(text: string, version: string): string | null;
-export function buildReleaseNotes(input: { version: string; body: string; previous: string | null }): string;
+export interface Highlights {
+  title: string;
+  body: string;
+}
+export function releaseNotesTemplate(version: string): string;
+export function parseHighlights(text: string): Highlights;
+export function releaseTitle(version: string, highlights: Highlights | null): string;
+export function buildReleaseNotes(input: {
+  version: string;
+  body: string;
+  previous: string | null;
+  highlights?: Highlights | null;
+  preview?: string | null;
+}): string;
