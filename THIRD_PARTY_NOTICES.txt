@@ -29,11 +29,11 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 ================================================================================
-@chevrotain/gast 11.1.2 (Apache-2.0) git://github.com/Chevrotain/chevrotain.git
-@chevrotain/regexp-to-ast 11.1.2 (Apache-2.0) git://github.com/Chevrotain/chevrotain.git
-@chevrotain/utils 11.1.2 (Apache-2.0) git://github.com/Chevrotain/chevrotain.git
+@chevrotain/gast 13.2.0 (Apache-2.0) git://github.com/Chevrotain/chevrotain.git
+@chevrotain/regexp-to-ast 13.2.0 (Apache-2.0) git://github.com/Chevrotain/chevrotain.git
+@chevrotain/utils 13.2.0 (Apache-2.0) git://github.com/Chevrotain/chevrotain.git
 chardetng 1.0.0 (Apache-2.0 OR MIT) https://github.com/hsivonen/chardetng
-chevrotain 11.1.2 (Apache-2.0) git://github.com/Chevrotain/chevrotain.git
+chevrotain 13.2.0 (Apache-2.0) git://github.com/Chevrotain/chevrotain.git
 dompurify 3.4.17 ((MPL-2.0 OR Apache-2.0)) git://github.com/cure53/DOMPurify.git
 embed_plist 1.2.2 (MIT OR Apache-2.0) https://github.com/nvzqz/embed-plist-rs
 encoding_rs 0.8.42 ((Apache-2.0 OR MIT) AND BSD-3-Clause) https://github.com/hsivonen/encoding_rs
@@ -346,7 +346,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 ================================================================================
-@mermaid-js/parser 2.0.0 (MIT) https://github.com/mermaid-js/mermaid.git
+@mermaid-js/parser 2.0.1 (MIT) https://github.com/mermaid-js/mermaid.git
 
 The MIT License (MIT)
 
@@ -371,7 +371,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 ================================================================================
-@tauri-apps/api 2.12.0 (Apache-2.0 OR MIT) git+https://github.com/tauri-apps/tauri.git
+@tauri-apps/api 2.12.4 (Apache-2.0 OR MIT) git+https://github.com/tauri-apps/tauri.git
 fdeflate 0.3.7 (MIT OR Apache-2.0) https://github.com/image-rs/fdeflate
 field-offset 0.3.6 (MIT OR Apache-2.0) https://github.com/Diggsey/rust-field-offset
 miniz_oxide 0.8.9 (MIT OR Zlib OR Apache-2.0) https://github.com/Frommi/miniz_oxide/tree/master/miniz_oxide
@@ -570,7 +570,7 @@ Apache License
    END OF TERMS AND CONDITIONS
 
 ================================================================================
-@tauri-apps/api 2.12.0 (Apache-2.0 OR MIT) git+https://github.com/tauri-apps/tauri.git
+@tauri-apps/api 2.12.4 (Apache-2.0 OR MIT) git+https://github.com/tauri-apps/tauri.git
 tauri 2.12.2 (Apache-2.0 OR MIT) https://github.com/tauri-apps/tauri
 tauri-plugin-dialog 2.8.4 (Apache-2.0 OR MIT) https://github.com/tauri-apps/plugins-workspace
 tauri-plugin-fs 2.7.1 (Apache-2.0 OR MIT) https://github.com/tauri-apps/plugins-workspace
@@ -603,7 +603,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 ================================================================================
-@tauri-apps/api 2.12.0 (Apache-2.0 OR MIT) git+https://github.com/tauri-apps/tauri.git
+@tauri-apps/api 2.12.4 (Apache-2.0 OR MIT) git+https://github.com/tauri-apps/tauri.git
 
 SPDXVersion: SPDX-2.1
 DataLicense: CC0-1.0
@@ -6052,7 +6052,7 @@ express Statement of Purpose.
     this CC0 or use of the Work.
 
 ================================================================================
-elkjs 0.9.3 (EPL-2.0) https://github.com/kieler/elkjs.git
+elkjs 0.12.1 (EPL-2.0 OR GPL-3.0-or-later) https://github.com/kieler/elkjs.git
 
 # Eclipse Public License - v 2.0
 
@@ -6306,8 +6306,7 @@ No third-party beneficiary rights are created under this Agreement.
 
 “This Source Code may also be made available under the following
 Secondary Licenses when the conditions for such availability set forth
-in the Eclipse Public License, v. 2.0 are satisfied: {name license(s),
-version(s), and exceptions or additional permissions here}.”
+in the Eclipse Public License, v. 2.0 are satisfied: GNU General Public License v3.0 or later”
 
 > Simply including a copy of this Agreement, including this Exhibit A is
 > not sufficient to license the Source Code under Secondary Licenses.
@@ -8915,7 +8914,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 ================================================================================
-js-yaml 5.4.2 (MIT) nodeca/js-yaml
+js-yaml 5.5.0 (MIT) nodeca/js-yaml
 
 (The MIT License)
 
@@ -9196,6 +9195,7 @@ SOFTWARE.
 
 ================================================================================
 katex 0.18.9 (MIT) https://github.com/KaTeX/KaTeX.git
+katex 0.19.1 (MIT) https://github.com/KaTeX/KaTeX.git
 
 The MIT License (MIT)
 
@@ -9671,7 +9671,6 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 
 ================================================================================
-lodash-es 4.17.23 (MIT) lodash/lodash
 lodash-es 4.18.1 (MIT) lodash/lodash
 
 Copyright OpenJS Foundation and other contributors <https://openjsf.org/>
@@ -10030,7 +10029,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 ================================================================================
-mermaid 12.0.0 (MIT) https://github.com/mermaid-js/mermaid
+mermaid 12.3.0 (MIT) https://github.com/mermaid-js/mermaid
 
 The MIT License (MIT)
 
@@ -13754,7 +13753,7 @@ NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ================================================================================
-svelte 5.57.1 (MIT) git+https://github.com/sveltejs/svelte.git
+svelte 5.57.3 (MIT) git+https://github.com/sveltejs/svelte.git
 
 Copyright (c) 2016-2025 [Svelte Contributors](https://github.com/sveltejs/svelte/graphs/contributors)
 
@@ -15086,19 +15085,6 @@ CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
 OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR
 IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
-
-================================================================================
-uuid 14.0.2 (MIT) https://github.com/uuidjs/uuid.git
-
-The MIT License (MIT)
-
-Copyright (c) 2010-2020 Robert Kieffer and other contributors
-
-Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ================================================================================
 want 0.3.1 (MIT) https://github.com/seanmonstar/want
