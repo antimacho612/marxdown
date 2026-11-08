@@ -7,6 +7,8 @@ Marxdown の利用者に見える変更を記録する。
 
 ## [Unreleased]
 
+## [0.4.1] - 2026-11-08
+
 ### 修正
 
 - エディターの検索・置換で、ボタンのツールチップが閉じるボタンに重なり、クリックで閉じられなかった不具合を修正した（Split で起きていた）
@@ -70,7 +72,8 @@ Marxdown の利用者に見える変更を記録する。
 - 自動更新。起動時とウィンドウを前面に出したときに（1 日 1 回まで）新しい版を確認し、通知バーから更新できる。設定 `update.autoCheck` で止められる
 - メニューの「ヘルプ」。不具合の報告（バージョンと OS を入力済みの Issue フォームを開く）・機能の提案・更新の確認・ライセンスの表示・「Marxdown について」
 
-[Unreleased]: https://github.com/antimacho612/marxdown/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/antimacho612/marxdown/compare/v0.4.1...HEAD
+[0.4.1]: https://github.com/antimacho612/marxdown/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/antimacho612/marxdown/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/antimacho612/marxdown/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/antimacho612/marxdown/compare/v0.1.1...v0.2.0
