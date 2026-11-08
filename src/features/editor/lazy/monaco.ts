@@ -32,6 +32,7 @@ import 'monaco-editor/features/stickyScroll/register.js';
 import 'monaco-editor/features/wordHighlighter/register.js';
 import 'monaco-editor/features/wordOperations/register.js';
 import 'monaco-editor/features/wordPartOperations/register.js';
+import '@/styles/editor/monaco.css';
 
 // 名前空間そのもの。NLS の直後に置く（モジュール冒頭のコメントを参照）。
 export * as monaco from 'monaco-editor/editor/editor.api.js';
