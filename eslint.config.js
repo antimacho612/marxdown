@@ -139,6 +139,8 @@ export default tseslint.config(
       globals: { ...globals.browser },
     },
     settings: {
+      // NOTE: 依存先の解析には import 元のパーサが使われる。`.svelte` 経由で monaco の ESM を svelte-eslint-parser が読むと解析エラーのログが大量に出るため、node_modules は解析しない。
+      'import-x/ignore': ['node_modules'],
       'import-x/resolver-next': [
         createTypeScriptImportResolver({
           project: ['./tsconfig.json', './tsconfig.node.json'],
