@@ -34,7 +34,7 @@ SOFTWARE.
 @chevrotain/utils 11.1.2 (Apache-2.0) git://github.com/Chevrotain/chevrotain.git
 chardetng 1.0.0 (Apache-2.0 OR MIT) https://github.com/hsivonen/chardetng
 chevrotain 11.1.2 (Apache-2.0) git://github.com/Chevrotain/chevrotain.git
-dompurify 3.4.16 ((MPL-2.0 OR Apache-2.0)) git://github.com/cure53/DOMPurify.git
+dompurify 3.4.17 ((MPL-2.0 OR Apache-2.0)) git://github.com/cure53/DOMPurify.git
 embed_plist 1.2.2 (MIT OR Apache-2.0) https://github.com/nvzqz/embed-plist-rs
 encoding_rs 0.8.42 ((Apache-2.0 OR MIT) AND BSD-3-Clause) https://github.com/hsivonen/encoding_rs
 rustls-platform-verifier 0.7.1 (MIT OR Apache-2.0) https://github.com/rustls/rustls-platform-verifier
@@ -3904,7 +3904,7 @@ SOFTWARE.
 
 ================================================================================
 cssparser 0.37.0 (MPL-2.0) https://github.com/servo/rust-cssparser
-dompurify 3.4.16 ((MPL-2.0 OR Apache-2.0)) git://github.com/cure53/DOMPurify.git
+dompurify 3.4.17 ((MPL-2.0 OR Apache-2.0)) git://github.com/cure53/DOMPurify.git
 selectors 0.38.0 (MPL-2.0) https://github.com/servo/stylo
 
 Mozilla Public License Version 2.0
@@ -6376,7 +6376,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ================================================================================
 entities 4.5.0 (BSD-2-Clause) git://github.com/fb55/entities.git
-entities 8.0.0 (BSD-2-Clause) https://github.com/fb55/entities.git
+entities 8.1.0 (BSD-2-Clause) https://github.com/fb55/entities.git
 
 Copyright (c) Felix Böhm
 All rights reserved.
@@ -9775,7 +9775,7 @@ terms above.
 
 ================================================================================
 markdown-it 14.3.2 (MIT) markdown-it/markdown-it
-markdown-it 15.0.2 (MIT) markdown-it/markdown-it
+markdown-it 15.0.3 (MIT) markdown-it/markdown-it
 
 Copyright (c) 2014 Vitaly Puzrin, Alex Kocharin.
 
@@ -11845,7 +11845,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ================================================================================
-postcss-selector-parser 7.1.5 (MIT) https://github.com/postcss/postcss-selector-parser.git
+postcss-selector-parser 7.1.7 (MIT) https://github.com/postcss/postcss-selector-parser.git
 
 Copyright (c) Ben Briggs <beneb.info@gmail.com> (http://beneb.info)
 
