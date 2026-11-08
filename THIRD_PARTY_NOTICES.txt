@@ -1559,7 +1559,7 @@ regex 1.13.1 (MIT OR Apache-2.0) https://github.com/rust-lang/regex
 regex-automata 0.4.18 (MIT OR Apache-2.0) https://github.com/rust-lang/regex
 regex-syntax 0.8.11 (MIT OR Apache-2.0) https://github.com/rust-lang/regex
 rustix 1.1.4 (Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT) https://github.com/bytecodealliance/rustix
-rustls 0.23.45 (Apache-2.0 OR ISC OR MIT) https://github.com/rustls/rustls
+rustls 0.23.46 (Apache-2.0 OR ISC OR MIT) https://github.com/rustls/rustls
 rustls-native-certs 0.8.4 (Apache-2.0 OR ISC OR MIT) https://github.com/rustls/rustls-native-certs
 scopeguard 1.2.0 (MIT OR Apache-2.0) https://github.com/bluss/scopeguard
 security-framework 3.7.0 (MIT OR Apache-2.0) https://github.com/kornelski/rust-security-framework
@@ -8075,7 +8075,7 @@ THE SOFTWARE.
 
 ================================================================================
 hyper-rustls 0.27.10 (Apache-2.0 OR ISC OR MIT) https://github.com/rustls/hyper-rustls
-rustls 0.23.45 (Apache-2.0 OR ISC OR MIT) https://github.com/rustls/rustls
+rustls 0.23.46 (Apache-2.0 OR ISC OR MIT) https://github.com/rustls/rustls
 rustls-native-certs 0.8.4 (Apache-2.0 OR ISC OR MIT) https://github.com/rustls/rustls-native-certs
 
 ISC License (ISC)
@@ -8096,7 +8096,7 @@ THIS SOFTWARE.
 
 ================================================================================
 hyper-rustls 0.27.10 (Apache-2.0 OR ISC OR MIT) https://github.com/rustls/hyper-rustls
-rustls 0.23.45 (Apache-2.0 OR ISC OR MIT) https://github.com/rustls/rustls
+rustls 0.23.46 (Apache-2.0 OR ISC OR MIT) https://github.com/rustls/rustls
 rustls-native-certs 0.8.4 (Apache-2.0 OR ISC OR MIT) https://github.com/rustls/rustls-native-certs
 
 Copyright (c) 2016 Joseph Birr-Pixton <jpixton@gmail.com>
