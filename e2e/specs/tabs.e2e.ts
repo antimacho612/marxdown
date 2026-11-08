@@ -307,10 +307,23 @@ describe('コマンドパレット', () => {
  * Vitest 側はプラットフォームをモックしており、スコープ検証（N-SEC-05）も除外も通っていない。
  */
 describe('ファイルツリー', () => {
-  it('レフトペインを開くと、開いているファイルの隣が並ぶ', async () => {
+  it('表示中のファイルのフォルダを開くと、その隣が並ぶ', async () => {
     // 開閉は `state.json` に永続化される。
     // 前回の実行で開いたままのことがあるため、トグルではなく「閉じていたら開く」にする。
     await openLeftPane();
+
+    // NOTE: ファイルを開いただけでは基点が決まらない（F-NAV-03）。
+    // 「フォルダを開く」はネイティブダイアログを通るため、ダイアログを使わない空状態の導線から基点を決める。
+    await browser.waitUntil(
+      () =>
+        browser.execute(() => {
+          const button = document.querySelector('.mx-explorer__action--secondary');
+          if (!(button instanceof HTMLElement)) return false;
+          button.click();
+          return true;
+        }),
+      { timeout: 10_000, timeoutMsg: '「表示中のファイルのフォルダを開く」が無い' },
+    );
 
     await browser.waitUntil(
       async () => {

@@ -111,7 +111,7 @@ describe('保存の衝突 (N-REL-01, N-REL-02)', () => {
     const before = readBytes(WORK_DOC);
 
     await browser.keys([Key.Control, 's']);
-    await waitForNotice('別のプロセス');
+    await waitForNotice('保存できませんでした');
 
     // 拒否された以上、ディスクは 1 バイトも変わっていないこと（N-REL-01）。
     expect(readBytes(WORK_DOC).equals(before)).toBe(true);
@@ -119,8 +119,8 @@ describe('保存の衝突 (N-REL-01, N-REL-02)', () => {
     expect(await isDirtyShown()).toBe(true);
   });
 
-  it('「上書き」を選ぶと、こちらの内容で書き換わる', async () => {
-    await clickNoticeAction('上書き');
+  it('「上書き保存」を選ぶと、こちらの内容で書き換わる', async () => {
+    await clickNoticeAction('上書き保存');
 
     await browser.waitUntil(async () => !(await isDirtyShown()), {
       timeout: 20_000,
